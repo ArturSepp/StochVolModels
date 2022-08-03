@@ -1,7 +1,7 @@
 import numpy as np
 from numpy import array
 from enum import Enum
-from package.generic.chain_data import ChainData
+from generic.chain_data import ChainData
 
 
 def get_btc_test_chain_data() -> ChainData:

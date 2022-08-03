@@ -7,12 +7,12 @@ from enum import Enum
 import numpy as np
 import pandas as pd
 
-from package.generic.chain_data import ChainData
-from package.pricers.logsv_pricer import LogSVPricer, ModelCalibrationType
-from package.pricers.logsv.logsv_params import LogSvParams
-from package.utils.funcs import set_seed
-import package.testing.test_chain_data as chains
-import package.utils.plots as plot
+from generic.chain_data import ChainData
+from pricers.logsv_pricer import LogSVPricer, ModelCalibrationType
+from pricers.logsv.logsv_params import LogSvParams
+from utils.funcs import set_seed
+import testing.test_chain_data as chains
+import utils.plots as plot
 
 
 BTC_PARAMS = LogSvParams(sigma0=0.8327, theta=1.0139, kappa1=4.8606, kappa2=4.7938, beta=0.1985, volvol=2.3690)
@@ -54,8 +54,8 @@ def run_unit_test(unit_test: UnitTests):
                                                   idx_ttm_to_export=None)
 
         if is_save:
-            plot.save_fig(fig=fig1, local_path='../../../draft/figures//', file_name="btc_fit")
-            plot.save_fig(fig=fig2, local_path='../../../draft/figures//', file_name="btc_mc_comp")
+            plot.save_fig(fig=fig1, local_path='../../draft/figures//', file_name="btc_fit")
+            plot.save_fig(fig=fig2, local_path='../../draft/figures//', file_name="btc_mc_comp")
 
     elif unit_test == UnitTests.VIX_CALIBRATIONS:
         set_seed(17)  # 17
@@ -71,8 +71,8 @@ def run_unit_test(unit_test: UnitTests):
                                                   idx_ttm_to_export=None)
 
         if is_save:
-            plot.save_fig(fig=fig1, local_path='../../../draft/figures//', file_name="vix_fit")
-            plot.save_fig(fig=fig2, local_path='../../../draft/figures//', file_name="vix_mc_comp")
+            plot.save_fig(fig=fig1, local_path='../../draft/figures//', file_name="vix_fit")
+            plot.save_fig(fig=fig2, local_path='../../draft/figures//', file_name="vix_mc_comp")
 
     plt.show()
 

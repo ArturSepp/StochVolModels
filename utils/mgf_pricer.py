@@ -3,7 +3,7 @@ import numpy as np
 from numba import njit
 from typing import Tuple
 
-from package.generic.config import VariableType
+from generic.config import VariableType
 
 
 @njit

@@ -8,8 +8,8 @@ from typing import Dict, List
 from enum import Enum
 
 # internal
-import package.utils.plots as plot
-from package.pricers.logsv.logsv_params import LogSvParams
+import utils.plots as plot
+from pricers.logsv.logsv_params import LogSvParams
 
 
 VOLVOL = 1.75
@@ -63,7 +63,7 @@ def run_unit_test(unit_test: UnitTests):
         is_update = True
         if is_update:
             plot.save_fig(fig=fig,
-                          local_path='../../../draft/figures//',
+                          local_path='../../draft/figures//',
                           file_name='vol_drift')
 
     plt.show()

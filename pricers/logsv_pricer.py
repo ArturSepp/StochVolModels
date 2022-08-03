@@ -10,19 +10,19 @@ from scipy.optimize import minimize
 from enum import Enum
 
 # package generic
-from package.generic.chain_data import ChainData
-from package.generic.config import VariableType
-from package.generic.model_pricer import ModelPricer
+from generic.chain_data import ChainData
+from generic.config import VariableType
+from generic.model_pricer import ModelPricer
 # pricer
-from package.pricers.logsv import affine_expansion as afe
-from package.pricers.logsv.affine_expansion import ExpansionOrder
-from package.pricers.logsv.logsv_params import LogSvParams
+from pricers.logsv import affine_expansion as afe
+from pricers.logsv.affine_expansion import ExpansionOrder
+from pricers.logsv.logsv_params import LogSvParams
 # utils
-import package.utils.mgf_pricer as mgfp
-from package.utils.bsm_pricer import model_chain_prices_to_bsm_ivols
-from package.utils.funcs import to_flat_np_array, set_time_grid, timer, compute_histogram_data
-from package.utils.mc_payoffs import compute_mc_vars_payoff
-from package.testing.test_chain_data import get_btc_test_chain_data
+import utils.mgf_pricer as mgfp
+from utils.bsm_pricer import model_chain_prices_to_bsm_ivols
+from utils.funcs import to_flat_np_array, set_time_grid, timer, compute_histogram_data
+from utils.mc_payoffs import compute_mc_vars_payoff
+from testing.test_chain_data import get_btc_test_chain_data
 
 BTC_PARAMS = LogSvParams(sigma0=0.8376, theta=1.0413, kappa1=3.1844, kappa2=3.058, beta=0.1514, volvol=1.8458)
 

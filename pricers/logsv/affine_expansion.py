@@ -7,8 +7,8 @@ from scipy.integrate import solve_ivp
 from scipy.integrate._ivp.ivp import OdeResult
 
 # internal
-from package.pricers.logsv.logsv_params import LogSvParams
-from package.generic.config import VariableType
+from pricers.logsv.logsv_params import LogSvParams
+from generic.config import VariableType
 
 
 class ExpansionOrder(Enum):

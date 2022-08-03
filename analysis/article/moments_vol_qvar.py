@@ -6,13 +6,13 @@ import seaborn as sns
 from typing import Dict
 from enum import Enum
 
-import package.utils.plots as plot
-from package.utils.funcs import set_seed
+import utils.plots as plot
+from utils.funcs import set_seed
 
 # pricers
-import package.pricers.logsv.vol_moments_ode as vmo
-from package.pricers.logsv.logsv_params import LogSvParams
-from package.pricers.logsv_pricer import LogSVPricer
+import pricers.logsv.vol_moments_ode as vmo
+from pricers.logsv.logsv_params import LogSvParams
+from pricers.logsv_pricer import LogSVPricer
 
 
 VOLVOL = 1.5
@@ -193,7 +193,7 @@ def run_unit_test(unit_test: UnitTests):
 
         is_update = True
         if is_update:
-            plot.save_fig(fig=fig, local_path='../../../draft/figures//', file_name='vol_qvar_exp')
+            plot.save_fig(fig=fig, local_path='../../draft/figures//', file_name='vol_qvar_exp')
 
     elif unit_test == UnitTests.JOINT_VOL_MOMENTS_VS_MC_FIGURE:
         params = LogSvParams(sigma0=1.5, theta=1.0, kappa1=4.0, kappa2=4.0, beta=0.0, volvol=1.0)
@@ -211,7 +211,7 @@ def run_unit_test(unit_test: UnitTests):
 
         is_update = True
         if is_update:
-            plot.save_fig(fig=fig, local_path='../../../draft/figures//', file_name='vol_moments')
+            plot.save_fig(fig=fig, local_path='../../draft/figures//', file_name='vol_moments')
 
     elif unit_test == UnitTests.SINGLE_QVAR_FIGURE:
         with sns.axes_style('darkgrid'):
@@ -221,7 +221,7 @@ def run_unit_test(unit_test: UnitTests):
 
         is_update = True
         if is_update:
-            plot.save_fig(fig=fig, local_path='../../../draft/figures//', file_name='qvar_exp')
+            plot.save_fig(fig=fig, local_path='../../draft/figures//', file_name='qvar_exp')
 
     plt.show()
 

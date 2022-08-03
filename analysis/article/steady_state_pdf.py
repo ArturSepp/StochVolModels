@@ -9,8 +9,8 @@ from numba import njit
 from enum import Enum
 from typing import Dict
 
-from package.pricers.logsv.logsv_params import LogSvParams
-import package.utils.plots as plot
+from pricers.logsv.logsv_params import LogSvParams
+import utils.plots as plot
 
 VOLVOL = 1.5
 
@@ -230,7 +230,7 @@ def run_unit_test(unit_test: UnitTests):
 
             is_update = True
             if is_update:
-                plot.save_fig(fig=fig, local_path='../../../draft/figures//', file_name='vol_steady_state')
+                plot.save_fig(fig=fig, local_path='../../draft/figures//', file_name='vol_steady_state')
 
     plt.show()
 

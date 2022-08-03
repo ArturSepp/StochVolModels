@@ -7,8 +7,8 @@ from scipy import linalg as sla
 from typing import Dict
 from enum import Enum
 
-from package.pricers.logsv.logsv_params import LogSvParams
-from package.utils.funcs import set_seed
+from pricers.logsv.logsv_params import LogSvParams
+from utils.funcs import set_seed
 
 
 VOLVOL = 1.75
@@ -118,7 +118,7 @@ class UnitTests(Enum):
 
 def run_unit_test(unit_test: UnitTests):
 
-    from package.pricers.logsv_pricer import LogSVPricer
+    from pricers.logsv_pricer import LogSVPricer
     logsv_pricer = LogSVPricer()
 
     n_terms = 4

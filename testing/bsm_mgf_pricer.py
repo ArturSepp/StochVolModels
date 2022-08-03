@@ -8,9 +8,9 @@ from typing import Tuple
 from enum import Enum
 
 # internal
-import package.utils.mgf_pricer as mgfp
-from package.utils.bsm_pricer import model_chain_prices_to_bsm_ivols
-from package.generic.config import VariableType
+import utils.mgf_pricer as mgfp
+from utils.bsm_pricer import model_chain_prices_to_bsm_ivols
+from generic.config import VariableType
 
 
 def compute_normal_mgf_grid(ttm: float,

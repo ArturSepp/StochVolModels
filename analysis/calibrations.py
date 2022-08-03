@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 from enum import Enum
 
 # internal
-from package.generic.chain_data import ChainData
-from package.pricers.logsv_pricer import LogSVPricer, ModelCalibrationType
-from package.pricers.logsv.logsv_params import LogSvParams
-from package.utils.funcs import set_seed
-import package.testing.test_chain_data as chains
+from generic.chain_data import ChainData
+from pricers.logsv_pricer import LogSVPricer, ModelCalibrationType
+from pricers.logsv.logsv_params import LogSvParams
+from utils.funcs import set_seed
+import testing.test_chain_data as chains
 
 
 BTC_PARAMS = LogSvParams(sigma0=0.8327, theta=1.0139, kappa1=4.8606, kappa2=4.7938, beta=0.1985, volvol=2.3690)

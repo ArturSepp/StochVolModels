@@ -11,7 +11,7 @@ from typing import Tuple, Optional
 from numba.typed import List
 
 # analytics
-import package.utils.bsm_pricer as bsm
+import utils.bsm_pricer as bsm
 
 
 @dataclass

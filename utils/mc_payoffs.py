@@ -1,7 +1,7 @@
 # built
 import numpy as np
 from numba import njit
-from package.generic.config import VariableType
+from generic.config import VariableType
 
 @njit
 def compute_mc_vars_payoff(x0: np.ndarray, sigma0: np.ndarray, qvar0: np.ndarray,

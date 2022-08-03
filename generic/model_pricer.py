@@ -19,12 +19,12 @@ from dataclasses import dataclass
 from typing import Tuple, Optional
 
 # internal
-from package.generic.config import VariableType
-import package.utils.plots as plot
-from package.utils.funcs import set_seed
+from generic.config import VariableType
+import utils.plots as plot
+from utils.funcs import set_seed
 
 # generic
-from package.generic.chain_data import ChainData
+from generic.chain_data import ChainData
 
 # set global mc seed, for resets call set_seed() locally
 set_seed(7)

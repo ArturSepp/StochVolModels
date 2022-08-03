@@ -14,9 +14,9 @@ from scipy.integrate._ivp.ivp import OdeResult
 from typing import Tuple, List
 
 # packadge
-import package.utils.plots as plot
-from package.pricers.logsv.affine_expansion import solve_ode_for_a, ExpansionOrder, func_a_ode_quadratic_terms, get_expansion_n
-from package.pricers.logsv.logsv_params import LogSvParams
+import utils.plots as plot
+from pricers.logsv.affine_expansion import solve_ode_for_a, ExpansionOrder, func_a_ode_quadratic_terms, get_expansion_n
+from pricers.logsv.logsv_params import LogSvParams
 
 
 def plot_ode_sol_in_t(params: LogSvParams,
@@ -282,13 +282,13 @@ def run_unit_test(unit_test: UnitTests):
         fig = plot_ode_solutions(params=params, ttm=ttm, expansion_order=ExpansionOrder.FIRST,
                                  is_spot_measure=is_spot_measure)
         if is_save:
-            plot.save_fig(fig=fig, local_path='../../../draft/figures//', file_name="first_order_fig")
+            plot.save_fig(fig=fig, local_path='../../draft/figures//', file_name="first_order_fig")
 
     elif unit_test == UnitTests.SECOND_ORDER:
         fig = plot_ode_solutions(params=params, ttm=ttm, expansion_order=ExpansionOrder.SECOND,
                                  is_spot_measure=is_spot_measure)
         if is_save:
-            plot.save_fig(fig=fig, local_path='../../../draft/figures//', file_name="second_order_fig")
+            plot.save_fig(fig=fig, local_path='../../draft/figures//', file_name="second_order_fig")
 
     elif unit_test == UnitTests.APPROXIMATION:
         plot_approximate_solutions(phi=-0.5 + 1j,

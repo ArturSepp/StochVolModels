@@ -6,9 +6,9 @@ from statsmodels.graphics.tsaplots import acf
 from typing import Dict
 from enum import Enum
 
-from package.pricers.logsv.logsv_params import LogSvParams
-from package.pricers.logsv_pricer import LogSVPricer
-from package.utils.funcs import set_seed
+from pricers.logsv.logsv_params import LogSvParams
+from pricers.logsv_pricer import LogSVPricer
+from utils.funcs import set_seed
 
 
 VOLVOL = 1.75

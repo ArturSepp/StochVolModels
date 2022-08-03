@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from enum import Enum
-from package.utils.plots import fig_to_pdf
-import package.utils.plots as plot
+from utils.plots import fig_to_pdf
+import utils.plots as plot
 
 
 def lognormal_combined(vartheta_min=0.5,
@@ -51,7 +51,7 @@ def lognormal_combined(vartheta_min=0.5,
         ax[i].legend()
         ax[i].set(xlabel=r"$\vartheta$", ylabel=r"$\beta$")
 
-    plot.save_fig(fig=fig, local_path='../../../draft/figures//',
+    plot.save_fig(fig=fig, local_path='../../draft/figures//',
                   file_name='logsv_regions')
 
 
@@ -96,7 +96,7 @@ def heston_exp_ou_combined(vartheta_min=0.5,
     ax[1].set(xlabel=r"$\vartheta$", ylabel=r"$\rho$")
     ax[1].set_title(f"(B) Exp-OU model")
 
-    plot.save_fig(fig=fig, local_path='../../../draft/figures//',
+    plot.save_fig(fig=fig, local_path='../../draft/figures//',
                   file_name='heston_exp_ou_combined')
 
 

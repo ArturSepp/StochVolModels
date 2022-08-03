@@ -10,13 +10,13 @@ from typing import Tuple
 from enum import Enum
 
 # generic
-from package.generic.model_pricer import ModelParams, ModelPricer
-from package.generic.chain_data import ChainData
-from package.testing.test_chain_data import get_btc_test_chain_data
-import package.utils.mgf_pricer as mgfp
-from package.utils.funcs import to_flat_np_array, set_time_grid
-from package.generic.config import VariableType
-from package.utils.mc_payoffs import compute_mc_vars_payoff
+from generic.model_pricer import ModelParams, ModelPricer
+from generic.chain_data import ChainData
+from testing.test_chain_data import get_btc_test_chain_data
+import utils.mgf_pricer as mgfp
+from utils.funcs import to_flat_np_array, set_time_grid
+from generic.config import VariableType
+from utils.mc_payoffs import compute_mc_vars_payoff
 
 
 @dataclass

@@ -8,14 +8,14 @@ from typing import List
 from enum import Enum
 
 # internal
-from package.generic.config import VariableType
-from package.pricers.logsv_pricer import LogSVPricer
-from package.pricers.logsv.logsv_params import LogSvParams
-from package.pricers.logsv.affine_expansion import ExpansionOrder
-import package.utils.plots as plot
-from package.utils.funcs import set_seed, compute_histogram_data
+from generic.config import VariableType
+from pricers.logsv_pricer import LogSVPricer
+from pricers.logsv.logsv_params import LogSvParams
+from pricers.logsv.affine_expansion import ExpansionOrder
+import utils.plots as plot
+from utils.funcs import set_seed, compute_histogram_data
 
-import package.testing.test_chain_data as chains
+import testing.test_chain_data as chains
 
 
 BTC_PARAMS = LogSvParams(sigma0=0.8327, theta=1.0139, kappa1=4.8606, kappa2=4.7938, beta=0.1985, volvol=2.3690)
@@ -88,7 +88,7 @@ def run_unit_test(unit_test: UnitTests):
         plot.set_subplot_border(fig=fig, n_ax_rows=1, n_ax_col=3)
 
         if is_save:
-            plot.save_fig(fig=fig, local_path='../../../draft/figures//', file_name="pdfs_btc")
+            plot.save_fig(fig=fig, local_path='../../draft/figures//', file_name="pdfs_btc")
 
     plt.show()
 
