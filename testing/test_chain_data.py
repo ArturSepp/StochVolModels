@@ -1,4 +1,3 @@
-import numpy as np
 from numpy import array
 from enum import Enum
 from generic.chain_data import ChainData

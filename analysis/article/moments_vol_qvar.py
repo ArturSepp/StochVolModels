@@ -38,7 +38,7 @@ def plot_vol_moments_vs_mc(params: LogSvParams = LogSvParams(sigma0=1.0, theta=1
                            ax: plt.Subplot = None
                            ) -> None:
     """
-    plot mc comparison with analytics for vol moments
+    plot mc comparison with old_analytics for vol moments
     """
     logsv_pricer = LogSVPricer()
     params.assert_vol_moments_stability(n_terms=n_terms)
@@ -82,7 +82,7 @@ def plot_qvar_vs_mc(params: Dict[str, LogSvParams] = TEST_PARAMS,
                     ax:  plt.Subplot = None
                     ) -> None:
     """
-    plot mc comparison for analytics with expected vol / qvar curves in t
+    plot mc comparison for old_analytics with expected vol / qvar curves in t
     """
     logsv_pricer = LogSVPricer()
 

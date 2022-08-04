@@ -5,7 +5,7 @@ import seaborn as sns
 import pandas as pd
 from numba import njit
 from numba.typed import List
-from typing import Tuple, Union
+from typing import Tuple
 from scipy.optimize import minimize
 from enum import Enum
 

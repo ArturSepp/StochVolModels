@@ -261,7 +261,7 @@ class ModelPricer(ABC):
                                **kwargs
                                ) -> None:
         """
-        comparision of model implied vols computed analytics vs mc pricer
+        comparision of model implied vols computed old_analytics vs mc pricer
         optimized for 4*4 figure
         """
         model_ivols = self.compute_model_ivols_for_chain(chain_data=chain_data, params=params, **kwargs)
@@ -343,7 +343,7 @@ class ModelPricer(ABC):
                               **kwargs
                               ) -> plt.Figure:
         """
-        comparision of model implied vols computed analytics under MMA and inverse measures vs mc pricer
+        comparision of model implied vols computed old_analytics under MMA and inverse measures vs mc pricer
         optimized for 4*4 figure
         """
         kwargs = {'is_spot_measure': True,

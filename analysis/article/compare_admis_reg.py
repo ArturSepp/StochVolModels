@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from enum import Enum
-from utils.plots import fig_to_pdf
 import utils.plots as plot
 
 

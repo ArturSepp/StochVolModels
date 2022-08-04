@@ -5,7 +5,6 @@ data class implementation for mc params
 import numpy as np
 from dataclasses import dataclass
 from typing import Optional
-from scipy import linalg as sla
 from numpy import linalg as la
 from generic.config import VariableType
 from generic.model_pricer import ModelParams

@@ -15,9 +15,6 @@ from pricers.logsv.affine_expansion import ExpansionOrder
 import utils.plots as plot
 from utils.funcs import set_seed, compute_histogram_data
 
-import testing.test_chain_data as chains
-
-
 BTC_PARAMS = LogSvParams(sigma0=0.8327, theta=1.0139, kappa1=4.8606, kappa2=4.7938, beta=0.1985, volvol=2.3690)
 VIX_PARAMS = LogSvParams(sigma0=0.9778, theta=0.5573, kappa1=4.8360, kappa2=8.6780, beta=2.3128, volvol=1.0484)
 GLD_PARAMS = LogSvParams(sigma0=0.1530, theta=0.1960, kappa1=2.2068, kappa2=11.2584, beta=0.1580, volvol=2.8022)
@@ -77,7 +74,7 @@ class UnitTests(Enum):
 
 def run_unit_test(unit_test: UnitTests):
 
-    is_save = True
+    is_save = False
 
     if unit_test == UnitTests.PLOT_JOINT_PDF:
         set_seed(37)  # 17, 33, 37

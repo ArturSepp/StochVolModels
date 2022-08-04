@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from numpy import linalg as la
 from scipy import linalg as sla
-from typing import Dict
 from enum import Enum
 
 from pricers.logsv.logsv_params import LogSvParams

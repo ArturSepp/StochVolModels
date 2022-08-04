@@ -4,11 +4,10 @@ import matplotlib.pyplot as plt
 from enum import Enum
 
 # internal
-import numpy as np
 import pandas as pd
 
 from generic.chain_data import ChainData
-from pricers.logsv_pricer import LogSVPricer, ModelCalibrationType
+from pricers.logsv_pricer import LogSVPricer
 from pricers.logsv.logsv_params import LogSvParams
 from utils.funcs import set_seed
 import testing.test_chain_data as chains

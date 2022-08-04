@@ -12,11 +12,11 @@ from enum import Enum
 # generic
 from generic.model_pricer import ModelParams, ModelPricer
 from generic.chain_data import ChainData
+from testing.test_chain_data import get_btc_test_chain_data
 import utils.mgf_pricer as mgfp
 from utils.funcs import to_flat_np_array, set_time_grid
 from generic.config import VariableType
 from utils.mc_payoffs import compute_mc_vars_payoff
-from testing.test_chain_data import get_btc_test_chain_data
 
 
 @dataclass
