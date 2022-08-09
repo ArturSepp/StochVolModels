@@ -14,8 +14,6 @@ The analytics for the lognormal is based on the paper
 3. [Analysis and figures for the paper](#paragraph2)
 
 
-Running model calibration to sample Bitcoin options data
-
 ## Model Interface <a name="introduction"></a>
 The package provides interfaces for a generic volatility model with the following features.
 1) Interface for analytical pricing of vanilla options using Fourier transform with closed-form solution for moment generating function
