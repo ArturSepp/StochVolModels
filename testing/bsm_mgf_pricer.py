@@ -1,3 +1,6 @@
+"""
+test option valuation using moment generating function analytics for Black-Scholes-Merton model
+"""
 
 # built in
 import numpy as np
@@ -7,10 +10,10 @@ import seaborn as sns
 from typing import Tuple
 from enum import Enum
 
-# internal
-import utils.mgf_pricer as mgfp
-from utils.bsm_pricer import model_chain_prices_to_bsm_ivols
-from generic.config import VariableType
+# stoch_vol_models
+import svm.pricers.core.mgf_pricer as mgfp
+from svm.pricers.core.bsm_pricer import infer_bsm_ivols_from_model_chain_prices
+from svm.pricers.core.config import VariableType
 
 
 def compute_normal_mgf_grid(ttm: float,
@@ -22,7 +25,7 @@ def compute_normal_mgf_grid(ttm: float,
     add two columns to make compatible with @ for numba in slice_pricer_with_a_grid
     """
     phi_grid = mgfp.get_phi_grid(is_spot_measure=is_spot_measure)
-    if is_spot_measure:  # lets use 1 for spot measure
+    if is_spot_measure:  # use 1 for spot measure
         alpha = 1.0
     else:
         alpha = -1.0
@@ -35,7 +38,6 @@ def compute_normal_mgf_psi_grid(ttm: float,
                                 is_spot_measure: bool = True
                                 ) -> Tuple[np.ndarray, np.ndarray]:
     psi_grid = mgfp.get_psi_grid(is_spot_measure=is_spot_measure)
-
     log_mgf_grid = -psi_grid * (ttm * vol * vol)
     return log_mgf_grid, psi_grid
 
@@ -58,12 +60,12 @@ def bsm_slice_pricer(ttm: float,
                                                      strikes=strikes,
                                                      optiontypes=optiontypes,
                                                      is_spot_measure=is_spot_measure)
-        bsm_ivols = model_chain_prices_to_bsm_ivols(ttms=np.array([ttm]),
-                                                    forwards=np.array([forward]),
-                                                    discfactors=np.array([1.0]),
-                                                    strikes_ttms=(strikes,),
-                                                    optiontypes_ttms=(optiontypes,),
-                                                    model_prices_ttms=(bsm_prices,))
+        bsm_ivols = infer_bsm_ivols_from_model_chain_prices(ttms=np.array([ttm]),
+                                                            forwards=np.array([forward]),
+                                                            discfactors=np.array([1.0]),
+                                                            strikes_ttms=(strikes,),
+                                                            optiontypes_ttms=(optiontypes,),
+                                                            model_prices_ttms=(bsm_prices,))
     elif variable_type == VariableType.Q_VAR:
         log_mgf_grid, psi_grid = compute_normal_mgf_psi_grid(ttm=ttm, vol=vol, is_spot_measure=is_spot_measure)
         bsm_prices = mgfp.slice_qvar_pricer_with_a_grid(log_mgf_grid=log_mgf_grid,
