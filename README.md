@@ -81,7 +81,7 @@ print(btc_calibrated_params)
 logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=btc_option_chain,
                                params=btc_calibrated_params)
 ```
-![image info](./draft/figures/calibration_Bitcoin.PNG)
+![image info](./draft/figures/btc_fit.PNG)
 
 
 
