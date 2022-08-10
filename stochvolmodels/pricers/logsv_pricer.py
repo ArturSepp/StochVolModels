@@ -14,15 +14,15 @@ from numpy import linalg as la
 from scipy.optimize import minimize
 from enum import Enum
 
-from ..pricers.core import mgf_pricer as mgfp
-from ..pricers.logsv import affine_expansion as afe
-from ..pricers.core.config import VariableType
-from ..pricers.model_pricer import ModelPricer, ModelParams
-from ..pricers.logsv.affine_expansion import ExpansionOrder
-from ..pricers.core.mc_payoffs import compute_mc_vars_payoff
-from ..data.option_chain import OptionChain
-from ..data.test_option_chain import get_btc_test_chain_data
-from ..utils.funcs import to_flat_np_array, set_time_grid, timer, compute_histogram_data
+from stochvolmodels.pricers.core import mgf_pricer as mgfp
+from stochvolmodels.pricers.logsv import affine_expansion as afe
+from stochvolmodels.pricers.core.config import VariableType
+from stochvolmodels.pricers.model_pricer import ModelPricer, ModelParams
+from stochvolmodels.pricers.logsv.affine_expansion import ExpansionOrder
+from stochvolmodels.pricers.core.mc_payoffs import compute_mc_vars_payoff
+from stochvolmodels.data.option_chain import OptionChain
+from stochvolmodels.data.test_option_chain import get_btc_test_chain_data
+from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer, compute_histogram_data
 
 
 class ModelCalibrationType(Enum):
@@ -775,7 +775,7 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.CALIBRATOR
+    unit_test = UnitTests.MMA_INVERSE_MEASURE_VS_MC
 
     is_run_all_tests = False
     if is_run_all_tests:

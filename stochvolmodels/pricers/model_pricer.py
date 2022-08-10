@@ -17,10 +17,10 @@ from scipy import stats
 from dataclasses import dataclass
 from typing import Tuple, Optional, Dict
 
-from ..pricers.core.config import VariableType
-from ..data.option_chain import OptionChain, OptionSlice
-from ..utils import plots as plot
-from ..utils.funcs import set_seed, update_kwargs
+from stochvolmodels.pricers.core.config import VariableType
+from stochvolmodels.data.option_chain import OptionChain, OptionSlice
+from stochvolmodels.utils import plots as plot
+from stochvolmodels.utils.funcs import set_seed, update_kwargs
 
 # set global mc seed, for resets call set_seed() locally
 set_seed(24)

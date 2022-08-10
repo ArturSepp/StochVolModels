@@ -11,13 +11,13 @@ from numba.typed import List
 from typing import Tuple
 from enum import Enum
 
-from ..pricers.core import mgf_pricer as mgfp
-from ..pricers.model_pricer import ModelParams, ModelPricer
-from ..data.option_chain import OptionChain
-from ..data.test_option_chain import get_btc_test_chain_data
-from ..utils.funcs import to_flat_np_array, set_time_grid, timer
-from ..pricers.core.config import VariableType
-from ..pricers.core.mc_payoffs import compute_mc_vars_payoff
+from stochvolmodels.pricers.core.mgf_pricer import get_transform_var_grid, slice_pricer_with_mgf_grid
+from stochvolmodels.pricers.model_pricer import ModelParams, ModelPricer
+from stochvolmodels.data.option_chain import OptionChain
+from stochvolmodels.data.test_option_chain import get_btc_test_chain_data
+from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer
+from stochvolmodels.pricers.core.config import VariableType
+from stochvolmodels.pricers.core.mc_payoffs import compute_mc_vars_payoff
 
 
 @dataclass
@@ -176,7 +176,7 @@ def heston_chain_pricer(v0: float,
                         ) -> List[np.ndarray]:
 
     # starting values
-    phi_grid, psi_grid, theta_grid = mgfp.get_transform_var_grid()
+    phi_grid, psi_grid, theta_grid = get_transform_var_grid()
     a_t0, b_t0 = np.zeros(phi_grid.shape[0], dtype=np.complex128), np.zeros(phi_grid.shape[0], dtype=np.complex128)
     ttm0 = 0.0
 
@@ -194,7 +194,7 @@ def heston_chain_pricer(v0: float,
                                                            a_t0=a_t0,
                                                            b_t0=b_t0)
 
-        option_prices = mgfp.slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
+        option_prices = slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
                                                         phi_grid=phi_grid,
                                                         ttm=ttm,
                                                         forward=forward,
