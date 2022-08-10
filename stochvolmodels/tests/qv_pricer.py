@@ -6,15 +6,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 from enum import Enum
 
-from ..pricers.core import mgf_pricer as mgfp
-from ..pricers.logsv import affine_expansion as afe
-from ..pricers.core.config import VariableType
-from ..pricers.logsv_pricer import LogSVPricer, LogSvParams
-from ..pricers.logsv.vol_moments_ode import compute_analytic_qvar
-from ..pricers.core.bsm_pricer import infer_bsm_ivols_from_model_chain_prices
-from ..utils.funcs import set_seed
-from ..data import test_option_chain as chains
-from ..data.option_chain import OptionChain
+from stochvolmodels.pricers.core import mgf_pricer as mgfp
+from stochvolmodels.pricers.logsv import affine_expansion as afe
+from stochvolmodels.pricers.core.config import VariableType
+from stochvolmodels.pricers.logsv_pricer import LogSVPricer, LogSvParams
+from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar
+from stochvolmodels.pricers.core.bsm_pricer import infer_bsm_ivols_from_model_chain_prices
+from stochvolmodels.utils.funcs import set_seed
+from stochvolmodels.data import test_option_chain as chains
+from stochvolmodels.data.option_chain import OptionChain
 
 
 BTC_PARAMS = LogSvParams(sigma0=0.8327, theta=1.0139, kappa1=4.8606, kappa2=4.7938, beta=0.1985, volvol=2.3690)
