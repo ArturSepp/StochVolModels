@@ -7,11 +7,13 @@ The analytics for the lognormal is based on the paper
 
 # Table of contents
 1. [Model Interface](#introduction)
-2. [Running log-normal SV pricer](#paragraph1)
+    1. [Log-normal stochastic volatility model](#logsv)
+    2. [Heston stochastic volatility model](#hestonsv)
+3. [Running log-normal SV pricer](#paragraph1)
     1. [Computing model prices and vols](#subparagraph1)
    2. [Running model calibration to sample Bitcoin options data](#subparagraph2)
    3. [Running model calibration to sample Bitcoin options data](#subparagraph3)
-3. [Analysis and figures for the paper](#paragraph2)
+4. [Analysis and figures for the paper](#paragraph2)
 
 
 Running model calibration to sample Bitcoin options data
@@ -24,12 +26,34 @@ The package provides interfaces for a generic volatility model with the followin
 
 The model interface is in svm/pricers/model_pricer.py
 
+### Log-normal stochastic volatility model <a name="logsv"></a>
+
+Implementation of Lognormal SV model is based on paper https://github.com/ArturSepp/StochVolModels/blob/main/docs/lognormal_stoch_vol_paper.pdf
+
+
+The dynamics of the log-normal stochastic volatility model:
+
+$$dS_{t}=r(t)S_{t}dt+\sigma_{t}S_{t}dW^{(0)}_{t}$$
+
+$$d\sigma_{t}=\left(\kappa_{1} + \kappa_{2}\sigma_{t} \right)(\theta - \sigma_{t})dt+  \beta  \sigma_{t}dW^{(0)}_{t} +  \varepsilon \sigma_{t} dW^{(1)}_{t}$$
+
+$$dI_{t}=\sigma^{2}_{t}dt$$
+
+where $r(t)$ is the deterministic risk-free rate; $W^{(0)}_{t}$ and $W^{(1)}_t$  are uncorrelated Brownian motions, $\beta\in\mathbb{R}$ is the volatility beta which measures the sensitivity of the volatility to changes in the spot price, and $\varepsilon>0$ is the volatility of residual volatility. We denote by $\vartheta^{2}$, $\vartheta^{2}=\beta^{2}+\varepsilon^{2}$, the total instantaneous variance of the volatility process.
+
+
 Implementation of Lognormal SV model is contained in logsv_pricer.py
 
 
-When $a \ne 0$, there are two solutions to $(ax^2 + bx + c = 0)$ and they are 
-$$ x = {-b \pm \sqrt{b^2-4ac} \over 2a} $$
+### Heston stochastic volatility model <a name="hestonsv"></a>
 
+The dynamics of Heston stochastic volatility model:
+
+$$dS_{t}=r(t)S_{t}dt+\sqrt{V_{t}}S_{t}dW^{(S)}_{t}$$
+
+$$dV_{t}=\kappa (\theta - V_{t})dt+  \vartheta  \sqrt{V_{t}}dW^{(V)}_{t}$$
+
+where  $W^{(S)}$ and $W^{(V)}$ are correlated Brownian motions with correlation parameter $\rho$
 
 Implementation of Heston SV model is contained in heston_pricer.py
 
