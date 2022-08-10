@@ -24,7 +24,7 @@ The package provides interfaces for a generic volatility model with the followin
 2) Interface for Monte-Carlo simulations of model dynamics
 3) Interface for visualization of model implied volatilities
 
-The model interface is in svm/pricers/model_pricer.py
+The model interface is in stochvolmodels/pricers/model_pricer.py
 
 ### Log-normal stochastic volatility model <a name="logsv"></a>
 
@@ -42,7 +42,7 @@ $$dI_{t}=\sigma^{2}_{t}dt$$
 where $r(t)$ is the deterministic risk-free rate; $W^{(0)}_{t}$ and $W^{(1)}_t$  are uncorrelated Brownian motions, $\beta\in\mathbb{R}$ is the volatility beta which measures the sensitivity of the volatility to changes in the spot price, and $\varepsilon>0$ is the volatility of residual volatility. We denote by $\vartheta^{2}$, $\vartheta^{2}=\beta^{2}+\varepsilon^{2}$, the total instantaneous variance of the volatility process.
 
 
-Implementation of Lognormal SV model is contained in logsv_pricer.py
+Implementation of Lognormal SV model is contained in stochvolmodels/pricers/logsv_pricer.py
 
 
 ### Heston stochastic volatility model <a name="hestonsv"></a>
@@ -55,12 +55,12 @@ $$dV_{t}=\kappa (\theta - V_{t})dt+  \vartheta  \sqrt{V_{t}}dW^{(V)}_{t}$$
 
 where  $W^{(S)}$ and $W^{(V)}$ are correlated Brownian motions with correlation parameter $\rho$
 
-Implementation of Heston SV model is contained in heston_pricer.py
+Implementation of Heston SV model is contained in stochvolmodels/pricers/heston_pricer.py
 
 
 ## Running log-normal SV pricer <a name="paragraph1"></a>
 
-Basic features are implemented in testing/run_lognormal_sv_pricer.py
+Basic features are implemented in examples/run_lognormal_sv_pricer.py
 
 
 ### Computing model prices and vols <a name="subparagraph1"></a>
@@ -129,4 +129,4 @@ logsv_pricer.plot_comp_mma_inverse_options_with_mc(option_chain=uniform_chain_da
 
 ## Analysis and figures for the paper <a name="paragraph3"></a>
 
-All figures in the paper can be reproduced using py scripts in svm/analysis/paper
+All figures shown in the paper can be reproduced using py scripts in examples/plots_for_paper
