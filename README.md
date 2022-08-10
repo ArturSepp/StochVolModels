@@ -14,6 +14,8 @@ The analytics for the lognormal is based on the paper
 3. [Analysis and figures for the paper](#paragraph2)
 
 
+Running model calibration to sample Bitcoin options data
+
 ## Model Interface <a name="introduction"></a>
 The package provides interfaces for a generic volatility model with the following features.
 1) Interface for analytical pricing of vanilla options using Fourier transform with closed-form solution for moment generating function
@@ -23,6 +25,11 @@ The package provides interfaces for a generic volatility model with the followin
 The model interface is in svm/pricers/model_pricer.py
 
 Implementation of Lognormal SV model is contained in logsv_pricer.py
+
+
+When $a \ne 0$, there are two solutions to $(ax^2 + bx + c = 0)$ and they are 
+$$ x = {-b \pm \sqrt{b^2-4ac} \over 2a} $$
+
 
 Implementation of Heston SV model is contained in heston_pricer.py
 
@@ -79,7 +86,7 @@ print(btc_calibrated_params)
 logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=btc_option_chain,
                                params=btc_calibrated_params)
 ```
-![image info](./draft/figures/btc_fit.PNG)
+![image info](docs/figures/btc_fit.PNG)
 
 
 
@@ -93,7 +100,7 @@ logsv_pricer.plot_comp_mma_inverse_options_with_mc(option_chain=uniform_chain_da
                                                   nb_path=400000)
                                            
 ```
-![image info](./draft/figures/btc_mc_comp.PNG)
+![image info](docs/figures/btc_mc_comp.PNG)
 
 
 ## Analysis and figures for the paper <a name="paragraph3"></a>
