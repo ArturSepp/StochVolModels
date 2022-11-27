@@ -8,21 +8,24 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from numba import njit
 from numba.typed import List
-from typing import Tuple, Optional
-from dataclasses import dataclass
+from typing import Tuple, Optional, Dict, Any
+from dataclasses import dataclass, asdict
 from numpy import linalg as la
 from scipy.optimize import minimize
 from enum import Enum
 
+# stochvolmodels pricers
 from stochvolmodels.pricers.core import mgf_pricer as mgfp
 from stochvolmodels.pricers.logsv import affine_expansion as afe
 from stochvolmodels.pricers.core.config import VariableType
 from stochvolmodels.pricers.model_pricer import ModelPricer, ModelParams
 from stochvolmodels.pricers.logsv.affine_expansion import ExpansionOrder
 from stochvolmodels.pricers.core.mc_payoffs import compute_mc_vars_payoff
+from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer, compute_histogram_data
+
+# data
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.data.test_option_chain import get_btc_test_chain_data
-from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer, compute_histogram_data
 
 
 class ModelCalibrationType(Enum):
@@ -54,9 +57,9 @@ class LogSvParams(ModelParams):
         if self.kappa2 is None:
             self.kappa2 = self.kappa1 / self.theta
 
-    def to_dict(self):
-        return dict(sigma0=self.sigma0, theta=self.theta, kappa1=self.kappa1, kappa2=self.kappa2, beta=self.beta, volvol=self.volvol)
-
+    def to_dict(self) -> Dict[str, Any]:
+        #         return dict(sigma0=self.sigma0, theta=self.theta, kappa1=self.kappa1, kappa2=self.kappa2, beta=self.beta, volvol=self.volvol)
+        return asdict(self)
     @property
     def kappa(self) -> float:
         return self.kappa1+self.kappa2*self.theta
@@ -247,7 +250,7 @@ class LogSVPricer(ModelPricer):
                 p0 = np.array([params0.sigma0, params0.theta, params0.kappa1, params0.beta, params0.volvol])
             else:
                 p0 = np.array([0.8, 0.8, 4.0, -0.2, 2.0])
-            bounds = ((0.01, 2.0), (0.01, 2.0), (0.5, 10.0), (-3.0, 3.0), (0.1, 5.0))
+            bounds = ((0.01, 2.0), (0.01, 2.0), (0.5, 7.0), (-5.0, 3.0), (0.1, 10.0))
 
             def objective(pars: np.ndarray, args: np.ndarray) -> float:
                 v0, theta, kappa1, beta, volvol = pars[0], pars[1], pars[2], pars[3], pars[4]
@@ -701,7 +704,7 @@ def run_unit_test(unit_test: UnitTests):
     if unit_test == UnitTests.CHAIN_PRICER:
         option_chain = get_btc_test_chain_data()
         logsv_pricer = LogSVPricer()
-        model_prices, _ = logsv_pricer.price_chain(option_chain=option_chain, params=BTC_PARAMS)
+        model_prices = logsv_pricer.price_chain(option_chain=option_chain, params=BTC_PARAMS)
         print(model_prices)
         logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain, params=BTC_PARAMS)
 

@@ -20,6 +20,8 @@ def compute_mc_vars_payoff(x0: np.ndarray, sigma0: np.ndarray, qvar0: np.ndarray
 
     # need to remember it for options on QVAR
     spots_t = forward*np.exp(x0)
+    correnction = np.nanmean(spots_t) - forward
+    spots_t = spots_t - correnction
 
     if variable_type == VariableType.LOG_RETURN:
         underlying_t = spots_t

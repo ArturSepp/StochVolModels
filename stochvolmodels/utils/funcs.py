@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from numba import njit
 from numba.typed import List
-from typing import Tuple, Dict, Any, Optional
+from typing import Tuple, Dict, Any, Optional, Union
 
 
 def to_flat_np_array(input_list: List[np.ndarray]) -> np.ndarray:
@@ -72,3 +72,26 @@ def update_kwargs(kwargs: Dict[Any, Any],
     if new_kwargs is not None and not len(new_kwargs) == 0:
         local_kwargs.update(new_kwargs)
     return local_kwargs
+
+
+@njit(cache=False, fastmath=True)
+def erfcc(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    """
+    Complementary error function. can be vectorized
+    """
+    z = np.abs(x)
+    t = 1. / (1. + 0.5*z)
+    r = t * np.exp(-z*z-1.26551223+t*(1.00002368+t*(0.37409196+t*(0.09678418+t*(-0.18628806+t*(0.27886807+
+        t*(-1.13520398+t*(1.48851587+t*(-.82215223+t*0.17087277)))))))))
+    fcc = np.where(np.greater(x, 0.0), r, 2.0-r)
+    return fcc
+
+
+@njit(cache=False, fastmath=True)
+def ncdf(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    return 1. - 0.5*erfcc(x/(np.sqrt(2.0)))
+
+
+@njit(cache=False, fastmath=True)
+def npdf(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    return np.exp(-0.5*np.square(x))/np.sqrt(2.0*np.pi)

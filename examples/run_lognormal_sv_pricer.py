@@ -106,7 +106,7 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.COMPUTE_MODEL_PRICES
+    unit_test = UnitTests.COMPARE_MODEL_VOLS_TO_MC
 
     is_run_all_tests = False
     if is_run_all_tests:

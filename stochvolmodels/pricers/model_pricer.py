@@ -250,7 +250,7 @@ class ModelPricer(ABC):
         model_vols_ts = pd.concat(model_vols_ts, axis=1)
 
         plot.model_vols_ts(model_vols=model_vols_ts,
-                           title='Model Vols',
+                           title='Model Implied Black Volatilities',
                            xlabel='log-strike' if is_log_strike_xaxis else 'strike',
                            xvar_format='{:0.2f}' if is_log_strike_xaxis else '{:0,.0f}',
                            x_rotation=0,
@@ -309,7 +309,7 @@ class ModelPricer(ABC):
         model_ivols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params, **kwargs)
 
         with sns.axes_style('darkgrid'):
-            fig, axs = plt.subplots(2, len(option_chain.ttms) // 2, figsize=plot.FIGSIZE, tight_layout=True)
+            fig, axs = plt.subplots(2, 2, figsize=plot.FIGSIZE, tight_layout=True)
 
         atm_vols = option_chain.get_chain_atm_vols()
         for idx, ttm in enumerate(option_chain.ttms):
