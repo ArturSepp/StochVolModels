@@ -373,7 +373,10 @@ class ModelPricer(ABC):
             **kwargs)
 
         with sns.axes_style('darkgrid'):
-            fig, axs = plt.subplots(2, len(option_chain.ttms) // 2, figsize=plot.FIGSIZE, tight_layout=True)
+            if len(option_chain.ttms) > 1:
+                fig, axs = plt.subplots(2, len(option_chain.ttms) // 2, figsize=plot.FIGSIZE, tight_layout=True)
+            else:
+                fig, axs = plt.subplots(1, 1, figsize=plot.FIGSIZE, tight_layout=True)
 
         for idx, ttm in enumerate(option_chain.ttms):
             if is_log_strike_xaxis:
@@ -397,6 +400,10 @@ class ModelPricer(ABC):
             else:
                 title = f"{ttm=:0.2f}"
 
+            if len(option_chain.ttms) > 1:
+                ax = axs[idx % 2][idx // 2]
+            else:
+                ax = axs
             plot.vol_slice_fit(bid_vol=pd.Series(mc_ivols_down[idx], index=strikes),
                                ask_vol=pd.Series(mc_ivols_up[idx], index=strikes),
                                model_vols=model_vol_t,
@@ -406,7 +413,7 @@ class ModelPricer(ABC):
                                strike_name=strike_name,
                                xvar_format=xvar_format,
                                x_rotation=0,
-                               ax=axs[idx % 2][idx // 2],
+                               ax=ax,
                                **kwargs)
 
     def plot_comp_mma_inverse_options_with_mc(self,

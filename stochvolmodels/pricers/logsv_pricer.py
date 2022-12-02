@@ -284,6 +284,20 @@ class LogSVPricer(ModelPricer):
 
         options = {'disp': True, 'ftol': 1e-8}
 
+        if constraints_type == ConstraintsType.UNCONSTRAINT:
+            constraints = None
+        elif constraints_type == ConstraintsType.MMA_MARTINGALE:
+            constraints = ({'type': 'ineq', 'fun': martingale_measure})
+        elif constraints_type == ConstraintsType.INVERSE_MARTINGALE:
+            constraints = ({'type': 'ineq', 'fun': inverse_measure})
+        elif constraints_type == ConstraintsType.MMA_MARTINGALE_MOMENT4:
+            constraints = ({'type': 'ineq', 'fun': martingale_measure}, {'type': 'ineq', 'fun': vol_4thmoment_finite})
+        elif constraints_type == ConstraintsType.INVERSE_MARTINGALE_MOMENT4:
+            constraints = ({'type': 'ineq', 'fun': inverse_measure}, {'type': 'ineq', 'fun': vol_4thmoment_finite})
+        else:
+            raise NotImplementedError
+
+        """
         match constraints_type:
             case ConstraintsType.UNCONSTRAINT:
                 constraints = None
@@ -297,7 +311,7 @@ class LogSVPricer(ModelPricer):
                 constraints = ({'type': 'ineq', 'fun': inverse_measure}, {'type': 'ineq', 'fun': vol_4thmoment_finite})
             case _:
                 raise NotImplementedError
-
+        """
         if constraints is not None:
             res = minimize(objective, p0, args=None, method='SLSQP', constraints=constraints, bounds=bounds, options=options)
         else:

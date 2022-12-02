@@ -31,21 +31,22 @@ class HawkesJDParams(ModelParams):
     mu: float = 0.0
     sigma: float = 0.45
     # jumps
-    shift_p: float = 0.064
-    mean_p: float = 0.094
-    shift_m: float = -0.059
-    mean_m: float = -0.091
+    shift_p: float = 0.06
+    mean_p: float = 0.03
+    shift_m: float = -0.06
+    mean_m: float = -0.03
     # positive jumps intensity
-    lambda_p: float = 8.246
-    theta_p: float = 8.246
-    kappa_p: float = 10.955
-    beta_p: float = 4.131
+    lambda_p: float = 6.55
+    theta_p: float = 6.55
+    kappa_p: float = 22.29
+    beta1_p: float = 76.0
+    beta2_p: float = -67.58#*0.0
     # minus jumps intensity
-    lambda_m: float = 11.737
-    theta_m: float = 11.737
-    kappa_m: float = 26.376
-    beta_m: float = 8.254
-    is_constant_jump: bool = False
+    lambda_m: float = 8.50
+    theta_m: float = 8.50
+    kappa_m: float = 29.0
+    beta1_m: float = 104.55#*0.0
+    beta2_m: float = -109.6
 
     def __post_init__(self):
         self.compensator_p = np.exp(self.shift_p)/(1.0-self.mean_p) - 1.0
@@ -57,6 +58,19 @@ class HawkesJDParams(ModelParams):
     def print(self) -> None:
         for k, v in self.to_dict().items():
             print(f"{k}={v}")
+        print('condifions')
+        jump1 = self.kappa_p-self.beta1_p*self.exp_jump_p-self.beta2_p*self.exp_jump_m
+        print(f"jump1={jump1:0.4f} > 0")
+        jump2 = self.kappa_m - self.beta2_m * self.exp_jump_m - self.beta1_m * self.exp_jump_p
+        print(f"jump2={jump2:0.4f} > 0")
+
+    @property
+    def exp_jump_p(self) -> float:
+        return self.shift_p+self.mean_p
+
+    @property
+    def exp_jump_m(self) -> float:
+        return self.shift_m+self.mean_m
 
     @property
     def jumps_var_m(self) -> float:
@@ -260,12 +274,9 @@ def solve_ode_for_a(ttm: float,
                  a0: np.ndarray
                  ) -> np.ndarray:
         rhs = np.zeros(3, dtype=np.complex128)
-        if model_params.is_constant_jump:
-            j_p = np.exp(model_params.beta_p*a0[1])*e_p(phi_=phi) - 1.0
-            j_m = np.exp(model_params.beta_m*a0[2])*e_m(phi_=phi) - 1.0
-        else:
-            j_p = e_p(phi_=phi-model_params.beta_p*a0[1]) - 1.0
-            j_m = e_m(phi_=phi+model_params.beta_m*a0[2]) - 1.0  # TODO: reconsile with text
+
+        j_p = e_p(phi_=phi - model_params.beta1_p * a0[1] - model_params.beta1_m * a0[2]) - 1.0
+        j_m = e_m(phi_=phi - model_params.beta2_p * a0[1] - model_params.beta2_m * a0[2]) - 1.0
 
         rhs[0] = model_params.kappa_p*model_params.theta_p*a0[1] + model_params.kappa_m*model_params.theta_m*a0[2] \
                  + np.square(model_params.sigma)*(0.5*(phi+1.0)*phi-psi)
@@ -304,11 +315,12 @@ def hawkesjd_mc_chain_pricer(ttms: np.ndarray,
                              mean_m: float,
                              theta_p: float,
                              kappa_p: float,
-                             beta_p: float,
+                             beta1_p: float,
+                             beta2_p: float,
                              theta_m: float,
                              kappa_m: float,
-                             beta_m: float,
-                             is_constant_jump: bool = False,
+                             beta1_m: float,
+                             beta2_m: float,
                              nb_path: int = 100000,
                              variable_type: VariableType = VariableType.LOG_RETURN
                              ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
@@ -335,11 +347,12 @@ def hawkesjd_mc_chain_pricer(ttms: np.ndarray,
                                                               mean_m=mean_m,
                                                               theta_p=theta_p,
                                                               kappa_p=kappa_p,
-                                                              beta_p=beta_p,
+                                                              beta1_p=beta1_p,
+                                                              beta2_p=beta2_p,
                                                               theta_m=theta_m,
                                                               kappa_m=kappa_m,
-                                                              beta_m=beta_m,
-                                                              is_constant_jump=is_constant_jump,
+                                                              beta1_m=beta1_m,
+                                                              beta2_m=beta2_m,
                                                               nb_path=nb_path)
         ttm0 = ttm
         option_prices, option_std = compute_mc_vars_payoff(x0=x0, sigma0=x0, qvar0=x0,
@@ -368,11 +381,12 @@ def simulate_hawkesjd_terminal(ttm: float,
                                mean_m: float,
                                theta_p: float,
                                kappa_p: float,
-                               beta_p: float,
+                               beta1_p: float,
+                               beta2_p: float,
                                theta_m: float,
                                kappa_m: float,
-                               beta_m: float,
-                               is_constant_jump: bool = False,
+                               beta1_m: float,
+                               beta2_m: float,
                                nb_path: int = 100000
                                ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
@@ -390,7 +404,7 @@ def simulate_hawkesjd_terminal(ttm: float,
         assert lambda_m0.shape[0] == nb_path
 
     # vars
-    nb_steps, dt, grid_t = set_time_grid(ttm=ttm)
+    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, year_days=5*360)  # need small dt step for large intensities
     W0 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))
     U_P = -np.log(np.random.uniform(low=1e-16, high=1.0, size=(nb_steps, nb_path)))/dt
     U_M = -np.log(np.random.uniform(low=1e-16, high=1.0, size=(nb_steps, nb_path)))/dt
@@ -398,8 +412,8 @@ def simulate_hawkesjd_terminal(ttm: float,
     J_M = shift_m - np.random.exponential(scale=-mean_m, size=(nb_steps, nb_path))
 
     # params
-    compensator_p_dt = (np.exp(shift_p) / (1.0 - mean_p) - 1.0) * dt
-    compensator_m_dt = (np.exp(shift_m) / (1.0 - mean_m) - 1.0) * dt
+    compensator_p_dt = dt*(np.exp(shift_p) / (1.0 - mean_p) - 1.0)
+    compensator_m_dt = dt*(np.exp(shift_m) / (1.0 - mean_m) - 1.0)
 
     drift_dt = (mu-0.5*sigma*sigma) * dt
     for t_, (w0, u_p, u_m, j_p, j_m) in enumerate(zip(W0, U_P, U_M, J_P, J_M)):
@@ -408,12 +422,8 @@ def simulate_hawkesjd_terminal(ttm: float,
         jump_p = np.where(lambda_p0>u_p, j_p, 0.0)
         jump_m = np.where(lambda_m0>u_m, j_m, 0.0)
         x0 = x0 + diffusion + jump_p + jump_m
-        if is_constant_jump:
-            load_p = beta_p
-            load_m = beta_m
-        else:
-            load_p = beta_p*jump_p
-            load_m = -beta_m*jump_m
+        load_p = beta1_p*jump_p + beta2_p*jump_m
+        load_m = beta1_m*jump_p + beta2_m*jump_m
         lambda_p0 = lambda_p0 + kappa_p*(theta_p-lambda_p0)*dt + load_p
         lambda_m0 = lambda_m0 + kappa_m*(theta_m-lambda_m0)*dt + load_m
 
@@ -429,10 +439,29 @@ class UnitTests(Enum):
 
 def run_unit_test(unit_test: UnitTests):
 
+    params = HawkesJDParams(sigma=0.2,
+                            shift_p=0.0,
+                            mean_p=0.2,
+                            shift_m=0.0,
+                            mean_m=-0.1,
+                            lambda_p=2.0,
+                            theta_p=2.0,
+                            kappa_p=50.0,
+                            beta1_p=100.0,
+                            beta2_p=0.0,
+                            lambda_m=2.0,
+                            theta_m=2.0,
+                            kappa_m=50.0,
+                            beta1_m=0.0,
+                            beta2_m=-100.0)
+
     params = HawkesJDParams()
+
+    params.print()
     pricer = HawkesJDPricer()
 
-    set_seed(7)
+    set_seed(3)
+    np.random.seed(3)
 
     if unit_test == UnitTests.OPTION_PRICER:
 
@@ -445,8 +474,14 @@ def run_unit_test(unit_test: UnitTests):
 
     elif unit_test == UnitTests.CHAIN_PRICER:
         option_chain = get_btc_test_chain_data()
+        # option_chain = OptionChain.get_uniform_chain(flat_vol=params.sigma)
+        model_prices = pricer.price_chain(option_chain=option_chain, params=params)
+        print(model_prices)
         pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain, params=params)
-        pricer.plot_model_ivols(option_chain=option_chain, params=params)
+
+        option_chain = OptionChain.to_uniform_strikes(option_chain, num_strikes=31)
+        pricer.plot_model_ivols(option_chain=option_chain,
+                                params=params)
 
         # pricer.plot_model_ivols_vs_mc(option_chain=option_chain, params=params, nb_path=400000)
 
@@ -474,6 +509,8 @@ def run_unit_test(unit_test: UnitTests):
 
     elif unit_test == UnitTests.MC_COMPARISION:
         option_chain = get_btc_test_chain_data()
+        # option_chain = OptionChain.get_uniform_chain(ttms=np.array([0.25]), ids=np.array(['3m']), strikes=100.0*np.linspace(0.5, 2.0, 15))
+
         pricer.plot_model_ivols_vs_mc(option_chain=option_chain,
                                       params=params,
                                       nb_path=100000)
