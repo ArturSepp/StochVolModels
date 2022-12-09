@@ -5,7 +5,7 @@ Implementation of Heston model pricer deriving from ModelPricer
 import numpy as np
 import matplotlib.pyplot as plt
 from dataclasses import dataclass
-from scipy.optimize import curve_fit
+from scipy.optimize import minimize
 from numba import njit
 from numba.typed import List
 from typing import Tuple
@@ -84,47 +84,45 @@ class HestonPricer(ModelPricer):
         v0 is inferred using atm_vol and approximation (todo)
         """
         if params0 is not None:
-            p0 = np.array([params0.theta, params0.kappa, params0.rho, params0.volvol])
+            p0 = np.array([params0.v0, params0.theta, params0.kappa, params0.rho, params0.volvol])
         else:
-            p0 = np.array([0.1, 2.0, -0.2, 1.0])
-        bounds = ([0.01, 0.1, -1.0, 0.1], [2.0, 30.0, 1.0, 5.0])
+            p0 = np.array([0.1, 0.1, 2.0, -0.2, 1.0])
+        bounds = ((0.01, 2.0), (0.01, 2.0), (0.1, 30.0), (-0.99, 0.99), (0.1, 5.0))
 
         x, y = option_chain.get_chain_data_as_xy()
-        ydata = to_flat_np_array(y)  # market mid quotes
+        market_vols = to_flat_np_array(y)  # market mid quotes
         if is_vega_weighted:
             vegas_ttms = option_chain.get_chain_vegas(is_unit_ttm_vega=is_unit_ttm_vega)
-            sigma = 1.0 / to_flat_np_array(vegas_ttms)
+            vegas_ttms = [vegas_ttm/sum(vegas_ttm) for vegas_ttm in vegas_ttms]
+            weights = to_flat_np_array(vegas_ttms)
         else:
-            sigma = np.ones_like(ydata)
+            weights = np.ones_like(market_vols)
 
-        atm0 = option_chain.get_chain_atm_vols()[0]
-        ttm0 = option_chain.ttms[0]
-
-        def f_x(x0: float,  # dymmy argument for  curve_fit
-                theta, kappa, rho, volvol
-                ) -> np.ndarray:
-            """
-            compute model vols as function of (theta, kappa, rho, volvol)
-            """
-            v0_impl = v0_implied(v0=atm0*atm0, volvol=volvol, ttm=ttm0)
-            params = HestonParams(v0=v0_impl, theta=theta, kappa=kappa, rho=rho, volvol=volvol)
+        def objective(pars: np.ndarray, args: np.ndarray) -> float:
+            v0, theta, kappa, rho, volvol = pars[0], pars[1], pars[2], pars[3], pars[4]
+            params = HestonParams(v0=v0, theta=theta, kappa=kappa, rho=rho, volvol=volvol)
             model_vols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params)
-            return to_flat_np_array(model_vols)
+            resid = np.nansum(weights * np.square(to_flat_np_array(model_vols) - market_vols))
+            return resid
 
-        popt, pcov = curve_fit(f=f_x,
-                               xdata=np.zeros_like(ydata),  # dymmy for  curve_fit
-                               ydata=ydata,
-                               bounds=bounds,
-                               p0=p0,
-                               # maxfev=10,
-                               ftol=1e-08,  # ftol=1e-08 default
-                               sigma=sigma)
+        def feller(pars: np.ndarray) -> float:
+            v0, theta, kappa, rho, volvol = pars[0], pars[1], pars[2], pars[3], pars[4]
+            return 2.0*kappa * theta - volvol*volvol
 
-        fit_params = HestonParams(v0=v0_implied(v0=atm0*atm0, volvol=popt[3], ttm=ttm0),
-                                  theta=popt[0],
-                                  kappa=popt[1],
-                                  rho=popt[2],
-                                  volvol=popt[3])
+        constraints = ({'type': 'ineq', 'fun': feller})
+        options = {'disp': True, 'ftol': 1e-8}
+
+        if constraints is not None:
+            res = minimize(objective, p0, args=None, method='SLSQP', constraints=constraints, bounds=bounds, options=options)
+        else:
+            res = minimize(objective, p0, args=None, method='SLSQP', bounds=bounds, options=options)
+
+        popt = res.x
+        fit_params = HestonParams(v0=popt[0],
+                                  theta=popt[1],
+                                  kappa=popt[2],
+                                  rho=popt[3],
+                                  volvol=popt[4])
         return fit_params
 
 
