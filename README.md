@@ -1,8 +1,20 @@
 # StochVolModels
-Implement pricing analytics and Monte Carlo simulations for stochastic volatility models including log-normal SV model and Heston SV model
-The analytics for the lognormal is based on the paper
 
-[Log-normal Stochastic Volatility Model with Quadratic Drift: Applications to Assets with Positive Return-Volatility Correlation and to Inverse Martingale Measures](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2522425) by Artur Sepp and Parviz Rakhmonov
+Implementation of pricing analytics and Monte Carlo simulations for modeling of options and implied volatilities.
+
+The StochVolPackage provides:
+1) Analytics for Black-Scholes and Normal vols
+2) Interfaces and implementation for stochastic volatility models including log-normal SV model and Heston SV model
+3) Visualization of model implied volatilities
+
+For the analytic implementation of stochastic volatility models, the package provides interfaces for a generic volatility model with the following features.
+1) Interface for analytical pricing of vanilla options using Fourier transform with closed-form solution for moment generating function
+2) Interface for Monte-Carlo simulations of model dynamics
+
+## Installation
+```python 
+pip install stochvolmodels
+```
 
 
 # Table of contents
@@ -10,15 +22,15 @@ The analytics for the lognormal is based on the paper
     1. [Log-normal stochastic volatility model](#logsv)
     2. [Heston stochastic volatility model](#hestonsv)
 3. [Running log-normal SV pricer](#paragraph1)
-    1. [Computing model prices and vols](#subparagraph1)
+   1. [Computing model prices and vols](#subparagraph1)
    2. [Running model calibration to sample Bitcoin options data](#subparagraph2)
    3. [Running model calibration to sample Bitcoin options data](#subparagraph3)
-4. [Analysis and figures for the paper](#paragraph2)
-
+   4. [Analysis and figures for the paper](#subparagraph4)
+4. [Running Heston SV pricer](#heston)
 
 Running model calibration to sample Bitcoin options data
 
-## Model Interface <a name="introduction"></a>
+## Implemented Stochastic Volatility models <a name="introduction"></a>
 The package provides interfaces for a generic volatility model with the following features.
 1) Interface for analytical pricing of vanilla options using Fourier transform with closed-form solution for moment generating function
 2) Interface for Monte-Carlo simulations of model dynamics
@@ -28,7 +40,9 @@ The model interface is in stochvolmodels/pricers/model_pricer.py
 
 ### Log-normal stochastic volatility model <a name="logsv"></a>
 
-Implementation of Lognormal SV model is based on paper https://github.com/ArturSepp/StochVolModels/blob/main/docs/lognormal_stoch_vol_paper.pdf
+The analytics for the lognormal is based on the paper
+
+[Log-normal Stochastic Volatility Model with Quadratic Drift: Applications to Assets with Positive Return-Volatility Correlation and to Inverse Martingale Measures](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2522425) by Artur Sepp and Parviz Rakhmonov
 
 
 The dynamics of the log-normal stochastic volatility model:
@@ -42,8 +56,10 @@ $$dI_{t}=\sigma^{2}_{t}dt$$
 where $r(t)$ is the deterministic risk-free rate; $W^{(0)}_{t}$ and $W^{(1)}_t$  are uncorrelated Brownian motions, $\beta\in\mathbb{R}$ is the volatility beta which measures the sensitivity of the volatility to changes in the spot price, and $\varepsilon>0$ is the volatility of residual volatility. We denote by $\vartheta^{2}$, $\vartheta^{2}=\beta^{2}+\varepsilon^{2}$, the total instantaneous variance of the volatility process.
 
 
-Implementation of Lognormal SV model is contained in stochvolmodels/pricers/logsv_pricer.py
-
+Implementation of Lognormal SV model is contained in 
+```python 
+stochvolmodels/pricers/logsv_pricer.py
+```
 
 ### Heston stochastic volatility model <a name="hestonsv"></a>
 
@@ -55,12 +71,23 @@ $$dV_{t}=\kappa (\theta - V_{t})dt+  \vartheta  \sqrt{V_{t}}dW^{(V)}_{t}$$
 
 where  $W^{(S)}$ and $W^{(V)}$ are correlated Brownian motions with correlation parameter $\rho$
 
-Implementation of Heston SV model is contained in stochvolmodels/pricers/heston_pricer.py
-
+Implementation of Heston SV model is contained in 
+```python 
+stochvolmodels/pricers/heston_pricer.py
+```
 
 ## Running log-normal SV pricer <a name="paragraph1"></a>
 
-Basic features are implemented in examples/run_lognormal_sv_pricer.py
+Basic features are implemented in 
+```python 
+examples/run_lognormal_sv_pricer.py
+```
+
+Imports:
+```python 
+import stochvolmodels as sv
+from stochvolmodels import LogSVPricer, LogSvParams, OptionChain
+```
 
 
 ### Computing model prices and vols <a name="subparagraph1"></a>
@@ -127,6 +154,40 @@ logsv_pricer.plot_comp_mma_inverse_options_with_mc(option_chain=uniform_chain_da
 ![image info](docs/figures/btc_mc_comp.PNG)
 
 
-## Analysis and figures for the paper <a name="paragraph3"></a>
+### Analysis and figures for the paper <a name="subparagraph3"></a>
 
-All figures shown in the paper can be reproduced using py scripts in examples/plots_for_paper
+All figures shown in the paper can be reproduced using py scripts in
+```python 
+examples/plots_for_paper
+```
+
+
+## Running Heston SV pricer <a name="heston"></a>
+
+Examples are implemented here
+```python 
+examples/run_heston_sv_pricer.py
+examples/run_heston.py
+```
+
+Content of run_heston.py
+```python 
+import numpy as np
+import matplotlib.pyplot as plt
+from stochvolmodels import HestonPricer, HestonParams, OptionChain
+
+# define parameters for bootstrap
+params_dict = {'rho=0.0': HestonParams(v0=0.2**2, theta=0.2**2, kappa=4.0, volvol=0.75, rho=0.0),
+               'rho=-0.4': HestonParams(v0=0.2**2, theta=0.2**2, kappa=4.0, volvol=0.75, rho=-0.4),
+               'rho=-0.8': HestonParams(v0=0.2**2, theta=0.2**2, kappa=4.0, volvol=0.75, rho=-0.8)}
+
+# get uniform slice
+option_chain = OptionChain.get_uniform_chain(ttms=np.array([0.25]), ids=np.array(['3m']), strikes=np.linspace(0.8, 1.15, 20))
+option_slice = option_chain.get_slice(id='3m')
+
+# run pricer
+pricer = HestonPricer()
+pricer.plot_model_slices_in_params(option_slice=option_slice, params_dict=params_dict)
+
+plt.show()
+```

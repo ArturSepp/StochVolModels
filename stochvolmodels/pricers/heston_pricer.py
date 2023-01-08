@@ -170,11 +170,12 @@ def heston_chain_pricer(v0: float,
                         forwards: np.ndarray,
                         discfactors: np.ndarray,
                         strikes_ttms: Tuple[np.ndarray, ...],
-                        optiontypes_ttms: Tuple[np.ndarray, ...]
+                        optiontypes_ttms: Tuple[np.ndarray, ...],
+                        vol_scaler: float = None  # run calibration on same vol_scaler
                         ) -> List[np.ndarray]:
 
     # starting values
-    phi_grid, psi_grid, theta_grid = get_transform_var_grid()
+    phi_grid, psi_grid, theta_grid = get_transform_var_grid(vol_scaler=vol_scaler or np.sqrt(v0*ttms[-1]))
     a_t0, b_t0 = np.zeros(phi_grid.shape[0], dtype=np.complex128), np.zeros(phi_grid.shape[0], dtype=np.complex128)
     ttm0 = 0.0
 
@@ -193,12 +194,12 @@ def heston_chain_pricer(v0: float,
                                                            b_t0=b_t0)
 
         option_prices = slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
-                                                        phi_grid=phi_grid,
-                                                        ttm=ttm,
-                                                        forward=forward,
-                                                        discfactor=discfactor,
-                                                        strikes=strikes_ttm,
-                                                        optiontypes=optiontypes_ttm)
+                                                   phi_grid=phi_grid,
+                                                   ttm=ttm,
+                                                   forward=forward,
+                                                   discfactor=discfactor,
+                                                   strikes=strikes_ttm,
+                                                   optiontypes=optiontypes_ttm)
         model_prices_ttms.append(option_prices)
         ttm0 = ttm
 
@@ -251,7 +252,6 @@ def heston_mc_chain_pricer(ttms: np.ndarray,
     return option_prices_ttm, option_std_ttm
 
 
-
 @njit(cache=False, fastmath=True)
 def simulate_heston_x_vol_terminal(ttm: float,
                                    x0:  np.ndarray,
@@ -287,7 +287,7 @@ def simulate_heston_x_vol_terminal(ttm: float,
     for w0_, w1_ in zip(w0, w1):
         sigma0 = np.sqrt(var0)
         sigma0_2dt = var0 * dt
-        x0 = x0 - 0.5 * sigma0_2dt + sigma0 * w0
+        x0 = x0 - 0.5 * sigma0_2dt + sigma0 * w0_
         qvar0 = qvar0 + sigma0_2dt
         var0 = var0 + kappa*(theta - var0) * dt + sigma0*volvol*(rho*w0_+rho_1*w1_)
         var0 = np.maximum(var0, 1e-4)
@@ -376,7 +376,7 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.CALIBRATOR
+    unit_test = UnitTests.MC_COMPARISION
 
     is_run_all_tests = False
     if is_run_all_tests:

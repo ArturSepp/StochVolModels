@@ -170,7 +170,7 @@ class LogSvParams(ModelParams):
         print(f"vol moments stable = {np.all(np.real(w)<0.0)}")
 
 
-BTC_PARAMS = LogSvParams(sigma0=0.8376, theta=1.0413, kappa1=3.1844, kappa2=3.058, beta=0.1514, volvol=1.8458)
+LOGSV_BTC_PARAMS = LogSvParams(sigma0=0.8376, theta=1.0413, kappa1=3.1844, kappa2=3.058, beta=0.1514, volvol=1.8458)
 
 
 class LogSVPricer(ModelPricer):
@@ -718,9 +718,9 @@ def run_unit_test(unit_test: UnitTests):
     if unit_test == UnitTests.CHAIN_PRICER:
         option_chain = get_btc_test_chain_data()
         logsv_pricer = LogSVPricer()
-        model_prices = logsv_pricer.price_chain(option_chain=option_chain, params=BTC_PARAMS)
+        model_prices = logsv_pricer.price_chain(option_chain=option_chain, params=LOGSV_BTC_PARAMS)
         print(model_prices)
-        logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain, params=BTC_PARAMS)
+        logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain, params=LOGSV_BTC_PARAMS)
 
     if unit_test == UnitTests.SLICE_PRICER:
         ttm = 1.0
@@ -729,7 +729,7 @@ def run_unit_test(unit_test: UnitTests):
         optiontypes = np.array(['P', 'C', 'C'])
 
         logsv_pricer = LogSVPricer()
-        model_prices, vols = logsv_pricer.price_slice(params=BTC_PARAMS,
+        model_prices, vols = logsv_pricer.price_slice(params=LOGSV_BTC_PARAMS,
                                                       ttm=ttm,
                                                       forward=forward,
                                                       strikes=strikes,
@@ -738,7 +738,7 @@ def run_unit_test(unit_test: UnitTests):
         print(vols)
 
         for strike, optiontype in zip(strikes, optiontypes):
-            model_price, vol = logsv_pricer.price_vanilla(params=BTC_PARAMS,
+            model_price, vol = logsv_pricer.price_vanilla(params=LOGSV_BTC_PARAMS,
                                                           ttm=ttm,
                                                           forward=forward,
                                                           strike=strike,
@@ -749,7 +749,7 @@ def run_unit_test(unit_test: UnitTests):
         option_chain = get_btc_test_chain_data()
         logsv_pricer = LogSVPricer()
         fit_params = logsv_pricer.calibrate_model_params_to_chain(option_chain=option_chain,
-                                                                   params0=BTC_PARAMS)
+                                                                  params0=LOGSV_BTC_PARAMS)
         print(fit_params)
         logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain,
                                                  params=fit_params)
@@ -758,16 +758,16 @@ def run_unit_test(unit_test: UnitTests):
         option_chain = get_btc_test_chain_data()
         logsv_pricer = LogSVPricer()
         logsv_pricer.plot_model_ivols_vs_mc(option_chain=option_chain,
-                                             params=BTC_PARAMS)
+                                            params=LOGSV_BTC_PARAMS)
 
     elif unit_test == UnitTests.VOL_PATHS:
         logsv_pricer = LogSVPricer()
-        vol_paths = logsv_pricer.simulate_vol_paths(params=BTC_PARAMS)
+        vol_paths = logsv_pricer.simulate_vol_paths(params=LOGSV_BTC_PARAMS)
         print(np.mean(vol_paths, axis=1))
 
     elif unit_test == UnitTests.TERMINAL_VALUES:
         logsv_pricer = LogSVPricer()
-        params = BTC_PARAMS
+        params = LOGSV_BTC_PARAMS
         xt, sigmat, qvart = logsv_pricer.simulate_terminal_values(params=params)
         hx = compute_histogram_data(data=xt, x_grid=params.get_x_grid(), name='Log-price')
         hsigmat = compute_histogram_data(data=sigmat, x_grid=params.get_sigma_grid(), name='Sigma')
@@ -785,7 +785,7 @@ def run_unit_test(unit_test: UnitTests):
         option_chain = get_btc_test_chain_data()
         logsv_pricer = LogSVPricer()
         logsv_pricer.plot_comp_mma_inverse_options_with_mc(option_chain=option_chain,
-                                           params=BTC_PARAMS)
+                                                           params=LOGSV_BTC_PARAMS)
 
     plt.show()
 

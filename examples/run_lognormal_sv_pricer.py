@@ -6,9 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from enum import Enum
 
-import stochvolmodels.data.test_option_chain as chains
-from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.pricers.logsv_pricer import LogSVPricer, LogSvParams, ConstraintsType
+import stochvolmodels as sv
+from stochvolmodels import LogSVPricer, LogSvParams, OptionChain
 
 
 class UnitTests(Enum):
@@ -78,7 +77,7 @@ def run_unit_test(unit_test: UnitTests):
                                                  params_dict=params_dict)
 
     elif unit_test == UnitTests.COMPARE_MODEL_VOLS_TO_MC:
-        btc_option_chain = chains.get_btc_test_chain_data()
+        btc_option_chain = sv.get_btc_test_chain_data()
         uniform_chain_data = OptionChain.to_uniform_strikes(obj=btc_option_chain, num_strikes=31)
         btc_calibrated_params = LogSvParams(sigma0=0.8327, theta=1.0139, kappa1=4.8609, kappa2=4.7940, beta=0.1988, volvol=2.3694)
         logsv_pricer.plot_comp_mma_inverse_options_with_mc(option_chain=uniform_chain_data,
@@ -87,17 +86,17 @@ def run_unit_test(unit_test: UnitTests):
 
     elif unit_test == UnitTests.PLOT_FIT_TO_BITCOIN_OPTION_CHAIN:
 
-        btc_option_chain = chains.get_btc_test_chain_data()
+        btc_option_chain = sv.get_btc_test_chain_data()
         btc_calibrated_params = LogSvParams(sigma0=0.8327, theta=1.0139, kappa1=4.8609, kappa2=4.7940, beta=0.1988, volvol=2.3694)
         logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=btc_option_chain,
                                                  params=btc_calibrated_params)
 
     elif unit_test == UnitTests.CALIBRATE_MODEL_TO_BTC_OPTIONS:
-        btc_option_chain = chains.get_btc_test_chain_data()
+        btc_option_chain = sv.get_btc_test_chain_data()
         params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=5.0, kappa2=None, beta=0.15, volvol=2.0)
         btc_calibrated_params = logsv_pricer.calibrate_model_params_to_chain(option_chain=btc_option_chain,
                                                                              params0=params0,
-                                                                             constraints_type=ConstraintsType.INVERSE_MARTINGALE)
+                                                                             constraints_type=sv.ConstraintsType.INVERSE_MARTINGALE)
         print(btc_calibrated_params)
         logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=btc_option_chain,
                                                  params=btc_calibrated_params)

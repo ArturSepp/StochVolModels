@@ -199,14 +199,14 @@ class OptionChain:
     def get_uniform_chain(cls,
                           ttms: np.ndarray = np.array([0.083, 0.25]),
                           ids: np.ndarray = np.array(['1m', '3m']),
-                          # strikes: np.ndarray = np.linspace(0.5, 1.5, 11)
-                          strikes: np.ndarray = 100.0*np.linspace(0.9, 1.1, 3),
+                          forwards: np.ndarray = np.array([1.0, 1.0]),
+                          strikes: np.ndarray = np.linspace(0.9, 1.1, 3),
                           flat_vol: float = 0.2
                           ) -> OptionChain:
         return cls(ttms=ttms,
                    ids=ids,
-                   forwards=100.0*np.ones_like(ttms),
+                   forwards=forwards,
                    strikes_ttms=List([strikes for _ in ttms]),
                    bid_ivs=List([flat_vol*np.ones_like(strikes) for _ in ttms]),
                    ask_ivs=List([flat_vol*np.ones_like(strikes) for _ in ttms]),
-                   optiontypes_ttms=List([np.where(strikes >= 1.0, 'C', 'P') for _ in ttms]))
+                   optiontypes_ttms=List([np.where(strikes >= forward, 'C', 'P') for forward in forwards]))
