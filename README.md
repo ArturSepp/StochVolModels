@@ -21,12 +21,12 @@ pip install stochvolmodels
 1. [Model Interface](#introduction)
     1. [Log-normal stochastic volatility model](#logsv)
     2. [Heston stochastic volatility model](#hestonsv)
-3. [Running log-normal SV pricer](#paragraph1)
+2. [Running log-normal SV pricer](#paragraph1)
    1. [Computing model prices and vols](#subparagraph1)
    2. [Running model calibration to sample Bitcoin options data](#subparagraph2)
-   3. [Running model calibration to sample Bitcoin options data](#subparagraph3)
+   3. [Comparison of model prices vs MC](#subparagraph3)
    4. [Analysis and figures for the paper](#subparagraph4)
-4. [Running Heston SV pricer](#heston)
+3. [Running Heston SV pricer](#heston)
 
 Running model calibration to sample Bitcoin options data
 
@@ -141,7 +141,7 @@ logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=btc_option_chain,
 
 
 
-### Comparision of model prices vs MC  <a name="subparagraph2"></a>
+### Comparison of model prices vs MC  <a name="subparagraph3"></a>
 ```python 
 btc_option_chain = chains.get_btc_test_chain_data()
 uniform_chain_data = OptionChain.to_uniform_strikes(obj=btc_option_chain, num_strikes=31)
@@ -154,7 +154,7 @@ logsv_pricer.plot_comp_mma_inverse_options_with_mc(option_chain=uniform_chain_da
 ![image info](docs/figures/btc_mc_comp.PNG)
 
 
-### Analysis and figures for the paper <a name="subparagraph3"></a>
+### Analysis and figures for the paper <a name="subparagraph4"></a>
 
 All figures shown in the paper can be reproduced using py scripts in
 ```python 
