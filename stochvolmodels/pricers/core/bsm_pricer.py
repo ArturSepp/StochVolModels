@@ -279,6 +279,3 @@ def infer_bsm_ivols_from_model_chain_prices(ttms: np.ndarray,
                                                        optiontype=optiontype)
         model_vol_ttms.append(model_vol_ttm)
     return model_vol_ttms
-
-
-
