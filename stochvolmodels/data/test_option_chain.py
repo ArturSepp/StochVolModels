@@ -1,6 +1,6 @@
 """
 test data with implied volatilities for VIX, SQQQ, Bitcoin, Gold, SPY
-data is used for plots_for_paper figures
+data is used for logsv_model_wtih_quadratic_drift figures
 """
 
 import numpy as np

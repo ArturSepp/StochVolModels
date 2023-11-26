@@ -4,7 +4,7 @@ key analytics for Black Scholes Merton pricer and implied volatilities
 
 import numpy as np
 from numba import njit
-from typing import Union, Tuple
+from typing import Union
 from numba.typed import List
 from scipy.stats import norm
 
@@ -138,16 +138,16 @@ def compute_normal_slice_deltas(ttm: Union[float, np.ndarray],
 @njit(cache=False, fastmath=True)
 def compute_normal_deltas_ttms(ttms: np.ndarray,
                                forwards: np.ndarray,
-                               strikes_ttms: Tuple[np.ndarray, ...],
-                               vols_ttms: Tuple[np.ndarray,...],
-                               optiontypes_ttms: Tuple[np.ndarray, ...],
+                               strikes_ttms: List[np.ndarray],
+                               vols_ttms: List[np.ndarray],
+                               optiontypes_ttms: List[np.ndarray],
                                ) -> List[np.ndarray]:
     """
     vectorised bsm deltas for array of aligned strikes, vols, and optiontypes
     """
     deltas_ttms = List()
-    for ttm, forward, vols_ttm, strikes_ttm, optiontypes_ttm in zip(ttms, forwards, vols_ttms, strikes_ttms, optiontypes_ttms):
-        deltas_ttms.append(compute_normal_slice_deltas(ttm=ttm, forward=forward, strikes=strikes_ttm, vols=vols_ttm, optiontypes=optiontypes_ttm))
+    for ttm, forward, vols, strikes, optiontypes in zip(ttms, forwards, vols_ttms, strikes_ttms, optiontypes_ttms):
+        deltas_ttms.append(compute_normal_slice_deltas(ttm=ttm, forward=forward, strikes=strikes, vols=vols, optiontypes=optiontypes))
     return deltas_ttms
 
 
@@ -170,9 +170,9 @@ def compute_normal_slice_vegas(ttm: float,
 @njit(cache=False, fastmath=True)
 def compute_normal_vegas_ttms(ttms: np.ndarray,
                               forwards: np.ndarray,
-                              strikes_ttms: Tuple[np.ndarray, ...],
-                              vols_ttms: Tuple[np.ndarray,...],
-                              optiontypes_ttms: Tuple[np.ndarray, ...],
+                              strikes_ttms: List[np.ndarray],
+                              vols_ttms: List[np.ndarray],
+                              optiontypes_ttms: List[np.ndarray],
                               ) -> List[np.ndarray]:
     """
     vectorised bsm vegas for array of aligned strikes, vols, and optiontypes
@@ -199,7 +199,6 @@ def infer_normal_implied_vol(forward: float,
     x1, x2 = 0.01, 10.0  # starting values
     f = compute_normal_price(forward=forward, strike=strike, ttm=ttm, vol=x1, discfactor=discfactor, optiontype=optiontype) - given_price
     fmid = compute_normal_price(forward=forward, strike=strike, ttm=ttm, vol=x2, discfactor=discfactor, optiontype=optiontype) - given_price
-
     if f*fmid < 0.0:
         if f < 0.0:
             rtb = x1
@@ -217,13 +216,11 @@ def infer_normal_implied_vol(forward: float,
             if np.abs(fmid) < tol:
                 break
         v1 = xmid
-
     else:
         if f < 0:
             v1 = x1
         else:
             v1 = x2
-
     if is_bounds_to_nan:  # in case vol was inferred it will return nan
         if np.abs(v1-x1) < tol or np.abs(v1-x2) < tol:
             v1 = np.nan
@@ -271,17 +268,17 @@ def infer_normal_ivols_from_slice_prices(ttm: float,
 def infer_normal_ivols_from_chain_prices(ttms: np.ndarray,
                                          forwards: np.ndarray,
                                          discfactors: np.ndarray,
-                                         strikes_ttms: List[np.ndarray,...],
-                                         optiontypes_ttms: List[np.ndarray, ...],
+                                         strikes_ttms: List[np.ndarray],
+                                         optiontypes_ttms: List[np.ndarray],
                                          model_prices_ttms: List[np.ndarray],
-                                         ) -> List[np.ndarray, ...]:
+                                         ) -> List[np.ndarray]:
     """
     vectorised chain ivols
     """
     model_vol_ttms = List()
-    for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm, model_prices_ttm in zip(ttms, forwards, discfactors, strikes_ttms, optiontypes_ttms, model_prices_ttms):
-        model_vol_ttm = np.zeros_like(strikes_ttm)
-        for idx, (strike, model_price, optiontype) in enumerate(zip(strikes_ttm, model_prices_ttm, optiontypes_ttm)):
+    for ttm, forward, discfactor, strikes, optiontypes, model_prices in zip(ttms, forwards, discfactors, strikes_ttms, optiontypes_ttms, model_prices_ttms):
+        model_vol_ttm = np.zeros_like(strikes)
+        for idx, (strike, model_price, optiontype) in enumerate(zip(strikes, model_prices, optiontypes)):
             model_vol_ttm[idx] = infer_normal_implied_vol(forward=forward, ttm=ttm, discfactor=discfactor,
                                                           given_price=model_price,
                                                           strike=strike,

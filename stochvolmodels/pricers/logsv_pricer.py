@@ -5,6 +5,7 @@ The lognormal sv model interface derives from ModelPricer
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 from numba import njit
 from numba.typed import List
@@ -335,9 +336,11 @@ class LogSVPricer(ModelPricer):
     @timer
     def simulate_vol_paths(self,
                            params: LogSvParams,
+                           brownians: np.ndarray = None,
                            ttm: float = 1.0,
                            nb_path: int = 100000,
                            is_spot_measure: bool = True,
+                           nb_steps: int = 360,
                            **kwargs
                            ) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -352,6 +355,8 @@ class LogSVPricer(ModelPricer):
                                              volvol=params.volvol,
                                              nb_path=nb_path,
                                              is_spot_measure=is_spot_measure,
+                                             nb_steps=nb_steps,
+                                             brownians=brownians,
                                              **kwargs)
         return sigma_t, grid_t
 
@@ -615,7 +620,7 @@ def logsv_mc_chain_pricer(ttms: np.ndarray,
     return option_prices_ttm, option_std_ttm
 
 
-@njit(cache=False, fastmath=True)
+@njit(cache=False, fastmath=False)
 def simulate_vol_paths(ttm: float,
                        v0: float,
                        theta: float,
@@ -624,8 +629,9 @@ def simulate_vol_paths(ttm: float,
                        beta: float,
                        volvol: float,
                        is_spot_measure: bool = True,
-                       nb_path: int = 400000,
-                       year_days: float = 360,
+                       nb_path: int = 100000,
+                       nb_steps: int = 360,
+                       brownians: np.ndarray = None,
                        **kwargs
                        ) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -633,8 +639,11 @@ def simulate_vol_paths(ttm: float,
     """
     sigma0 = v0 * np.ones(nb_path)
 
-    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, year_days=year_days)
-    w1 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))
+    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, nb_steps=nb_steps)
+
+    if brownians is None:
+        brownians = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))
+
     if is_spot_measure:
         alpha, adj = -1.0, 0.0
     else:
@@ -645,7 +654,7 @@ def simulate_vol_paths(ttm: float,
     vol_var = np.log(sigma0)
     sigma_t = np.zeros((nb_steps+1, nb_path))  # sigma grid will increase to include the sigma_0 at t0 = 0
     sigma_t[0, :] = sigma0  # keep first value
-    for t_, w1_ in enumerate(w1):
+    for t_, w1_ in enumerate(brownians):
         vol_var = vol_var + ((kappa1 * theta / sigma0 - kappa1) + kappa2*(theta-sigma0) + adj*sigma0 - 0.5*vartheta2) * dt + vartheta*w1_
         sigma0 = np.exp(vol_var)
         sigma_t[t_+1, :] = sigma0
@@ -653,7 +662,7 @@ def simulate_vol_paths(ttm: float,
     return sigma_t, grid_t
 
 
-@njit(cache=False, fastmath=True)
+@njit(cache=False, fastmath=False)
 def simulate_logsv_x_vol_terminal(ttm: float,
                                   x0:  np.ndarray,
                                   sigma0: np.ndarray,
@@ -664,7 +673,8 @@ def simulate_logsv_x_vol_terminal(ttm: float,
                                   beta: float,
                                   volvol: float,
                                   is_spot_measure: bool = True,
-                                  nb_path: int = 100000
+                                  nb_path: int = 100000,
+                                  nb_steps: int = 360
                                   ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
     if x0.shape[0] == 1:  # initial value
@@ -682,7 +692,7 @@ def simulate_logsv_x_vol_terminal(ttm: float,
     else:
         assert sigma0.shape[0] == nb_path
 
-    nb_steps, dt, grid_t = set_time_grid(ttm=ttm)
+    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, nb_steps=nb_steps)
     W0 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))
     W1 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))
 
@@ -762,8 +772,13 @@ def run_unit_test(unit_test: UnitTests):
 
     elif unit_test == UnitTests.VOL_PATHS:
         logsv_pricer = LogSVPricer()
-        vol_paths = logsv_pricer.simulate_vol_paths(params=LOGSV_BTC_PARAMS)
-        print(np.mean(vol_paths, axis=1))
+        nb_path = 10
+        sigma_t, grid_t = logsv_pricer.simulate_vol_paths(params=LOGSV_BTC_PARAMS,
+                                                          nb_path=nb_path,
+                                                          nb_steps=360)
+
+        vol_paths = pd.DataFrame(sigma_t, index=grid_t, columns=[f"{x+1}" for x in range(nb_path)])
+        print(vol_paths)
 
     elif unit_test == UnitTests.TERMINAL_VALUES:
         logsv_pricer = LogSVPricer()
@@ -792,7 +807,7 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.MMA_INVERSE_MEASURE_VS_MC
+    unit_test = UnitTests.VOL_PATHS
 
     is_run_all_tests = False
     if is_run_all_tests:

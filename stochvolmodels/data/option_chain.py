@@ -65,6 +65,7 @@ class OptionChain:
     ask_ivs: Optional[List[np.ndarray]] = None
     bid_prices: Optional[List[np.ndarray]] = None
     ask_prices: Optional[List[np.ndarray]] = None
+    forwards0: Optional[np.ndarray] = None  # when we need to normalize options price
 
     def __post_init__(self):
         """
@@ -78,6 +79,15 @@ class OptionChain:
         else:  # use zeros
             self.discfactors = np.ones_like(self.ttms)
             self.discount_rates = np.zeros_like(self.ttms)
+
+    def print(self) -> None:
+        this = dict(ttms=self.ttms,
+                    forwards=self.forwards,
+                    strikes_ttms=self.strikes_ttms,
+                    optiontypes_ttms=self.optiontypes_ttms,
+                    ids=self.ids)
+        for k, v in this.items():
+            print(f"{k}:\n{v}")
 
     @classmethod
     def slice_to_chain(cls,
@@ -128,6 +138,16 @@ class OptionChain:
             atm_vols[idx] = np.interp(x=forward, xp=strikes_ttm, fp=y)
         return atm_vols
 
+    def get_chain_skews(self, delta: float = 0.25) -> np.ndarray:
+        skews = np.zeros(len(self.ttms))
+        deltas_ttms = self.get_chain_deltas()
+        for idx, (deltas, vols) in enumerate(zip(deltas_ttms, self.get_mid_vols())):
+            dput = np.interp(x=-delta, xp=deltas, fp=vols)
+            d50 = np.interp(x=0.5, xp=deltas, fp=vols)
+            dcall= np.interp(x=delta, xp=deltas, fp=vols)
+            skews[idx] = (dput - dcall)/d50
+        return skews
+
     def get_chain_data_as_xy(self) -> Tuple[List[np.ndarray], np.ndarray]:
         """
         these data are needed for to pass x and y for model calibrations
@@ -137,9 +157,15 @@ class OptionChain:
         y = mid_vols
         return x, y
 
-    def compute_model_ivols_from_chain_data(self, model_prices: List[np.ndarray]) -> List[np.ndarray]:
+    def compute_model_ivols_from_chain_data(self,
+                                            model_prices: List[np.ndarray],
+                                            forwards: np.ndarray = None
+                                            ) -> List[np.ndarray]:
+        if forwards is None:
+            forwards = self.forwards
+
         model_ivols = bsm.infer_bsm_ivols_from_model_chain_prices(ttms=self.ttms,
-                                                                  forwards=self.forwards,
+                                                                  forwards=forwards,
                                                                   discfactors=self.discfactors,
                                                                   strikes_ttms=self.strikes_ttms,
                                                                   optiontypes_ttms=self.optiontypes_ttms,
@@ -147,7 +173,27 @@ class OptionChain:
         return model_ivols
 
     @classmethod
-    def to_uniform_strikes(cls, obj, num_strikes=21):
+    def to_forward_normalised_strikes(cls, obj: OptionChain) -> OptionChain:
+        """
+        strike and prices to normalized by forwards
+        """
+        new_strikes_ttms = List()
+        for strikes_ttm, forward in zip(obj.strikes_ttms, obj.forwards):
+            new_strikes = strikes_ttm / forward
+            new_strikes_ttms.append(new_strikes)
+
+        return cls(ttms=obj.ttms,
+                   forwards=np.ones_like(obj.forwards),
+                   strikes_ttms=new_strikes_ttms,
+                   optiontypes_ttms=obj.optiontypes_ttms,
+                   discfactors=obj.discfactors,
+                   ticker=obj.ticker,
+                   ids=obj.ids,
+                   bid_ivs=obj.bid_ivs, ask_ivs=obj.ask_ivs,
+                   forwards0=obj.forwards)
+
+    @classmethod
+    def to_uniform_strikes(cls, obj: OptionChain, num_strikes: int = 21) -> OptionChain:
         """
         in some situations (like model price display) we want to get a uniform grid corresponding to the chain
         bid_ivs and ask_ivs will be set to none
@@ -181,18 +227,35 @@ class OptionChain:
 
     @classmethod
     def get_slices_as_chain(cls, option_chain: OptionChain, ids: List[str]) -> OptionChain:
-        indices = np.in1d(option_chain.ids, ids).nonzero()[0]
-        option_chain = cls(ids=ids,
-                         ttms=option_chain.ttms[indices],
-                         ticker=option_chain.ticker,
-                         forwards=option_chain.forwards[indices],
-                         strikes_ttms=List(option_chain.strikes_ttms[idx] for idx in indices),
-                         optiontypes_ttms=List(option_chain.optiontypes_ttms[idx] for idx in indices),
-                         discfactors=option_chain.discfactors[indices],
-                         bid_ivs=None if option_chain.bid_ivs is None else List(option_chain.bid_ivs[idx] for idx in indices),
-                         ask_ivs=None if option_chain.ask_ivs is None else List(option_chain.ask_ivs[idx] for idx in indices),
-                         bid_prices=None if option_chain.bid_prices is None else List(option_chain.bid_prices[idx] for idx in indices),
-                         ask_prices=None if option_chain.ask_prices is None else List(option_chain.ask_prices[idx] for idx in indices))
+        """
+        return a subset of chain for given ids
+        """
+        if len(ids) == 1:
+            idx = option_chain.ids.tolist().index(ids[0])
+            option_chain = cls(ids=ids,
+                               ttms=np.array([option_chain.ttms[idx]]),
+                               ticker=option_chain.ticker,
+                               forwards=np.array([option_chain.forwards[idx]]),
+                               strikes_ttms=List([option_chain.strikes_ttms[idx]]),
+                               optiontypes_ttms=List([option_chain.optiontypes_ttms[idx]]),
+                               discfactors=np.array([option_chain.discfactors[idx]]),
+                               bid_ivs=None if option_chain.bid_ivs is None else List([option_chain.bid_ivs[idx]]),
+                               ask_ivs=None if option_chain.ask_ivs is None else List([option_chain.ask_ivs[idx]]),
+                               bid_prices=None if option_chain.bid_prices is None else List([option_chain.bid_prices[idx]]),
+                               ask_prices=None if option_chain.ask_prices is None else List([option_chain.ask_prices[idx]]))
+        else:
+            indices = np.in1d(option_chain.ids, ids).nonzero()[0]
+            option_chain = cls(ids=ids,
+                               ttms=option_chain.ttms[indices],
+                               ticker=option_chain.ticker,
+                               forwards=option_chain.forwards[indices],
+                               strikes_ttms=List(option_chain.strikes_ttms[idx] for idx in indices),
+                               optiontypes_ttms=List(option_chain.optiontypes_ttms[idx] for idx in indices),
+                               discfactors=option_chain.discfactors[indices],
+                               bid_ivs=None if option_chain.bid_ivs is None else List(option_chain.bid_ivs[idx] for idx in indices),
+                               ask_ivs=None if option_chain.ask_ivs is None else List(option_chain.ask_ivs[idx] for idx in indices),
+                               bid_prices=None if option_chain.bid_prices is None else List(option_chain.bid_prices[idx] for idx in indices),
+                               ask_prices=None if option_chain.ask_prices is None else List(option_chain.ask_prices[idx] for idx in indices))
         return option_chain
 
     @classmethod

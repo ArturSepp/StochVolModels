@@ -5,7 +5,7 @@ import functools
 import time
 import numpy as np
 import pandas as pd
-from numba import njit
+from numba import njit, int32, int64
 from numba.typed import List
 from typing import Tuple, Dict, Any, Optional, Union
 
@@ -14,12 +14,11 @@ def to_flat_np_array(input_list: List[np.ndarray]) -> np.ndarray:
     return np.concatenate(input_list).ravel()
 
 
-@njit(cache=False, fastmath=True)
-def set_time_grid(ttm: float, year_days: float = 360) -> Tuple[int, float, np.ndarray]:
+@njit(cache=False, fastmath=False)
+def set_time_grid(ttm: float, nb_steps: int = 360) -> Tuple[int, float, np.ndarray]:
     """
     set daily steps
     """
-    nb_steps = int(np.ceil(year_days * ttm))
     grid_t = np.linspace(0.0, ttm, nb_steps + 1)
     dt = grid_t[1] - grid_t[0]
     return nb_steps, dt, grid_t

@@ -1,5 +1,6 @@
 
 from stochvolmodels.utils.funcs import (
+    set_seed,
     compute_histogram_data,
     timer,
     to_flat_np_array,

@@ -264,7 +264,8 @@ def model_vols_ts(model_vols: Union[pd.Series, pd.DataFrame],
                   marker: str = None,
                   title: str = None,
                   legend_loc: str = 'upper center',
-                  ax: plt.Subplot = None
+                  ax: plt.Subplot = None,
+                  **kwargs
                   ) -> plt.Figure:
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(8, 8))

@@ -72,6 +72,26 @@ class HestonPricer(ModelPricer):
                                       variable_type=variable_type)
 
     @timer
+    def simulate_terminal_values(self,
+                                 params: HestonParams,
+                                 ttm: float = 1.0,
+                                 nb_path: int = 100000,
+                                 x0: float = 0.0,
+                                 **kwargs
+                                 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+
+        x0, var0, qvar0 = simulate_heston_x_vol_terminal(ttm=ttm,
+                                                         x0=np.zeros(nb_path),
+                                                         var0=params.v0 * np.ones(nb_path),
+                                                         qvar0=np.zeros(nb_path),
+                                                         theta=params.theta,
+                                                         kappa=params.kappa,
+                                                         rho=params.rho,
+                                                         volvol=params.volvol,
+                                                         nb_path=nb_path)
+        return x0, var0, qvar0
+
+    @timer
     def calibrate_model_params_to_chain(self,
                                         option_chain: OptionChain,
                                         params0: HestonParams = None,
@@ -261,7 +281,8 @@ def simulate_heston_x_vol_terminal(ttm: float,
                                    kappa: float,
                                    rho: float,
                                    volvol: float,
-                                   nb_path: int = 100000
+                                   nb_path: int = 100000,
+                                   nb_steps: int = 360
                                    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
     if x0.shape[0] == 1:  # initial value
@@ -279,7 +300,7 @@ def simulate_heston_x_vol_terminal(ttm: float,
     else:
         assert qvar0.shape[0] == nb_path
 
-    nb_steps, dt, grid_t = set_time_grid(ttm=ttm)
+    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, nb_steps=nb_steps)
     w0 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))
     w1 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))
 

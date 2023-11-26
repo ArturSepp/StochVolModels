@@ -11,16 +11,21 @@ from ...pricers.core.config import VariableType
 
 @njit(cache=False, fastmath=True)
 def get_phi_grid(is_spot_measure: bool = True,
-                 vol_scaler: float = 0.28
+                 max_phi: int = 1000,
+                 vol_scaler: float = 0.28,
+                 real_phi: float = None
                  ) -> np.ndarray:
     """
     for x = log-price variable
     vol_scaler = sigma_0*sqrt(ttm) will adjust the grid size: smaller val need longer period
     default vol scaler corresponds to pricing option with vol=100% and 1m ttm = 1/12
     """
-    p = np.linspace(0, 5.6/vol_scaler, 1000)  # default max phi is 20 with 1000 points
+    p = np.linspace(0, 5.6/vol_scaler, max_phi)  # default max phi is 20 with 1000 points
     if is_spot_measure:
-        real_p = -0.5
+        if real_phi is None:
+            real_p = -0.5
+        else:
+            real_p = real_phi
     else:
         real_p = 0.5
     phi_grid = real_p + 1j * p
@@ -52,13 +57,18 @@ def get_theta_grid() -> np.ndarray:
 @njit(cache=False, fastmath=True)
 def get_transform_var_grid(variable_type: VariableType = VariableType.LOG_RETURN,
                            is_spot_measure: bool = True,
-                           vol_scaler: float = 0.28
+                           max_phi: int = 1000,
+                           vol_scaler: float = 0.28,
+                           real_phi: float = None
                            ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     compute grid for Fourier inversions
     """
     if variable_type == VariableType.LOG_RETURN:
-        phi_grid = get_phi_grid(is_spot_measure=is_spot_measure, vol_scaler=vol_scaler)
+        phi_grid = get_phi_grid(is_spot_measure=is_spot_measure,
+                                max_phi=max_phi,
+                                vol_scaler=vol_scaler,
+                                real_phi=real_phi)
         psi_grid = np.zeros_like(phi_grid, dtype=np.complex128)
         theta_grid = np.zeros_like(phi_grid, dtype=np.complex128)
 
@@ -145,6 +155,57 @@ def slice_pricer_with_mgf_grid(log_mgf_grid: np.ndarray,
                 option_prices[idx] = forward*discfactor*(np.exp(-x) - capped_option_price)
             else:
                 raise ValueError(f"not implemented")
+
+    return option_prices
+
+
+#@njit(cache=False, fastmath=True)
+def slice_pricer_with_mgf_grid_with_gamma(log_mgf_grid: np.ndarray,
+                                          phi_grid: np.ndarray,
+                                          risk_premia_gamma: float,  # risk-premia gamma
+                                          ttm: float,
+                                          forward: float,
+                                          normalizer: float,
+                                          gamma_forward: float,
+                                          strikes: np.ndarray,
+                                          optiontypes: np.ndarray,
+                                          discfactor: float = 1.0,
+                                          is_spot_measure: bool = True,
+                                          is_simpson: bool = True
+                                          ) -> np.ndarray:
+    """
+    generic function for pricing options on the spot given the mgf grid
+    mgf in x is function defined on log-price transform phi grids
+    transform variable is phi_grid = real_phi + i*p
+    grid can be non-uniform
+    using risk-premia gamma
+    """
+    p = np.imag(phi_grid)
+    dp = compute_integration_weights(var_grid=phi_grid, is_simpson=is_simpson)
+
+    if np.all(np.abs(np.real(phi_grid)-(0.5+risk_premia_gamma)) < 1e-10):  # optimized for phi = +/-0.5 + i*p
+        p_payoff = (dp / np.pi) / (p * p + 0.25) + 1j * 0.0  # add zero complex part for numba
+    else:
+        if is_spot_measure:
+            p_payoff = - (dp / np.pi) / ((phi_grid+risk_premia_gamma+1.0)*(phi_grid+risk_premia_gamma))
+        else:
+            p_payoff = - (dp / np.pi) / ((phi_grid-1.0) * phi_grid)
+
+    log_strikes = np.log(forward/strikes)
+    option_prices = np.zeros_like(log_strikes)
+    gamma_strikes = np.power(strikes, 1.0+risk_premia_gamma)
+    for idx, (x, strike, gamma_strike, type_) in enumerate(zip(log_strikes, strikes, gamma_strikes, optiontypes)):
+        # compute sum using trapesoidal rule
+        capped_option_price = np.nansum(np.real(p_payoff*np.exp(-x * phi_grid + log_mgf_grid)))
+        if is_spot_measure:
+            if type_ == 'C':
+                option_prices[idx] = (gamma_forward - normalizer*gamma_strike * capped_option_price)
+            elif type_ == 'P':
+                option_prices[idx] = (strike - normalizer*gamma_strike * capped_option_price)
+            else:
+                raise ValueError(f"not implemented")
+        else:
+            raise ValueError(f"not implemented")
 
     return option_prices
 

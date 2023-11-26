@@ -30,15 +30,23 @@ def compute_bsm_price(forward: float,
     """
     bsm pricer for forward
     """
-    sT = vol * np.sqrt(ttm)
-    d1 = (np.log(forward / strike) + 0.5 * sT * sT) / sT
-    d2 = d1 - sT
-    if optiontype == 'C' or optiontype == 'IC':
-        price = discfactor * (forward * ncdf(d1) - strike * ncdf(d2))
-    elif optiontype == 'P' or optiontype == 'IP':
-        price = -discfactor * (forward * ncdf(-d1) - strike * ncdf(-d2))
+    if ttm > 0.0:
+        sT = vol * np.sqrt(ttm)
+        d1 = (np.log(forward / strike) + 0.5 * sT * sT) / sT
+        d2 = d1 - sT
+        if optiontype == 'C' or optiontype == 'IC':
+            price = discfactor * (forward * ncdf(d1) - strike * ncdf(d2))
+        elif optiontype == 'P' or optiontype == 'IP':
+            price = -discfactor * (forward * ncdf(-d1) - strike * ncdf(-d2))
+        else:
+            raise NotImplementedError(f"optiontype")
     else:
-        raise NotImplementedError(f"optiontype")
+        if optiontype == 'C' or optiontype == 'IC':
+            price = np.maximum(forward - strike, 0.0)
+        elif optiontype == 'P' or optiontype == 'IP':
+            price = np.maximum(strike-forward, 0.0)
+        else:
+            raise NotImplementedError(f"optiontype")
 
     return price
 
@@ -69,12 +77,12 @@ def compute_bsm_slice_prices(ttm: float,
 
 
 def compute_bsm_delta_to_strike(ttm: float,
-                             forward: float,
-                             delta: float,
-                             vol: float
-                             ) -> Union[float, np.ndarray]:
+                                forward: float,
+                                delta: float,
+                                vol: float
+                                ) -> Union[float, np.ndarray]:
     """
-    bsm deltas for strikes and vols
+    given delta invert to strike
     """
     inv_delta = norm.ppf(delta) if delta > 0.0 else -norm.ppf(-delta)
     sT = vol * np.sqrt(ttm)
@@ -105,33 +113,28 @@ def compute_bsm_delta(ttm: float,
 
 
 @njit(cache=False, fastmath=True)
-def compute_bsm_slice_deltas(ttm: Union[float, np.ndarray],
-                             forward: Union[float, np.ndarray],
-                             strikes: Union[float, np.ndarray],
-                             vols: Union[float, np.ndarray],
-                             optiontypes: Union[str, np.ndarray]
-                             ) -> Union[float, np.ndarray]:
+def compute_bsm_slice_deltas(ttm: float,
+                             forward: float,
+                             strikes: np.ndarray,
+                             vols: np.ndarray,
+                             optiontypes: np.ndarray
+                             ) -> np.ndarray:
     """
     bsm deltas for strikes and vols
     """
     sT = vols * np.sqrt(ttm)
     d1 = np.log(forward / strikes) / sT + 0.5 * sT
-    if optiontypes == 'C':
-        d1_sign = 1.0
-    elif optiontypes == 'P':
-        d1_sign = - 1.0
-    else:
-        d1_sign = np.where(np.array([op == 'C' for op in optiontypes]), 1.0, -1.0)
+    d1_sign = np.where(np.array([op == 'C' for op in optiontypes]), 1.0, -1.0)
     bsm_deltas = d1_sign * ncdf(d1_sign * d1)
     return bsm_deltas
 
 
-#@njit(cache=False, fastmath=True)
+@njit(cache=False, fastmath=True)
 def compute_bsm_deltas_ttms(ttms: np.ndarray,
                             forwards: np.ndarray,
-                            strikes_ttms: Tuple[np.ndarray, ...],
-                            vols_ttms: Tuple[np.ndarray,...],
-                            optiontypes_ttms: Tuple[np.ndarray, ...],
+                            strikes_ttms: List[np.ndarray],
+                            vols_ttms: List[np.ndarray],
+                            optiontypes_ttms: List[np.ndarray],
                             ) -> List[np.ndarray]:
     """
     vectorised bsm deltas for array of aligned strikes, vols, and optiontypes
@@ -161,9 +164,9 @@ def compute_bsm_slice_vegas(ttm: float,
 @njit(cache=False, fastmath=True)
 def compute_bsm_vegas_ttms(ttms: np.ndarray,
                            forwards: np.ndarray,
-                           strikes_ttms: Tuple[np.ndarray, ...],
-                           vols_ttms: Tuple[np.ndarray,...],
-                           optiontypes_ttms: Tuple[np.ndarray, ...],
+                           strikes_ttms: List[np.ndarray],
+                           vols_ttms: List[np.ndarray],
+                           optiontypes_ttms: List[np.ndarray],
                            ) -> List[np.ndarray]:
     """
     vectorised bsm vegas for array of aligned strikes, vols, and optiontypes
@@ -242,15 +245,15 @@ def infer_bsm_implied_vol(forward: float,
 def infer_bsm_ivols_from_slice_prices(ttm: float,
                                       forward: float,
                                       discfactor: float,
-                                      strikes_ttm: np.ndarray,
-                                      optiontypes_ttm: np.ndarray,
-                                      model_prices_ttm: np.ndarray,
+                                      strikes: np.ndarray,
+                                      optiontypes: np.ndarray,
+                                      model_prices: np.ndarray,
                                       ) -> np.ndarray:
     """
     vectorised chain ivols
     """
-    model_vol_ttm = np.zeros_like(strikes_ttm)
-    for idx, (strike, model_price, optiontype) in enumerate(zip(strikes_ttm, model_prices_ttm, optiontypes_ttm)):
+    model_vol_ttm = np.zeros_like(strikes)
+    for idx, (strike, model_price, optiontype) in enumerate(zip(strikes, model_prices, optiontypes)):
         model_vol_ttm[idx] = infer_bsm_implied_vol(forward=forward, ttm=ttm, discfactor=discfactor,
                                                    given_price=model_price,
                                                    strike=strike,
@@ -262,20 +265,20 @@ def infer_bsm_ivols_from_slice_prices(ttm: float,
 def infer_bsm_ivols_from_model_chain_prices(ttms: np.ndarray,
                                             forwards: np.ndarray,
                                             discfactors: np.ndarray,
-                                            strikes_ttms: List[np.ndarray, ...],
-                                            optiontypes_ttms: List[np.ndarray, ...],
+                                            strikes_ttms: List[np.ndarray],
+                                            optiontypes_ttms: List[np.ndarray],
                                             model_prices_ttms: List[np.ndarray],
-                                            ) -> List[np.ndarray, ...]:
+                                            ) -> List[np.ndarray]:
     """
     vectorised chain ivols
     """
     model_vol_ttms = List()
-    for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm, model_prices_ttm in zip(ttms, forwards, discfactors, strikes_ttms, optiontypes_ttms, model_prices_ttms):
-        model_vol_ttm = np.zeros_like(strikes_ttm)
-        for idx, (strike, model_price, optiontype) in enumerate(zip(strikes_ttm, model_prices_ttm, optiontypes_ttm)):
-            model_vol_ttm[idx] = infer_bsm_implied_vol(forward=forward, ttm=ttm, discfactor=discfactor,
+    for ttm, forward, discfactor, strikes, optiontypes, model_prices_ttm in zip(ttms, forwards, discfactors, strikes_ttms, optiontypes_ttms, model_prices_ttms):
+        model_vol = np.zeros_like(strikes)
+        for idx, (strike, model_price, optiontype) in enumerate(zip(strikes, model_prices_ttm, optiontypes)):
+            model_vol[idx] = infer_bsm_implied_vol(forward=forward, ttm=ttm, discfactor=discfactor,
                                                        given_price=model_price,
                                                        strike=strike,
                                                        optiontype=optiontype)
-        model_vol_ttms.append(model_vol_ttm)
+        model_vol_ttms.append(model_vol)
     return model_vol_ttms

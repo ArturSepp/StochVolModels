@@ -7,6 +7,8 @@ the rest of interface methods are concrete relying on price_chain
 market options data is passed using data container ChainData
 """
 
+from __future__ import annotations
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,7 +16,7 @@ import seaborn as sns
 from numba.typed import List
 from abc import ABC, abstractmethod
 from scipy import stats
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Tuple, Optional, Dict
 
 from stochvolmodels.pricers.core.config import VariableType
@@ -29,6 +31,10 @@ set_seed(24)
 @dataclass
 class ModelParams:
     pass
+
+    @classmethod
+    def copy(cls, obj: ModelParams) -> ModelParams:
+        return cls(**asdict(obj))
 
 
 class ModelPricer(ABC):
@@ -300,6 +306,7 @@ class ModelPricer(ABC):
                                     params: ModelParams,
                                     is_log_strike_xaxis: bool = False,
                                     headers: Optional[List[str]] = None,
+                                    xvar_format: str = None,
                                     **kwargs
                                     ) -> plt.Figure:
         """
@@ -308,20 +315,32 @@ class ModelPricer(ABC):
         """
         model_ivols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params, **kwargs)
 
-        with sns.axes_style('darkgrid'):
-            fig, axs = plt.subplots(2, 2, figsize=plot.FIGSIZE, tight_layout=True)
+        num_slices = len(option_chain.ttms)
+        if num_slices == 1:
+            with sns.axes_style('darkgrid'):
+                fig, ax = plt.subplots(1, 1, figsize=plot.FIGSIZE, tight_layout=True)
+            axs = np.array([[ax, np.nan], [np.nan, np.nan]])
+        elif num_slices == 2:
+            with sns.axes_style('darkgrid'):
+                fig, axs = plt.subplots(2, 1, figsize=plot.FIGSIZE, tight_layout=True)
+            axs = np.array([[axs[0], np.nan], [axs[1], np.nan]])
+        elif num_slices == 4:
+            with sns.axes_style('darkgrid'):
+                fig, axs = plt.subplots(2, 2, figsize=plot.FIGSIZE, tight_layout=True)
+        else:
+            raise NotImplementedError
 
         atm_vols = option_chain.get_chain_atm_vols()
         for idx, ttm in enumerate(option_chain.ttms):
             if is_log_strike_xaxis:
                 strikes = np.log(option_chain.strikes_ttms[idx] / option_chain.forwards[idx])
                 atm_forward = 0.0
-                xvar_format = '{:0.2f}'
+                xvar_format = xvar_format or '{:0.2f}'
                 strike_name = 'log-strike'
             else:
                 strikes = option_chain.strikes_ttms[idx]
                 atm_forward = option_chain.forwards[idx]
-                xvar_format = '{:0,.0f}'
+                xvar_format = xvar_format or '{:0,.0f}'
                 strike_name = 'strike'
 
             midvols = 0.5 * (option_chain.bid_ivs[idx] + option_chain.ask_ivs[idx])

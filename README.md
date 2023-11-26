@@ -40,9 +40,9 @@ The model interface is in stochvolmodels/pricers/model_pricer.py
 
 ### Log-normal stochastic volatility model <a name="logsv"></a>
 
-The analytics for the lognormal is based on the paper
+The analytics for the log-normal stochastic volatility model is based on the paper
 
-[Log-normal Stochastic Volatility Model with Quadratic Drift: Applications to Assets with Positive Return-Volatility Correlation and to Inverse Martingale Measures](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2522425) by Artur Sepp and Parviz Rakhmonov
+[Log-normal Stochastic Volatility Model with Quadratic Drift](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2522425) by Artur Sepp and Parviz Rakhmonov
 
 
 The dynamics of the log-normal stochastic volatility model:

@@ -21,6 +21,8 @@ from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer, s
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.data.test_option_chain import get_btc_test_chain_data
 
+MAX_PHI = 500
+
 
 @dataclass
 class HawkesJDParams(ModelParams):
@@ -40,13 +42,14 @@ class HawkesJDParams(ModelParams):
     theta_p: float = 6.55
     kappa_p: float = 22.29
     beta1_p: float = 76.0
-    beta2_p: float = -67.58#*0.0
+    beta2_p: float = -67.58
     # minus jumps intensity
     lambda_m: float = 8.50
     theta_m: float = 8.50
     kappa_m: float = 29.0
-    beta1_m: float = 104.55#*0.0
+    beta1_m: float = 104.55
     beta2_m: float = -109.6
+    risk_premia_gamma: float = None
 
     def __post_init__(self):
         self.compensator_p = np.exp(self.shift_p)/(1.0-self.mean_p) - 1.0
@@ -87,29 +90,21 @@ class HawkesJDParams(ModelParams):
         return np.square(self.shift_p) + np.square(self.mean_p)
 
 
-@dataclass
-class RiskPremiaGammas:
-    x: float = 0.0
-    lambda_p: float = 0.0
-    lambda_m: float = 0.0
-
-
 class HawkesJDPricer(ModelPricer):
 
-    @timer
+    # @timer
     def price_chain(self,
                     option_chain: OptionChain,
                     params: HawkesJDParams,
                     is_spot_measure: bool = True,
-                    risk_premia_gammas: RiskPremiaGammas = None,
                     **kwargs
                     ) -> List[np.ndarray]:
         """
         implementation of generic method price_chain using log sv wrapper
         """
-        if risk_premia_gammas is not None:
+        risk_premia_gamma = params.risk_premia_gamma
+        if risk_premia_gamma is not None:
             model_prices = hawkesjd_chain_pricer_with_risk_premia(model_params=params,
-                                                                  risk_premia_gammas=risk_premia_gammas,
                                                                   ttms=option_chain.ttms,
                                                                   forwards=option_chain.forwards,
                                                                   discfactors=option_chain.discfactors,
@@ -143,6 +138,63 @@ class HawkesJDPricer(ModelPricer):
                                         optiontypes_ttms=option_chain.optiontypes_ttms,
                                         nb_path=nb_path,
                                         **params.to_dict())
+
+    # need to ovewrite the base
+    def compute_chain_prices_with_vols(self,
+                                       option_chain: OptionChain,
+                                       params: HawkesJDParams,
+                                       **kwargs
+                                       ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+        """
+        price chain and compute model vols
+        """
+        model_prices = self.price_chain(option_chain=option_chain, params=params, **kwargs)
+        # need to replace forwards with risk-premia forwards
+        if params.risk_premia_gamma is not None:
+            normalizers, model_forwards = hawkesjd_forwards_under_risk_kernel(model_params=params,
+                                                                              risk_premia_gamma=params.risk_premia_gamma,
+                                                                              ttms=option_chain.ttms,
+                                                                              forwards=option_chain.forwards)
+        else:
+            model_forwards = None
+        model_ivols = option_chain.compute_model_ivols_from_chain_data(model_prices=model_prices, forwards=model_forwards)
+        return model_prices, model_ivols
+
+    @timer
+    def simulate_terminal_values(self,
+                                 params: HawkesJDParams,
+                                 ttm: float = 1.0,
+                                 nb_path: int = 100000,
+                                 is_spot_measure: bool = True,
+                                 **kwargs
+                                 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        simulate terminal values
+        """
+        x0 = np.zeros(nb_path)
+        lambda_p0 = params.lambda_p*np.ones(nb_path)
+        lambda_m0 = params.lambda_m*np.ones(nb_path)
+
+        x0, lambda_p0, lambda_m0 = simulate_hawkesjd_terminal(ttm=ttm,
+                                                              x0=x0,
+                                                              lambda_p0=lambda_p0,
+                                                              lambda_m0=lambda_m0,
+                                                              mu=params.mu,
+                                                              sigma=params.sigma,
+                                                              shift_p=params.shift_p,
+                                                              mean_p=params.mean_p,
+                                                              shift_m=params.shift_m,
+                                                              mean_m=params.mean_m,
+                                                              theta_p=params.theta_p,
+                                                              kappa_p=params.kappa_p,
+                                                              beta1_p=params.beta1_p,
+                                                              beta2_p=params.beta2_p,
+                                                              theta_m=params.theta_m,
+                                                              kappa_m=params.kappa_m,
+                                                              beta1_m=params.beta1_m,
+                                                              beta2_m=params.beta2_m,
+                                                              nb_path=nb_path)
+        return x0, lambda_p0, lambda_m0
 
     @timer
     def calibrate_model_params_to_chain(self,
@@ -215,9 +267,63 @@ class HawkesJDPricer(ModelPricer):
         fit_params = unpack_pars(pars=res.x)
         return fit_params
 
+    @timer
+    def calibrate_risk_premia_gamma_to_chain(self,
+                                             option_chain: OptionChain,
+                                             params0: HawkesJDParams,
+                                             is_vega_weighted: bool = True,
+                                             is_unit_ttm_vega: bool = False,
+                                             maxiter: int = 100,
+                                             print_iter: bool = True,
+                                             **kwargs
+                                             ) -> HawkesJDParams:
+        """
+        implementation of model calibration for risk-premia-gamma
+        given initial model params fit sigma0 and risk_premia_gamma
+        """
+        x, y = option_chain.get_chain_data_as_xy()
+        market_vols = to_flat_np_array(y)  # market mid quotes
+        if is_vega_weighted:
+            vegas_ttms = option_chain.get_chain_vegas(is_unit_ttm_vega=is_unit_ttm_vega)
+            vegas_ttms = [vegas_ttm/sum(vegas_ttm) for vegas_ttm in vegas_ttms]
+            weights = 10000.0*to_flat_np_array(vegas_ttms)
+        else:
+            weights = 10000.0*np.ones_like(market_vols)
+        # fitted params are params.risk_premia_gamma and params.sigma
+
+        gamma_scaler = 8.0   # scale by 6 to align with vol and map to (-1.0, 1.0)
+        p0 = np.array([params0.sigma, params0.risk_premia_gamma / gamma_scaler])
+        bounds = ((0.01, 1.5), (-1.0, 1.0))
+
+        def unpack_pars(pars: np.ndarray) -> HawkesJDParams:
+            model_params = params0
+            model_params.sigma = pars[0]
+            model_params.risk_premia_gamma = gamma_scaler*pars[1]  # scale by 5 to align with vol
+            if print_iter:
+                print(f"unpack_pars: sigma={pars[0]}, gamma={model_params.risk_premia_gamma}")
+            return model_params
+
+        def objective(pars: np.ndarray, args: np.ndarray) -> float:
+            params = unpack_pars(pars=pars)
+            model_vols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params)
+            model_vols = to_flat_np_array(model_vols)
+            resid = np.nansum(weights * np.square(model_vols - market_vols))
+            return resid
+
+        constraints = None
+        # eps is Step size used for numerical approximation of the Jacobian.
+        options = {'disp': True, 'ftol': 1e-16, 'maxiter': maxiter, 'eps': 0.025}
+        if constraints is not None:
+            res = minimize(objective, p0, args=None, method='SLSQP', constraints=constraints, bounds=bounds, options=options)
+        else:
+            res = minimize(objective, p0, args=None, method='SLSQP', bounds=bounds, options=options, tol=1e-16)
+
+        fit_params = unpack_pars(pars=res.x)
+        return fit_params
+
 
 def set_vol_scaler(sigma0: float, ttm: float) -> float:
-    return np.minimum(sigma0, 0.3) * np.sqrt(np.minimum(ttm, 0.5 / 12.0))  # lower bound is two w
+    return np.clip(sigma0, 0.2, 0.5) * np.sqrt(np.minimum(ttm, 1.0 / 12.0))  # lower bound is two w
 
 
 def hawkesjd_chain_pricer(model_params: HawkesJDParams,
@@ -240,7 +346,7 @@ def hawkesjd_chain_pricer(model_params: HawkesJDParams,
         vol_scaler = set_vol_scaler(sigma0=model_params.sigma, ttm=np.min(ttms))
 
     phi_grid, psi_grid, theta_grid = mgfp.get_transform_var_grid(variable_type=variable_type,
-                                                                 is_spot_measure=is_spot_measure,
+                                                                 max_phi=MAX_PHI,
                                                                  vol_scaler=vol_scaler)
     a_t0 = np.zeros((phi_grid.shape[0], 3), dtype=np.complex128)
     ttm0 = 0.0
@@ -277,7 +383,6 @@ def hawkesjd_chain_pricer(model_params: HawkesJDParams,
 
 
 def hawkesjd_chain_pricer_with_risk_premia(model_params: HawkesJDParams,
-                                           risk_premia_gammas: RiskPremiaGammas,
                                            ttms: np.ndarray,
                                            forwards: np.ndarray,
                                            discfactors: np.ndarray,
@@ -292,34 +397,31 @@ def hawkesjd_chain_pricer_with_risk_premia(model_params: HawkesJDParams,
     wrapper to price option chain on variable_type
     to do: do numba implementation using numba consistent solver
     """
-    print('risk_premia_gammas')
+    # print(f"chain pricer risk_premia_gamma = {model_params.risk_premia_gamma}")
     # starting values
     if vol_scaler is None:  # for calibrations we fix one vol_scaler so the grid is not affected by v0
         vol_scaler = set_vol_scaler(sigma0=model_params.sigma, ttm=np.min(ttms))
 
-    phi_grid, psi_grid, theta_grid = mgfp.get_transform_var_grid(variable_type=variable_type,
-                                                                 is_spot_measure=is_spot_measure,
-                                                                 vol_scaler=vol_scaler,
-                                                                 real_phi=-0.5-risk_premia_gammas.x)
-    a_t0 = np.zeros((phi_grid.shape[0], 3), dtype=np.complex128)
-    a_t0[:, 1] = risk_premia_gammas.lambda_p
-    a_t0[:, 2] = risk_premia_gammas.lambda_m
+    risk_premia_gamma = model_params.risk_premia_gamma
+    # 1. compute normalizers and forwards
+    normalizers, gamma_forwards = hawkesjd_forwards_under_risk_kernel(model_params=model_params,
+                                                                      forwards=forwards,
+                                                                      risk_premia_gamma=risk_premia_gamma,
+                                                                      ttms=ttms)
 
+    phi_grid, psi_grid, theta_grid = mgfp.get_transform_var_grid(variable_type=variable_type,
+                                                                 max_phi=MAX_PHI,
+                                                                 vol_scaler=vol_scaler,
+                                                                 real_phi=-0.5-risk_premia_gamma)
+    a_t0 = np.zeros((phi_grid.shape[0], 3), dtype=np.complex128)
     ttm0 = 0.0
 
     # outputs as numpy lists
     model_prices_ttms = List()
-    for ttm, forward, strikes_ttm, optiontypes_ttm, discfactor in zip(ttms, forwards, strikes_ttms,
-                                                                      optiontypes_ttms, discfactors):
-
-        a_t1_, log_mgf1_ = compute_hawkes_a_mgf_grid(phi_grid=np.array([risk_premia_gammas.x]), ttm=ttm,
-                                                     model_params=model_params,
-                                                     a1_t0=a_t0[0, :],
-                                                     is_stiff_solver=True)
-        normalizer = np.exp(np.real(log_mgf1_))[0]
-        print(normalizer)
-
+    for ttm, forward, strikes_ttm, optiontypes_ttm, normalizer, gamma_forward in zip(ttms, forwards, strikes_ttms,
+                                                                                     optiontypes_ttms, normalizers, gamma_forwards):
         a_t0, log_mgf_grid = compute_hawkes_a_mgf_grid(ttm=ttm - ttm0,
+                                                       risk_premia_gamma=risk_premia_gamma,
                                                        phi_grid=phi_grid,
                                                        psi_grid=psi_grid,
                                                        theta_grid=theta_grid,
@@ -328,15 +430,16 @@ def hawkesjd_chain_pricer_with_risk_premia(model_params: HawkesJDParams,
                                                        model_params=model_params)
 
         if variable_type == VariableType.LOG_RETURN:
-            option_prices = mgfp.slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
-                                                            phi_grid=phi_grid,
-                                                            ttm=ttm,
-                                                            forward=forward,
-                                                            strikes=strikes_ttm,
-                                                            optiontypes=optiontypes_ttm,
-                                                            discfactor=discfactor,
-                                                            is_spot_measure=is_spot_measure,
-                                                            normalizer=normalizer)
+            option_prices = mgfp.slice_pricer_with_mgf_grid_with_gamma(log_mgf_grid=log_mgf_grid,
+                                                                       phi_grid=phi_grid,
+                                                                       risk_premia_gamma=risk_premia_gamma,
+                                                                       ttm=ttm,
+                                                                       forward=forward,
+                                                                       normalizer=normalizer,
+                                                                       gamma_forward=gamma_forward,
+                                                                       strikes=strikes_ttm,
+                                                                       optiontypes=optiontypes_ttm,
+                                                                       is_spot_measure=is_spot_measure)
         else:
             raise NotImplementedError
 
@@ -344,6 +447,37 @@ def hawkesjd_chain_pricer_with_risk_premia(model_params: HawkesJDParams,
         ttm0 = ttm
 
     return model_prices_ttms
+
+
+def hawkesjd_forwards_under_risk_kernel(model_params: HawkesJDParams,
+                                        risk_premia_gamma: float,
+                                        ttms: np.ndarray,
+                                        forwards: np.ndarray,
+                                        is_stiff_solver: bool = False
+                                        ) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    given time series params and gammas compute forward under risk kernel
+    """
+    phi_grid = np.array([-risk_premia_gamma])
+    # outputs as numpy lists
+    normalizers, gamma_forwards = np.ones_like(ttms), np.ones_like(ttms)
+    for idx, (ttm, forward) in enumerate(zip(ttms, forwards)):
+        # a_t0 should be restarted
+        a_t0, log_mgf_grid0 = compute_hawkes_a_mgf_grid(ttm=ttm,
+                                                        phi_grid=phi_grid,
+                                                        a_t0=np.zeros((phi_grid.shape[0], 3), dtype=np.complex128),
+                                                        is_stiff_solver=is_stiff_solver,
+                                                        model_params=model_params)
+        a_t1, log_mgf_grid1 = compute_hawkes_a_mgf_grid(ttm=ttm,
+                                                        phi_grid=phi_grid-1.0,
+                                                        a_t0=np.zeros((phi_grid.shape[0], 3), dtype=np.complex128),
+                                                        is_stiff_solver=is_stiff_solver,
+                                                        model_params=model_params)
+        normalizer = 1.0 / np.exp(np.real(log_mgf_grid0))
+        gamma_forward = forward * np.exp(np.real(log_mgf_grid1)) * normalizer
+        normalizers[idx] = normalizer[0]
+        gamma_forwards[idx] = gamma_forward[0]
+    return normalizers, gamma_forwards
 
 
 def compute_hawkes_a_mgf_grid(ttm: float,
@@ -479,6 +613,7 @@ def hawkesjd_mc_chain_pricer(ttms: np.ndarray,
                              kappa_m: float,
                              beta1_m: float,
                              beta2_m: float,
+                             risk_premia_gamma: float = 0.0,
                              nb_path: int = 100000,
                              variable_type: VariableType = VariableType.LOG_RETURN
                              ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
@@ -562,7 +697,7 @@ def simulate_hawkesjd_terminal(ttm: float,
         assert lambda_m0.shape[0] == nb_path
 
     # vars
-    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, year_days=5*360)  # need small dt step for large intensities
+    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, nb_steps=int(5*360))  # need small dt step for large intensities
     W0 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))
     U_P = -np.log(np.random.uniform(low=1e-16, high=1.0, size=(nb_steps, nb_path)))/dt
     U_M = -np.log(np.random.uniform(low=1e-16, high=1.0, size=(nb_steps, nb_path)))/dt
@@ -586,25 +721,6 @@ def simulate_hawkesjd_terminal(ttm: float,
         lambda_m0 = lambda_m0 + kappa_m*(theta_m-lambda_m0)*dt + load_m
 
     return x0, lambda_p0, lambda_m0
-
-
-def solve_esscher_transform(params: HawkesJDParams,
-                            ttm: float,
-                            risk_premia_gammas: RiskPremiaGammas,
-                            target_x: float = 0.0
-                            ) -> RiskPremiaGammas:
-    # these are fied for phis
-    a1_t0 = np.zeros((2, 3), dtype=np.complex128)
-    a1_t0[0, 0], a1_t0[0, 1], a1_t0[0, 2] = 0.0, risk_premia_gammas.lambda_p, risk_premia_gammas.lambda_m
-    a1_t0[1, 0], a1_t0[1, 1], a1_t0[1, 2] = 0.0, risk_premia_gammas.lambda_p, risk_premia_gammas.lambda_m
-
-    def func(x: float) -> float:
-        phi_grid = -1.0*np.array([x, x+1.0])
-        a_t1, log_mgf1 = compute_hawkes_a_mgf_grid(phi_grid=phi_grid, ttm=ttm, model_params=params, a1_t0=a1_t0, is_stiff_solver=True)
-        return np.real(log_mgf1[1]-log_mgf1[0]) - target_x
-    gamma = fsolve(func, x0=np.array([0.0]))
-    risk_premia_gammas.x = gamma[0]
-    return risk_premia_gammas
 
 
 class UnitTests(Enum):
