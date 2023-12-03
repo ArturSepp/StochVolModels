@@ -131,6 +131,7 @@ class UnitTests(Enum):
     AUTOCORRELATION_PLOTS = 2
     SS_DENSITY_PLOTS = 3
     VOL_BETA_PLOTS = 4
+    MODEL_PARAMS_TABLE = 5
 
 
 def run_unit_test(unit_test: UnitTests):
@@ -141,8 +142,8 @@ def run_unit_test(unit_test: UnitTests):
     vix_log_params = LogSvParams(sigma0=0.19928505844247962, theta=0.19928505844247962, kappa1=1.2878835150774184,
                                  kappa2=1.9267876555824357, beta=0.0, volvol=0.7210463316739526)
 
-    move_log_params = LogSvParams(sigma0=0.8926700265072004, theta=0.8926700265072004, kappa1=0.25,
-                                  kappa2=0.25000056586346253, beta=0.0, volvol=0.370404620837577)
+    move_log_params = LogSvParams(sigma0=0.9109917133860931, theta=0.9109917133860931, kappa1=0.1,
+                                  kappa2=0.41131244621275886, beta=0.0, volvol=0.3564212939473691)
 
     ovx_log_params = LogSvParams(sigma0=0.3852514800317871, theta=0.3852514800317871, kappa1=2.7774564907918027,
                                  kappa2=2.2351296851221107, beta=0.0, volvol=0.8344408577025486)
@@ -179,12 +180,21 @@ def run_unit_test(unit_test: UnitTests):
         if is_save:
             qis.save_fig(fig, file_name='vol_beta', local_path=local_path)
 
+    elif unit_test == UnitTests.MODEL_PARAMS_TABLE:
+        data = {ticker: model_param.to_dict() for ticker, model_param in model_params.items() }
+        df = pd.DataFrame.from_dict(data, orient='columns')
+        df = df.drop(['sigma0', 'beta'], axis=0)
+        dfs = qis.df_to_str(df=df)
+        print(dfs)
+        text = dfs.to_latex()
+        print(text)
+
     plt.show()
 
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.VOL_BETA_PLOTS
+    unit_test = UnitTests.MODEL_PARAMS_TABLE
 
     is_run_all_tests = False
     if is_run_all_tests:

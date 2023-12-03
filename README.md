@@ -11,11 +11,27 @@ For the analytic implementation of stochastic volatility models, the package pro
 1) Interface for analytical pricing of vanilla options using Fourier transform with closed-form solution for moment generating function
 2) Interface for Monte-Carlo simulations of model dynamics
 
+## Illustrations
+
+As illustrations of different analytics, this packadge includes the computations and visualisations
+for 
+
+1) Log-normal Stochastic Volatility Model with Quadratic Drift by Sepp A and Rakhmonov P, SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2522425
+```python 
+stochvolmodels/my_papers/logsv_model_wtih_quadratic_drift
+```
+
+
+2) What is a robust stochastic volatility model by Sepp A and Rakhmonov P, SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027
+```python 
+stochvolmodels/my_papers/volatility_models
+```
+
+
 ## Installation
 ```python 
 pip install stochvolmodels
 ```
-
 
 # Table of contents
 1. [Model Interface](#introduction)

@@ -74,6 +74,9 @@ def fit_autocorr_logsv(vol: pd.Series,
                        num_lags: int = 60,
                        ttm: float = 10.0
                        ) -> LogSvParams:
+    """
+    fit autocorrelation of log sv model using MC simulations
+    """
     # fix brownians
     nb_steps = int(260*ttm)
     brownians = get_brownians(nb_steps=nb_steps, nb_path=nb_path)
@@ -100,7 +103,7 @@ def fit_autocorr_logsv(vol: pd.Series,
 
     options = {'disp': True, 'ftol': 1e-8}
     p0 = np.array([2.0, 2.0])
-    bounds = ((0.25, 10), (0.25, 10))
+    bounds = ((0.1, 10), (0.1, 10))
     res = minimize(objective, p0, args=None, method='SLSQP', bounds=bounds, options=options)
 
     fit_params = unpack_pars(pars=res.x)
@@ -167,8 +170,8 @@ def run_unit_test(unit_test: UnitTests):
     vix_log_params = LogSvParams(sigma0=0.19928505844247962, theta=0.19928505844247962, kappa1=1.2878835150774184,
                                  kappa2=1.9267876555824357, beta=0.0, volvol=0.7210463316739526)
 
-    move_log_params = LogSvParams(sigma0=0.8926700265072004, theta=0.8926700265072004, kappa1=0.25,
-                                  kappa2=0.25000056586346253, beta=0.0, volvol=0.370404620837577)
+    move_log_params = LogSvParams(sigma0=0.9109917133860931, theta=0.9109917133860931,
+                                  kappa1=0.1, kappa2=0.41131244621275886, beta=0.0, volvol=0.3564212939473691)
 
     ovx_log_params = LogSvParams(sigma0=0.3852514800317871, theta=0.3852514800317871, kappa1=2.7774564907918027,
                                  kappa2=2.2351296851221107, beta=0.0, volvol=0.8344408577025486)
@@ -196,7 +199,7 @@ def run_unit_test(unit_test: UnitTests):
         print(pf)
 
     elif unit_test == UnitTests.FIT_AUTOCORR_LOGSV:
-        vol, returns = fetch_ohlc_vol(ticker='OVX')
+        vol, returns = fetch_ohlc_vol(ticker='MOVE')
         fit_params = fit_autocorr_logsv(vol=vol, nb_path=nb_path, num_lags=num_lags, ttm=ttm)
         print(f"fit_params={fit_params}")
         autocorr_fit_report_logsv(params=fit_params, vol=vol, nb_path=nb_path, num_lags=num_lags, ttm=ttm)
@@ -214,7 +217,7 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.AUTOCORR_POWER
+    unit_test = UnitTests.FIT_AUTOCORR_LOGSV
 
     is_run_all_tests = False
     if is_run_all_tests:
