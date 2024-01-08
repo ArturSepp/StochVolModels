@@ -56,11 +56,16 @@ from stochvolmodels.pricers.logsv_pricer import (
     LOGSV_BTC_PARAMS,
     LogSVPricer,
     LogSvParams,
-    ModelCalibrationType,
+    LogsvModelCalibrationType,
     ConstraintsType
 )
 
 from stochvolmodels.data.option_chain import OptionChain, OptionSlice
+
+from stochvolmodels.data.fetch_option_chain import (generate_vol_chain_np,
+                                                    load_option_chain,
+                                                    sample_option_chain_at_times,
+                                                    load_price_data)
 
 from stochvolmodels.data.test_option_chain import (
     get_btc_test_chain_data,
@@ -90,6 +95,40 @@ from stochvolmodels.utils.plots import (
     set_subplot_border,
     set_y_limits,
     vol_slice_fit
+)
+
+
+from stochvolmodels.pricers.core.mgf_pricer import (
+    compute_integration_weights,
+    digital_slice_pricer_with_mgf_grid,
+    get_phi_grid,
+    get_psi_grid,
+    get_theta_grid,
+    get_transform_var_grid,
+    pdf_with_mgf_grid,
+    slice_pricer_with_mgf_grid_with_gamma,
+    slice_qvar_pricer_with_a_grid,
+    vanilla_slice_pricer_with_mgf_grid,
+    slice_pricer_with_mgf_grid_with_gamma,
+)
+
+from stochvolmodels.pricers.logsv.affine_expansion import (
+    ExpansionOrder,
+    VariableType,
+    compute_logsv_a_mgf_grid,
+    func_a_ode_quadratic_terms,
+    func_rhs,
+    func_rhs_jac,
+    get_expansion_n,
+    get_init_conditions_a,
+    solve_a_ode_grid,
+    solve_analytic_ode_for_a,
+    solve_analytic_ode_for_a0,
+    solve_analytic_ode_grid_phi,
+    solve_ode_for_a,
+    compute_logsv_a_mgf_grid,
+    solve_a_ode_grid,
+    solve_ode_for_a,
 )
 
 from stochvolmodels.pricers.core.config import VariableType

@@ -365,14 +365,13 @@ def hawkesjd_chain_pricer(model_params: HawkesJDParams,
                                                        model_params=model_params)
 
         if variable_type == VariableType.LOG_RETURN:
-            option_prices = mgfp.slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
-                                                            phi_grid=phi_grid,
-                                                            ttm=ttm,
-                                                            forward=forward,
-                                                            strikes=strikes_ttm,
-                                                            optiontypes=optiontypes_ttm,
-                                                            discfactor=discfactor,
-                                                            is_spot_measure=is_spot_measure)
+            option_prices = mgfp.vanilla_slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
+                                                                    phi_grid=phi_grid,
+                                                                    forward=forward,
+                                                                    strikes=strikes_ttm,
+                                                                    optiontypes=optiontypes_ttm,
+                                                                    discfactor=discfactor,
+                                                                    is_spot_measure=is_spot_measure)
         else:
             raise NotImplementedError
 

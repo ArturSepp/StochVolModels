@@ -29,9 +29,10 @@ from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.data.test_option_chain import get_btc_test_chain_data
 
 
-class ModelCalibrationType(Enum):
-    PARAMS5 = 1  # v0, theta, kappa1, beta, volvol
-    PARAMS6 = 2  # v0, theta, kappa1, kappa2, beta, volvol
+class LogsvModelCalibrationType(Enum):
+    PARAMS4 = 1  # v0, theta, beta, volvol; kappa1, kappa2 are set externally
+    PARAMS5 = 2  # v0, theta, kappa1, beta, volvol
+    PARAMS6 = 3  # v0, theta, kappa1, kappa2, beta, volvol
 
 
 class ConstraintsType(Enum):
@@ -59,8 +60,12 @@ class LogSvParams(ModelParams):
             self.kappa2 = self.kappa1 / self.theta
 
     def to_dict(self) -> Dict[str, Any]:
-        #         return dict(sigma0=self.sigma0, theta=self.theta, kappa1=self.kappa1, kappa2=self.kappa2, beta=self.beta, volvol=self.volvol)
         return asdict(self)
+
+    def to_str(self) -> str:
+        return f"sigma0={self.sigma0:0.2f}, theta={self.theta:0.2f}, kappa1={self.kappa1:0.2f}, kappa2={self.kappa2:0.2f}, " \
+               f"beta={self.beta:0.2f}, volvol={self.volvol:0.2f}"
+
     @property
     def kappa(self) -> float:
         return self.kappa1+self.kappa2*self.theta
@@ -87,24 +92,35 @@ class LogSvParams(ModelParams):
         """
         return self.kappa1 * self.theta / self.vartheta2 - 1.0
 
-    def get_x_grid(self, ttm: float = 1.0, n_stdevs: int = 3, n: int = 200) -> np.ndarray:
+    def get_x_grid(self, ttm: float = 1.0, n_stdevs: float = 3.0, n: int = 200) -> np.ndarray:
+        """
+        spacial grid to compute density of x
+        """
         sigma_t = np.sqrt(ttm * 0.5 * (np.square(self.sigma0) + np.square(self.theta)))
         drift = - 0.5*sigma_t*sigma_t
         stdev = (n_stdevs+1)*sigma_t
         return np.linspace(-stdev+drift, stdev+drift, n)
 
-    def get_sigma_grid(self, ttm: float = 1.0, n_stdevs: int = 3, n: int = 200) -> np.ndarray:
-        sigma_t = np.sqrt(ttm * 0.5 * (np.square(self.sigma0) + np.square(self.theta)))
-        vvol = np.sqrt(self.vartheta2/np.abs(2.0*self.kappa1))
+    def get_sigma_grid(self, ttm: float = 1.0, n_stdevs: float = 3.0, n: int = 200) -> np.ndarray:
+        """
+        spacial grid to compute density of sigma
+        """
+        sigma_t = np.sqrt(0.5*(np.square(self.sigma0) + np.square(self.theta)))
+        vvol = 0.5*np.sqrt(self.vartheta2*ttm)
         return np.linspace(0.0, sigma_t+n_stdevs*vvol, n)
 
-    def get_qvar_grid(self, ttm: float = 1.0, n_stdevs: int = 3, n: int = 200) -> np.ndarray:
-        sigma_t = np.sqrt(ttm * 0.5 * (np.square(self.sigma0) + np.square(self.theta)))
-        vvol = np.sqrt(self.vartheta2/np.abs(2.0*self.kappa1))
+    def get_qvar_grid(self, ttm: float = 1.0, n_stdevs: float = 3.0, n: int = 200) -> np.ndarray:
+        """
+        spacial grid to compute density of i
+        """
+        sigma_t = np.sqrt(ttm * (np.square(self.sigma0) + np.square(self.theta)))
+        vvol = np.sqrt(self.vartheta2)*ttm
         return np.linspace(0.0, sigma_t+n_stdevs*vvol, n)
 
     def get_variable_space_grid(self, variable_type: VariableType = VariableType.LOG_RETURN,
-                                ttm: float = 1.0, n_stdevs: int = 3, n: int = 200
+                                ttm: float = 1.0,
+                                n_stdevs: float = 3,
+                                n: int = 200
                                 ) -> np.ndarray:
         if variable_type == VariableType.LOG_RETURN:
             return self.get_x_grid(ttm=ttm, n_stdevs=n_stdevs, n=n)
@@ -176,7 +192,7 @@ LOGSV_BTC_PARAMS = LogSvParams(sigma0=0.8376, theta=1.0413, kappa1=3.1844, kappa
 
 class LogSVPricer(ModelPricer):
 
-    @timer
+    # @timer
     def price_chain(self,
                     option_chain: OptionChain,
                     params: LogSvParams,
@@ -200,7 +216,10 @@ class LogSVPricer(ModelPricer):
     def model_mc_price_chain(self,
                              option_chain: OptionChain,
                              params: LogSvParams,
+                             is_spot_measure: bool = True,
+                             variable_type: VariableType = VariableType.LOG_RETURN,
                              nb_path: int = 100000,
+                             nb_steps: Optional[int] = None,
                              **kwargs
                              ) -> (List[np.ndarray], List[np.ndarray]):
         return logsv_mc_chain_pricer(v0=params.sigma0,
@@ -214,25 +233,35 @@ class LogSVPricer(ModelPricer):
                                      discfactors=option_chain.discfactors,
                                      strikes_ttms=option_chain.strikes_ttms,
                                      optiontypes_ttms=option_chain.optiontypes_ttms,
+                                     is_spot_measure=is_spot_measure,
+                                     variable_type=variable_type,
                                      nb_path=nb_path,
-                                     **kwargs)
+                                     nb_steps=nb_steps or int(360*np.max(option_chain.ttms))+1)
+
+    def set_vol_scaler(self, option_chain: OptionChain) -> float:
+        """
+        use chain vols to set the scaler
+        """
+        atm0 = option_chain.get_chain_atm_vols()[0]
+        ttm0 = option_chain.ttms[0]
+        return set_vol_scaler(sigma0=atm0, ttm=ttm0)
 
     @timer
     def calibrate_model_params_to_chain(self,
                                         option_chain: OptionChain,
-                                        params0: LogSvParams = None,
+                                        params0: LogSvParams,
+                                        params_min: LogSvParams = LogSvParams(sigma0=0.1, theta=0.1, kappa1=0.25, kappa2=0.25, beta=-3.0, volvol=0.2),
+                                        params_max: LogSvParams = LogSvParams(sigma0=1.5, theta=1.5, kappa1=10.0, kappa2=10.0, beta=3.0, volvol=3.0),
                                         is_vega_weighted: bool = True,
                                         is_unit_ttm_vega: bool = False,
-                                        model_calibration_type: ModelCalibrationType = ModelCalibrationType.PARAMS5,
+                                        model_calibration_type: LogsvModelCalibrationType = LogsvModelCalibrationType.PARAMS5,
                                         constraints_type: ConstraintsType = ConstraintsType.UNCONSTRAINT,
                                         **kwargs
                                         ) -> LogSvParams:
         """
         implementation of model calibration interface with nonlinear constraints
         """
-        atm0 = option_chain.get_chain_atm_vols()[0]
-        ttm0 = option_chain.ttms[0]
-        vol_scaler = set_vol_scaler(sigma0=atm0, ttm=ttm0)
+        vol_scaler = self.set_vol_scaler(option_chain=option_chain)
 
         x, market_vols = option_chain.get_chain_data_as_xy()
         market_vols = to_flat_np_array(market_vols)  # market mid quotes
@@ -245,40 +274,62 @@ class LogSVPricer(ModelPricer):
         else:
             weights = np.ones_like(market_vols)
 
-        if model_calibration_type == ModelCalibrationType.PARAMS5:
-            # fit: v0, theta, kappa1, beta, volvol; kappa2 is mapped as kappa1 / theta
-            if params0 is not None:
-                p0 = np.array([params0.sigma0, params0.theta, params0.kappa1, params0.beta, params0.volvol])
+        def parse_model_params(pars: np.ndarray) -> LogSvParams:
+            if model_calibration_type == LogsvModelCalibrationType.PARAMS4:
+                fit_params = LogSvParams(sigma0=pars[0],
+                                         theta=pars[1],
+                                         kappa1=params0.kappa1,
+                                         kappa2=params0.kappa2,
+                                         beta=pars[2],
+                                         volvol=pars[3])
+            elif model_calibration_type == LogsvModelCalibrationType.PARAMS5:
+                fit_params = LogSvParams(sigma0=pars[0],
+                                         theta=pars[1],
+                                         kappa1=pars[2],
+                                         kappa2=None,
+                                         beta=pars[3],
+                                         volvol=pars[4])
             else:
-                p0 = np.array([0.8, 0.8, 4.0, -0.2, 2.0])
-            bounds = ((0.01, 2.0), (0.01, 2.0), (0.5, 7.0), (-5.0, 3.0), (0.1, 10.0))
+                raise NotImplementedError(f"{model_calibration_type}")
+            return fit_params
 
-            def objective(pars: np.ndarray, args: np.ndarray) -> float:
-                v0, theta, kappa1, beta, volvol = pars[0], pars[1], pars[2], pars[3], pars[4]
-                params = LogSvParams(sigma0=v0, theta=theta, kappa1=kappa1, kappa2=None, beta=beta, volvol=volvol)
-                model_vols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params, vol_scaler=vol_scaler)
-                resid = np.nansum(weights * np.square(to_flat_np_array(model_vols) - market_vols))
-                return resid
+        def objective(pars: np.ndarray, args: np.ndarray) -> float:
+            params = parse_model_params(pars=pars)
+            model_vols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params, vol_scaler=vol_scaler)
+            resid = np.nansum(weights * np.square(to_flat_np_array(model_vols) - market_vols))
+            return resid
 
-            def martingale_measure(pars: np.ndarray) -> float:
-                v0, theta, kappa1, beta, volvol = pars[0], pars[1], pars[2], pars[3], pars[4]
-                return kappa1 / theta - beta
+        # parametric constraints
+        def martingale_measure(pars: np.ndarray) -> float:
+            params = parse_model_params(pars=pars)
+            return params.kappa2 - params.beta
 
-            def inverse_measure(pars: np.ndarray) -> float:
-                v0, theta, kappa1, beta, volvol = pars[0], pars[1], pars[2], pars[3], pars[4]
-                return kappa1 / theta - 2.0*beta
+        def inverse_measure(pars: np.ndarray) -> float:
+            params = parse_model_params(pars=pars)
+            return params.kappa2 - 2.0 * params.beta
 
-            def vol_4thmoment_finite(pars: np.ndarray) -> float:
-                v0, theta, kappa1, beta, volvol = pars[0], pars[1], pars[2], pars[3], pars[4]
-                vartheta2 = beta*beta + volvol*volvol
-                kappa2 = kappa1 / theta
-                kappa = kappa1 + kappa2 * theta
-                return kappa - 1.5*vartheta2
+        def vol_4thmoment_finite(pars: np.ndarray) -> float:
+            params = parse_model_params(pars=pars)
+            kappa = params.kappa1 + params.kappa2 * params.theta
+            return kappa - 1.5 * params.vartheta2
 
-            def kurtosis_finite(pars: np.ndarray) -> float:
-                v0, theta, kappa1, beta, volvol = pars[0], pars[1], pars[2], pars[3], pars[4]
-                vartheta2 = beta*beta + volvol*volvol
-                return kappa1 - 1.5*vartheta2
+        # set initial params
+        if model_calibration_type == LogsvModelCalibrationType.PARAMS4:
+            # fit: v0, theta, beta, volvol; kappa1, kappa2 is given with params0
+            p0 = np.array([params0.sigma0, params0.theta, params0.beta, params0.volvol])
+            bounds = ((params_min.sigma0, params_max.sigma0),
+                      (params_min.theta, params_max.theta),
+                      (params_min.beta, params_max.beta),
+                      (params_min.volvol, params_max.volvol))
+
+        elif model_calibration_type == LogsvModelCalibrationType.PARAMS5:
+            # fit: v0, theta, kappa1, beta, volvol; kappa2 is mapped as kappa1 / theta
+            p0 = np.array([params0.sigma0, params0.theta, params0.kappa1, params0.beta, params0.volvol])
+            bounds = ((params_min.sigma0, params_max.sigma0),
+                      (params_min.theta, params_max.theta),
+                      (params_min.kappa1, params_max.kappa1),
+                      (params_min.beta, params_max.beta),
+                      (params_min.volvol, params_max.volvol))
 
         else:
             raise NotImplementedError(f"{model_calibration_type}")
@@ -318,18 +369,7 @@ class LogSVPricer(ModelPricer):
         else:
             res = minimize(objective, p0, args=None, method='SLSQP', bounds=bounds, options=options)
 
-        popt = res.x
-
-        if model_calibration_type == ModelCalibrationType.PARAMS5:
-            fit_params = LogSvParams(sigma0=popt[0],
-                                     theta=popt[1],
-                                     kappa1=popt[2],
-                                     kappa2=None,
-                                     beta=popt[3],
-                                     volvol=popt[4])
-
-        else:
-            raise NotImplementedError(f"{model_calibration_type}")
+        fit_params = parse_model_params(pars=res.x)
 
         return fit_params
 
@@ -340,12 +380,14 @@ class LogSVPricer(ModelPricer):
                            ttm: float = 1.0,
                            nb_path: int = 100000,
                            is_spot_measure: bool = True,
-                           nb_steps: int = 360,
+                           nb_steps: int = None,
+                           year_days: int = 360,
                            **kwargs
                            ) -> Tuple[np.ndarray, np.ndarray]:
         """
         simulate vols in dt_path grid
         """
+        nb_steps = nb_steps or int(np.ceil(year_days * ttm))
         sigma_t, grid_t = simulate_vol_paths(ttm=ttm,
                                              v0=params.sigma0,
                                              theta=params.theta,
@@ -448,7 +490,8 @@ def logsv_chain_pricer(params: LogSvParams,
                        is_spot_measure: bool = True,
                        expansion_order: ExpansionOrder = ExpansionOrder.SECOND,
                        variable_type: VariableType = VariableType.LOG_RETURN,
-                       vol_scaler: float = None
+                       vol_scaler: float = None,
+                       **kwargs
                        ) -> List[np.ndarray]:
     """
     wrapper to price option chain on variable_type
@@ -481,14 +524,13 @@ def logsv_chain_pricer(params: LogSvParams,
                                                           **params.to_dict())
 
         if variable_type == VariableType.LOG_RETURN:
-            option_prices = mgfp.slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
-                                                            phi_grid=phi_grid,
-                                                            ttm=ttm,
-                                                            forward=forward,
-                                                            strikes=strikes_ttm,
-                                                            optiontypes=optiontypes_ttm,
-                                                            discfactor=discfactor,
-                                                            is_spot_measure=is_spot_measure)
+            option_prices = mgfp.vanilla_slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
+                                                                    phi_grid=phi_grid,
+                                                                    forward=forward,
+                                                                    strikes=strikes_ttm,
+                                                                    optiontypes=optiontypes_ttm,
+                                                                    discfactor=discfactor,
+                                                                    is_spot_measure=is_spot_measure)
 
         elif variable_type == VariableType.Q_VAR:
             option_prices = mgfp.slice_qvar_pricer_with_a_grid(log_mgf_grid=log_mgf_grid,
@@ -552,19 +594,24 @@ def logsv_pdfs(params: LogSvParams,
     if variable_type == VariableType.LOG_RETURN:
         transform_var_grid = phi_grid
         shift = 0.0
-    elif variable_type == VariableType.Q_VAR:
+        scale = 1.0
+    elif variable_type == VariableType.Q_VAR:  # scaled by ttm
         transform_var_grid = psi_grid
         shift = 0.0
+        scale = 1.0 / ttm
     elif variable_type == VariableType.SIGMA:
         transform_var_grid = theta_grid
         shift = params.theta
+        scale = 1.0
     else:
         raise NotImplementedError
 
     pdf = mgfp.pdf_with_mgf_grid(log_mgf_grid=log_mgf_grid,
                                  transform_var_grid=transform_var_grid,
                                  space_grid=space_grid,
-                                 shift=shift)
+                                 shift=shift,
+                                 scale=scale)
+    pdf = pdf / scale
     return pdf
 
 
@@ -582,9 +629,9 @@ def logsv_mc_chain_pricer(ttms: np.ndarray,
                           volvol: float,
                           is_spot_measure: bool = True,
                           nb_path: int = 100000,
+                          nb_steps: int = 360,
                           variable_type: VariableType = VariableType.LOG_RETURN
                           ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
-
     # starting values
     x0 = np.zeros(nb_path)
     qvar0 = np.zeros(nb_path)
@@ -605,6 +652,7 @@ def logsv_mc_chain_pricer(ttms: np.ndarray,
                                                           beta=beta,
                                                           volvol=volvol,
                                                           nb_path=nb_path,
+                                                          nb_steps=nb_steps,
                                                           is_spot_measure=is_spot_measure)
         ttm0 = ttm
         option_prices, option_std = compute_mc_vars_payoff(x0=x0, sigma0=sigma0, qvar0=qvar0,
@@ -676,7 +724,9 @@ def simulate_logsv_x_vol_terminal(ttm: float,
                                   nb_path: int = 100000,
                                   nb_steps: int = 360
                                   ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-
+    """
+    mc simulator for terminal values of log-return, vol sigma0, and qvar for log sv model
+    """
     if x0.shape[0] == 1:  # initial value
         x0 = x0*np.zeros(nb_path)
     else:
@@ -706,9 +756,10 @@ def simulate_logsv_x_vol_terminal(ttm: float,
     for t_, (w0, w1) in enumerate(zip(W0, W1)):
         sigma0_2dt = sigma0 * sigma0 * dt
         x0 = x0 + alpha * 0.5 * sigma0_2dt + sigma0 * w0
-        qvar0 = qvar0 + sigma0_2dt
         vol_var = vol_var + ((kappa1 * theta / sigma0 - kappa1) + kappa2*(theta-sigma0) + adj*sigma0 - 0.5*vartheta2) * dt + beta*w0+volvol*w1
         sigma0 = np.exp(vol_var)
+        qvar0 = qvar0 + 0.5*(sigma0_2dt+sigma0 * sigma0 * dt)
+
 
     return x0, sigma0, qvar0
 

@@ -9,7 +9,9 @@ from ...pricers.core.config import VariableType
 
 
 @njit(cache=False, fastmath=True)
-def compute_mc_vars_payoff(x0: np.ndarray, sigma0: np.ndarray, qvar0: np.ndarray,
+def compute_mc_vars_payoff(x0: np.ndarray,
+                           sigma0: np.ndarray,
+                           qvar0: np.ndarray,
                            ttm: float,
                            forward: float,
                            strikes_ttm: np.ndarray,

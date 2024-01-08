@@ -4,8 +4,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import qis
 import seaborn as sns
-from enum import Enum
 from typing import Dict, List
+from enum import Enum
 
 # package
 from stochvolmodels.pricers.logsv_pricer import LogSvParams
@@ -37,6 +37,7 @@ def plot_vols(tickers: List[str]) -> plt.Figure:
                              title="(A) Time Series",
                              var_format='{:,.0%}',
                              legend_loc='upper center',
+                             legend_stats=qis.LegendStats.AVG_NONNAN_LAST,
                              y_limits=(0.0, None),
                              ax=axs[0],
                              **KWARGS)
@@ -79,7 +80,11 @@ def plot_ss_distributions(model_params: Dict[str, LogSvParams],
                           ) -> plt.Figure:
 
     with sns.axes_style("darkgrid"):
-        fig, axs = plt.subplots(1, len(model_params.keys()), figsize=FIGSIZE, tight_layout=True)
+        if len(model_params.keys()) == 4:
+            fig, axs = plt.subplots(2, 2, figsize=(18, 14), tight_layout=True)
+            axs = qis.to_flat_list(axs)
+        else:
+            fig, axs = plt.subplots(1, len(model_params.keys()), figsize=FIGSIZE, tight_layout=True)
 
         for idx, (ticker, logsv_params) in enumerate(model_params.items()):
             vol, returns = fetch_ohlc_vol(ticker=ticker)
@@ -148,9 +153,16 @@ def run_unit_test(unit_test: UnitTests):
     ovx_log_params = LogSvParams(sigma0=0.3852514800317871, theta=0.3852514800317871, kappa1=2.7774564907918027,
                                  kappa2=2.2351296851221107, beta=0.0, volvol=0.8344408577025486)
 
+    btc_log_params = LogSvParams(sigma0=0.7118361434192538, theta=0.7118361434192538,
+                                 kappa1=2.214702576955766, kappa2=2.18028273418397, beta=0.0, volvol=0.921487415907961)
+
+    eth_log_params = LogSvParams(sigma0=0.8657438901704476, theta=0.8657438901704476, kappa1=1.955809653686808,
+                                 kappa2=1.978367101612294, beta=0.0, volvol=0.8484117641903834)
+
     model_params = {'VIX': vix_log_params,
                     'MOVE': move_log_params,
-                    'OVX': ovx_log_params}
+                    'OVX': ovx_log_params,
+                    'BTC': btc_log_params}
 
     local_path = "C://Users//artur//OneDrive//My Papers//Working Papers//Review of Beta Lognormal SV Model. Zurich. Nov 2023//figures//"
 
@@ -174,7 +186,7 @@ def run_unit_test(unit_test: UnitTests):
             qis.save_fig(fig, file_name='ss_distribution', local_path=local_path)
 
     elif unit_test == UnitTests.VOL_BETA_PLOTS:
-        tickers = ['VIX', 'MOVE', 'OVX']
+        tickers = ['VIX', 'MOVE', 'OVX', 'BTC']
         fig = vol_beta_plots(tickers=tickers)
         is_save = True
         if is_save:

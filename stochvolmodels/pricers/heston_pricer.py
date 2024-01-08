@@ -11,7 +11,7 @@ from numba.typed import List
 from typing import Tuple
 from enum import Enum
 
-from stochvolmodels.pricers.core.mgf_pricer import get_transform_var_grid, slice_pricer_with_mgf_grid
+from stochvolmodels.pricers.core.mgf_pricer import get_transform_var_grid, vanilla_slice_pricer_with_mgf_grid
 from stochvolmodels.pricers.model_pricer import ModelParams, ModelPricer
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.data.test_option_chain import get_btc_test_chain_data
@@ -213,13 +213,12 @@ def heston_chain_pricer(v0: float,
                                                            a_t0=a_t0,
                                                            b_t0=b_t0)
 
-        option_prices = slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
-                                                   phi_grid=phi_grid,
-                                                   ttm=ttm,
-                                                   forward=forward,
-                                                   discfactor=discfactor,
-                                                   strikes=strikes_ttm,
-                                                   optiontypes=optiontypes_ttm)
+        option_prices = vanilla_slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
+                                                           phi_grid=phi_grid,
+                                                           forward=forward,
+                                                           discfactor=discfactor,
+                                                           strikes=strikes_ttm,
+                                                           optiontypes=optiontypes_ttm)
         model_prices_ttms.append(option_prices)
         ttm0 = ttm
 

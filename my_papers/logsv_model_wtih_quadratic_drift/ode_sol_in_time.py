@@ -276,7 +276,7 @@ def run_unit_test(unit_test: UnitTests):
     ttm = 1.0
     is_spot_measure = True
 
-    is_save = True
+    is_save = False
     if unit_test == UnitTests.FIRST_ORDER:
         fig = plot_ode_solutions(params=params, ttm=ttm, expansion_order=ExpansionOrder.FIRST,
                                  is_spot_measure=is_spot_measure)

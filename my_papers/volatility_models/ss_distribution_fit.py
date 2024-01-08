@@ -5,6 +5,7 @@ import seaborn as sns
 from scipy import special as sps
 from scipy.optimize import minimize
 from scipy.stats import norm
+from typing import Optional
 from enum import Enum
 import qis
 
@@ -153,6 +154,9 @@ def fit_distribution_log_sv_fixed_kappa(vol: pd.Series,
                                         kappa2: float,
                                         bins: int = 50
                                         ) -> LogSvParams:
+    """
+    given kappa_1 and kappa_2 fit theta and volvol
+    """
     log_sigma = np.log(vol).replace([np.inf, -np.inf], np.nan).dropna()
     hist = compute_vol_histogram(vol=log_sigma, bins=bins)
     dv = hist.index[1] - hist.index[0]
@@ -169,8 +173,8 @@ def fit_distribution_log_sv_fixed_kappa(vol: pd.Series,
         return sse
 
     options = {'disp': False, 'ftol': 1e-8}
-    p0 = np.array([0.15, 1.0])
-    bounds = ((0.05, 1.0), (0.1, 5.0))
+    p0 = np.array([0.3, 1.0])
+    bounds = ((0.05, 1.0), (0.25, 5.0))
     res = minimize(objective, p0, args=None, method='SLSQP', bounds=bounds, options=options)
 
     fit_params = unpack_pars(pars=res.x)
@@ -206,7 +210,7 @@ def fit_distribution_heston(vol: pd.Series,
 
 def plot_estimated_svs(vol: pd.Series,
                        logsv_params: LogSvParams = LogSvParams(),
-                       heston_params: HestonParams = HestonParams(),
+                       heston_params: Optional[HestonParams] = HestonParams(),
                        bins: int = 100,
                        ax: plt.Subplot = None,
                        **kwargs
@@ -217,12 +221,14 @@ def plot_estimated_svs(vol: pd.Series,
 
     dv = hist_range[1] - hist_range[0]
     analytic1 = pd.Series(lognormal_sv_ss_log_pdf(log_sigma=hist_range, params=logsv_params)*dv, index=hist_range, name='LogNormal')
-    analytic2 = pd.Series(heston_ss_log_vol_pdf(log_sigma=hist_range, params=heston_params)*dv, index=hist_range, name='Heston')
-
     norm_mean, norm_std = np.mean(log_sigma), np.std(log_sigma)
     analytic3 = pd.Series(norm.pdf(x=hist_range, loc=norm_mean, scale=norm_std)*dv, index=hist_range, name='Normal PDF')
 
-    df = pd.concat([analytic1, analytic2, analytic3], axis=1)
+    if heston_params is not None:
+        analytic2 = pd.Series(heston_ss_log_vol_pdf(log_sigma=hist_range, params=heston_params)*dv, index=hist_range, name='Heston')
+        df = pd.concat([analytic1, analytic2, analytic3], axis=1)
+    else:
+        df = pd.concat([analytic1, analytic3], axis=1)
 
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(18, 10), tight_layout=True)
@@ -238,6 +244,7 @@ def plot_estimated_svs(vol: pd.Series,
                   colors=colors,
                   y_limits=(1e-10, None),
                   xlabel='Log volatility',
+                  xvar_format='{:.1f}',
                   ax=ax,
                   **kwargs)
 
@@ -246,7 +253,7 @@ def plot_estimated_svs(vol: pd.Series,
                    labels=['Empirical']+list(df.columns),
                    handlelength=0,
                    colors=['red']+colors,
-                   legend_loc='upper right',
+                   legend_loc='lower center',
                    framealpha=0.90,
                    **kwargs)
 

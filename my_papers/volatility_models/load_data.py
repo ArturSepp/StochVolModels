@@ -14,7 +14,7 @@ def fetch_ohlc_vol(ticker: str = 'SPY',
                    timeperiod: Optional[qis.TimePeriod] = qis.TimePeriod('31Dec1999', None),
                    ohlc_estimator_type: OhlcEstimatorType = OhlcEstimatorType.ROGERS_SATCHELL
                    ) -> Tuple[pd.Series, pd.Series]:
-    if ticker in ['VIX', 'MOVE', 'OVX']:
+    if ticker in ['VIX', 'MOVE', 'OVX']:  # use implied indices
         ohlc_data = yf.download(tickers=f"^{ticker}", start=None, end=None, ignore_tz=True)
         ohlc_data.index = ohlc_data.index.tz_localize('UTC').tz_convert('UTC')
         vol = ohlc_data['Close'] / 100.0
@@ -37,7 +37,14 @@ def fetch_ohlc_vol(ticker: str = 'SPY',
             # returns = np.log(prices).diff(1)
             returns = prices.pct_change()
 
-    else:
+    elif ticker in ['BTC', 'ETH']:  # use implied atm vols from internal data
+        df = qis.load_df_from_csv(file_name=f"{ticker}_atm_vols",
+                                  local_path="C://Users//Artur//OneDrive//analytics//resources//")
+        prices = df.iloc[:, 0]
+        vol = df.iloc[:, -1]
+        returns = prices.pct_change()
+
+    else:  # use historical vol
         data = yf.download(tickers=ticker, start=None, end=None, ignore_tz=True)
         data.index = data.index.tz_localize('UTC').tz_convert('UTC')
         ohlc_data = data[['Open', 'High', 'Low', 'Close']].rename({'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close'}, axis=1)

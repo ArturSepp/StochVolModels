@@ -10,7 +10,7 @@ from enum import Enum
 
 from stochvolmodels.pricers.core.config import VariableType
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.pricers.logsv_pricer import LogSVPricer, ModelCalibrationType, ConstraintsType, LogSvParams
+from stochvolmodels.pricers.logsv_pricer import LogSVPricer, LogsvModelCalibrationType, ConstraintsType, LogSvParams
 from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar
 from stochvolmodels.utils.funcs import set_seed
 import stochvolmodels.utils.plots as plot
@@ -52,7 +52,7 @@ def get_asset_chain_data(asset: Assets = Assets.BTC) -> OptionChain:
 
 
 def calibrate_logsv_model(asset: Assets = Assets.BTC,
-                          model_calibration_type: ModelCalibrationType = ModelCalibrationType.PARAMS5
+                          model_calibration_type: LogsvModelCalibrationType = LogsvModelCalibrationType.PARAMS5
                           ):
     match asset:
         case Assets.BTC:
@@ -166,7 +166,6 @@ def run_unit_test(unit_test: UnitTests):
                                                                  params=params,
                                                                  is_plot_vols=True,
                                                                  variable_type=VariableType.Q_VAR,
-                                                                 headers=('(A)', '(B)'),
                                                                  figsize=(18, 6),
                                                                  nb_path=100000)
         is_save = False
@@ -181,7 +180,7 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.PLOT_BTC_COMP_FOR_ARTICLE
+    unit_test = UnitTests.PLOT_QVAR_FIGURE_FOR_ARTICLE
 
     is_run_all_tests = False
     if is_run_all_tests:

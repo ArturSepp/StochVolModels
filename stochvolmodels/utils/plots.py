@@ -133,7 +133,7 @@ def vol_slice_fit(bid_vol: pd.Series,
                   x_rotation: int = 0,
                   ax: plt.Subplot = None,
                   **kwargs
-                  ) -> plt.Figure:
+                  ) -> Optional[plt.Figure]:
 
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(8, 8))

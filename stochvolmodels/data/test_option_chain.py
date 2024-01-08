@@ -847,10 +847,10 @@ def get_qv_options_test_chain_data(num_strikes: int = 21) -> OptionChain:
     """
     BTC implied vols of 21Oct2021
     """
-    ids = array(['1m', '3m', '6m', '12m'])
-    ttms = array([0.083333333, 0.25, 0.5, 1.0])
-    forwards = array([1.0, 1.0, 1.0, 1.0])
-    discfactors = array([1.0, 1.0, 1.0, 1.0])
+    ids = array(['1w', '2w', '1m', '3m', '6m', '12m'])
+    ttms = array([7.0/365.0, 14.0/365.0, 0.083333333, 0.25, 0.5, 1.0])
+    forwards = array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+    discfactors = array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
     strikes_ttm = np.linspace(0.75, 1.5, num_strikes)
     strikes_ttms = (strikes_ttm, strikes_ttm, strikes_ttm, strikes_ttm)
 

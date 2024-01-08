@@ -27,7 +27,10 @@ def get_phi_grid(is_spot_measure: bool = True,
         else:
             real_p = real_phi
     else:
-        real_p = 0.5
+        if real_phi is None:
+            real_p = 0.5
+        else:
+            real_p = real_phi
     phi_grid = real_p + 1j * p
     return phi_grid
 
@@ -36,8 +39,10 @@ def get_phi_grid(is_spot_measure: bool = True,
 def get_psi_grid() -> np.ndarray:
     """
     for I = QV variable
+    need a lot of step for short-dated options
+    todo: find a non-uniform grid for short dated options
     """
-    p = np.linspace(0, 200, 4000)
+    p = np.linspace(0, 4000, 40000)
     real_p = -0.5
     psi_grid = real_p + 1j * p
     return psi_grid
@@ -48,8 +53,8 @@ def get_theta_grid() -> np.ndarray:
     """
     for sigma
     """
-    p = np.linspace(0, 600, 4000)
-    real_p = -0.5
+    p = np.linspace(0, 600, 5000)
+    real_p = 0.0
     theta_grid = real_p + 1j * p
     return theta_grid
 
@@ -109,18 +114,17 @@ def compute_integration_weights(var_grid: np.ndarray,
 
 
 @njit(cache=False, fastmath=True)
-def slice_pricer_with_mgf_grid(log_mgf_grid: np.ndarray,
-                               phi_grid: np.ndarray,
-                               ttm: float,
-                               forward: float,
-                               strikes: np.ndarray,
-                               optiontypes: np.ndarray,
-                               discfactor: float = 1.0,
-                               is_spot_measure: bool = True,
-                               is_simpson: bool = True
-                               ) -> np.ndarray:
+def vanilla_slice_pricer_with_mgf_grid(log_mgf_grid: np.ndarray,
+                                       phi_grid: np.ndarray,
+                                       forward: float,
+                                       strikes: np.ndarray,
+                                       optiontypes: np.ndarray,
+                                       discfactor: float = 1.0,
+                                       is_spot_measure: bool = True,
+                                       is_simpson: bool = True
+                                       ) -> np.ndarray:
     """
-    generic function for pricing options on the spot given the mgf grid
+    generic function for pricing vanilla options on the spot given the mgf grid
     mgf in x is function defined on log-price transform phi grids
     transform variable is phi_grid = real_phi + i*p
     grid can be non-uniform
@@ -128,7 +132,7 @@ def slice_pricer_with_mgf_grid(log_mgf_grid: np.ndarray,
     p = np.imag(phi_grid)
     dp = compute_integration_weights(var_grid=phi_grid, is_simpson=is_simpson)
 
-    if np.all(np.abs(np.real(phi_grid))-0.5 < 1e-10):  # optimized for phi = +/-0.5 + i*p
+    if np.all(np.equal(np.abs(np.real(phi_grid)), 0.5)):  # optimized for phi = +/-0.5 + i*p
         p_payoff = (dp / np.pi) / (p * p + 0.25) + 1j * 0.0  # add zero complex part for numba
     else:
         if is_spot_measure:
@@ -155,6 +159,54 @@ def slice_pricer_with_mgf_grid(log_mgf_grid: np.ndarray,
                 option_prices[idx] = forward*discfactor*(np.exp(-x) - capped_option_price)
             else:
                 raise ValueError(f"not implemented")
+
+    return option_prices
+
+
+@njit(cache=False, fastmath=True)
+def digital_slice_pricer_with_mgf_grid(log_mgf_grid: np.ndarray,
+                                       phi_grid: np.ndarray,
+                                       forward: float,
+                                       strikes: np.ndarray,
+                                       optiontypes: np.ndarray,
+                                       discfactor: float = 1.0,
+                                       is_simpson: bool = True
+                                       ) -> np.ndarray:
+    """
+    generic function for pricing digital options on the spot given the mgf grid
+    mgf in x is function defined on log-price transform phi grids
+    transform variable is phi_grid = real_phi + i*p
+    grid can be non-uniform
+    """
+    dp = compute_integration_weights(var_grid=phi_grid, is_simpson=is_simpson)
+
+    # we can use positive or negative phi_real
+    if np.all(np.real(phi_grid) < 0.0):  # use calls
+        is_all_calls = True
+        p_payoff = - (dp / np.pi) / (phi_grid)  # for calls
+    else:
+        is_all_calls = False
+        p_payoff = (dp / np.pi) / (phi_grid) # for puts
+
+    log_strikes = np.log(forward/strikes)
+    option_prices = np.zeros_like(log_strikes)
+    for idx, (x, strike, type_) in enumerate(zip(log_strikes, strikes, optiontypes)):
+        # compute sum using trapesoidal rule
+        digital_option_price = np.nansum(np.real(p_payoff*np.exp(-x * phi_grid + log_mgf_grid)))
+        if type_ == 'C':
+            if is_all_calls:
+                price = digital_option_price
+            else:
+                price = 1.0 - digital_option_price
+        elif type_ == 'P':
+            if is_all_calls:
+                price = 1.0 - digital_option_price
+            else:
+                price = digital_option_price
+        else:
+            raise ValueError(f"not implemented")
+
+        option_prices[idx] = discfactor * price
 
     return option_prices
 
@@ -253,6 +305,7 @@ def pdf_with_mgf_grid(log_mgf_grid: np.ndarray,
                       transform_var_grid: np.ndarray,
                       space_grid: np.ndarray,
                       shift: float = 0.0,
+                      scale: float = 1.0,
                       is_simpson: bool = True
                       ) -> np.ndarray:
     """
@@ -263,8 +316,9 @@ def pdf_with_mgf_grid(log_mgf_grid: np.ndarray,
     """
     dp = compute_integration_weights(var_grid=transform_var_grid, is_simpson=is_simpson) / np.pi
     pdf = np.zeros_like(space_grid)
-    for idx, x in enumerate(space_grid):
-        pdf[idx] = np.nansum(np.real(dp * np.exp((x-shift) * transform_var_grid + log_mgf_grid)))
+    z = (space_grid - shift) / scale
+    for idx, x in enumerate(z):
+        pdf[idx] = np.nansum(np.real(dp * np.exp(x * transform_var_grid + log_mgf_grid)))
     dx = space_grid[1] - space_grid[0]
     pdf = dx * pdf
     return pdf

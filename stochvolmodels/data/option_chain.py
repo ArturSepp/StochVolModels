@@ -85,7 +85,9 @@ class OptionChain:
                     forwards=self.forwards,
                     strikes_ttms=self.strikes_ttms,
                     optiontypes_ttms=self.optiontypes_ttms,
-                    ids=self.ids)
+                    ids=self.ids,
+                    bid_ivs=self.bid_ivs,
+                    ask_ivs=self.ask_ivs)
         for k, v in this.items():
             print(f"{k}:\n{v}")
 

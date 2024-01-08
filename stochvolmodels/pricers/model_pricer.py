@@ -9,6 +9,7 @@ market options data is passed using data container ChainData
 
 from __future__ import annotations
 
+import string
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,6 +19,7 @@ from abc import ABC, abstractmethod
 from scipy import stats
 from dataclasses import dataclass, asdict
 from typing import Tuple, Optional, Dict
+import qis as qis
 
 from stochvolmodels.pricers.core.config import VariableType
 from stochvolmodels.data.option_chain import OptionChain, OptionSlice
@@ -58,12 +60,13 @@ class ModelPricer(ABC):
     def compute_chain_prices_with_vols(self,
                                        option_chain: OptionChain,
                                        params: ModelParams,
+                                       variable_type: VariableType = VariableType.LOG_RETURN,
                                        **kwargs
                                        ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         """
         price chain and compute model vols
         """
-        model_prices = self.price_chain(option_chain=option_chain, params=params, **kwargs)
+        model_prices = self.price_chain(option_chain=option_chain, params=params, variable_type=variable_type, **kwargs)
         model_ivols = option_chain.compute_model_ivols_from_chain_data(model_prices=model_prices)
         return model_prices, model_ivols
 
@@ -80,7 +83,10 @@ class ModelPricer(ABC):
                                                                         **kwargs)
         return model_ivols
 
-    def model_mc_price_chain(self, option_chain: OptionChain, params: ModelParams, **kwargs
+    def model_mc_price_chain(self,
+                             option_chain: OptionChain, params: ModelParams,
+                             variable_type: VariableType = VariableType.LOG_RETURN,
+                             **kwargs
                              ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         """
         abstract method for pricing chain data using simulation of model dynamics
@@ -161,6 +167,7 @@ class ModelPricer(ABC):
     def compute_mc_chain_implied_vols(self,
                                       option_chain: OptionChain,
                                       params: ModelParams,
+                                      variable_type: VariableType = VariableType.LOG_RETURN,
                                       nb_path: int = 100000,
                                       **kwargs
                                       ) -> Tuple[List[np.ndarray], ...]:
@@ -169,6 +176,7 @@ class ModelPricer(ABC):
         """
         model_prices_ttms, option_std_ttms = self.model_mc_price_chain(option_chain=option_chain,
                                                                        params=params,
+                                                                       variable_type=variable_type,
                                                                        nb_path=nb_path,
                                                                        **kwargs)
         std_factor = 1.96
@@ -307,6 +315,7 @@ class ModelPricer(ABC):
                                     is_log_strike_xaxis: bool = False,
                                     headers: Optional[List[str]] = None,
                                     xvar_format: str = None,
+                                    figsize: Tuple[float, float] = plot.FIGSIZE,
                                     **kwargs
                                     ) -> plt.Figure:
         """
@@ -316,19 +325,19 @@ class ModelPricer(ABC):
         model_ivols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params, **kwargs)
 
         num_slices = len(option_chain.ttms)
-        if num_slices == 1:
-            with sns.axes_style('darkgrid'):
-                fig, ax = plt.subplots(1, 1, figsize=plot.FIGSIZE, tight_layout=True)
-            axs = np.array([[ax, np.nan], [np.nan, np.nan]])
-        elif num_slices == 2:
-            with sns.axes_style('darkgrid'):
-                fig, axs = plt.subplots(2, 1, figsize=plot.FIGSIZE, tight_layout=True)
-            axs = np.array([[axs[0], np.nan], [axs[1], np.nan]])
-        elif num_slices == 4:
-            with sns.axes_style('darkgrid'):
-                fig, axs = plt.subplots(2, 2, figsize=plot.FIGSIZE, tight_layout=True)
-        else:
-            raise NotImplementedError
+        with sns.axes_style('darkgrid'):
+            if num_slices == 1:
+                fig, ax = plt.subplots(1, 1, figsize=figsize, tight_layout=True)
+                axs = [ax]
+            elif num_slices == 2:
+                fig, axs = plt.subplots(1, 2, figsize=figsize, tight_layout=True)
+            elif num_slices == 3:
+                fig, axs = plt.subplots(1, 3, figsize=figsize, tight_layout=True)
+            elif num_slices == 4:
+                fig, axs = plt.subplots(2, 2, figsize=figsize, tight_layout=True)
+                axs = qis.to_flat_list(axs)
+            else:
+                raise NotImplementedError
 
         atm_vols = option_chain.get_chain_atm_vols()
         for idx, ttm in enumerate(option_chain.ttms):
@@ -367,7 +376,7 @@ class ModelPricer(ABC):
                                strike_name=strike_name,
                                xvar_format=xvar_format,
                                x_rotation=0,
-                               ax=axs[idx % 2][idx // 2],
+                               ax=axs[idx],
                                **kwargs)
         return fig
 
@@ -377,8 +386,9 @@ class ModelPricer(ABC):
                                is_log_strike_xaxis: bool = False,
                                variable_type: VariableType = VariableType.LOG_RETURN,
                                nb_path: int = 100000,
+                               figsize: Tuple[float, float] = plot.FIGSIZE,
                                **kwargs
-                               ) -> None:
+                               ) -> plt.Figure:
         """
         comparision of model implied vols computed old_analytics vs mc pricer
         optimized for 2*2 figure
@@ -391,11 +401,20 @@ class ModelPricer(ABC):
             nb_path=nb_path,
             **kwargs)
 
+        num_slices = len(option_chain.ttms)
         with sns.axes_style('darkgrid'):
-            if len(option_chain.ttms) > 1:
-                fig, axs = plt.subplots(2, len(option_chain.ttms) // 2, figsize=plot.FIGSIZE, tight_layout=True)
+            if num_slices == 1:
+                fig, ax = plt.subplots(1, 1, figsize=figsize, tight_layout=True)
+                axs = [ax]
+            elif num_slices == 2:
+                fig, axs = plt.subplots(1, 2, figsize=figsize, tight_layout=True)
+            elif num_slices == 3:
+                fig, axs = plt.subplots(1, 3, figsize=figsize, tight_layout=True)
+            elif num_slices == 4:
+                fig, axs = plt.subplots(2, 2, figsize=figsize, tight_layout=True)
+                axs = qis.to_flat_list(axs)
             else:
-                fig, axs = plt.subplots(1, 1, figsize=plot.FIGSIZE, tight_layout=True)
+                raise NotImplementedError
 
         for idx, ttm in enumerate(option_chain.ttms):
             if is_log_strike_xaxis:
@@ -419,10 +438,6 @@ class ModelPricer(ABC):
             else:
                 title = f"{ttm=:0.2f}"
 
-            if len(option_chain.ttms) > 1:
-                ax = axs[idx % 2][idx // 2]
-            else:
-                ax = axs
             plot.vol_slice_fit(bid_vol=pd.Series(mc_ivols_down[idx], index=strikes),
                                ask_vol=pd.Series(mc_ivols_up[idx], index=strikes),
                                model_vols=model_vol_t,
@@ -432,18 +447,19 @@ class ModelPricer(ABC):
                                strike_name=strike_name,
                                xvar_format=xvar_format,
                                x_rotation=0,
-                               ax=ax,
+                               ax=axs[idx],
                                **kwargs)
+        return fig
 
     def plot_comp_mma_inverse_options_with_mc(self,
                                               option_chain: OptionChain,
                                               params: ModelParams,
                                               variable_type: VariableType = VariableType.LOG_RETURN,
                                               nb_path: int = 100000,
-                                              headers: Optional[List[str]] = ('(A)', '(B)', '(C)', '(D)'),  # optimized for 2*2 figure
                                               is_log_strike_xaxis: bool = False,
                                               is_plot_vols: bool = True,
                                               figsize: Tuple[float, float] = plot.FIGSIZE,
+                                              xvar_format: str = '{:0,.2f}',
                                               **kwargs
                                               ) -> plt.Figure:
         """
@@ -458,18 +474,19 @@ class ModelPricer(ABC):
                                                                                 variable_type=variable_type,
                                                                                 **kwargs)
 
-        model_prices_inv, model_ivols_inv= self.compute_chain_prices_with_vols(option_chain=option_chain, params=params,
-                                                                               is_spot_measure=False,
-                                                                               variable_type=variable_type,
-                                                                               **kwargs)
+        model_prices_inv, model_ivols_inv = self.compute_chain_prices_with_vols(option_chain=option_chain, params=params,
+                                                                                is_spot_measure=False,
+                                                                                variable_type=variable_type,
+                                                                                **kwargs)
 
         # we perform MC simulation in MMA measure
-        mc_kwargs = update_kwargs(kwargs, dict(is_spot_measure=True, variable_type=variable_type))
         model_prices_ttms, model_prices_ttms_ups, model_prices_ttms_downs, \
         mc_ivols, mc_ivols_up, mc_ivols_down, mc_stdev_ttms = self.compute_mc_chain_implied_vols(option_chain=option_chain,
                                                                                                  params=params,
                                                                                                  nb_path=nb_path,
-                                                                                                 **mc_kwargs)
+                                                                                                 variable_type=variable_type,
+                                                                                                 is_spot_measure=True,
+                                                                                                 **kwargs)
 
         if is_plot_vols:
             model_datas = {mma_label: model_ivols_mma, inverse_lable: model_ivols_inv}
@@ -480,27 +497,34 @@ class ModelPricer(ABC):
             mc_data = model_prices_ttms
             mc_data_lower, mc_data_upper = model_prices_ttms_downs, model_prices_ttms_ups
 
-        if option_chain.ttms.size < 4:
-            nrows, ncols = 1, option_chain.ttms.size
-        else:
-            nrows, ncols = 2, option_chain.ttms.size//2
-
+        num_slices = len(option_chain.ttms)
         with sns.axes_style('darkgrid'):
-            fig, axs = plt.subplots(nrows, ncols, figsize=figsize, tight_layout=True)
+            if num_slices == 1:
+                fig, ax = plt.subplots(1, 1, figsize=figsize, tight_layout=True)
+                axs = [ax]
+            elif num_slices == 2:
+                fig, axs = plt.subplots(1, 2, figsize=figsize, tight_layout=True)
+            elif num_slices == 3:
+                fig, axs = plt.subplots(1, 3, figsize=figsize, tight_layout=True)
+            elif num_slices == 4:
+                fig, axs = plt.subplots(2, 2, figsize=figsize, tight_layout=True)
+                axs = qis.to_flat_list(axs)
+            else:
+                raise NotImplementedError
 
         for idx, ttm in enumerate(option_chain.ttms):
             if is_log_strike_xaxis:
                 strikes = np.log(option_chain.strikes_ttms[idx] / option_chain.forwards[idx])
-                xvar_format = '{:0.2f}'
                 strike_name = 'log-strike'
             else:
                 strikes = option_chain.strikes_ttms[idx]
                 if variable_type == VariableType.LOG_RETURN:
-                    xvar_format = '{:0,.2f}'
                     strike_name = 'strike'
+                elif variable_type == VariableType.Q_VAR:
+                    strikes = option_chain.strikes_ttms[idx] / option_chain.forwards[idx]
+                    strike_name = 'QVAR strike %'
                 else:
-                    xvar_format = '{:0.2f}'
-                    strike_name = 'QVAR strike'
+                    raise NotImplementedError
 
             model_vols = {}
             for key, model_data in model_datas.items():
@@ -509,10 +533,8 @@ class ModelPricer(ABC):
             model_vols = pd.DataFrame.from_dict(model_vols, orient='columns')
 
             if option_chain.ids is not None:
-                if headers is not None:
-                    title = f"{headers[idx]} slice - {option_chain.ids[idx]}"
-                else:
-                    title = f"slice - {option_chain.ids[idx]}"
+                title = f"{string.ascii_uppercase[idx]}) slice - {option_chain.ids[idx]}"
+
             else:
                 title = f"{ttm=:0.2f}"
 
@@ -520,6 +542,8 @@ class ModelPricer(ABC):
                                 fp=0.5 * (mc_data_lower[idx] + mc_data_upper[idx]))
             if is_log_strike_xaxis:
                 atm_points = {'ATM': (0.0, atm_vol)}
+            elif variable_type == VariableType.Q_VAR:
+                atm_points = {'ATM': (1.0, atm_vol)}
             else:
                 atm_points = {'ATM': (option_chain.forwards[idx], atm_vol)}
 
@@ -535,6 +559,6 @@ class ModelPricer(ABC):
                                atm_points=atm_points,
                                ylabel='Implied vols' if is_plot_vols else 'Model prices',
                                yvar_format='{:.0%}' if is_plot_vols else '{:.2f}',
-                               ax=axs[idx] if axs.ndim == 1 else axs[idx % 2][idx // 2],
+                               ax=axs[idx],
                                **kwargs)
         return fig

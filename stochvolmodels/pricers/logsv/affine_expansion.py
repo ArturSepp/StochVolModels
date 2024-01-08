@@ -47,12 +47,12 @@ def func_a_ode_quadratic_terms(theta: float,
     qv2 = theta2 * vartheta2
     if is_spot_measure:
         lamda = 0
-        kappa_p = kappa1 + kappa2 * theta
         kappa2_p = kappa2
+        kappa_p = kappa1 + kappa2 * theta
     else:
         lamda = beta*theta2
-        kappa_p = kappa1 + kappa2 * theta - 2*beta*theta
         kappa2_p = kappa2-beta
+        kappa_p = kappa1 + kappa2 * theta - 2*beta*theta
 
     # fill Ms: M should be of same type as L and H for numba, eventhough they are real
     # utilize that M is symmetric

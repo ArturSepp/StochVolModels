@@ -51,13 +51,12 @@ def bsm_slice_pricer(ttm: float,
 
     if variable_type == VariableType.LOG_RETURN:
         log_mgf_grid, phi_grid = compute_normal_mgf_grid(ttm=ttm, vol=vol, is_spot_measure=is_spot_measure)
-        bsm_prices = mgfp.slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
-                                                     phi_grid=phi_grid,
-                                                     ttm=ttm,
-                                                     forward=forward,
-                                                     strikes=strikes,
-                                                     optiontypes=optiontypes,
-                                                     is_spot_measure=is_spot_measure)
+        bsm_prices = mgfp.vanilla_slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
+                                                             phi_grid=phi_grid,
+                                                             forward=forward,
+                                                             strikes=strikes,
+                                                             optiontypes=optiontypes,
+                                                             is_spot_measure=is_spot_measure)
         bsm_ivols = infer_bsm_ivols_from_model_chain_prices(ttms=np.array([ttm]),
                                                             forwards=np.array([forward]),
                                                             discfactors=np.array([1.0]),
