@@ -11,32 +11,6 @@ For the analytic implementation of stochastic volatility models, the package pro
 1) Interface for analytical pricing of vanilla options using Fourier transform with closed-form solution for moment generating function
 2) Interface for Monte-Carlo simulations of model dynamics
 
-## Supporting Illustrations for Public Papers 
-
-As illustrations of different analytics, this packadge includes module ```my_papers``` 
-with codes for computations and visualisations featured in several papers
-for 
-
-1) "Log-normal Stochastic Volatility Model with Quadratic Drift" by Sepp A and Rakhmonov P, SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2522425
-```python 
-stochvolmodels/my_papers/logsv_model_wtih_quadratic_drift
-```
-
-
-2) "What is a robust stochastic volatility model" by Sepp A and Rakhmonov P,
-SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027
-```python 
-stochvolmodels/my_papers/volatility_models
-```
-
-
-3) "Valuation and Hedging of Cryptocurrency Inverse Options" by Sepp A and Lucic V, 
-SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4606748 
-```python 
-stochvolmodels/my_papers/inverse_options
-```
-
-
 
 ## Installation
 ```python 
@@ -53,6 +27,8 @@ pip install stochvolmodels
    3. [Comparison of model prices vs MC](#subparagraph3)
    4. [Analysis and figures for the paper](#subparagraph4)
 3. [Running Heston SV pricer](#heston)
+4. [Supporting Illustrations for Public Papers](#papers)
+
 
 Running model calibration to sample Bitcoin options data
 
@@ -217,3 +193,31 @@ pricer.plot_model_slices_in_params(option_slice=option_slice, params_dict=params
 
 plt.show()
 ```
+
+
+## Supporting Illustrations for Public Papers <a name="papers"></a>
+
+As illustrations of different analytics, this packadge includes module ```my_papers``` 
+with codes for computations and visualisations featured in several papers
+for 
+
+1) "Log-normal Stochastic Volatility Model with Quadratic Drift" by Sepp A and Rakhmonov P, SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2522425
+```python 
+stochvolmodels/my_papers/logsv_model_wtih_quadratic_drift
+```
+
+
+2) "What is a robust stochastic volatility model" by Sepp A and Rakhmonov P,
+SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027
+```python 
+stochvolmodels/my_papers/volatility_models
+```
+
+
+3) "Valuation and Hedging of Cryptocurrency Inverse Options" by Sepp A and Lucic V, 
+SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4606748 
+```python 
+stochvolmodels/my_papers/inverse_options
+```
+
+
