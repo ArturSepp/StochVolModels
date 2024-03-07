@@ -187,15 +187,20 @@ def run_unit_test(unit_test: UnitTests):
             '$(\kappa_{1}=4, \kappa_{2}=4)$': LogSvParams(theta=1.0, kappa1=4.0, kappa2=4.0, beta=0.0, volvol=VOLVOL),
             '$(\kappa_{1}=4, \kappa_{2}=8)$': LogSvParams(theta=1.0, kappa1=4.0, kappa2=8.0, beta=0.0, volvol=VOLVOL)}
 
+        SS_PDF_PARAMS1 = {
+            '$(\kappa_{1}=1)$': LogSvParams(theta=1.0, kappa1=1.0, kappa2=0.0, beta=0.0, volvol=VOLVOL),
+            '$(\kappa_{1}=4)$': LogSvParams(theta=1.0, kappa1=4.0, kappa2=4.0, beta=0.0, volvol=VOLVOL),
+            '$(\kappa_{1}=8)$': LogSvParams(theta=1.0, kappa1=8.0, kappa2=8.0, beta=0.0, volvol=VOLVOL)}
+
         with sns.axes_style("darkgrid"):
             fig, axs = plt.subplots(1, 3, figsize=(18, 6), tight_layout=True)
             ssp.plot_steady_state(params_dict=SS_PDF_PARAMS,
                                   title='(A) Steady state distribution of the volatility',
                                   ax=axs[0])
-            ssp.plot_vol_skew(params_dict=SS_PDF_PARAMS,
+            ssp.plot_vol_skew(params_dict=SS_PDF_PARAMS1,
                               title=f'(B) Skeweness of volatility as function of $\kappa_{2}$',
                               ax=axs[1])
-            ssp.plot_ss_kurtosis(params_dict=SS_PDF_PARAMS,
+            ssp.plot_ss_kurtosis(params_dict=SS_PDF_PARAMS1,
                                  title=f'(C) Excess kurtosis of log-returns as function of $\kappa_{2}$',
                                  ax=axs[2])
 
@@ -306,7 +311,7 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.FIGURE8_9_FITTED_MODEL
+    unit_test = UnitTests.FIGURE1_STEADY_STATE
 
     is_run_all_tests = False
     if is_run_all_tests:

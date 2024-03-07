@@ -21,10 +21,10 @@ from dataclasses import dataclass, asdict
 from typing import Tuple, Optional, Dict
 import qis as qis
 
-from stochvolmodels.pricers.core.config import VariableType
+from stochvolmodels.utils.config import VariableType
 from stochvolmodels.data.option_chain import OptionChain, OptionSlice
 from stochvolmodels.utils import plots as plot
-from stochvolmodels.utils.funcs import set_seed, update_kwargs
+from stochvolmodels.utils.funcs import set_seed
 
 # set global mc seed, for resets call set_seed() locally
 set_seed(24)
@@ -96,7 +96,7 @@ class ModelPricer(ABC):
 
     def calibrate_model_params_to_chain(self, option_chain: OptionChain, **kwargs):
         """
-        this is core method for model calibration
+        this is analytic method for model calibration
         we keep as not generic because model implementation may not require calibration of model parameters
         """
         raise NotImplementedError(f"must be implemented in parent class")
@@ -276,6 +276,9 @@ class ModelPricer(ABC):
                                     option_slice: OptionSlice,
                                     params_dict: Dict[str, ModelParams],
                                     is_log_strike_xaxis: bool = False,
+                                    title: str = 'Model Vols',
+                                    xlabel: str = None,
+                                    xvar_format: str = None,
                                     ax: plt.Subplot = None,
                                     **kwargs
                                     ) -> Optional[plt.Figure]:
@@ -300,10 +303,15 @@ class ModelPricer(ABC):
         else:
             fig = None
 
+        if xvar_format is None:
+            xvar_format = '{:0.2f}' if is_log_strike_xaxis else '{:0,.0f}'
+        if xlabel is None:
+            xlabel = 'log-strike' if is_log_strike_xaxis else 'strike'
+
         plot.model_vols_ts(model_vols=model_vols_pars,
-                           title='Model Vols',
-                           xlabel='log-strike' if is_log_strike_xaxis else 'strike',
-                           xvar_format='{:0.2f}' if is_log_strike_xaxis else '{:0,.0f}',
+                           title=title,
+                           xlabel=xlabel,
+                           xvar_format=xvar_format,
                            x_rotation=0,
                            ax=ax,
                            **kwargs)
@@ -316,6 +324,7 @@ class ModelPricer(ABC):
                                     headers: Optional[List[str]] = None,
                                     xvar_format: str = None,
                                     figsize: Tuple[float, float] = plot.FIGSIZE,
+                                    axs: List[plt.Subplot] = None,
                                     **kwargs
                                     ) -> plt.Figure:
         """
@@ -326,18 +335,21 @@ class ModelPricer(ABC):
 
         num_slices = len(option_chain.ttms)
         with sns.axes_style('darkgrid'):
-            if num_slices == 1:
-                fig, ax = plt.subplots(1, 1, figsize=figsize, tight_layout=True)
-                axs = [ax]
-            elif num_slices == 2:
-                fig, axs = plt.subplots(1, 2, figsize=figsize, tight_layout=True)
-            elif num_slices == 3:
-                fig, axs = plt.subplots(1, 3, figsize=figsize, tight_layout=True)
-            elif num_slices == 4:
-                fig, axs = plt.subplots(2, 2, figsize=figsize, tight_layout=True)
-                axs = qis.to_flat_list(axs)
+            if axs is None:
+                if num_slices == 1:
+                    fig, ax = plt.subplots(1, 1, figsize=figsize, tight_layout=True)
+                    axs = [ax]
+                elif num_slices == 2:
+                    fig, axs = plt.subplots(1, 2, figsize=figsize, tight_layout=True)
+                elif num_slices == 3:
+                    fig, axs = plt.subplots(1, 3, figsize=figsize, tight_layout=True)
+                elif num_slices == 4:
+                    fig, axs = plt.subplots(2, 2, figsize=figsize, tight_layout=True)
+                    axs = qis.to_flat_list(axs)
+                else:
+                    raise NotImplementedError
             else:
-                raise NotImplementedError
+                fig = None
 
         atm_vols = option_chain.get_chain_atm_vols()
         for idx, ttm in enumerate(option_chain.ttms):

@@ -1,4 +1,7 @@
-
+"""
+implementation of log sv model calibration to time series
+need package option_chain_analytics with BTC and ETH data
+"""
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,10 +11,10 @@ from typing import Dict, Tuple, Any, Optional
 from enum import Enum
 
 # analytics
-from stochvolmodels import OptionChain, LogSvParams, LogSVPricer, ConstraintsType, LogsvModelCalibrationType
-from stochvolmodels.data.fetch_option_chain import generate_vol_chain_np, sample_option_chain_at_times
+from stochvolmodels import (OptionChain, LogSvParams, LogSVPricer, ConstraintsType, LogsvModelCalibrationType,
+                            generate_vol_chain_np, sample_option_chain_at_times)
 
-# chain
+# chain data
 from option_chain_analytics import OptionsDataDFs, create_chain_from_from_options_dfs
 from option_chain_analytics.ts_loaders import ts_data_loader_wrapper
 
@@ -106,8 +109,7 @@ def run_calibration_time_series(options_data_dfs: OptionsDataDFs,
                                                  freq=freq,
                                                  hour_offset=hour_offset,
                                                  days_map=days_map,
-                                                 delta_bounds=delta_bounds
-                                                 )
+                                                 delta_bounds=delta_bounds)
     output_dicts = dict()
     figs_dicts = dict()
     for value_time, option_chain in option_chains.items():
@@ -177,6 +179,7 @@ def run_unit_test(unit_test: UnitTests):
     value_time = pd.Timestamp('2022-12-30 10:00:00+00:00')
     value_time = pd.Timestamp('2023-06-30 10:00:00+00:00')
 
+    # chain data here
     options_data_dfs = OptionsDataDFs(**ts_data_loader_wrapper(ticker=ticker))
     chain = create_chain_from_from_options_dfs(options_data_dfs=options_data_dfs, value_time=value_time)
 
@@ -215,7 +218,7 @@ def run_unit_test(unit_test: UnitTests):
         time_period = qis.TimePeriod('2019-03-30 00:00:00+00:00', '2023-09-01 00:00:00+00:00', tz='UTC')
 
         output_df, figs_dict = run_calibration_time_series(options_data_dfs=options_data_dfs, time_period=time_period,
-                                                              freq='W-FRI',
+                                                           freq='W-FRI',
                                                            **kappas)
         print(output_df)
 

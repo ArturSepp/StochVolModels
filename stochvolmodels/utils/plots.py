@@ -263,6 +263,7 @@ def model_vols_ts(model_vols: Union[pd.Series, pd.DataFrame],
                   n_tickwindow: int = None,
                   marker: str = None,
                   title: str = None,
+                  fontsize: int = 10,
                   legend_loc: str = 'upper center',
                   ax: plt.Subplot = None,
                   **kwargs
@@ -275,15 +276,17 @@ def model_vols_ts(model_vols: Union[pd.Series, pd.DataFrame],
     if is_delta_space:
         model_vols.index = map_deltas_to_str(bsm_deltas=model_vols.index.to_numpy())
 
-    sns.lineplot(data=model_vols, dashes=False, marker=marker, ax=ax)
+    sns.lineplot(data=model_vols, dashes=False,
+                 marker=marker,
+                 ax=ax)
 
     if is_delta_space:
         yvar_format = '{:,.2f}'
 
-    ax.legend(loc=legend_loc, framealpha=0)
+    ax.legend(loc=legend_loc, fontsize=fontsize, framealpha=0)
     get_legend_colors(ax)
 
-    if not isinstance(model_vols.index.dtype, object):  # do not apply for str
+    if not isinstance(model_vols.index.dtype, str):  # do not apply for str
         ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda z, _: xvar_format.format(z)))
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda z, _: yvar_format.format(z)))
 
@@ -298,7 +301,7 @@ def model_vols_ts(model_vols: Union[pd.Series, pd.DataFrame],
         [tick.set_rotation(x_rotation) for tick in ax.get_xticklabels()]
 
     if title is not None:
-        ax.set_title(title)
+        ax.set_title(title, fontsize=fontsize)
 
     ax.set_xlabel(xlabel)
 

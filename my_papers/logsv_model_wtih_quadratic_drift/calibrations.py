@@ -8,7 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from enum import Enum
 
-from stochvolmodels.pricers.core.config import VariableType
+from stochvolmodels.utils.config import VariableType
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.pricers.logsv_pricer import LogSVPricer, LogsvModelCalibrationType, ConstraintsType, LogSvParams
 from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar

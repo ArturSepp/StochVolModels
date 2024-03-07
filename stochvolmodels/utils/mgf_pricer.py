@@ -6,7 +6,7 @@ import numpy as np
 from numba import njit
 from typing import Tuple
 
-from ...pricers.core.config import VariableType
+from stochvolmodels.utils.config import VariableType
 
 
 @njit(cache=False, fastmath=True)

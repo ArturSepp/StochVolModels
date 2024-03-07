@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Tuple, Optional
 from numba.typed import List
 
-import stochvolmodels.pricers.core.bsm_pricer as bsm
+import stochvolmodels.pricers.analytic.bsm as bsm
 
 
 @dataclass
@@ -115,11 +115,11 @@ class OptionChain:
             return None
 
     def get_chain_deltas(self) -> List[np.ndarray]:
-        deltas_ttms = bsm.compute_bsm_deltas_ttms(ttms=self.ttms,
-                                                  forwards=self.forwards,
-                                                  strikes_ttms=self.strikes_ttms,
-                                                  optiontypes_ttms=self.optiontypes_ttms,
-                                                  vols_ttms=self.get_mid_vols())
+        deltas_ttms = bsm.compute_bsm_vanilla_deltas_ttms(ttms=self.ttms,
+                                                          forwards=self.forwards,
+                                                          strikes_ttms=self.strikes_ttms,
+                                                          optiontypes_ttms=self.optiontypes_ttms,
+                                                          vols_ttms=self.get_mid_vols())
         return deltas_ttms
 
     def get_chain_vegas(self, is_unit_ttm_vega: bool = False) -> List[np.ndarray]:
@@ -233,7 +233,7 @@ class OptionChain:
         return a subset of chain for given ids
         """
         if len(ids) == 1:
-            idx = option_chain.ids.tolist().index(ids[0])
+            idx = list(option_chain.ids).index(ids[0])  # get location of ids
             option_chain = cls(ids=ids,
                                ttms=np.array([option_chain.ttms[idx]]),
                                ticker=option_chain.ticker,

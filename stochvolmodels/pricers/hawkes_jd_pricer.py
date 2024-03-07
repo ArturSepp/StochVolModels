@@ -2,7 +2,7 @@
 # built in
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import minimize, fsolve
+from scipy.optimize import minimize
 from numba.typed import List
 from typing import Tuple, Optional, Dict, Any
 from dataclasses import dataclass, asdict
@@ -11,9 +11,9 @@ from scipy.integrate._ivp.ivp import OdeResult
 from enum import Enum
 
 # stochvolmodels pricers
-from stochvolmodels.pricers.core import mgf_pricer as mgfp
-from stochvolmodels.pricers.core.config import VariableType
-from stochvolmodels.pricers.core.mc_payoffs import compute_mc_vars_payoff
+import stochvolmodels.utils.mgf_pricer as mgfp
+from stochvolmodels.utils.config import VariableType
+from stochvolmodels.utils.mc_payoffs import compute_mc_vars_payoff
 from stochvolmodels.pricers.model_pricer import ModelPricer, ModelParams
 from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer, set_seed
 

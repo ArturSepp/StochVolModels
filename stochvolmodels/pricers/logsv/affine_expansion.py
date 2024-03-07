@@ -10,7 +10,7 @@ from typing import Tuple, Optional
 from scipy.integrate import solve_ivp
 from scipy.integrate._ivp.ivp import OdeResult
 
-from ...pricers.core.config import VariableType
+from stochvolmodels.utils.config import VariableType
 
 
 class ExpansionOrder(Enum):

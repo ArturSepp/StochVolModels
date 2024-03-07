@@ -11,13 +11,16 @@ from numba.typed import List
 from typing import Tuple
 from enum import Enum
 
-from stochvolmodels.pricers.core.mgf_pricer import get_transform_var_grid, vanilla_slice_pricer_with_mgf_grid
+# stochvolmodels
+from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer
+from stochvolmodels.utils.mgf_pricer import get_transform_var_grid, vanilla_slice_pricer_with_mgf_grid
+from stochvolmodels.utils.config import VariableType
+from stochvolmodels.utils.mc_payoffs import compute_mc_vars_payoff
 from stochvolmodels.pricers.model_pricer import ModelParams, ModelPricer
+
+# data
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.data.test_option_chain import get_btc_test_chain_data
-from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer
-from stochvolmodels.pricers.core.config import VariableType
-from stochvolmodels.pricers.core.mc_payoffs import compute_mc_vars_payoff
 
 
 @dataclass
@@ -118,16 +121,19 @@ class HestonPricer(ModelPricer):
         else:
             weights = np.ones_like(market_vols)
 
-        def objective(pars: np.ndarray, args: np.ndarray) -> float:
+        def parse_model_params(pars: np.ndarray) -> HestonParams:
             v0, theta, kappa, rho, volvol = pars[0], pars[1], pars[2], pars[3], pars[4]
-            params = HestonParams(v0=v0, theta=theta, kappa=kappa, rho=rho, volvol=volvol)
+            return HestonParams(v0=v0, theta=theta, kappa=kappa, rho=rho, volvol=volvol)
+
+        def objective(pars: np.ndarray, args: np.ndarray) -> float:
+            params = parse_model_params(pars=pars)
             model_vols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params)
             resid = np.nansum(weights * np.square(to_flat_np_array(model_vols) - market_vols))
             return resid
 
         def feller(pars: np.ndarray) -> float:
-            v0, theta, kappa, rho, volvol = pars[0], pars[1], pars[2], pars[3], pars[4]
-            return 2.0*kappa * theta - volvol*volvol
+            params = parse_model_params(pars=pars)
+            return 2.0*params.kappa * params.theta - params.volvol*params.volvol
 
         constraints = ({'type': 'ineq', 'fun': feller})
         options = {'disp': True, 'ftol': 1e-8}
@@ -137,12 +143,7 @@ class HestonPricer(ModelPricer):
         else:
             res = minimize(objective, p0, args=None, method='SLSQP', bounds=bounds, options=options)
 
-        popt = res.x
-        fit_params = HestonParams(v0=popt[0],
-                                  theta=popt[1],
-                                  kappa=popt[2],
-                                  rho=popt[3],
-                                  volvol=popt[4])
+        fit_params = parse_model_params(pars=res.x)
         return fit_params
 
 
@@ -188,9 +189,9 @@ def heston_chain_pricer(v0: float,
                         rho: float,
                         ttms: np.ndarray,
                         forwards: np.ndarray,
-                        discfactors: np.ndarray,
                         strikes_ttms: Tuple[np.ndarray, ...],
                         optiontypes_ttms: Tuple[np.ndarray, ...],
+                        discfactors: np.ndarray,
                         vol_scaler: float = None  # run calibration on same vol_scaler
                         ) -> List[np.ndarray]:
 

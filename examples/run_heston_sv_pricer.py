@@ -70,4 +70,3 @@ print(btc_calibrated_params)
 pricer.plot_model_ivols_vs_bid_ask(option_chain=btc_option_chain,
                                    params=btc_calibrated_params)
 plt.show()
-

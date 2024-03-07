@@ -9,9 +9,9 @@ import seaborn as sns
 from typing import Tuple
 from enum import Enum
 
-from stochvolmodels.pricers.core import mgf_pricer as mgfp
-from stochvolmodels.pricers.core.bsm_pricer import infer_bsm_ivols_from_model_chain_prices
-from stochvolmodels.pricers.core.config import VariableType
+from stochvolmodels.pricers.analytic import mgf_pricer as mgfp
+from stochvolmodels.pricers.analytic.bsm import infer_bsm_ivols_from_model_chain_prices
+from stochvolmodels.utils.config import VariableType
 
 
 def compute_normal_mgf_grid(ttm: float,

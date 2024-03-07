@@ -94,3 +94,9 @@ def ncdf(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
 @njit(cache=False, fastmath=True)
 def npdf(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     return np.exp(-0.5*np.square(x))/np.sqrt(2.0*np.pi)
+
+
+@njit(cache=False, fastmath=True)
+def npdf1(x: Union[float, np.ndarray], mu: float, vol: float) -> Union[float, np.ndarray]:
+    vol2 = vol*vol
+    return np.exp(-0.5*np.square(x-mu)/vol2)/np.sqrt(2.0*np.pi*vol2)
