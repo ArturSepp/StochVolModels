@@ -191,6 +191,7 @@ def compute_gmm_vanilla_price(gmm_weights: np.ndarray,
     price = 0.0
     for gmm_weight, gmm_mu, gmm_vol in zip(gmm_weights, gmm_mus, gmm_vols):
         forward_i = forward*np.exp((gmm_mu+0.5*gmm_vol*gmm_vol)*ttm)
+        # forward is vol-adjusted
         price_i = bsm.compute_bsm_vanilla_price(forward=forward_i,
                                                 strike=strike,
                                                 ttm=ttm,
