@@ -11,8 +11,8 @@ from stochvolmodels import (LogSVPricer, LogSvParams, compute_analytic_qvar, Opt
 
 # these params are calibrated to the same BTC option chain
 # v0=theta=1 to have flat vol term structure
-LOGSV_BTC_PARAMS = LogSvParams(sigma0=1.0, theta=1.0, kappa1=3.1844, kappa2=3.058, beta=-0.1514, volvol=1.8458)
-BTC_HESTON_PARAMS = HestonParams(v0=1.0, theta=1.0, kappa=7.4565, rho=-0.0919, volvol=4.0907)
+LOGSV_BTC_PARAMS = LogSvParams(sigma0=1.0, theta=1.0, kappa1=3.1844, kappa2=3.058, beta=0.1514, volvol=1.8458)
+BTC_HESTON_PARAMS = HestonParams(v0=1.0, theta=1.0, kappa=7.4565, rho=0.0919, volvol=4.0907)
 
 ttms = {'1w': 1.0 / 52.0, '1m': 1.0 / 12.0, '3m': 0.25, '6m': 0.5}
 
