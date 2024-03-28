@@ -13,10 +13,10 @@ from enum import Enum
 
 # stochvolmodels
 from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer
-from stochvolmodels.utils.mgf_pricer import get_transform_var_grid, vanilla_slice_pricer_with_mgf_grid
 from stochvolmodels.utils.config import VariableType
 from stochvolmodels.utils.mc_payoffs import compute_mc_vars_payoff
 from stochvolmodels.pricers.model_pricer import ModelParams, ModelPricer
+import stochvolmodels.utils.mgf_pricer as mgfp
 
 # data
 from stochvolmodels.data.option_chain import OptionChain
@@ -192,11 +192,14 @@ def heston_chain_pricer(v0: float,
                         strikes_ttms: Tuple[np.ndarray, ...],
                         optiontypes_ttms: Tuple[np.ndarray, ...],
                         discfactors: np.ndarray,
+                        variable_type: VariableType = VariableType.LOG_RETURN,
                         vol_scaler: float = None  # run calibration on same vol_scaler
                         ) -> List[np.ndarray]:
 
     # starting values
-    phi_grid, psi_grid, theta_grid = get_transform_var_grid(vol_scaler=vol_scaler or np.sqrt(v0*ttms[-1]))
+    if vol_scaler is None:
+        vol_scaler = np.minimum(0.3, np.sqrt(v0*ttms[0]))
+    phi_grid, psi_grid, theta_grid = mgfp.get_transform_var_grid(vol_scaler=vol_scaler)
     a_t0, b_t0 = np.zeros(phi_grid.shape[0], dtype=np.complex128), np.zeros(phi_grid.shape[0], dtype=np.complex128)
     ttm0 = 0.0
 
@@ -213,13 +216,26 @@ def heston_chain_pricer(v0: float,
                                                            psi_grid=psi_grid,
                                                            a_t0=a_t0,
                                                            b_t0=b_t0)
+        
+        if variable_type == VariableType.LOG_RETURN:
+            option_prices = mgfp.vanilla_slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
+                                                                    phi_grid=phi_grid,
+                                                                    forward=forward,
+                                                                    strikes=strikes_ttm,
+                                                                    optiontypes=optiontypes_ttm,
+                                                                    discfactor=discfactor)
 
-        option_prices = vanilla_slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
-                                                           phi_grid=phi_grid,
-                                                           forward=forward,
-                                                           discfactor=discfactor,
-                                                           strikes=strikes_ttm,
-                                                           optiontypes=optiontypes_ttm)
+        elif variable_type == VariableType.Q_VAR:
+            option_prices = mgfp.slice_qvar_pricer_with_a_grid(log_mgf_grid=log_mgf_grid,
+                                                               psi_grid=psi_grid,
+                                                               ttm=ttm,
+                                                               forward=forward,
+                                                               strikes=strikes_ttm,
+                                                               optiontypes=optiontypes_ttm,
+                                                               discfactor=discfactor)
+        else:
+            raise NotImplementedError(f"variable_type={variable_type}")
+            
         model_prices_ttms.append(option_prices)
         ttm0 = ttm
 
@@ -330,9 +346,11 @@ class UnitTests(Enum):
     SLICE_PRICER = 2
     CALIBRATOR = 3
     MC_COMPARISION = 4
-
+    MC_COMPARISION_QVAR = 5
 
 def run_unit_test(unit_test: UnitTests):
+
+    import stochvolmodels.data.test_option_chain as chains
 
     if unit_test == UnitTests.CHAIN_PRICER:
         params = HestonParams(v0=0.85**2,
@@ -392,12 +410,33 @@ def run_unit_test(unit_test: UnitTests):
         heston_pricer.plot_model_ivols_vs_mc(option_chain=option_chain,
                                              params=BTC_HESTON_PARAMS)
 
+    elif unit_test == UnitTests.MC_COMPARISION_QVAR:
+        from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar
+        from stochvolmodels.pricers.logsv_pricer import LogSvParams
+        heston_pricer = HestonPricer()
+        ttms = {'1m': 1.0/12.0, '6m': 0.5}
+        option_chain = chains.get_qv_options_test_chain_data()
+        option_chain = OptionChain.get_slices_as_chain(option_chain, ids=list(ttms.keys()))
+        LOGSV_BTC_PARAMS = LogSvParams(sigma0=0.8376, theta=1.0413, kappa1=3.1844, kappa2=3.058, beta=0.1514,
+                                       volvol=1.8458)
+
+        forwards = np.array([compute_analytic_qvar(params=LOGSV_BTC_PARAMS, ttm=ttm, n_terms=4) for ttm in ttms.values()])
+        print(f"QV forwards = {forwards}")
+
+        option_chain.forwards = forwards  # replace forwards to imply BSM vols
+        option_chain.strikes_ttms = List(forward * strikes_ttm for forward, strikes_ttm in zip(option_chain.forwards, option_chain.strikes_ttms))
+
+        fig = heston_pricer.plot_model_ivols_vs_mc(option_chain=option_chain,
+                                                   params=BTC_HESTON_PARAMS,
+                                                   variable_type=VariableType.Q_VAR,
+                                                   nb_path=200000)
+
     plt.show()
 
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.MC_COMPARISION
+    unit_test = UnitTests.CALIBRATOR
 
     is_run_all_tests = False
     if is_run_all_tests:

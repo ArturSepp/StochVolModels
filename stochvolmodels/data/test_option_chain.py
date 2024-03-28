@@ -852,10 +852,10 @@ def get_qv_options_test_chain_data(num_strikes: int = 21) -> OptionChain:
     forwards = array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
     discfactors = array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
     strikes_ttm = np.linspace(0.75, 1.5, num_strikes)
-    strikes_ttms = (strikes_ttm, strikes_ttm, strikes_ttm, strikes_ttm)
+    strikes_ttms = (strikes_ttm, strikes_ttm, strikes_ttm, strikes_ttm, strikes_ttm, strikes_ttm)
 
     optiontypes_ttm = np.full(strikes_ttm.shape, 'C')
-    optiontypes_ttms = (optiontypes_ttm, optiontypes_ttm, optiontypes_ttm, optiontypes_ttm)
+    optiontypes_ttms = (optiontypes_ttm, optiontypes_ttm, optiontypes_ttm, optiontypes_ttm, optiontypes_ttm, optiontypes_ttm)
 
     data = OptionChain(ids=ids,
                        ttms=ttms,

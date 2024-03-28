@@ -770,12 +770,15 @@ class UnitTests(Enum):
     SLICE_PRICER = 2
     CALIBRATOR = 3
     MC_COMPARISION = 4
-    VOL_PATHS = 5
-    TERMINAL_VALUES = 6
-    MMA_INVERSE_MEASURE_VS_MC = 7
+    MC_COMPARISION_QVAR = 5
+    VOL_PATHS = 6
+    TERMINAL_VALUES = 7
+    MMA_INVERSE_MEASURE_VS_MC = 8
 
 
 def run_unit_test(unit_test: UnitTests):
+
+    import stochvolmodels.data.test_option_chain as chains
 
     if unit_test == UnitTests.CHAIN_PRICER:
         option_chain = get_btc_test_chain_data()
@@ -822,6 +825,22 @@ def run_unit_test(unit_test: UnitTests):
         logsv_pricer.plot_model_ivols_vs_mc(option_chain=option_chain,
                                             params=LOGSV_BTC_PARAMS)
 
+    elif unit_test == UnitTests.MC_COMPARISION_QVAR:
+        from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar
+        logsv_pricer = LogSVPricer()
+        ttms = {'1m': 1.0/12.0, '6m': 0.5}
+        option_chain = chains.get_qv_options_test_chain_data()
+        option_chain = OptionChain.get_slices_as_chain(option_chain, ids=list(ttms.keys()))
+        forwards = np.array([compute_analytic_qvar(params=LOGSV_BTC_PARAMS, ttm=ttm, n_terms=4) for ttm in ttms.values()])
+        print(f"QV forwards = {forwards}")
+
+        option_chain.forwards = forwards  # replace forwards to imply BSM vols
+        option_chain.strikes_ttms = List(forward * strikes_ttm for forward, strikes_ttm in zip(option_chain.forwards, option_chain.strikes_ttms))
+
+        fig = logsv_pricer.plot_model_ivols_vs_mc(option_chain=option_chain,
+                                                  params=LOGSV_BTC_PARAMS,
+                                                  variable_type=VariableType.Q_VAR)
+    
     elif unit_test == UnitTests.VOL_PATHS:
         logsv_pricer = LogSVPricer()
         nb_path = 10
@@ -859,7 +878,7 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.VOL_PATHS
+    unit_test = UnitTests.MC_COMPARISION_QVAR
 
     is_run_all_tests = False
     if is_run_all_tests:
