@@ -1,5 +1,6 @@
 """
 test data with implied volatilities for VIX, SQQQ, Bitcoin, Gold, SPY
+data are taken around Nov2021
 data is used for logsv_model_wtih_quadratic_drift figures
 """
 

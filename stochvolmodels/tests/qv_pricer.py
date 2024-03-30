@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from enum import Enum
 
-from stochvolmodels.pricers.analytic import mgf_pricer as mgfp
+import stochvolmodels.utils.mgf_pricer as mgfp
 from stochvolmodels.pricers.logsv import affine_expansion as afe
 from stochvolmodels.utils.config import VariableType
 from stochvolmodels.pricers.logsv_pricer import LogSVPricer, LogSvParams

@@ -1,5 +1,5 @@
 """
-implementation of gaussian mixture pricer
+implementation of gaussian mixture pricer and calibration
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,10 +14,7 @@ from stochvolmodels.utils.funcs import to_flat_np_array, timer, npdf1
 import stochvolmodels.pricers.analytic.bsm as bsm
 from stochvolmodels.pricers.model_pricer import ModelParams, ModelPricer
 from stochvolmodels.utils.config import VariableType
-
-# data
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.data.test_option_chain import get_btc_test_chain_data
 
 
 @dataclass
@@ -95,7 +92,6 @@ class GmmPricer(ModelPricer):
         if len(ttms) > 1:
             raise NotImplementedError(f"cannot calibrate to multiple slices")
         ttm = ttms[0]
-        discfactor = option_chain.discfactors[0]
 
         # p0 = (gmm_weights, gmm_mus, gmm_vols)
         if params0 is not None:
@@ -138,11 +134,12 @@ class GmmPricer(ModelPricer):
             return np.sum(params.gmm_weights) - 1.0
 
         def martingale(pars: np.ndarray) -> float:
+            # we set to 1.0, mutplication with foward will be set by pricing
             params = parse_model_params(pars=pars)
-            return np.sum(params.gmm_weights*np.exp((params.gmm_mus+0.5*params.gmm_vols*params.gmm_vols)*ttm)) - discfactor
+            return np.sum(params.gmm_weights*np.exp((params.gmm_mus+0.5*params.gmm_vols*params.gmm_vols)*ttm)) - 1.0
 
         constraints = ({'type': 'eq', 'fun': weights_sum}, {'type': 'eq', 'fun': martingale})
-        options = {'disp': True, 'ftol': 1e-10, 'maxiter': 300}
+        options = {'disp': True, 'ftol': 1e-10, 'maxiter': 500}
 
         res = minimize(objective, p0, args=None, method='SLSQP', constraints=constraints, bounds=bounds, options=options)
         fit_params = parse_model_params(pars=res.x)
@@ -174,6 +171,7 @@ class GmmPricer(ModelPricer):
                                                                  **kwargs)
             fit_params[ids_] = params0
         return fit_params
+
 
 @njit
 def compute_gmm_vanilla_price(gmm_weights: np.ndarray,
@@ -269,6 +267,7 @@ def run_unit_test(unit_test: UnitTests):
 
     import seaborn as sns
     import qis as qis
+    from stochvolmodels.data.test_option_chain import get_btc_test_chain_data
 
     if unit_test == UnitTests.CALIBRATOR:
         option_chain = get_btc_test_chain_data()

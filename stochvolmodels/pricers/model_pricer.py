@@ -324,6 +324,7 @@ class ModelPricer(ABC):
                                     headers: Optional[List[str]] = None,
                                     xvar_format: str = None,
                                     figsize: Tuple[float, float] = plot.FIGSIZE,
+                                    title: str = None,
                                     axs: List[plt.Subplot] = None,
                                     **kwargs
                                     ) -> plt.Figure:
@@ -369,11 +370,11 @@ class ModelPricer(ABC):
             model_vols = pd.Series(model_ivols[idx], index=strikes, name=f"Model Fit: mse={mse2:0.2%}")
             if option_chain.ids is not None:
                 if headers is not None:
-                    title = f"{headers[idx]} slice - {option_chain.ids[idx]}"
+                    title = title or f"{headers[idx]} slice - {option_chain.ids[idx]}"
                 else:
-                    title = f"Slice - {option_chain.ids[idx]}"
+                    title = title or f"Slice - {option_chain.ids[idx]}"
             else:
-                title = f"{ttm=:0.2f}"
+                title = title or f"{ttm=:0.2f}"
 
             if is_log_strike_xaxis:
                 atm_points = {'ATM': (0.0, atm_vols[idx])}

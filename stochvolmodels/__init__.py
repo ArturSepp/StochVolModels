@@ -61,10 +61,14 @@ from stochvolmodels.pricers.analytic.bachelier import (
 )
 
 from stochvolmodels.pricers.analytic.tdist import (
-    t_cum,
-    compute_tdist_price,
-    compute_compute_negative_prob,
-    infer_tdist_implied_vol,
+    pdf_tdist,
+    cdf_tdist,
+    cum_mean_tdist,
+    imply_drift_tdist,
+    compute_default_prob_tdist,
+    compute_forward_tdist,
+    compute_vanilla_price_tdist,
+    infer_implied_vol_tdist,
     infer_tdist_implied_vols_from_model_slice_prices
 )
 
@@ -109,6 +113,11 @@ from stochvolmodels.pricers.logsv_pricer import (
 from stochvolmodels.pricers.gmm_pricer import (
     GmmParams,
     GmmPricer
+)
+
+from stochvolmodels.pricers.tdist_pricer import (
+    TdistParams,
+    TdistPricer
 )
 
 
