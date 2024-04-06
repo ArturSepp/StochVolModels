@@ -22,8 +22,7 @@ from stochvolmodels.utils.funcs import (
     to_flat_np_array,
     update_kwargs,
     ncdf,
-    npdf,
-    npdf1
+    npdf
 )
 
 from stochvolmodels.pricers.analytic.bsm import (

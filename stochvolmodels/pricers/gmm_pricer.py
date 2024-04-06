@@ -10,7 +10,7 @@ from numba.typed import List
 from typing import Tuple
 from enum import Enum
 
-from stochvolmodels.utils.funcs import to_flat_np_array, timer, npdf1
+from stochvolmodels.utils.funcs import to_flat_np_array, timer
 import stochvolmodels.pricers.analytic.bsm as bsm
 from stochvolmodels.pricers.model_pricer import ModelParams, ModelPricer
 from stochvolmodels.utils.config import VariableType
@@ -37,7 +37,7 @@ class GmmParams(ModelParams):
         state_pdfs = np.zeros((len(x), len(self.gmm_weights)))
         agg_pdf = np.zeros_like(x)
         for idx, (gmm_weight, mu, vol) in enumerate(zip(self.gmm_weights, self.gmm_mus, self.gmm_vols)):
-            state_pdf = npdf1(x, mu=mu*self.ttm, vol=vol*np.sqrt(self.ttm))
+            state_pdf = npdf(x, mu=mu*self.ttm, vol=vol*np.sqrt(self.ttm))
             state_pdfs[:, idx] = state_pdf
             agg_pdf += gmm_weight*state_pdf
         return state_pdfs, agg_pdf
@@ -45,7 +45,7 @@ class GmmParams(ModelParams):
     def compute_pdf(self, x: np.ndarray):
         pdfs = np.zeros_like(x)
         for gmm_weight, mu, vol in zip(self.gmm_weights, self.gmm_mus, self.gmm_vols):
-            pdfs = pdfs + gmm_weight*npdf1(x, mu=mu*self.ttm, vol=vol*np.sqrt(self.ttm))
+            pdfs = pdfs + gmm_weight*npdf(x, mu=mu*self.ttm, vol=vol*np.sqrt(self.ttm))
         return pdfs
 
 

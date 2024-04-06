@@ -33,7 +33,8 @@ def cdf_tdist(x: Union[np.ndarray, float], mu: float, vol: float, nu: float, ttm
     return cdf
 
 
-def cum_mean_tdist(x: Union[np.ndarray, float], mu: float = 0, vol: float = 0.2, nu: float = 3.0, ttm: float = 0.25) -> Union[float, np.ndarray]:
+def cum_mean_tdist(x: Union[np.ndarray, float], mu: float = 0, vol: float = 0.2, nu: float = 3.0, ttm: float = 0.25
+                   ) -> Union[float, np.ndarray]:
     """
     cumulative expected value
     h = int^{x}_{-\infty} u f(u)du

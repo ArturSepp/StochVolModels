@@ -249,6 +249,8 @@ def compute_bsm_strike_from_delta(ttm: float,
 Vega
 ****************************
 """
+
+
 @njit
 def compute_bsm_vanilla_vega(ttm: float,
                              forward: float,
@@ -307,6 +309,7 @@ def compute_bsm_vegas_ttms(ttms: np.ndarray,
 Gamma
 ****************************
 """
+
 
 @njit
 def compute_bsm_vanilla_gamma(ttm: float,

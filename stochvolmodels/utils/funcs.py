@@ -5,7 +5,7 @@ import functools
 import time
 import numpy as np
 import pandas as pd
-from numba import njit, int32, int64
+from numba import njit
 from numba.typed import List
 from typing import Tuple, Dict, Any, Optional, Union
 
@@ -92,11 +92,5 @@ def ncdf(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
 
 
 @njit(cache=False, fastmath=True)
-def npdf(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
-    return np.exp(-0.5*np.square(x))/np.sqrt(2.0*np.pi)
-
-
-@njit(cache=False, fastmath=True)
-def npdf1(x: Union[float, np.ndarray], mu: float, vol: float) -> Union[float, np.ndarray]:
-    vol2 = vol*vol
-    return np.exp(-0.5*np.square(x-mu)/vol2)/np.sqrt(2.0*np.pi*vol2)
+def npdf(x: Union[float, np.ndarray], mu: float = 0.0, vol: float = 1.0) -> Union[float, np.ndarray]:
+    return np.exp(-0.5*np.square((x-mu)/vol))/(vol*np.sqrt(2.0*np.pi))
