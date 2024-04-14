@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "stochvolmodels"
-version = "1.0.16"
+version = "1.0.17"
 description = "Implementation of stochastic volatility models for option pricing"
 license = "LICENSE.txt"
 authors = ["Artur Sepp <artursepp@gmail.com>"]

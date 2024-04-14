@@ -111,7 +111,8 @@ from stochvolmodels.pricers.logsv_pricer import (
 
 from stochvolmodels.pricers.gmm_pricer import (
     GmmParams,
-    GmmPricer
+    GmmPricer,
+    plot_gmm_pdfs
 )
 
 from stochvolmodels.pricers.tdist_pricer import (
