@@ -44,7 +44,7 @@ The model interface is in stochvolmodels/pricers/model_pricer.py
 
 The analytics for the log-normal stochastic volatility model is based on the paper
 
-[Log-normal Stochastic Volatility Model with Quadratic Drift](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2522425) by Artur Sepp and Parviz Rakhmonov
+[Log-normal Stochastic Volatility Model with Quadratic Drift](https://www.worldscientific.com/doi/10.1142/S0219024924500031) by Artur Sepp and Parviz Rakhmonov
 
 
 The dynamics of the log-normal stochastic volatility model:
@@ -208,7 +208,7 @@ stochvolmodels/my_papers/logsv_model_wtih_quadratic_drift
 
 
 2) "What is a robust stochastic volatility model" by Sepp A and Rakhmonov P,
-SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027
+https://www.worldscientific.com/doi/10.1142/S0219024924500031
 ```python 
 stochvolmodels/my_papers/volatility_models
 ```
