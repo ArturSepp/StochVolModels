@@ -129,6 +129,7 @@ def run_unit_test(unit_test: UnitTests):
         is_save = True
         if is_save:
             qis.save_fig(fig, file_name='delta_comp', local_path=LOCAL_PATH)
+            qis.save_fig(fig, file_name='delta_comp',  file_type=qis.FileTypes.EPS, dpi=1200, local_path=LOCAL_PATH)
 
     elif unit_test == UnitTests.PNL_COMP:
 
@@ -150,13 +151,14 @@ def run_unit_test(unit_test: UnitTests):
         is_save = True
         if is_save:
             qis.save_fig(fig, file_name='pnl_comp', local_path=LOCAL_PATH)
+            qis.save_fig(fig, file_name='pnl_comp',  file_type=qis.FileTypes.EPS, dpi=1200, local_path=LOCAL_PATH)
 
     plt.show()
 
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.PNL_COMP
+    unit_test = UnitTests.DELTA_COMP
 
     is_run_all_tests = False
     if is_run_all_tests:

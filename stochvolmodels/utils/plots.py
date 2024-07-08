@@ -191,7 +191,7 @@ def vol_slice_fit(bid_vol: pd.Series,
               loc='upper center',
               framealpha=0,
               fontsize=fontsize)
-    get_legend_colors(ax)
+    set_legend_colors(ax)
 
     if x_rotation != 0:
         [tick.set_rotation(x_rotation) for tick in ax.get_xticklabels()]
@@ -237,7 +237,7 @@ def plot_model_risk_var(risk_var: Union[pd.Series, pd.DataFrame],
         # ax.axes.get_yaxis().set_visible(False)
     else:
         ax.legend(loc='upper left', framealpha=0)
-        get_legend_colors(ax)
+        set_legend_colors(ax)
 
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda z, _: xvar_format.format(z)))
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda z, _: yvar_format.format(z)))
@@ -284,7 +284,7 @@ def model_vols_ts(model_vols: Union[pd.Series, pd.DataFrame],
         yvar_format = '{:,.2f}'
 
     ax.legend(loc=legend_loc, fontsize=fontsize, framealpha=0)
-    get_legend_colors(ax)
+    set_legend_colors(ax)
 
     if not isinstance(model_vols.index.dtype, str):  # do not apply for str
         ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda z, _: xvar_format.format(z)))
@@ -326,7 +326,7 @@ def model_param_ts(param_ts: Union[pd.Series, pd.DataFrame],
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda z, _: yvar_format.format(z)))
 
     ax.legend(loc=legend_loc, framealpha=0)
-    get_legend_colors(ax)
+    set_legend_colors(ax)
 
     if x_rotation != 0:
         [tick.set_rotation(x_rotation) for tick in ax.get_xticklabels()]
@@ -337,7 +337,7 @@ def model_param_ts(param_ts: Union[pd.Series, pd.DataFrame],
     return fig
 
 
-def get_legend_colors(ax: plt.Subplot,
+def set_legend_colors(ax: plt.Subplot,
                       text_weight: str = None,
                       colors: List[str] = None,
                       fontsize: int = 12,

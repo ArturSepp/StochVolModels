@@ -246,7 +246,7 @@ class OptionChain:
                                bid_prices=None if option_chain.bid_prices is None else List([option_chain.bid_prices[idx]]),
                                ask_prices=None if option_chain.ask_prices is None else List([option_chain.ask_prices[idx]]))
         else:
-            indices = np.in1d(option_chain.ids, ids).nonzero()[0]
+            indices = np.isin(option_chain.ids, ids).nonzero()[0]
             option_chain = cls(ids=ids,
                                ttms=option_chain.ttms[indices],
                                ticker=option_chain.ticker,

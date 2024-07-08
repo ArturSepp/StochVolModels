@@ -1,13 +1,14 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.stats import t
+from numba import njit
 from scipy.special import betainc, gamma
 from scipy.optimize import fsolve
 from typing import Union
 from enum import Enum
 
 
+@njit
 def compute_upsilon(vol: float, ttm: float, nu: float) -> float:
     if nu <= 2.0:
         raise ValueError(f"{nu} must be > 2.0")

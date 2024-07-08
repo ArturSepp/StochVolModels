@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "stochvolmodels"
-version = "1.0.17"
+version = "1.0.18"
 description = "Implementation of stochastic volatility models for option pricing"
 license = "LICENSE.txt"
 authors = ["Artur Sepp <artursepp@gmail.com>"]
@@ -23,7 +23,7 @@ classifiers=[
         "Programming Language :: Python :: 3 :: Only",
         "Topic :: Office/Business :: Financial :: Investment",
     ]
-packages = [ {include = "stochvolmodels"} ]
+packages = [ {include = "stochvolmodels"}, {include = "my_papers"}, {include = "examples"} ]
 
 [tool.poetry.urls]
 "Issues" = "https://github.com/ArturSepp/StochVolModels/issues"

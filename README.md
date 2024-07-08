@@ -2,19 +2,36 @@
 
 Implementation of pricing analytics and Monte Carlo simulations for modeling of options and implied volatilities.
 
-The StochVolPackage provides:
+The StochVol package provides:
 1) Analytics for Black-Scholes and Normal vols
-2) Interfaces and implementation for stochastic volatility models including log-normal SV model and Heston SV model
+2) Interfaces and implementation for stochastic volatility models,
+including log-normal SV model and Heston SV model 
+using analytical method with Fourier transform and Monte Carlo simulations
 3) Visualization of model implied volatilities
 
 For the analytic implementation of stochastic volatility models, the package provides interfaces for a generic volatility model with the following features.
-1) Interface for analytical pricing of vanilla options using Fourier transform with closed-form solution for moment generating function
+1) Interface for analytical pricing of vanilla options 
+using Fourier transform with closed-form solution for moment generating function
 2) Interface for Monte-Carlo simulations of model dynamics
 
 
+[Illustrations](#papers) of using package analytics for research 
+work is provided in top-level package ```my_papers``` 
+which contains computations and visualisations for several papers
+
+
 ## Installation
+Install using
 ```python 
 pip install stochvolmodels
+```
+Upgrade using
+```python 
+pip install --upgrade stochvolmodels
+```
+Close using
+```python 
+git clone https://github.com/ArturSepp/StochVolModels.git
 ```
 
 # Table of contents
@@ -201,23 +218,30 @@ As illustrations of different analytics, this packadge includes module ```my_pap
 with codes for computations and visualisations featured in several papers
 for 
 
-1) "Log-normal Stochastic Volatility Model with Quadratic Drift" by Sepp A and Rakhmonov P, SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2522425
+1) "Log-normal Stochastic Volatility Model with Quadratic Drift" by Artur Sepp 
+and Parviz Rakhmonov: https://www.worldscientific.com/doi/10.1142/S0219024924500031
 ```python 
 stochvolmodels/my_papers/logsv_model_wtih_quadratic_drift
 ```
 
 
-2) "What is a robust stochastic volatility model" by Sepp A and Rakhmonov P,
-https://www.worldscientific.com/doi/10.1142/S0219024924500031
+2) "What is a robust stochastic volatility model" by Artur Sepp and Parviz Rakhmonov, SSRN:
+https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027
 ```python 
 stochvolmodels/my_papers/volatility_models
 ```
 
 
-3) "Valuation and Hedging of Cryptocurrency Inverse Options" by Sepp A and Lucic V, 
+3) "Valuation and Hedging of Cryptocurrency Inverse Options" by Artur Sepp
+and Vladimir Lucic, 
 SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4606748 
 ```python 
 stochvolmodels/my_papers/inverse_options
 ```
 
-
+4) "Unified Approach for Hedging Impermanent Loss of Liquidity Provision" by 
+Artur Sepp, Alexander Lipton and Vladimir Lucic, 
+SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4887298 
+```python 
+stochvolmodels/my_papers/il_hedging
+```

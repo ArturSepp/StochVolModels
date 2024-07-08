@@ -146,7 +146,7 @@ from stochvolmodels.utils.plots import (
     create_dummy_line,
     fig_list_to_pdf,
     fig_to_pdf,
-    get_legend_colors,
+    set_legend_colors,
     get_n_sns_colors,
     map_deltas_to_str,
     model_param_ts,
