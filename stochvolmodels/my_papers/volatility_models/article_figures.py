@@ -12,10 +12,10 @@ from stochvolmodels.pricers.logsv_pricer import LogSvParams
 from stochvolmodels.utils.funcs import set_seed
 
 # project
-from my_papers.volatility_models.load_data import fetch_ohlc_vol
-import my_papers.volatility_models.ss_distribution_fit as ssd
-from my_papers.volatility_models.vol_beta import estimate_vol_beta
-from my_papers.volatility_models.autocorr_fit import autocorr_fit_report_logsv
+from stochvolmodels.my_papers.volatility_models.load_data import fetch_ohlc_vol
+import stochvolmodels.my_papers.volatility_models.ss_distribution_fit as ssd
+from stochvolmodels.my_papers.volatility_models.vol_beta import estimate_vol_beta
+from stochvolmodels.my_papers.volatility_models.autocorr_fit import autocorr_fit_report_logsv
 
 KWARGS = dict(fontsize=14)
 FIGSIZE = (18, 8)

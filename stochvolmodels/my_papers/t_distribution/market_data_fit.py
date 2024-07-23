@@ -17,6 +17,7 @@ class UnitTests(Enum):
     GOLD_FIT = 2
     BTC_FIT = 3
 
+
 def run_unit_test(unit_test: UnitTests):
 
     import seaborn as sns

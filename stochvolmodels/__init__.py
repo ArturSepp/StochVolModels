@@ -123,12 +123,6 @@ from stochvolmodels.pricers.tdist_pricer import (
 
 from stochvolmodels.data.option_chain import OptionChain, OptionSlice
 
-"""
-from stochvolmodels.data.fetch_option_chain import (generate_vol_chain_np,
-                                                    load_option_chain,
-                                                    sample_option_chain_at_times,
-                                                    load_price_data)
-"""
 
 from stochvolmodels.data.test_option_chain import (
     get_btc_test_chain_data,

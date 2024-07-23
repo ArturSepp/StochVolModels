@@ -11,8 +11,11 @@ from typing import Dict, Tuple, Any, Optional
 from enum import Enum
 
 # analytics
-from stochvolmodels import (OptionChain, LogSvParams, LogSVPricer, ConstraintsType, LogsvModelCalibrationType,
-                            generate_vol_chain_np, sample_option_chain_at_times)
+from stochvolmodels.data.fetch_option_chain import (generate_vol_chain_np,
+                                                    load_option_chain,
+                                                    sample_option_chain_at_times,
+                                                    load_price_data)
+from stochvolmodels import (OptionChain, LogSvParams, LogSVPricer, ConstraintsType, LogsvModelCalibrationType)
 
 # chain data
 from option_chain_analytics import OptionsDataDFs, create_chain_from_from_options_dfs

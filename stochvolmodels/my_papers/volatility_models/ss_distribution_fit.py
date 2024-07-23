@@ -9,7 +9,7 @@ from typing import Optional
 from enum import Enum
 import qis
 
-from my_papers.volatility_models.load_data import fetch_ohlc_vol
+from stochvolmodels.my_papers.volatility_models.load_data import fetch_ohlc_vol
 from stochvolmodels import LogSvParams, HestonParams
 
 

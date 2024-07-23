@@ -1,11 +1,10 @@
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from enum import Enum
 import qis
 
-from my_papers.volatility_models.load_data import fetch_ohlc_vol
+from stochvolmodels.my_papers.volatility_models.load_data import fetch_ohlc_vol
 
 
 def estimate_vol_beta(vol: pd.Series,

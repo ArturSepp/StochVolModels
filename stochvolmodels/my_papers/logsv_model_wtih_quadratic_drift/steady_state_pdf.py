@@ -234,7 +234,7 @@ def run_unit_test(unit_test: UnitTests):
 
             is_save = True
             if is_save:
-                plot.save_fig(fig=fig, local_path='../../docs/figures//', file_name='vol_steady_state')
+                plot.save_fig(fig=fig, local_path='../../../docs/figures//', file_name='vol_steady_state')
 
     plt.show()
 

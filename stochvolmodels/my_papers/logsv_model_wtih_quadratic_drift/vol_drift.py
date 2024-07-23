@@ -64,7 +64,7 @@ def run_unit_test(unit_test: UnitTests):
         is_save = False
         if is_save:
             plot.save_fig(fig=fig,
-                          local_path='../../docs/figures//',
+                          local_path='../../../docs/figures//',
                           file_name='vol_drift')
 
     plt.show()

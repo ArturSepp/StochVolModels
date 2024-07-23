@@ -1,10 +1,14 @@
-
+"""
+figures for paper
+https://www.worldscientific.com/doi/10.1142/S0219024924500031
+Log-Normal Stochastic Volatility Model With Quadratic Drift
+"""
 import string
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import qis
+import qis as qis
 from typing import Tuple
 from numba.typed import List
 from enum import Enum
@@ -22,10 +26,10 @@ from stochvolmodels.utils.funcs import set_seed, compute_histogram_data
 import stochvolmodels.utils.plots as plot
 
 # implementations for paper
-import my_papers.logsv_model_wtih_quadratic_drift.steady_state_pdf as ssp
-import my_papers.logsv_model_wtih_quadratic_drift.moments_vol_qvar as mvq
-import my_papers.logsv_model_wtih_quadratic_drift.ode_sol_in_time as osi
-from my_papers.logsv_model_wtih_quadratic_drift.model_fit_to_options_timeseries import report_calibration_timeseries
+import stochvolmodels.my_papers.logsv_model_wtih_quadratic_drift as mvq
+import stochvolmodels.my_papers.logsv_model_wtih_quadratic_drift.steady_state_pdf as ssp
+import stochvolmodels.my_papers.logsv_model_wtih_quadratic_drift.ode_sol_in_time as osi
+from stochvolmodels.my_papers.logsv_model_wtih_quadratic_drift.model_fit_to_options_timeseries import report_calibration_timeseries
 
 
 def plot_fitted_model(option_chain: OptionChain,

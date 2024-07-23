@@ -3,8 +3,6 @@ This module contains analysis for paper
 by Artur Sepp, Alexander Lipton, and Vladimir Lucic
 
 All figures in the paper are produced by unittests in
-https://github.com/ArturSepp/StochVolModels/blob/main/my_papers/il_hedging/logsv_figures.py
-
-https://github.com/ArturSepp/StochVolModels/blob/main/my_papers/il_hedging/logsv_figures.py
+https://github.com/ArturSepp/StochVolModels/blob/main/my_papers/il_hedging/run_logsv_for_il_payoff.py
 
 See the description of data and analysis in the paper.

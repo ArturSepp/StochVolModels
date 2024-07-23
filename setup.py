@@ -16,7 +16,7 @@ requirements = read_requirements("requirements.txt")
 
 setup(
     name='stochvolmodels',
-    version='1.0.18',
+    version='1.0.19',
     author='Artur Sepp, Parviz Rakhmonov',
     author_email='artursepp@gmail.com, parviz.msu@gmail.com',
     url='https://github.com/ArturSepp/StochVolModels',
@@ -24,7 +24,7 @@ setup(
     long_description_content_type="text/x-rst",  # If this causes a warning, upgrade your setuptools package
     long_description=long_description,
     license="MIT license",
-    packages=find_packages(exclude=["docs"]),  # Don't include test directory in binary distribution
+    packages=find_packages(exclude=["docs", "stochvolmodels/my_papers"]),  # Don't include test directory in binary distribution
     install_requires=requirements,
     classifiers=[
         "Programming Language :: Python :: 3",
