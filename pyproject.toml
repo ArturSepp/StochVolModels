@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "stochvolmodels"
-version = "1.0.19"
+version = "1.0.20"
 description = "Implementation of stochastic volatility models for option pricing"
 license = "LICENSE.txt"
 authors = ["Artur Sepp <artursepp@gmail.com>"]
@@ -33,7 +33,7 @@ exclude = ["stochvolmodel/my_papers/"]
 "Personal website" = "https://artursepp.com"
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.11"
+python = ">=3.8"
 numba = ">=0.55"
 numpy = ">=1.22.4"
 scipy = ">=1.3"
