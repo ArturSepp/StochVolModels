@@ -1,7 +1,7 @@
 """
 analytics for vol and QV moments computation
 """
-
+# packages
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -9,9 +9,9 @@ import seaborn as sns
 from numpy import linalg as la
 from scipy import linalg as sla
 from enum import Enum
-
-from ...pricers.logsv_pricer import LogSvParams
-from ...utils.funcs import set_seed
+# project
+from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
+from stochvolmodels.utils.funcs import set_seed
 
 
 VOLVOL = 1.75
@@ -40,7 +40,7 @@ def compute_analytic_vol_moments(params: LogSvParams,
     rhs = np.zeros(n_terms)
     rhs[1] = params.vartheta2*params.theta2
 
-    if is_qvar: # need flat boundary condition
+    if is_qvar:  # need flat boundary condition
         rhs[-1] = -n_terms*params.kappa2*np.power(y, n_terms+1)
     else:
         rhs[-1] = -n_terms*params.kappa2*np.power(y, n_terms+1)
@@ -73,6 +73,9 @@ def compute_analytic_qvar(params: LogSvParams,
                           ttm: float = 1.0,
                           n_terms: int = 4
                           ) -> float:
+    """
+    compute expected value [ (1/T) int^T_0 sigma^2_t dt]
+    """
     if np.isclose(ttm, 0.0):
         qvar = np.square(params.sigma0)
     else:
@@ -113,10 +116,45 @@ def compute_sqrt_qvar_t(params: LogSvParams, t: np.ndarray, n_terms: int = 4) ->
     return ev
 
 
+def fit_model_vol_backbone_to_varswaps(log_sv_params: LogSvParams,
+                                       varswap_strikes: pd.Series,
+                                       n_terms: int = 4,
+                                       verbose: bool = False
+                                       ) -> pd.Series:
+    """
+    fit model eta so that model reproduces quadratic var
+    """
+    ttms = varswap_strikes.index.to_numpy()
+    market_qvar_dt = ttms * np.square(varswap_strikes.to_numpy())
+    # compute model qvars
+    model_forwards = np.array([compute_analytic_qvar(params=log_sv_params, ttm=ttm, n_terms=n_terms) for ttm in ttms])
+    model_qvar_dt = model_forwards*ttms
+    model_eta = np.ones_like(ttms)
+    for idx, ttm in enumerate(ttms):
+        if idx == 0:
+            model_eta[idx] = market_qvar_dt[idx] / model_qvar_dt[idx]
+        else:
+            model_eta[idx] = (market_qvar_dt[idx]-market_qvar_dt[idx-1]) / (model_qvar_dt[idx]-model_qvar_dt[idx-1])
+    # model_eta = np.where(model_eta > 0.0, np.sqrt(model_eta), 1.0)
+    model_eta = np.where(model_eta > 0.0, model_eta, 1.0)
+    # adhoc adjustemnt for now
+    model_eta = np.where(ttms < 0.06, np.sqrt(model_eta), model_eta)
+
+    model_eta = pd.Series(model_eta, index=ttms)
+    if verbose:
+        varswap_strikes = np.sqrt(varswap_strikes.to_frame('vars_swap strikes'))
+        varswap_strikes['market_qvar_dt'] = market_qvar_dt
+        varswap_strikes['model_qvar_dt'] = model_qvar_dt
+        varswap_strikes['model_eta'] = model_eta
+        print(f"vars_swaps\n{varswap_strikes}")
+    return model_eta
+
+
 class UnitTests(Enum):
     VOL_MOMENTS = 1
     EXPECTED_VOL = 2
     EXPECTED_QVAR = 3
+    VOL_BACKBONE = 4
 
 
 def run_unit_test(unit_test: UnitTests):
@@ -185,12 +223,17 @@ def run_unit_test(unit_test: UnitTests):
             sns.lineplot(data=analytic_vol_moments, dashes=False, ax=ax)
             ax.errorbar(x=df.index[::5], y=mc_mean[::5], yerr=mc_std[::5], fmt='o', color='green', capsize=8)
 
+    elif unit_test == UnitTests.VOL_BACKBONE:
+        fit_model_vol_backbone_to_varswaps(log_sv_params=params,
+                                           varswap_strikes=pd.Series([1.0, 1.0], index=[1.0 / 12., 2 / 12.0]),
+                                           verbose=True)
+
     plt.show()
 
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.VOL_MOMENTS
+    unit_test = UnitTests.VOL_BACKBONE
 
     is_run_all_tests = False
     if is_run_all_tests:

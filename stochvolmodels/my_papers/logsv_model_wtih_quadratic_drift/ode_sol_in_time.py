@@ -16,7 +16,7 @@ from typing import Tuple, List
 
 import stochvolmodels.utils.plots as plot
 from stochvolmodels.pricers.logsv.affine_expansion import solve_ode_for_a, ExpansionOrder, func_a_ode_quadratic_terms, get_expansion_n
-from stochvolmodels.pricers.logsv_pricer import LogSvParams
+from stochvolmodels import LogSvParams
 
 
 def plot_ode_sol_in_t(params: LogSvParams,

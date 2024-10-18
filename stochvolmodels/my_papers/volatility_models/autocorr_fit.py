@@ -8,7 +8,8 @@ from enum import Enum
 
 import stochvolmodels.my_papers.volatility_models.ss_distribution_fit as ssd
 from stochvolmodels.my_papers.volatility_models.load_data import fetch_ohlc_vol
-from stochvolmodels.pricers.logsv_pricer import LogSvParams, LogSVPricer
+from stochvolmodels.pricers.logsv_pricer import LogSVPricer
+from stochvolmodels import LogSvParams
 from stochvolmodels.utils.funcs import set_seed
 
 

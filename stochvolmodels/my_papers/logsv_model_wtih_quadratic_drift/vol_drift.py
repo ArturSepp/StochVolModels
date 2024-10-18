@@ -11,7 +11,7 @@ from typing import Dict, List
 from enum import Enum
 
 import stochvolmodels.utils.plots as plot
-from stochvolmodels.pricers.logsv_pricer import LogSvParams
+from stochvolmodels import LogSvParams
 
 VOLVOL = 1.75
 

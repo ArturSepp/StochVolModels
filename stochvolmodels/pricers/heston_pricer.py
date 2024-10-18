@@ -412,7 +412,7 @@ def run_unit_test(unit_test: UnitTests):
 
     elif unit_test == UnitTests.MC_COMPARISION_QVAR:
         from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar
-        from stochvolmodels.pricers.logsv_pricer import LogSvParams
+        from stochvolmodels import LogSvParams
         heston_pricer = HestonPricer()
         ttms = {'1m': 1.0/12.0, '6m': 0.5}
         option_chain = chains.get_qv_options_test_chain_data()

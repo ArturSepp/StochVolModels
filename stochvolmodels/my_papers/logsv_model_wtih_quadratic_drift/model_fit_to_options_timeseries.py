@@ -184,6 +184,7 @@ def run_unit_test(unit_test: UnitTests):
 
     # chain data here
     options_data_dfs = OptionsDataDFs(**ts_data_loader_wrapper(ticker=ticker))
+    options_data_dfs.get_start_end_date().print()
     chain = create_chain_from_from_options_dfs(options_data_dfs=options_data_dfs, value_time=value_time)
 
     option_chain = generate_vol_chain_np(chain=chain,
@@ -217,25 +218,25 @@ def run_unit_test(unit_test: UnitTests):
         qis.save_figs_to_pdf(figs=figs_dict, file_name='btc_calibration', local_path=f"C://Users//artur//OneDrive//analytics//outputs//")
 
     elif unit_test == UnitTests.RUN_CALIBRATION_TIMESERIES:
-        time_period = qis.TimePeriod('01Jan2023', '31Jan2023', tz='UTC')
-        time_period = qis.TimePeriod('2019-03-30 00:00:00+00:00', '2023-09-01 00:00:00+00:00', tz='UTC')
+        time_period = qis.TimePeriod('2019-03-30 00:00:00+00:00', '2024-05-06 00:00:00+00:00', tz='UTC')
 
         output_df, figs_dict = run_calibration_time_series(options_data_dfs=options_data_dfs, time_period=time_period,
                                                            freq='W-FRI',
                                                            **kappas)
         print(output_df)
 
-        file_name = 'eth_calibration_w_fri'
+        file_name = 'btc_calibration_w_fri_may_2024'
         qis.save_df_to_excel(data=output_df, file_name=file_name, local_path=f"C://Users//artur//OneDrive//analytics//outputs//",
                              add_current_date=True)
         qis.save_figs_to_pdf(figs=figs_dict, file_name=file_name, local_path=f"C://Users//artur//OneDrive//analytics//outputs//")
 
     elif unit_test == UnitTests.REPORT_CALIBRATION_TIMESERIES:
-
-        df = qis.load_df_from_excel(file_name='btc_calibration_w_fri_20231209_1504', local_path=f"C://Users//artur//OneDrive//analytics//resources//")
+        # df = qis.load_df_from_excel(file_name='btc_calibration_w_fri_20231209_1504', local_path=f"C://Users//artur//OneDrive//analytics//resources//")
         # df = qis.load_df_from_excel(file_name='eth_calibration_w_fri_20231210_1124', local_path=f"C://Users//artur//OneDrive//analytics//resources//")
+        df = qis.load_df_from_excel(file_name='btc_calibration_w_fri_may_2024_20241018_1147', local_path=f"C://Users//artur//OneDrive//analytics//resources//")
+
         fig = report_calibration_timeseries(df=df)
-        qis.save_fig(fig=fig, file_name='btc_calibration_w', local_path=f"C://Users//artur//OneDrive//My Papers//Working Papers//LogNormal Stochastic Volatility. London. Oct 2013//figures//")
+        qis.save_fig(fig=fig, file_name='btc_calibration_w', local_path=f"C://Users//artur//OneDrive//analytics//outputs//")
 
     plt.show()
 

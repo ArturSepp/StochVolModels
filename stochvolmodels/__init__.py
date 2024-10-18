@@ -104,10 +104,10 @@ from stochvolmodels.pricers.heston_pricer import (
 from stochvolmodels.pricers.logsv_pricer import (
     LOGSV_BTC_PARAMS,
     LogSVPricer,
-    LogSvParams,
     LogsvModelCalibrationType,
     ConstraintsType
 )
+from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 
 from stochvolmodels.pricers.gmm_pricer import (
     GmmParams,

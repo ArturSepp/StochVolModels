@@ -8,7 +8,7 @@ from typing import Dict, List
 from enum import Enum
 
 # package
-from stochvolmodels.pricers.logsv_pricer import LogSvParams
+from stochvolmodels import LogSvParams
 from stochvolmodels.utils.funcs import set_seed
 
 # project

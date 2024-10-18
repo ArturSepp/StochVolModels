@@ -10,7 +10,8 @@ from enum import Enum
 
 from stochvolmodels.utils.config import VariableType
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.pricers.logsv_pricer import LogSVPricer, LogsvModelCalibrationType, ConstraintsType, LogSvParams
+from stochvolmodels.pricers.logsv_pricer import LogSVPricer, LogsvModelCalibrationType, ConstraintsType
+from stochvolmodels import LogSvParams
 from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar
 from stochvolmodels.utils.funcs import set_seed
 import stochvolmodels.utils.plots as plot
@@ -89,6 +90,7 @@ def calibrate_logsv_model(asset: Assets = Assets.BTC,
 
 
 class UnitTests(Enum):
+    CHAIN_DATA = 0
     CALIBRATION = 1
     MODEL_COMPARISION_WITH_MC = 2
     ALL_PARAMS_TABLE = 3
@@ -100,7 +102,13 @@ def run_unit_test(unit_test: UnitTests):
 
     set_seed(24)
 
-    if unit_test == UnitTests.CALIBRATION:
+    if unit_test == UnitTests.CHAIN_DATA:
+        option_chain = get_asset_chain_data(asset=Assets.BTC)
+        print(option_chain)
+        atm_vols = option_chain.get_chain_atm_vols()
+        print(atm_vols)
+
+    elif unit_test == UnitTests.CALIBRATION:
         asset = Assets.BTC
         fig = calibrate_logsv_model(asset=asset)
         plot.save_fig(fig=fig, local_path='../../../docs/figures//', file_name=f"calibration_{asset.value}")
@@ -180,7 +188,7 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.PLOT_QVAR_FIGURE_FOR_ARTICLE
+    unit_test = UnitTests.CHAIN_DATA
 
     is_run_all_tests = False
     if is_run_all_tests:

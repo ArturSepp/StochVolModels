@@ -2,28 +2,27 @@
 Implementation of log-normal stochastic volatility model
 The lognormal sv model interface derives from ModelPricer
 """
-
+# package
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
-import seaborn as sns
 from numba import njit
 from numba.typed import List
-from typing import Tuple, Optional, Dict, Any
-from dataclasses import dataclass, asdict
-from numpy import linalg as la
+from typing import Tuple, Optional
 from scipy.optimize import minimize
 from enum import Enum
 
+# stochvolmodels
 from stochvolmodels.utils.config import VariableType
 import stochvolmodels.utils.mgf_pricer as mgfp
 from stochvolmodels.utils.mc_payoffs import compute_mc_vars_payoff
 from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer, compute_histogram_data
 
 # stochvolmodels pricers
+from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 import stochvolmodels.pricers.logsv.affine_expansion as afe
-from stochvolmodels.pricers.model_pricer import ModelPricer, ModelParams
+from stochvolmodels.pricers.model_pricer import ModelPricer
 from stochvolmodels.pricers.logsv.affine_expansion import ExpansionOrder
+from stochvolmodels.pricers.logsv.vol_moments_ode import fit_model_vol_backbone_to_varswaps
 
 # data
 from stochvolmodels.data.option_chain import OptionChain
@@ -34,6 +33,7 @@ class LogsvModelCalibrationType(Enum):
     PARAMS4 = 1  # v0, theta, beta, volvol; kappa1, kappa2 are set externally
     PARAMS5 = 2  # v0, theta, kappa1, beta, volvol
     PARAMS6 = 3  # v0, theta, kappa1, kappa2, beta, volvol
+    PARAMS_WITH_VARSWAP_FIT = 4  # beta, volvol; kappa1, kappa2 are set externally; term structure of varswap is fit
 
 
 class ConstraintsType(Enum):
@@ -42,150 +42,6 @@ class ConstraintsType(Enum):
     INVERSE_MARTINGALE = 3  # kappa_2 >= 2.0*beta
     MMA_MARTINGALE_MOMENT4 = 4  # kappa_2 >= beta &
     INVERSE_MARTINGALE_MOMENT4 = 5  # kappa_2 >= 2.0*beta
-
-
-@dataclass
-class LogSvParams(ModelParams):
-    """
-    Implementation of model params class
-    """
-    sigma0: float = 0.2
-    theta: float = 0.2
-    kappa1: float = 1.0
-    kappa2: Optional[float] = 2.5  # Optional is mapped to self.kappa1 / self.theta
-    beta: float = -1.0
-    volvol: float = 1.0
-
-    def __post_init__(self):
-        if self.kappa2 is None:
-            self.kappa2 = self.kappa1 / self.theta
-
-    def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
-
-    def to_str(self) -> str:
-        return f"sigma0={self.sigma0:0.2f}, theta={self.theta:0.2f}, kappa1={self.kappa1:0.2f}, kappa2={self.kappa2:0.2f}, " \
-               f"beta={self.beta:0.2f}, volvol={self.volvol:0.2f}"
-
-    @property
-    def kappa(self) -> float:
-        return self.kappa1+self.kappa2*self.theta
-
-    @property
-    def theta2(self) -> float:
-        return self.theta*self.theta
-
-    @property
-    def vartheta2(self) -> float:
-        return self.beta*self.beta + self.volvol*self.volvol
-
-    @property
-    def gamma(self) -> float:
-        """
-        assume kappa2 = kappa1 / theta
-        """
-        return self.kappa1 / self.theta
-
-    @property
-    def eta(self) -> float:
-        """
-        assume kappa2 = kappa1 / theta
-        """
-        return self.kappa1 * self.theta / self.vartheta2 - 1.0
-
-    def get_x_grid(self, ttm: float = 1.0, n_stdevs: float = 3.0, n: int = 200) -> np.ndarray:
-        """
-        spacial grid to compute density of x
-        """
-        sigma_t = np.sqrt(ttm * 0.5 * (np.square(self.sigma0) + np.square(self.theta)))
-        drift = - 0.5*sigma_t*sigma_t
-        stdev = (n_stdevs+1)*sigma_t
-        return np.linspace(-stdev+drift, stdev+drift, n)
-
-    def get_sigma_grid(self, ttm: float = 1.0, n_stdevs: float = 3.0, n: int = 200) -> np.ndarray:
-        """
-        spacial grid to compute density of sigma
-        """
-        sigma_t = np.sqrt(0.5*(np.square(self.sigma0) + np.square(self.theta)))
-        vvol = 0.5*np.sqrt(self.vartheta2*ttm)
-        return np.linspace(0.0, sigma_t+n_stdevs*vvol, n)
-
-    def get_qvar_grid(self, ttm: float = 1.0, n_stdevs: float = 3.0, n: int = 200) -> np.ndarray:
-        """
-        spacial grid to compute density of i
-        """
-        sigma_t = np.sqrt(ttm * (np.square(self.sigma0) + np.square(self.theta)))
-        vvol = np.sqrt(self.vartheta2)*ttm
-        return np.linspace(0.0, sigma_t+n_stdevs*vvol, n)
-
-    def get_variable_space_grid(self, variable_type: VariableType = VariableType.LOG_RETURN,
-                                ttm: float = 1.0,
-                                n_stdevs: float = 3,
-                                n: int = 200
-                                ) -> np.ndarray:
-        if variable_type == VariableType.LOG_RETURN:
-            return self.get_x_grid(ttm=ttm, n_stdevs=n_stdevs, n=n)
-        if variable_type == VariableType.SIGMA:
-            return self.get_sigma_grid(ttm=ttm, n_stdevs=n_stdevs, n=n)
-        elif variable_type == VariableType.Q_VAR:
-            return self.get_qvar_grid(ttm=ttm, n_stdevs=n_stdevs, n=n)
-        else:
-            raise NotImplementedError
-
-    def get_vol_moments_lambda(self,
-                               n_terms: int = 4
-                               ) -> np.ndarray:
-
-        kappa2 = self.kappa2
-        kappa = self.kappa
-        vartheta2 = self.vartheta2
-        theta = self.theta
-        theta2 = self.theta2
-
-        def c(n: int) -> float:
-            return 0.5 * vartheta2 * n * (n - 1.0)
-
-        lambda_m = np.zeros((n_terms, n_terms))
-        lambda_m[0, 0] = -kappa
-        lambda_m[0, 1] = -kappa2
-        lambda_m[1, 0] = 2.0*c(2) * theta
-        lambda_m[1, 1] = c(2) - 2.0*kappa
-        lambda_m[1, 2] = -2.0*kappa2
-
-        for n_ in np.arange(2, n_terms):
-            n = n_ + 1  # n_ is array counter, n is formula counter
-            c_n = c(n)
-            lambda_m[n_, n_ - 2] = c_n * theta2
-            lambda_m[n_, n_ - 1] = 2.0 * c_n * theta
-            lambda_m[n_, n_] = c_n - n*kappa
-            if n_ + 1 < n_terms:
-                lambda_m[n_, n_ + 1] = -n*kappa2
-
-        return lambda_m
-
-    def assert_vol_moments_stability(self, n_terms: int = 4):
-        lambda_m = self.get_vol_moments_lambda(n_terms=n_terms)
-        w, v = la.eig(lambda_m)
-        cond = np.all(np.real(w)<0.0)
-        print(f"vol moments stable = {cond}")
-
-    def print_vol_moments_stability(self, n_terms: int = 4) -> None:
-        def c(n: int) -> float:
-            return 0.5 * self.vartheta2 * n * (n - 1.0)
-
-        cond_m2 = c(2) - 2.0*self.kappa
-        print(f"con2:\n{cond_m2}")
-        cond_m3 = c(3) - 3.0*self.kappa
-        print(f"con3:\n{cond_m3}")
-        cond_m4 = c(4) - 4.0*self.kappa
-        print(f"cond4:\n{cond_m4}")
-
-        lambda_m = self.get_vol_moments_lambda(n_terms=n_terms)
-        print(f"lambda_m:\n{lambda_m}")
-
-        w, v = la.eig(lambda_m)
-        print(f"eigenvalues w:\n{w}")
-        print(f"vol moments stable = {np.all(np.real(w)<0.0)}")
 
 
 LOGSV_BTC_PARAMS = LogSvParams(sigma0=0.8376, theta=1.0413, kappa1=3.1844, kappa2=3.058, beta=0.1514, volvol=1.8458)
@@ -223,12 +79,14 @@ class LogSVPricer(ModelPricer):
                              nb_steps: Optional[int] = None,
                              **kwargs
                              ) -> (List[np.ndarray], List[np.ndarray]):
+        vol_backbone_etas = params.get_vol_backbone_etas(ttms=option_chain.ttms)
         return logsv_mc_chain_pricer(v0=params.sigma0,
                                      theta=params.theta,
                                      kappa1=params.kappa1,
                                      kappa2=params.kappa2,
                                      beta=params.beta,
                                      volvol=params.volvol,
+                                     vol_backbone_etas=vol_backbone_etas,
                                      ttms=option_chain.ttms,
                                      forwards=option_chain.forwards,
                                      discfactors=option_chain.discfactors,
@@ -275,6 +133,11 @@ class LogSVPricer(ModelPricer):
         else:
             weights = np.ones_like(market_vols)
 
+        if model_calibration_type == LogsvModelCalibrationType.PARAMS_WITH_VARSWAP_FIT:
+            varswap_strikes = option_chain.get_slice_varswap_strikes(floor_with_atm_vols=True)
+        else:
+            varswap_strikes = None
+
         def parse_model_params(pars: np.ndarray) -> LogSvParams:
             if model_calibration_type == LogsvModelCalibrationType.PARAMS4:
                 fit_params = LogSvParams(sigma0=pars[0],
@@ -290,6 +153,18 @@ class LogSVPricer(ModelPricer):
                                          kappa2=None,
                                          beta=pars[3],
                                          volvol=pars[4])
+            elif model_calibration_type == LogsvModelCalibrationType.PARAMS_WITH_VARSWAP_FIT:
+                fit_params = LogSvParams(sigma0=params0.sigma0,
+                                         theta=params0.theta,
+                                         kappa1=params0.kappa1,
+                                         kappa2=params0.kappa2,
+                                         beta=pars[0],
+                                         volvol=pars[1])
+                # set model backbone
+                vol_backbone = fit_model_vol_backbone_to_varswaps(log_sv_params=fit_params,
+                                                                  varswap_strikes=varswap_strikes)
+                fit_params.set_vol_backbone(vol_backbone=vol_backbone)
+
             else:
                 raise NotImplementedError(f"{model_calibration_type}")
             return fit_params
@@ -332,6 +207,11 @@ class LogSVPricer(ModelPricer):
                       (params_min.beta, params_max.beta),
                       (params_min.volvol, params_max.volvol))
 
+        elif model_calibration_type == LogsvModelCalibrationType.PARAMS_WITH_VARSWAP_FIT:
+            # beta, volvol; kappa1, kappa2 are set externally; term structure of varswap is fit
+            p0 = np.array([params0.beta, params0.volvol])
+            bounds = ((params_min.beta, params_max.beta),
+                      (params_min.volvol, params_max.volvol))
         else:
             raise NotImplementedError(f"{model_calibration_type}")
 
@@ -512,7 +392,7 @@ def logsv_chain_pricer(params: LogSvParams,
     # outputs as numpy lists
     model_prices_ttms = List()
     for ttm, forward, strikes_ttm, optiontypes_ttm, discfactor in zip(ttms, forwards, strikes_ttms, optiontypes_ttms, discfactors):
-
+        vol_backbone_eta = params.get_vol_backbone_eta(tau=ttm)
         a_t0, log_mgf_grid = afe.compute_logsv_a_mgf_grid(ttm=ttm - ttm0,
                                                           phi_grid=phi_grid,
                                                           psi_grid=psi_grid,
@@ -522,7 +402,8 @@ def logsv_chain_pricer(params: LogSvParams,
                                                           expansion_order=expansion_order,
                                                           is_stiff_solver=is_stiff_solver,
                                                           is_spot_measure=is_spot_measure,
-                                                          **params.to_dict())
+                                                          **params.to_dict(),
+                                                          vol_backbone_eta=vol_backbone_eta)
 
         if variable_type == VariableType.LOG_RETURN:
             option_prices = mgfp.vanilla_slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
@@ -628,6 +509,7 @@ def logsv_mc_chain_pricer(ttms: np.ndarray,
                           kappa2: float,
                           beta: float,
                           volvol: float,
+                          vol_backbone_etas: np.ndarray,
                           is_spot_measure: bool = True,
                           nb_path: int = 100000,
                           nb_steps: int = 360,
@@ -642,7 +524,9 @@ def logsv_mc_chain_pricer(ttms: np.ndarray,
     # outputs as numpy lists
     option_prices_ttm = List()
     option_std_ttm = List()
-    for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm in zip(ttms, forwards, discfactors, strikes_ttms, optiontypes_ttms):
+    for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm, vol_backbone_eta in zip(ttms, forwards, discfactors,
+                                                                                        strikes_ttms, optiontypes_ttms,
+                                                                                        vol_backbone_etas):
         x0, sigma0, qvar0 = simulate_logsv_x_vol_terminal(ttm=ttm - ttm0,
                                                           x0=x0,
                                                           sigma0=sigma0,
@@ -652,6 +536,7 @@ def logsv_mc_chain_pricer(ttms: np.ndarray,
                                                           kappa2=kappa2,
                                                           beta=beta,
                                                           volvol=volvol,
+                                                          vol_backbone_eta=vol_backbone_eta,
                                                           nb_path=nb_path,
                                                           nb_steps=nb_steps,
                                                           is_spot_measure=is_spot_measure)
@@ -721,6 +606,7 @@ def simulate_logsv_x_vol_terminal(ttm: float,
                                   kappa2: float,
                                   beta: float,
                                   volvol: float,
+                                  vol_backbone_eta: float = 1.0,
                                   is_spot_measure: bool = True,
                                   nb_path: int = 100000,
                                   nb_steps: int = 360
@@ -750,17 +636,17 @@ def simulate_logsv_x_vol_terminal(ttm: float,
     if is_spot_measure:
         alpha, adj = -1.0, 0.0
     else:
-        alpha, adj = 1.0, beta
+        alpha, adj = 1.0, beta*vol_backbone_eta  # ? vol_backbone_eta
 
     vartheta2 = beta*beta + volvol*volvol
+    vol_backbone_eta2 = vol_backbone_eta * vol_backbone_eta
     vol_var = np.log(sigma0)
     for t_, (w0, w1) in enumerate(zip(W0, W1)):
-        sigma0_2dt = sigma0 * sigma0 * dt
-        x0 = x0 + alpha * 0.5 * sigma0_2dt + sigma0 * w0
+        sigma0_2dt = vol_backbone_eta2 * sigma0 * sigma0 * dt
+        x0 = x0 + alpha * 0.5 * sigma0_2dt + vol_backbone_eta * sigma0 * w0
         vol_var = vol_var + ((kappa1 * theta / sigma0 - kappa1) + kappa2*(theta-sigma0) + adj*sigma0 - 0.5*vartheta2) * dt + beta*w0+volvol*w1
         sigma0 = np.exp(vol_var)
-        qvar0 = qvar0 + 0.5*(sigma0_2dt+sigma0 * sigma0 * dt)
-
+        qvar0 = qvar0 + 0.5*(sigma0_2dt + vol_backbone_eta2 * sigma0 * sigma0 * dt)
 
     return x0, sigma0, qvar0
 
@@ -778,6 +664,8 @@ class UnitTests(Enum):
 
 def run_unit_test(unit_test: UnitTests):
 
+    import matplotlib.pyplot as plt
+    import seaborn as sns
     import stochvolmodels.data.test_option_chain as chains
 
     if unit_test == UnitTests.CHAIN_PRICER:

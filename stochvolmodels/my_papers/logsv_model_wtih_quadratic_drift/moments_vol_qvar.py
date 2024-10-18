@@ -14,7 +14,8 @@ from enum import Enum
 import stochvolmodels.pricers.logsv.vol_moments_ode as vmo
 import stochvolmodels.utils.plots as plot
 from stochvolmodels.utils.funcs import set_seed
-from stochvolmodels.pricers.logsv_pricer import LogSVPricer, LogSvParams
+from stochvolmodels.pricers.logsv_pricer import LogSVPricer
+from stochvolmodels import LogSvParams
 
 VOLVOL = 1.5
 SIGMA0P = 1.5

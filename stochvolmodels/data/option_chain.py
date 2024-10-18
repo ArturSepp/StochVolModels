@@ -10,9 +10,12 @@ from __future__ import annotations
 import numpy as np
 from dataclasses import dataclass
 from typing import Tuple, Optional
+
+import pandas as pd
 from numba.typed import List
 
 import stochvolmodels.pricers.analytic.bsm as bsm
+from  stochvolmodels.utils.var_swap_pricer import compute_var_swap_strike
 
 
 @dataclass
@@ -226,6 +229,26 @@ class OptionChain:
                                    bid_prices=None if self.bid_prices is None else self.bid_prices[idx],
                                    ask_prices=None if self.ask_prices is None else self.ask_prices[idx])
         return option_slice
+
+    def get_slice_varswap_strikes(self, floor_with_atm_vols: bool = True) -> pd.Series:
+        varswap_strikes = np.zeros_like(self.ttms)
+        vols_ttms = self.get_mid_vols()
+        for idx, ttm in enumerate(self.ttms):
+            mid_prices = bsm.compute_bsm_vanilla_slice_prices(ttm=ttm,
+                                                              forward=self.forwards[idx],
+                                                              strikes=self.strikes_ttms[idx],
+                                                              vols=vols_ttms[idx],
+                                                              optiontypes=self.optiontypes_ttms[idx])
+            strikes = self.strikes_ttms[idx]
+            puts_cond = self.optiontypes_ttms[idx] == 'P'
+            puts = pd.Series(mid_prices[puts_cond], index=strikes[puts_cond])
+            calls = pd.Series(mid_prices[puts_cond == False], index=strikes[puts_cond == False])
+            varswap_strikes[idx] = compute_var_swap_strike(puts=puts, calls=calls, forward=self.forwards[idx], ttm=ttm)
+
+        if floor_with_atm_vols:
+            varswap_strikes = np.maximum(self.get_chain_atm_vols(), varswap_strikes)
+
+        return pd.Series(varswap_strikes, index=self.ttms)
 
     @classmethod
     def get_slices_as_chain(cls, option_chain: OptionChain, ids: List[str]) -> OptionChain:

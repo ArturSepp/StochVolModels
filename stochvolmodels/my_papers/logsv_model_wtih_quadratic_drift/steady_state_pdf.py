@@ -13,7 +13,7 @@ from numba import njit
 from enum import Enum
 from typing import Dict
 
-from stochvolmodels.pricers.logsv_pricer import LogSvParams
+from stochvolmodels import LogSvParams
 import stochvolmodels.utils.plots as plot
 
 VOLVOL = 1.5

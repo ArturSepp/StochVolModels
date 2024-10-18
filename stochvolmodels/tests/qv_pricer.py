@@ -9,7 +9,8 @@ from enum import Enum
 import stochvolmodels.utils.mgf_pricer as mgfp
 from stochvolmodels.pricers.logsv import affine_expansion as afe
 from stochvolmodels.utils.config import VariableType
-from stochvolmodels.pricers.logsv_pricer import LogSVPricer, LogSvParams
+from stochvolmodels.pricers.logsv_pricer import LogSVPricer
+from stochvolmodels import LogSvParams
 from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar
 from stochvolmodels.pricers.analytic.bsm import infer_bsm_ivols_from_model_chain_prices
 from stochvolmodels.utils.funcs import set_seed

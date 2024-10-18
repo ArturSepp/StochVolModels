@@ -36,7 +36,8 @@ def func_a_ode_quadratic_terms(theta: float,
                                phi: np.complex128,
                                psi: np.complex128,
                                is_spot_measure: bool = True,
-                               expansion_order: ExpansionOrder = ExpansionOrder.FIRST
+                               expansion_order: ExpansionOrder = ExpansionOrder.FIRST,
+                               vol_backbone_eta: float = 1.0
                                ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Matrices for the quadratic form A_t = A.T@M@A + L@A + H
@@ -45,14 +46,15 @@ def func_a_ode_quadratic_terms(theta: float,
     vartheta2 = beta * beta + volvol * volvol
     qv = theta * vartheta2
     qv2 = theta2 * vartheta2
+    vol_backbone_eta2 = vol_backbone_eta * vol_backbone_eta
     if is_spot_measure:
         lamda = 0
         kappa2_p = kappa2
         kappa_p = kappa1 + kappa2 * theta
     else:
-        lamda = beta*theta2
-        kappa2_p = kappa2-beta
-        kappa_p = kappa1 + kappa2 * theta - 2*beta*theta
+        lamda = beta*theta2*vol_backbone_eta
+        kappa2_p = kappa2-beta*vol_backbone_eta
+        kappa_p = kappa1 + kappa2 * theta - 2*beta*theta*vol_backbone_eta
 
     # fill Ms: M should be of same type as L and H for numba, eventhough they are real
     # utilize that M is symmetric
@@ -83,15 +85,15 @@ def func_a_ode_quadratic_terms(theta: float,
 
     # fills Ls
     L = np.zeros((n, n), dtype=np.complex128)
-    L[0, 1], L[0, 2] = lamda - theta2 * beta * phi, qv2
-    L[1, 1], L[1, 2] = -kappa_p - 2.0 * theta * beta * phi, 2.0 * (lamda + qv - theta2 * beta * phi)
-    L[2, 1], L[2, 2] = -kappa2_p - beta * phi, vartheta2 - 2.0 * kappa_p - 4.0 * theta * beta * phi
+    L[0, 1], L[0, 2] = lamda - theta2 * beta * vol_backbone_eta * phi, qv2
+    L[1, 1], L[1, 2] = -kappa_p - 2.0 * theta * beta * vol_backbone_eta * phi, 2.0 * (lamda + qv - theta2 * beta * vol_backbone_eta * phi)
+    L[2, 1], L[2, 2] = -kappa2_p - beta * vol_backbone_eta * phi, vartheta2 - 2.0 * kappa_p - 4.0 * theta * beta * vol_backbone_eta * phi
 
     if expansion_order == ExpansionOrder.SECOND:
         L[1, 3] = 3.0*qv2
-        L[2, 3], L[2, 4] = 3.0 * (2.0 * qv - theta2 * beta * phi), 6.0 * qv2
-        L[3, 2], L[3, 3], L[3, 4] = -2.0 * (kappa2_p + beta * phi), 3.0 * (vartheta2 - kappa_p - 2.0 * theta * beta * phi), 4.0 * (3.0 * qv - theta2 * beta * phi)
-        L[4, 3], L[4, 4] = -3.0 * (kappa2_p + beta * phi), 2.0 * (vartheta2 - 2.0 * kappa_p - 4.0 * theta * beta * phi)
+        L[2, 3], L[2, 4] = 3.0 * (2.0 * qv - theta2 * beta * vol_backbone_eta * phi), 6.0 * qv2
+        L[3, 2], L[3, 3], L[3, 4] = -2.0 * (kappa2_p + beta * vol_backbone_eta * phi), 3.0 * (vartheta2 - kappa_p - 2.0 * theta * beta * vol_backbone_eta * phi), 4.0 * (3.0 * qv - theta2 * beta * vol_backbone_eta * phi)
+        L[4, 3], L[4, 4] = -3.0 * (kappa2_p + beta * vol_backbone_eta * phi), 2.0 * (vartheta2 - 2.0 * kappa_p - 4.0 * theta * beta * vol_backbone_eta * phi)
 
     # fill Hs
     H = np.zeros(n, dtype=np.complex128)
@@ -99,7 +101,7 @@ def func_a_ode_quadratic_terms(theta: float,
         rhs = (phi * (phi + 1.0) - 2.0 * psi)
     else:
         rhs = (phi * (phi - 1.0) - 2.0 * psi)
-    H[0], H[1], H[2] = 0.5 * theta2 * rhs, theta * rhs, 0.5 * rhs
+    H[0], H[1], H[2] = 0.5*theta2 * vol_backbone_eta2 * rhs, theta * vol_backbone_eta2 * rhs, 0.5*vol_backbone_eta2 * rhs
 
     return M, L, H
 
@@ -153,7 +155,8 @@ def solve_ode_for_a(ttm: float,
                     a_t0: Optional[np.ndarray] = None,
                     expansion_order: ExpansionOrder = ExpansionOrder.FIRST,
                     is_stiff_solver: bool = False,
-                    dense_output: bool = False
+                    dense_output: bool = False,
+                    vol_backbone_eta: float = 1.0
                     ) -> OdeResult:
     """
     solve ode for given phi
@@ -167,7 +170,8 @@ def solve_ode_for_a(ttm: float,
                                          phi=phi,
                                          psi=psi,
                                          expansion_order=expansion_order,
-                                         is_spot_measure=is_spot_measure)
+                                         is_spot_measure=is_spot_measure,
+                                         vol_backbone_eta=vol_backbone_eta)
 
     if a_t0 is None:
         a_t0 = np.zeros_like(H, dtype=np.complex128)
@@ -361,7 +365,8 @@ def solve_a_ode_grid(phi_grid: np.ndarray,
                      is_spot_measure: bool = True,
                      a_t0: Optional[np.ndarray] = None,
                      is_stiff_solver: bool = False,
-                     expansion_order: ExpansionOrder = ExpansionOrder.FIRST
+                     expansion_order: ExpansionOrder = ExpansionOrder.FIRST,
+                     vol_backbone_eta: float = 1.0
                      ) -> np.ndarray:
     """
     solve ode for range phi
@@ -382,7 +387,8 @@ def solve_a_ode_grid(phi_grid: np.ndarray,
                                               is_stiff_solver=is_stiff_solver,
                                               dense_output=False,
                                               expansion_order=expansion_order,
-                                              is_spot_measure=is_spot_measure)
+                                              is_spot_measure=is_spot_measure,
+                                              vol_backbone_eta=vol_backbone_eta)
 
     a_t1 = np.zeros((phi_grid.shape[0], get_expansion_n(expansion_order)), dtype=np.complex128)
     for idx, (phi, psi) in enumerate(zip(phi_grid, psi_grid)):
@@ -429,6 +435,7 @@ def compute_logsv_a_mgf_grid(ttm: float,
                              is_stiff_solver: bool = False,
                              is_analytic: bool = False,
                              is_spot_measure: bool = True,
+                             vol_backbone_eta: float = 1.0,
                              **kwargs
                              ) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -471,7 +478,8 @@ def compute_logsv_a_mgf_grid(ttm: float,
                                 a_t0=a_t0,
                                 is_stiff_solver=is_stiff_solver,
                                 expansion_order=expansion_order,
-                                is_spot_measure=is_spot_measure)
+                                is_spot_measure=is_spot_measure,
+                                vol_backbone_eta=vol_backbone_eta)
 
     y = sigma0 - theta
     if expansion_order == ExpansionOrder.FIRST:
