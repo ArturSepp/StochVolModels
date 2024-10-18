@@ -195,7 +195,7 @@ def run_unit_test(unit_test: UnitTests):
 
         is_save = True
         if is_save:
-            plot.save_fig(fig=fig, local_path='../../../docs/figures//', file_name='vol_qvar_exp')
+            plot.save_fig(fig=fig, local_path='../../docs/figures//', file_name='vol_qvar_exp')
 
     elif unit_test == UnitTests.JOINT_VOL_MOMENTS_VS_MC_FIGURE:
         params = LogSvParams(sigma0=1.5, theta=1.0, kappa1=4.0, kappa2=4.0, beta=0.0, volvol=1.0)
@@ -213,7 +213,7 @@ def run_unit_test(unit_test: UnitTests):
 
         is_save = False
         if is_save:
-            plot.save_fig(fig=fig, local_path='../../../docs/figures//', file_name='vol_moments')
+            plot.save_fig(fig=fig, local_path='../../docs/figures//', file_name='vol_moments')
 
     elif unit_test == UnitTests.SINGLE_QVAR_FIGURE:
         with sns.axes_style('darkgrid'):
@@ -223,7 +223,7 @@ def run_unit_test(unit_test: UnitTests):
 
         is_save = False
         if is_save:
-            plot.save_fig(fig=fig, local_path='../../../docs/figures//', file_name='qvar_exp')
+            plot.save_fig(fig=fig, local_path='../../docs/figures//', file_name='qvar_exp')
 
     plt.show()
 

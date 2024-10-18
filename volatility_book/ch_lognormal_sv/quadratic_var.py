@@ -14,7 +14,8 @@ from option_chain_analytics import OptionsDataDFs, create_chain_from_from_option
 from option_chain_analytics.ts_loaders import ts_data_loader_wrapper
 
 # analytics
-from stochvolmodels import OptionChain, LogSvParams, LogSVPricer, VariableType, ExpansionOrder, my_papers as mvq
+from stochvolmodels import OptionChain, LogSvParams, LogSVPricer, VariableType, ExpansionOrder
+import my_papers as mvq
 from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar
 from stochvolmodels.data.fetch_option_chain import generate_vol_chain_np
 import stochvolmodels.data.test_option_chain as chains
@@ -22,9 +23,9 @@ from stochvolmodels.utils.funcs import set_seed, compute_histogram_data
 import stochvolmodels.utils.plots as plot
 
 # implementations for paper
-import stochvolmodels.my_papers.logsv_model_wtih_quadratic_drift.steady_state_pdf as ssp
-import stochvolmodels.my_papers.logsv_model_wtih_quadratic_drift.ode_sol_in_time as osi
-from stochvolmodels.my_papers.logsv_model_wtih_quadratic_drift.model_fit_to_options_timeseries import report_calibration_timeseries
+import my_papers as ssp
+import my_papers.logsv_model_wtih_quadratic_drift.ode_sol_in_time as osi
+from my_papers.logsv_model_wtih_quadratic_drift.model_fit_to_options_timeseries import report_calibration_timeseries
 
 LOGSV_BTC_PARAMS = LogSvParams(sigma0=1.0, theta=1.0, kappa1=3.1844, kappa2=3.058, beta=0.1514, volvol=1.8458)
 

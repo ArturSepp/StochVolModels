@@ -26,10 +26,10 @@ from stochvolmodels.utils.funcs import set_seed, compute_histogram_data
 import stochvolmodels.utils.plots as plot
 
 # implementations for paper
-import stochvolmodels.my_papers.logsv_model_wtih_quadratic_drift as mvq
-import stochvolmodels.my_papers.logsv_model_wtih_quadratic_drift.steady_state_pdf as ssp
-import stochvolmodels.my_papers.logsv_model_wtih_quadratic_drift.ode_sol_in_time as osi
-from stochvolmodels.my_papers.logsv_model_wtih_quadratic_drift.model_fit_to_options_timeseries import report_calibration_timeseries
+import my_papers.logsv_model_wtih_quadratic_drift as mvq
+import my_papers.logsv_model_wtih_quadratic_drift.steady_state_pdf as ssp
+import my_papers.logsv_model_wtih_quadratic_drift.ode_sol_in_time as osi
+from my_papers.logsv_model_wtih_quadratic_drift.model_fit_to_options_timeseries import report_calibration_timeseries
 
 
 def plot_fitted_model(option_chain: OptionChain,

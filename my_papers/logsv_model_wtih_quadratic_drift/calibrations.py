@@ -111,7 +111,7 @@ def run_unit_test(unit_test: UnitTests):
     elif unit_test == UnitTests.CALIBRATION:
         asset = Assets.BTC
         fig = calibrate_logsv_model(asset=asset)
-        plot.save_fig(fig=fig, local_path='../../../docs/figures//', file_name=f"calibration_{asset.value}")
+        plot.save_fig(fig=fig, local_path='../../docs/figures//', file_name=f"calibration_{asset.value}")
 
     elif unit_test == UnitTests.MODEL_COMPARISION_WITH_MC:
 
@@ -151,8 +151,8 @@ def run_unit_test(unit_test: UnitTests):
 
         is_save = False
         if is_save:
-            plot.save_fig(fig=fig1, local_path='../../../docs/figures//', file_name="btc_fit")
-            plot.save_fig(fig=fig2, local_path='../../../docs/figures//', file_name="btc_mc_comp")
+            plot.save_fig(fig=fig1, local_path='../../docs/figures//', file_name="btc_fit")
+            plot.save_fig(fig=fig2, local_path='../../docs/figures//', file_name="btc_mc_comp")
 
     elif unit_test == UnitTests.PLOT_QVAR_FIGURE_FOR_ARTICLE:
 
@@ -178,7 +178,7 @@ def run_unit_test(unit_test: UnitTests):
                                                                  nb_path=100000)
         is_save = False
         if is_save:
-            plot.save_fig(fig=fig, local_path='../../../docs/figures//', file_name="model_vs_mc_qvar_logsv")
+            plot.save_fig(fig=fig, local_path='../../docs/figures//', file_name="model_vs_mc_qvar_logsv")
 
     else:
         raise NotImplementedError(f"not implemented {unit_test}")

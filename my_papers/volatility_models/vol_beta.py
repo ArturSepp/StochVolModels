@@ -4,7 +4,7 @@ import seaborn as sns
 from enum import Enum
 import qis
 
-from stochvolmodels.my_papers.volatility_models.load_data import fetch_ohlc_vol
+from my_papers.volatility_models.load_data import fetch_ohlc_vol
 
 
 def estimate_vol_beta(vol: pd.Series,

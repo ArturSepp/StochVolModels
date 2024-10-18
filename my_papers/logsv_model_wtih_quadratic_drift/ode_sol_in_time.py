@@ -281,13 +281,13 @@ def run_unit_test(unit_test: UnitTests):
         fig = plot_ode_solutions(params=params, ttm=ttm, expansion_order=ExpansionOrder.FIRST,
                                  is_spot_measure=is_spot_measure)
         if is_save:
-            plot.save_fig(fig=fig, local_path='../../../docs/figures//', file_name="first_order_fig")
+            plot.save_fig(fig=fig, local_path='../../docs/figures//', file_name="first_order_fig")
 
     elif unit_test == UnitTests.SECOND_ORDER:
         fig = plot_ode_solutions(params=params, ttm=ttm, expansion_order=ExpansionOrder.SECOND,
                                  is_spot_measure=is_spot_measure)
         if is_save:
-            plot.save_fig(fig=fig, local_path='../../../docs/figures//', file_name="second_order_fig")
+            plot.save_fig(fig=fig, local_path='../../docs/figures//', file_name="second_order_fig")
 
     elif unit_test == UnitTests.APPROXIMATION:
         plot_approximate_solutions(phi=-0.5 + 1j,
