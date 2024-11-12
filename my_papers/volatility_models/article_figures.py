@@ -134,9 +134,10 @@ def vol_beta_plots(tickers: List[str], span: int = 65) -> plt.Figure:
 class UnitTests(Enum):
     PLOT_VOLS = 1
     AUTOCORRELATION_PLOTS = 2
-    SS_DENSITY_PLOTS = 3
-    VOL_BETA_PLOTS = 4
-    MODEL_PARAMS_TABLE = 5
+    AUTOCORRELATION_PLOTS_BTC = 3
+    SS_DENSITY_PLOTS = 4
+    VOL_BETA_PLOTS = 5
+    MODEL_PARAMS_TABLE = 6
 
 
 def run_unit_test(unit_test: UnitTests):
@@ -164,6 +165,11 @@ def run_unit_test(unit_test: UnitTests):
                     'OVX': ovx_log_params,
                     'BTC': btc_log_params}
 
+    model_params_btc = {'VIX': vix_log_params,
+                    'MOVE': move_log_params,
+                    'OVX': ovx_log_params,
+                    'BTC': btc_log_params}
+
     local_path = "C://Users//artur//OneDrive//My Papers//Working Papers//Review of Beta Lognormal SV Model. Zurich. Nov 2023//figures//"
 
     if unit_test == UnitTests.PLOT_VOLS:
@@ -173,6 +179,13 @@ def run_unit_test(unit_test: UnitTests):
             qis.save_fig(fig, file_name='vols_ts', local_path=local_path)
 
     elif unit_test == UnitTests.AUTOCORRELATION_PLOTS:
+        fig = plot_autocorrs(model_params=model_params,
+                             nb_path=10000, num_lags=120, ttm=10.0)
+        is_save = True
+        if is_save:
+            qis.save_fig(fig, file_name='autocorr_fit', local_path=local_path)
+
+    elif unit_test == UnitTests.AUTOCORRELATION_PLOTS_BTC:
         fig = plot_autocorrs(model_params=model_params,
                              nb_path=10000, num_lags=120, ttm=10.0)
         is_save = True
