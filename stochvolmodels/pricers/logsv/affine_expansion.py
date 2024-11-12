@@ -14,6 +14,7 @@ from stochvolmodels.utils.config import VariableType
 
 
 class ExpansionOrder(Enum):
+    ZERO = 0
     FIRST = 1
     SECOND = 2
 

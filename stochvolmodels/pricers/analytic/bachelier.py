@@ -22,7 +22,7 @@ def compute_normal_price(forward: float,
     """
     bsm pricer for forward
     """
-    sdev = forward*vol*np.sqrt(ttm)
+    sdev = vol*np.sqrt(ttm)
     d = (forward - strike) / sdev
     if optiontype == 'C' or optiontype == 'IC':
         price = discfactor * ((forward-strike) * ncdf(d) + sdev * npdf(d))
@@ -191,12 +191,12 @@ def infer_normal_implied_vol(forward: float,
                              discfactor: float = 1.0,
                              optiontype: str = 'C',
                              tol: float = 1e-12,
-                             is_bounds_to_nan: bool = False
+                             is_bounds_to_nan: bool = True
                              ) -> float:
     """
     compute normal implied vol
     """
-    x1, x2 = 0.01, 10.0  # starting values
+    x1, x2 = 0.001, 0.1  # starting values
     f = compute_normal_price(forward=forward, strike=strike, ttm=ttm, vol=x1, discfactor=discfactor, optiontype=optiontype) - given_price
     fmid = compute_normal_price(forward=forward, strike=strike, ttm=ttm, vol=x2, discfactor=discfactor, optiontype=optiontype) - given_price
     if f*fmid < 0.0:
@@ -285,3 +285,14 @@ def infer_normal_ivols_from_chain_prices(ttms: np.ndarray,
                                                           optiontype=optiontype)
         model_vol_ttms.append(model_vol_ttm)
     return model_vol_ttms
+
+
+@njit(cache=False, fastmath=True)
+def strikes_to_delta(strikes: np.ndarray,
+                     ivols: np.ndarray,
+                     f0: float,
+                     ttm: float):
+    assert strikes.shape == ivols.shape
+    d = (f0 - strikes) / ivols / np.sqrt(ttm)
+    deltas = ncdf(d)
+    return deltas
