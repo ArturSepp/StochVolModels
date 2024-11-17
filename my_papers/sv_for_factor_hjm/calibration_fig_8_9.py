@@ -1,22 +1,22 @@
 """
-Plot of Figure 7/8 in Stochastic Volatility for Factor Heath-Jarrow-Morton Framework,
+Plot of Figure 8/9 in Stochastic Volatility for Factor Heath-Jarrow-Morton Framework,
 https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4646925
 by Artur Sepp and Parviz Rakhmonov
 """
-
 # packages
 import copy
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from dataclasses import dataclass
 from enum import Enum
 from typing import Dict
 from numba.typed import List
 import matplotlib.pyplot as plt
 
 # project
-from stochvolmodels import LogSvParams
 import stochvolmodels.pricers.analytic.bachelier as bachel
+from stochvolmodels import LogSvParams
 from stochvolmodels.pricers.factor_hjm.rate_evaluate import libor_rate
 from stochvolmodels.data.option_chain import FutOptionChain, SwOptionChain
 from stochvolmodels.pricers.factor_hjm.rate_logsv_params import MultiFactRateLogSvParams, TermStructure
@@ -29,7 +29,6 @@ from stochvolmodels.pricers.factor_hjm.rate_core import get_futures_start_and_pm
 from stochvolmodels.pricers.factor_hjm.rate_logsv_pricer import  logsv_chain_de_pricer, Measure, calc_futures_rate, FutSettleType, simulate_logsv_futures_MF2
 from stochvolmodels.pricers.factor_hjm.rate_logsv_ivols import get_delta_at_strikes, infer_strikes_from_deltas, calc_logsv_ivols, fit_logsv_ivols
 from stochvolmodels.pricers.factor_hjm.factor_hjm_pricer import do_mc_simulation
-
 
 def getFutCalibRateLogSVParams(type_str: str = "NELSON-SIEGEL") -> Dict[str, MultiFactRateLogSvParams]:
     """return dictionary of parameters for rate future options, currency is USD"""
@@ -577,7 +576,7 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.CALIBRATE_LOGSV_FUT
+    unit_test = UnitTests.BENCHMARK_ANALYTIC_VS_MC_FUT
 
     is_run_all_tests = False
     if is_run_all_tests:

@@ -1,5 +1,5 @@
 """
-Plot of Figure 5/6 in Stochastic Volatility for Factor Heath-Jarrow-Morton Framework,
+Plot of Figure 5/6/7 in Stochastic Volatility for Factor Heath-Jarrow-Morton Framework,
 https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4646925
 by Artur Sepp and Parviz Rakhmonov
 """
@@ -14,7 +14,6 @@ from enum import Enum
 from typing import Dict, Tuple, Optional
 from numba.typed import List
 
-# project
 import stochvolmodels.pricers.analytic.bachelier as bachel
 from stochvolmodels import ExpansionOrder
 from stochvolmodels.data.option_chain import SwOptionChain
@@ -24,7 +23,6 @@ from stochvolmodels.pricers.factor_hjm.rate_core import generate_ttms_grid, get_
 from stochvolmodels.pricers.factor_hjm.rate_logsv_pricer import simulate_logsv_MF, logsv_chain_de_pricer, Measure
 from stochvolmodels.pricers.factor_hjm.factor_hjm_pricer import calc_mc_vols
 
-
 def plot_mkt_model_joint_smile_MF(swaption_chains: Dict[str, SwOptionChain],
                                   tenors: List[str],
                                   ttms_ids: List[str],
@@ -32,8 +30,7 @@ def plot_mkt_model_joint_smile_MF(swaption_chains: Dict[str, SwOptionChain],
                                   x0: np.ndarray,
                                   y0: np.ndarray,
                                   slice_ids: List[str] = None,
-                                  plot_market: bool = True
-                                  ) -> plt.Figure:
+                                  plot_market: bool = True) -> plt.Figure:
     nb_rows = len(swaption_chains.keys())
     ccy = "USD"
     nb_cols = params[ccy].basis.get_nb_factors()
@@ -276,7 +273,7 @@ def benchmark(swaption_chain, params0, ids, ttx: str, basis_type):
     return np.array(swaption_chain3.strikes_ttms), np.array(model_ivs_ttms), \
         np.array(strikes_ttms_mc).squeeze(), np.array(mc_ivols), np.array(mc_ivols_ups), np.array(mc_ivols_downs)
 
-def get_scenarios(beta_mult: float, volvol_mult: float):
+def get_scenarios(beta_mult: float, volvol_mult: float, vol_shift: float):
     dict = {}
     ttms = np.array([1.0, 2.0, 3.0, 5.0])
     R_corr = np.array([[1.0, 0.99, 0.97], [0.99, 1.0, 0.98], [0.97, 0.98, 1.0]])
@@ -285,26 +282,13 @@ def get_scenarios(beta_mult: float, volvol_mult: float):
     times = np.concatenate((0, ttms), axis=None)
 
     params0 = MultiFactRateLogSvParams(
-        sigma0=1.0, theta=1.0, kappa1=0.25, kappa2=0.25,
-        beta=TermStructure.create_multi_fact_from_vec(times, np.array([0.2, 0.2, 0.2])),
-        volvol=TermStructure.create_from_scalar(times, 0.2),
-        A=np.array([0.01, 0.01, 0.01]),
+        sigma0=1.0, theta=1.0, kappa1=0.25, kappa2=0.5,
+        beta=TermStructure.create_multi_fact_from_vec(times, beta_mult * np.array([0.2, 0.2, 0.2])),
+        volvol=TermStructure.create_from_scalar(times, volvol_mult * 0.2),
+        A=np.array([0.01, 0.01, 0.01]) + vol_shift,
         R=R_corr,
         basis=nelson_siegel,
         ccy="USD", vol_interpolation="BY_YIELD")
-
-    params0.update_params(idx=0,
-                          beta_idx=beta_mult*np.array([1.51e-02, 1.06e-01, 6.67e-01]),
-                          volvol_idx=volvol_mult*0.0972782445446557)
-    params0.update_params(idx=1,
-                          beta_idx=beta_mult*np.array([4.83e-01, 1.75e-02, -2.83e-01]),
-                          volvol_idx=volvol_mult*0.1071198215096482)
-    params0.update_params(idx=2,
-                          beta_idx=beta_mult*np.array([6.51e-02, -8.19e-02, -1.29e-04]),
-                          volvol_idx=volvol_mult*0.0744932897602731)
-    params0.update_params(idx=3,
-                          beta_idx=beta_mult*np.array([4.07e-01, -7.29e-02, -4.00e-01]),
-                          volvol_idx=volvol_mult*0.03)
 
     return params0
 
@@ -407,12 +391,10 @@ def run_unit_test(unit_test: UnitTests):
         swaption_chain = get_swaption_data(curr)
         basis_type = "NELSON-SIEGEL"
         ids = ['1y', '2y', '3y', '5y']  # <-- change here
-        scenarios = {"SCEN_1": (1.0, 2.0),
-                     "SCEN_2": (1.0, 4.0),
-                     "SCEN_3": (0.0, 2.0),
-                     "SCEN_4": (0.0, 4.0),
-                     "SCEN_5": (-1.0, 2.0),
-                     "SCEN_6": (-1.0, 4.0)
+        scenarios = {"SCEN_1": (1.0, 1.0, 0.0),
+                     "SCEN_2": (1.0, 1.0, 0.02),
+                     "SCEN_3": (1.0, 4.0, 0.0),
+                     "SCEN_4": (-2.0, 1.0, 0.0)
                      }
 
         nb_rows = len(scenarios)
@@ -422,7 +404,7 @@ def run_unit_test(unit_test: UnitTests):
                                                   tight_layout=True)
 
         for idx_sc, (sc_key, sc) in enumerate(scenarios.items()):
-            params0 = get_scenarios(sc[0], sc[1])
+            params0 = get_scenarios(sc[0], sc[1], sc[2])
             params0.q = params0.theta
             # params0 = params0.reduce(ids)  # <-- change here
 
@@ -449,7 +431,7 @@ def run_unit_test(unit_test: UnitTests):
                 ax.set_xticklabels(['{:.0f}'.format(x * 10000, 2) for x in ax.get_xticks()])
                 ax.set_yticklabels(['{:.0f}'.format(x * 10000, 2) for x in ax.get_yticks()])
 
-        save_plot('c:/temp', 'scenario_approx.pdf', fig)
+        save_plot('..//draft//figures//fhjm', 'scenario_approx.pdf', fig)
 
 
     plt.show()
