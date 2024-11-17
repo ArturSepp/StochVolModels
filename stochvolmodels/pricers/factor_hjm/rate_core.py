@@ -1,8 +1,6 @@
 import numpy as np
 from numba import njit
-from typing import Optional, Union, List, Tuple
-from typing import Tuple, Optional
-from numba.typed import List
+from typing import Union, Tuple
 
 
 # @njit(cache=False, fastmath=True)
@@ -113,11 +111,11 @@ def generate_ttms_grid(ttms: np.ndarray,
     return t_grid
 
 
-
 @njit(cache=False, fastmath=True)
 def to_yearfrac(d1, d2):
     return d2 - d1
 #######################################################
+
 
 def divide_mc(arr2d, arr1d):
     assert arr2d.ndim == 2 and arr1d.ndim == 1
@@ -161,6 +159,7 @@ def bond(t: float, T: float,
     else:
         raise NotImplementedError
 
+
 def swap_rate(ccy: str,
               t: float,
               ts_sw: np.ndarray) -> np.ndarray:
@@ -173,6 +172,7 @@ def swap_rate(ccy: str,
 
     return value0
 
+
 def libor_rate(ccy: str,
                t: float, tenor: float):
     zcb_start = df_fast(t, ccy=ccy)
@@ -180,6 +180,7 @@ def libor_rate(ccy: str,
     libor = 1.0 / tenor * (zcb_start / zcb_end - 1.0)
 
     return libor
+
 
 @njit(cache=False, fastmath=True)
 def G(k, t, T):

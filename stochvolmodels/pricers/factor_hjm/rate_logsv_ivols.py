@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
-from typing import Tuple, Optional, Dict, Union
-
+from typing import Dict, Union
 from scipy.stats import norm
 from scipy.optimize import curve_fit, brenth
 
@@ -9,6 +8,7 @@ ALPHA = 'alpha'
 BETA = 'beta'
 TOTAL_VOL = 'total_vol'
 RHO = 'rho'
+
 
 def get_alpha(f0: float,
               ttm: float,

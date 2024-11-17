@@ -1,3 +1,10 @@
+"""
+Plot of Figure 5/6 in Stochastic Volatility for Factor Heath-Jarrow-Morton Framework,
+https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4646925
+by Artur Sepp and Parviz Rakhmonov
+"""
+
+# packages
 import os
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,8 +13,8 @@ import seaborn as sns
 from enum import Enum
 from typing import Dict, Tuple, Optional
 from numba.typed import List
-import matplotlib
 
+# project
 import stochvolmodels.pricers.analytic.bachelier as bachel
 from stochvolmodels import ExpansionOrder
 from stochvolmodels.data.option_chain import SwOptionChain
@@ -17,6 +24,7 @@ from stochvolmodels.pricers.factor_hjm.rate_core import generate_ttms_grid, get_
 from stochvolmodels.pricers.factor_hjm.rate_logsv_pricer import simulate_logsv_MF, logsv_chain_de_pricer, Measure
 from stochvolmodels.pricers.factor_hjm.factor_hjm_pricer import calc_mc_vols
 
+
 def plot_mkt_model_joint_smile_MF(swaption_chains: Dict[str, SwOptionChain],
                                   tenors: List[str],
                                   ttms_ids: List[str],
@@ -24,7 +32,8 @@ def plot_mkt_model_joint_smile_MF(swaption_chains: Dict[str, SwOptionChain],
                                   x0: np.ndarray,
                                   y0: np.ndarray,
                                   slice_ids: List[str] = None,
-                                  plot_market: bool = True) -> plt.Figure:
+                                  plot_market: bool = True
+                                  ) -> plt.Figure:
     nb_rows = len(swaption_chains.keys())
     ccy = "USD"
     nb_cols = params[ccy].basis.get_nb_factors()
@@ -345,7 +354,7 @@ def run_unit_test(unit_test: UnitTests):
 
         nb_cols = swaption_chain.tenors.size
         with sns.axes_style('darkgrid'):
-            fig, axs = matplotlib.pyplot.subplots(1, nb_cols, figsize=(18, 4), tight_layout=True)
+            fig, axs = plt.subplots(1, nb_cols, figsize=(18, 4), tight_layout=True)
 
         for idx, tenor in enumerate(swaption_chain.tenors):
             ax = axs[idx] if nb_cols > 1 else axs
@@ -409,7 +418,7 @@ def run_unit_test(unit_test: UnitTests):
         nb_rows = len(scenarios)
         nb_cols = swaption_chain.tenors.size
         with sns.axes_style('darkgrid'):
-            fig, axs = matplotlib.pyplot.subplots(nb_rows, nb_cols, figsize=(18, 4 * nb_rows),
+            fig, axs = plt.subplots(nb_rows, nb_cols, figsize=(18, 4 * nb_rows),
                                                   tight_layout=True)
 
         for idx_sc, (sc_key, sc) in enumerate(scenarios.items()):

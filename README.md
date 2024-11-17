@@ -245,3 +245,10 @@ SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4887298
 ```python 
 stochvolmodels/my_papers/il_hedging
 ```
+
+5) "Stochastic Volatility for Factor Heath-Jarrow-Morton Framework" by Artur Sepp and Parviz Rakhmonov, SSRN:
+https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4646925
+```python 
+stochvolmodels/my_papers/sv_for_factor_hjm
+```
+

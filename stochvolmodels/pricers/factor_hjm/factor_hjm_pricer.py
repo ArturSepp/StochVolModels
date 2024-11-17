@@ -1,20 +1,15 @@
-import os
-import matplotlib.pyplot as plt
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from enum import Enum
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple
 from numba.typed import List
-import matplotlib
 
 import stochvolmodels.pricers.analytic.bachelier as bachel
-from stochvolmodels import ExpansionOrder
-from stochvolmodels.data.option_chain import SwOptionChain
-from stochvolmodels.pricers.factor_hjm.rate_factor_basis import NelsonSiegel
-from stochvolmodels.pricers.factor_hjm.rate_logsv_params import MultiFactRateLogSvParams, TermStructure
-from stochvolmodels.pricers.factor_hjm.rate_core import generate_ttms_grid, get_default_swap_term_structure
-from stochvolmodels.pricers.factor_hjm.rate_logsv_pricer import simulate_logsv_MF, logsv_chain_de_pricer, Measure
+from stochvolmodels.pricers.factor_hjm.rate_logsv_params import MultiFactRateLogSvParams
+from stochvolmodels.pricers.factor_hjm.rate_core import get_default_swap_term_structure
+from stochvolmodels.pricers.factor_hjm.rate_logsv_pricer import simulate_logsv_MF, Measure
 
 
 def do_mc_simulation(basis_type: str,
@@ -33,6 +28,7 @@ def do_mc_simulation(basis_type: str,
                      year_days: int = 360,
                      T_fwd: float = None,
                      ) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
+
     if basis_type != "NELSON-SIEGEL" :
         raise NotImplementedError
     x0s, y0s, I0s, sigma0s = simulate_logsv_MF(ttms=ttms,
@@ -62,6 +58,7 @@ def do_mc_simulation(basis_type: str,
                                                year_days = year_days)
 
     return x0s, y0s, I0s, sigma0s
+
 
 def calc_mc_vols(basis_type: str,
                  params: MultiFactRateLogSvParams,

@@ -1,7 +1,6 @@
 import numpy as np
-from typing import Optional, Union, List, Tuple
+from typing import Union, Tuple
 from dataclasses import dataclass
-from typing import Tuple, Optional
 from numba.typed import List
 from scipy.integrate import solve_ivp
 
@@ -9,6 +8,7 @@ from stochvolmodels.pricers.model_pricer import ModelParams
 from stochvolmodels.pricers.factor_hjm.rate_factor_basis import Cheyette1D, NelsonSiegel, CheyettePEND
 from stochvolmodels.pricers.factor_hjm.rate_core import pw_const, G, bracket, get_default_swap_term_structure, \
     generate_ttms_grid
+
 
 @dataclass
 class TermStructure:

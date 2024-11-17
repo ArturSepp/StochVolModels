@@ -6,13 +6,10 @@ from scipy.integrate import solve_ivp
 
 from stochvolmodels.pricers.factor_hjm.rate_factor_basis import NelsonSiegel
 from stochvolmodels.pricers.factor_hjm.rate_core import bracket, divide_mc, prod_mc, get_futures_start_and_pmt
-
 from stochvolmodels.pricers.factor_hjm.rate_evaluate import swap_rate, annuity, bond
-
 from stochvolmodels.pricers.factor_hjm.rate_affine_expansion import compute_logsv_a_mgf_grid, UnderlyingType
 from stochvolmodels.pricers.factor_hjm.rate_logsv_params import RateLogSvParams, pw_const, get_default_swap_term_structure, MultiFactRateLogSvParams
 from stochvolmodels.pricers.analytic.bachelier import infer_normal_implied_vol, infer_normal_ivols_from_slice_prices
-
 from stochvolmodels.pricers.logsv.affine_expansion import ExpansionOrder, get_expansion_n
 from stochvolmodels.pricers.model_pricer import ModelPricer, ModelParams
 from stochvolmodels.data.option_chain import OptionChain, SwOptionChain, FutOptionChain
@@ -1306,4 +1303,3 @@ def compute_mc_vars_payoff(ttm: float,
             option_std[idx] = np.nanstd(1. / numer * ann_mc * np.maximum(sign * (s_mc - strike), 0)) / ann_crv / df
 
     return option_prices, option_std / np.sqrt(x0.shape[0])
-

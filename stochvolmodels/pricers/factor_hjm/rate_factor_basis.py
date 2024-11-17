@@ -305,8 +305,6 @@ class NelsonSiegel(BasisHJM):
         return B_PX, B_PY
 
 
-
-
 #############################################################################
 #                     Multi-factor Pure Exponential FHJM model
 #############################################################################
@@ -392,7 +390,6 @@ class CheyettePEND(BasisHJM):
              ccy: str,
              m: int = 0) -> np.ndarray:
         return self._bond(self.nb_factors, self.nb_aux_factors, t, T, x, y, ccy, m)
-
 
     # @njit(cache=False, fastmath=True) # TODO: cannot make it numba as it is member function
     def bond_coeffs(self, tau: float) -> Tuple[np.ndarray, np.ndarray]:

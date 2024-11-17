@@ -3,14 +3,14 @@ from enum import Enum
 from typing import Tuple, Optional, Dict, Union, Any
 from stochvolmodels.pricers.logsv.affine_expansion import ExpansionOrder, get_expansion_n
 from scipy.integrate import solve_ivp
-from scipy.interpolate import interp1d
 from scipy.integrate._ivp.ivp import OdeResult
-from numba import njit
 from scipy.interpolate import splrep, splev
+
 
 class UnderlyingType(Enum):
     SWAP = 1
     FUTURES = 2
+
 
 def compute_logsv_a_mgf_grid(ttm: float,
                              phi_grid: np.ndarray,

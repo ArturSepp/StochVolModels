@@ -1,6 +1,5 @@
 import numpy as np
-from numba.typed import List
-from typing import Tuple, Optional, Union
+from typing import Tuple, Union
 
 
 def de_pricer(ff, ff_transf) -> Tuple[np.ndarray, np.ndarray]:
@@ -73,6 +72,7 @@ def part_sum(ff, h2: float, delta: int, N: int) -> float:
     for idx, func_val in enumerate(func_vals):
         s = s + func_vals[idx]
     return s
+
 
 def trunc_index(ff,
                 h2: float,
