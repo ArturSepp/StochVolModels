@@ -1,3 +1,4 @@
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -14,178 +15,7 @@ from stochvolmodels.pricers.factor_hjm.rate_factor_basis import NelsonSiegel
 from stochvolmodels.pricers.factor_hjm.rate_logsv_params import MultiFactRateLogSvParams, TermStructure
 from stochvolmodels.pricers.factor_hjm.rate_core import generate_ttms_grid, get_default_swap_term_structure
 from stochvolmodels.pricers.factor_hjm.rate_logsv_pricer import simulate_logsv_MF, logsv_chain_de_pricer, Measure
-
-
-def do_mc_simulation(basis_type: str,
-                     ccy: str,
-                     ttms: np.ndarray,
-                     x0: np.ndarray,
-                     y0: np.ndarray,
-                     I0: np.ndarray,
-                     sigma0: np.ndarray,
-                     params: MultiFactRateLogSvParams,
-                     nb_path: int,
-                     seed: int = None,
-                     measure_type: Measure = Measure.RISK_NEUTRAL,
-                     ts_sw: np.ndarray = None,
-                     bxs: np.ndarray = None,
-                     year_days: int = 360,
-                     T_fwd: float = None,
-                     ) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
-    if basis_type != "NELSON-SIEGEL" :
-        raise NotImplementedError
-    x0s, y0s, I0s, sigma0s = simulate_logsv_MF(ttms=ttms,
-                                               x0=x0,
-                                               y0=y0,
-                                               I0=I0,
-                                               sigma0=sigma0,
-                                               theta=params.theta,
-                                               kappa1=params.kappa1,
-                                               kappa2=params.kappa2,
-                                               ts=params.ts,
-                                               A=params.A,
-                                               R=params.R,
-                                               C=params.C,
-                                               Omega=params.Omega,
-                                               betaxs=params.beta.xs,
-                                               volvolxs=params.volvol.xs,
-                                               basis=params.basis,
-                                               measure_type=measure_type,
-                                               nb_path=nb_path,
-                                               seed=seed,
-                                               ccy=ccy,
-                                               ts_sw=ts_sw,
-                                               T_fwd=T_fwd,
-                                               params0=params,
-                                               bxs=bxs,
-                                               year_days = year_days)
-
-    return x0s, y0s, I0s, sigma0s
-
-def calc_mc_vols(basis_type: str,
-                 params: MultiFactRateLogSvParams,
-                 ttm: float,
-                 tenors: np.ndarray,
-                 forwards: List[np.ndarray],
-                 strikes_ttms: List[List[np.ndarray]],
-                 optiontypes: np.ndarray,
-                 is_annuity_measure: bool,
-                 nb_path: int,
-                 x0: np.ndarray = None,
-                 y0: np.ndarray = None,
-                 sigma0: np.ndarray = None,
-                 I0: np.ndarray = None,
-                 seed: int = None,
-                 x_in_delta_space: bool = False) -> (List[np.ndarray], List[np.ndarray]):
-    # checks
-    assert len(strikes_ttms) == len(tenors)
-    assert len(strikes_ttms[0]) == 1
-    assert len(forwards) == len(tenors)
-    for fwd in forwards:
-        assert fwd.shape == (1,)
-
-    ttms = np.array([ttm])
-    # we simulate under risk-neutral measure only
-    assert is_annuity_measure is False
-    if x0 is None:
-        x0 = np.zeros((nb_path, params.basis.get_nb_factors()))
-    else:
-        assert x0.shape == (nb_path, params.basis.get_nb_factors(),)
-    if y0 is None:
-        y0 = np.zeros((nb_path, params.basis.get_nb_aux_factors()))
-    else:
-        assert y0.shape == (nb_path, params.basis.get_nb_aux_factors(),)
-    if sigma0 is None:
-        sigma0 = np.ones((nb_path, 1))
-    else:
-        assert sigma0.shape == (nb_path, 1)
-    if I0 is None:
-        I0 = np.zeros((nb_path,))
-    else:
-        assert I0.shape == (nb_path,)
-
-    ts_sws = []
-    bond0s = []
-    ann0s = []
-    swap0s = []
-    for tenor in tenors:
-        ts_sw = get_default_swap_term_structure(expiry=ttm, tenor=tenor)
-        ann0 = params.basis.annuity(t=ttm, ts_sw=ts_sw, x=x0, y=y0, ccy=params.ccy, m=0)[0]
-        bond0 = params.basis.bond(0, ttm, x=x0, y=y0, ccy=params.ccy, m=0)[0]
-        swap0 = params.basis.swap_rate(t=ttm, ts_sw=ts_sw, x=x0, y=y0, ccy=params.ccy)[0][0]
-        ts_sws.append(ts_sw)
-        bond0s.append(bond0)
-        ann0s.append(ann0)
-        swap0s.append(swap0)
-
-    x0s, y0s, I0s, _ = do_mc_simulation(basis_type=basis_type,
-                                        ccy=params.ccy,
-                                        ttms=ttms,
-                                        x0=x0,
-                                        y0=y0,
-                                        I0=I0,
-                                        sigma0=sigma0,
-                                        params=params,
-                                        nb_path=nb_path,
-                                        seed=None,
-                                        measure_type=Measure.RISK_NEUTRAL)
-    x0 = x0s[-1]
-    y0 = y0s[-1]
-    I0 = I0s[-1]
-    mc_vols = List()
-    mc_prices = List()
-    mc_vols_ups = List()
-    mc_vols_downs = List()
-    std_factor = 1.96
-
-    for idx_tenor, tenor in enumerate(tenors):
-        ts_sw = ts_sws[idx_tenor]
-        ann0 = ann0s[idx_tenor]
-        bond0 = bond0s[idx_tenor]
-        swap0 = swap0s[idx_tenor]
-        strikes_ttm = strikes_ttms[idx_tenor][0]
-        swap_mc, ann_mc, numer_mc = params.basis.calculate_swap_rate(ttm=ttm, x0=x0, y0=y0, I0=I0, ts_sw=ts_sw,
-                                                                     ccy=params.ccy)
-        # calculate option payoffs
-        payoffsign = np.where(optiontypes == 'P', -1, 1).astype(float)
-        option_mean = np.zeros_like(strikes_ttm)
-        option_std = np.zeros_like(strikes_ttm)
-
-        for idx, (strike, sign) in enumerate(zip(strikes_ttm, payoffsign)):
-            option_mean[idx] = np.nanmean(1. / numer_mc * ann_mc * np.maximum(sign * (swap_mc - strike), 0)) / ann0 / bond0
-            option_std[idx] = np.nanstd(1. / numer_mc * ann_mc * np.maximum(sign * (swap_mc - strike), 0)) / ann0 / bond0
-            option_std[idx] = option_std[idx] / np.sqrt(nb_path)
-
-        option_up = option_mean + std_factor * option_std
-        option_down = np.maximum(option_mean - std_factor * option_std, 0.0)
-
-        mc_ivols_mid = bachel.infer_normal_ivols_from_chain_prices(ttms=ttms,
-                                                                   forwards=forwards,
-                                                                   discfactors=np.ones_like(ttms),
-                                                                   strikes_ttms=[strikes_ttm],
-                                                                   optiontypes_ttms=[optiontypes],
-                                                                   model_prices_ttms=[option_mean])
-        mc_ivols_up = bachel.infer_normal_ivols_from_chain_prices(ttms=ttms,
-                                                                  forwards=forwards,
-                                                                  discfactors=np.ones_like(ttms),
-                                                                  strikes_ttms=[strikes_ttm],
-                                                                  optiontypes_ttms=[optiontypes],
-                                                                  model_prices_ttms=[option_up])
-        mc_ivols_down = bachel.infer_normal_ivols_from_chain_prices(ttms=ttms,
-                                                                    forwards=forwards,
-                                                                    discfactors=np.ones_like(ttms),
-                                                                    strikes_ttms=[strikes_ttm],
-                                                                    optiontypes_ttms=[optiontypes],
-                                                                    model_prices_ttms=[option_down])
-
-        mc_vols.append(mc_ivols_mid[0])
-        mc_vols_ups.append(mc_ivols_up[0])
-        mc_vols_downs.append(mc_ivols_down[0])
-
-        mc_prices.append(option_mean)
-
-    return mc_prices, mc_vols, mc_vols_ups, mc_vols_downs
-
+from stochvolmodels.pricers.factor_hjm.factor_hjm_pricer import calc_mc_vols
 
 def plot_mkt_model_joint_smile_MF(swaption_chains: Dict[str, SwOptionChain],
                                   tenors: List[str],
@@ -268,6 +98,7 @@ def plot_mkt_model_joint_smile_MF(swaption_chains: Dict[str, SwOptionChain],
 class UnitTests(Enum):
     PLOT_MKT_MODEL = 5
     BENCHMARK_ANALYTIC_VS_MC = 8
+    SWAP_APPROX = 9
 
 def get_swaption_data(ccy: str = "USD") -> SwOptionChain:
     """
@@ -380,6 +211,123 @@ def getCalibRateLogSVParams(type_str: str = "NELSON-SIEGEL") -> Dict[str, MultiF
         raise NotImplementedError
     return dict
 
+def benchmark(swaption_chain, params0, ids, ttx: str, basis_type):
+    swaption_chain2 = swaption_chain.reduce_tenors(['2y', '5y', '10y']).reduce_strikes(2)
+    swaption_chain3 = swaption_chain2.reduce_ttms(ids)
+
+    assert np.all(swaption_chain3.tenors == params0.basis.key_terms)
+
+    # ttm = MultiFactRateLogSvParams.get_frac(ids[0])
+    nb_path = 50000
+
+    swaption_chain3 = swaption_chain3.reduce_ttms([ttx])
+    ttm = swaption_chain3.ttms[-1]
+
+    strikes_ttms_mc = [[np.linspace(strikes[0], strikes[-1], 21) for strikes in strikes_ttm] for strikes_ttm in
+                       swaption_chain3.strikes_ttms]
+    optiontypes_ttms = np.repeat('C', strikes_ttms_mc[0][0].size)
+
+    # x0 = 0.01 * np.array([4.36, 1.3, -1.0])
+    # y0 = np.zeros((nb_path, params0.basis.get_nb_aux_factors()))
+
+    mc_ivols, mc_ivols_ups, mc_ivols_downs = calc_mc_vols(
+        basis_type=basis_type,
+        params=params0,
+        ttm=swaption_chain3.ttms[-1],
+        tenors=swaption_chain3.tenors,
+        forwards=swaption_chain3.forwards,
+        strikes_ttms=strikes_ttms_mc,
+        optiontypes=optiontypes_ttms,
+        is_annuity_measure=False,
+        nb_path=nb_path,
+        sigma0=None,
+        I0=None)[1:]
+    # print(mc_ivols)
+
+    ttms = np.array([ttm])
+    t_grid = generate_ttms_grid(ttms)
+
+    # x0 = 0.01 * np.array([4.36, 1.3, -1.0])
+    # y0 = np.zeros((params0.basis.get_nb_aux_factors(),))
+    x0 = None
+    y0 = None
+
+    model_prices_ttms, model_ivs_ttms = logsv_chain_de_pricer(params=params0,
+                                                              t_grid=t_grid,
+                                                              ttms=ttms,
+                                                              forwards=swaption_chain3.forwards,
+                                                              strikes_ttms=swaption_chain3.strikes_ttms,
+                                                              optiontypes_ttms=swaption_chain3.optiontypes_ttms,
+                                                              do_control_variate=False,
+                                                              is_stiff_solver=False,
+                                                              expansion_order=ExpansionOrder.FIRST,
+                                                              x0=x0,
+                                                              y0=y0)
+
+    return np.array(swaption_chain3.strikes_ttms), np.array(model_ivs_ttms), \
+        np.array(strikes_ttms_mc).squeeze(), np.array(mc_ivols), np.array(mc_ivols_ups), np.array(mc_ivols_downs)
+
+def get_scenarios(beta_mult: float, volvol_mult: float):
+    dict = {}
+    ttms = np.array([1.0, 2.0, 3.0, 5.0])
+    R_corr = np.array([[1.0, 0.99, 0.97], [0.99, 1.0, 0.98], [0.97, 0.98, 1.0]])
+    nelson_siegel = NelsonSiegel(meanrev=0.55, key_terms=np.array([2.0, 5.0, 10.0]))
+    nb_factors = NelsonSiegel.get_nb_factors()
+    times = np.concatenate((0, ttms), axis=None)
+
+    params0 = MultiFactRateLogSvParams(
+        sigma0=1.0, theta=1.0, kappa1=0.25, kappa2=0.25,
+        beta=TermStructure.create_multi_fact_from_vec(times, np.array([0.2, 0.2, 0.2])),
+        volvol=TermStructure.create_from_scalar(times, 0.2),
+        A=np.array([0.01, 0.01, 0.01]),
+        R=R_corr,
+        basis=nelson_siegel,
+        ccy="USD", vol_interpolation="BY_YIELD")
+
+    params0.update_params(idx=0,
+                          beta_idx=beta_mult*np.array([1.51e-02, 1.06e-01, 6.67e-01]),
+                          volvol_idx=volvol_mult*0.0972782445446557)
+    params0.update_params(idx=1,
+                          beta_idx=beta_mult*np.array([4.83e-01, 1.75e-02, -2.83e-01]),
+                          volvol_idx=volvol_mult*0.1071198215096482)
+    params0.update_params(idx=2,
+                          beta_idx=beta_mult*np.array([6.51e-02, -8.19e-02, -1.29e-04]),
+                          volvol_idx=volvol_mult*0.0744932897602731)
+    params0.update_params(idx=3,
+                          beta_idx=beta_mult*np.array([4.07e-01, -7.29e-02, -4.00e-01]),
+                          volvol_idx=volvol_mult*0.03)
+
+    return params0
+
+
+def save_plot(location, filename, fig):
+    """
+    Save a matplotlib figure to the specified location. Ensure the directory exists or create it.
+    If the directory cannot be created, raise an exception.
+
+    :param location: Path to the directory where the figure will be saved.
+    :param filename: Name of the file to save.
+    :param fig: Matplotlib figure object.
+    """
+    # Ensure the location ends with a separator
+    location = os.path.abspath(location)
+
+    # Check if the directory exists
+    if not os.path.exists(location):
+        try:
+            os.makedirs(location)  # Attempt to create the directory
+        except Exception as e:
+            raise Exception(f"Could not create directory {location}: {e}")
+
+    # Construct the full path for saving
+    full_path = os.path.join(location, filename)
+
+    try:
+        # Save the figure
+        fig.savefig(full_path)
+        print(f"Figure saved successfully at {full_path}")
+    except Exception as e:
+        raise Exception(f"Could not save the figure at {full_path}: {e}")
 
 def run_unit_test(unit_test: UnitTests):
     if unit_test == UnitTests.BENCHMARK_ANALYTIC_VS_MC:
@@ -391,59 +339,8 @@ def run_unit_test(unit_test: UnitTests):
         params0.q = params0.theta
         # params0 = params0.reduce(ids)  # <-- change here
 
-        swaption_chain = swaption_chain.reduce_tenors(['2y', '5y', '10y']).reduce_strikes(2)
-        swaption_chain = swaption_chain.reduce_ttms(ids)
-
-        assert np.all(swaption_chain.tenors == params0.basis.key_terms)
-
-        # ttm = MultiFactRateLogSvParams.get_frac(ids[0])
-        nb_path = 50000
-
-        ttm_id = '5y'
-        assert ttm_id in swaption_chain.tenors_ids
-        swaption_chain = swaption_chain.reduce_ttms(['5y'])
-        ttm = swaption_chain.ttms[-1]
-
-        strikes_ttms_mc = [[np.linspace(strikes[0], strikes[-1], 21) for strikes in strikes_ttm] for strikes_ttm in
-                        swaption_chain.strikes_ttms]
-        optiontypes_ttms = np.repeat('C', strikes_ttms_mc[0][0].size)
-
-        # x0 = 0.01 * np.array([4.36, 1.3, -1.0])
-        # y0 = np.zeros((nb_path, params0.basis.get_nb_aux_factors()))
-
-        mc_ivols, mc_ivols_ups, mc_ivols_downs = calc_mc_vols(
-            basis_type=basis_type,
-            params=params0,
-            ttm=swaption_chain.ttms[-1],
-            tenors=swaption_chain.tenors,
-            forwards=swaption_chain.forwards,
-            strikes_ttms=strikes_ttms_mc,
-            optiontypes=optiontypes_ttms,
-            is_annuity_measure=False,
-            nb_path=nb_path,
-            sigma0=None,
-            I0=None)[1:]
-        # print(mc_ivols)
-
-        ttms = np.array([ttm])
-        t_grid = generate_ttms_grid(ttms)
-
-        # x0 = 0.01 * np.array([4.36, 1.3, -1.0])
-        # y0 = np.zeros((params0.basis.get_nb_aux_factors(),))
-        x0 = None
-        y0 = None
-
-        model_prices_ttms, model_ivs_ttms = logsv_chain_de_pricer(params=params0,
-                                                                  t_grid=t_grid,
-                                                                  ttms=ttms,
-                                                                  forwards=swaption_chain.forwards,
-                                                                  strikes_ttms=swaption_chain.strikes_ttms,
-                                                                  optiontypes_ttms=swaption_chain.optiontypes_ttms,
-                                                                  do_control_variate=False,
-                                                                  is_stiff_solver=False,
-                                                                  expansion_order=ExpansionOrder.FIRST,
-                                                                  x0=x0,
-                                                                  y0=y0)
+        model_strikes, model_ivols, mc_strikes, mc_ivols, mc_ivols_ups, mc_ivols_downs = benchmark(
+            swaption_chain, params0, ids, '5y', basis_type)
         # print(model_ivs_ttms)
 
         nb_cols = swaption_chain.tenors.size
@@ -452,13 +349,13 @@ def run_unit_test(unit_test: UnitTests):
 
         for idx, tenor in enumerate(swaption_chain.tenors):
             ax = axs[idx] if nb_cols > 1 else axs
-            model_ivols_pd = pd.Series(model_ivs_ttms[idx][0], index=swaption_chain.strikes_ttms[idx][0], name=f"Affine expansion")
+            model_ivols_pd = pd.Series(model_ivols[idx][0], index=model_strikes[idx][0], name=f"Affine expansion")
             # sns.scatterplot(data=pd.concat([mc_ivols_pd], axis=1), ax=ax, color='green')
             df = pd.DataFrame(np.array([mc_ivols_ups[idx], mc_ivols_downs[idx]]).T,
-                              index=strikes_ttms_mc[idx][0], columns=[f"MC+0.95ci", f"MC-0.95ci"])
+                              index=mc_strikes[idx], columns=[f"MC+0.95ci", f"MC-0.95ci"])
             sns.scatterplot(data=df, palette=['green', 'red'], markers=[7, 6], ax=ax)
             sns.lineplot(data=pd.concat([model_ivols_pd], axis=1), ax=ax, color='blue')
-            title = f"{curr}: {swaption_chain.tenors_ids[idx]} market data"
+            title = f"{curr}: {tenor} market data"
             ax.set_title(title, color='darkblue')
             ax.set_xticklabels(['{:.0f}'.format(x * 10000, 2) for x in ax.get_xticks()])
             ax.set_yticklabels(['{:.0f}'.format(x * 10000, 2) for x in ax.get_yticks()])
@@ -496,15 +393,66 @@ def run_unit_test(unit_test: UnitTests):
                                             x0=x0, y0=y0)
         # fig.savefig(f"..//draft//figures//fhjm//calibration_FHJM_swaptions.pdf")
 
+    elif unit_test == UnitTests.SWAP_APPROX:
+        curr = "USD"
+        swaption_chain = get_swaption_data(curr)
+        basis_type = "NELSON-SIEGEL"
+        ids = ['1y', '2y', '3y', '5y']  # <-- change here
+        scenarios = {"SCEN_1": (1.0, 2.0),
+                     "SCEN_2": (1.0, 4.0),
+                     "SCEN_3": (0.0, 2.0),
+                     "SCEN_4": (0.0, 4.0),
+                     "SCEN_5": (-1.0, 2.0),
+                     "SCEN_6": (-1.0, 4.0)
+                     }
+
+        nb_rows = len(scenarios)
+        nb_cols = swaption_chain.tenors.size
+        with sns.axes_style('darkgrid'):
+            fig, axs = matplotlib.pyplot.subplots(nb_rows, nb_cols, figsize=(18, 4 * nb_rows),
+                                                  tight_layout=True)
+
+        for idx_sc, (sc_key, sc) in enumerate(scenarios.items()):
+            params0 = get_scenarios(sc[0], sc[1])
+            params0.q = params0.theta
+            # params0 = params0.reduce(ids)  # <-- change here
+
+            model_strikes, model_ivols, mc_strikes, mc_ivols, mc_ivols_ups, mc_ivols_downs = benchmark(
+                swaption_chain, params0, ids, '2y', basis_type)
+
+            for idx, tenor in enumerate(swaption_chain.tenors):
+                if nb_cols == 1 and nb_rows == 1:
+                    ax = axs
+                elif nb_cols == 1 and nb_rows > 1:
+                    ax = axs[idx_sc]
+                elif nb_cols > 1 and nb_rows == 1:
+                    ax = axs[idx]
+                else:
+                    ax = axs[idx_sc][idx]
+                model_ivols_pd = pd.Series(model_ivols[idx][0], index=model_strikes[idx][0], name=f"Affine expansion")
+                # sns.scatterplot(data=pd.concat([mc_ivols_pd], axis=1), ax=ax, color='green')
+                df = pd.DataFrame(np.array([mc_ivols_ups[idx], mc_ivols_downs[idx]]).T,
+                                  index=mc_strikes[idx], columns=[f"MC+0.95ci", f"MC-0.95ci"])
+                sns.scatterplot(data=df, palette=['green', 'red'], markers=[7, 6], ax=ax)
+                sns.lineplot(data=pd.concat([model_ivols_pd], axis=1), ax=ax, color='blue')
+                title = f"{sc_key}: {tenor:.0f}Y market data"
+                ax.set_title(title, color='darkblue')
+                ax.set_xticklabels(['{:.0f}'.format(x * 10000, 2) for x in ax.get_xticks()])
+                ax.set_yticklabels(['{:.0f}'.format(x * 10000, 2) for x in ax.get_yticks()])
+
+        save_plot('c:/temp', 'scenario_approx.pdf', fig)
+
+
     plt.show()
+
 
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.BENCHMARK_ANALYTIC_VS_MC
+    unit_test = UnitTests.SWAP_APPROX
 
 
-    is_run_all_tests = True
+    is_run_all_tests = False
     if is_run_all_tests:
         for unit_test in UnitTests:
             run_unit_test(unit_test=unit_test)

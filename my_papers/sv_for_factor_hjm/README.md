@@ -8,7 +8,8 @@ See the description of data and analysis in the paper.
 
 Figures in the paper are generated using unittests in
 ```python 
-calibration_fig5.py
+calibration_fig_5_6.py
+calibration_fig_7_8.py
 ```
 https://github.com/ArturSepp/StochVolModels/tree/main/my_papers/sv_for_factor_hjm
 

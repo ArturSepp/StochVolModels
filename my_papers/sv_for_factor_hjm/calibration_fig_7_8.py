@@ -21,7 +21,7 @@ from stochvolmodels.pricers.logsv.affine_expansion import ExpansionOrder
 from stochvolmodels.pricers.factor_hjm.rate_core import get_futures_start_and_pmt
 from stochvolmodels.pricers.factor_hjm.rate_logsv_pricer import  logsv_chain_de_pricer, Measure, calc_futures_rate, FutSettleType, simulate_logsv_futures_MF2
 from stochvolmodels.pricers.factor_hjm.rate_logsv_ivols import get_delta_at_strikes, infer_strikes_from_deltas, calc_logsv_ivols, fit_logsv_ivols
-from stochvolmodels.pricers.factor_hjm_swaption_pricer import do_mc_simulation
+from stochvolmodels.pricers.factor_hjm.factor_hjm_pricer import do_mc_simulation
 
 def getFutCalibRateLogSVParams(type_str: str = "NELSON-SIEGEL") -> Dict[str, MultiFactRateLogSvParams]:
     """return dictionary of parameters for rate future options, currency is USD"""
@@ -569,7 +569,7 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.BENCHMARK_ANALYTIC_VS_MC_FUT
+    unit_test = UnitTests.CALIBRATE_LOGSV_FUT
 
     is_run_all_tests = False
     if is_run_all_tests:
