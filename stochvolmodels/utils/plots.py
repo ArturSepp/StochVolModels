@@ -448,3 +448,10 @@ def align_y_limits_axs(axs: List[plt.Subplot],
         for idx, ax in enumerate(axs):
             if idx > 0:
                 ax.axes.get_yaxis().set_visible(False)
+
+def to_flat_list(items: Iterable) -> List[Any]:
+    if isinstance(items, Iterable):
+        flat_list = [item for item in flatten(items)]
+    else:
+        flat_list = [items]
+    return flat_list

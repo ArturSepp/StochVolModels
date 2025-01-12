@@ -19,7 +19,6 @@ from abc import ABC, abstractmethod
 from scipy import stats
 from dataclasses import dataclass, asdict
 from typing import Tuple, Optional, Dict
-import qis as qis
 
 from stochvolmodels.utils.config import VariableType
 from stochvolmodels.data.option_chain import OptionChain, OptionSlice
@@ -346,7 +345,7 @@ class ModelPricer(ABC):
                     fig, axs = plt.subplots(1, 3, figsize=figsize, tight_layout=True)
                 elif num_slices == 4:
                     fig, axs = plt.subplots(2, 2, figsize=figsize, tight_layout=True)
-                    axs = qis.to_flat_list(axs)
+                    axs = plot.to_flat_list(axs)
                 else:
                     raise NotImplementedError
             else:
@@ -425,7 +424,7 @@ class ModelPricer(ABC):
                 fig, axs = plt.subplots(1, 3, figsize=figsize, tight_layout=True)
             elif num_slices == 4:
                 fig, axs = plt.subplots(2, 2, figsize=figsize, tight_layout=True)
-                axs = qis.to_flat_list(axs)
+                axs = plot.to_flat_list(axs)
             else:
                 raise NotImplementedError
 
@@ -521,7 +520,7 @@ class ModelPricer(ABC):
                 fig, axs = plt.subplots(1, 3, figsize=figsize, tight_layout=True)
             elif num_slices == 4:
                 fig, axs = plt.subplots(2, 2, figsize=figsize, tight_layout=True)
-                axs = qis.to_flat_list(axs)
+                axs = plot.to_flat_list(axs)
             else:
                 raise NotImplementedError
 

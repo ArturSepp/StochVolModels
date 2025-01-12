@@ -320,7 +320,7 @@ class UnitTests(Enum):
 def run_unit_test(unit_test: UnitTests):
 
     import seaborn as sns
-    import qis as qis
+    from stochvolmodels.utils import plots as plot
     from stochvolmodels.data.test_option_chain import get_btc_test_chain_data
 
     if unit_test == UnitTests.CALIBRATOR:
@@ -330,7 +330,7 @@ def run_unit_test(unit_test: UnitTests):
 
         with sns.axes_style('darkgrid'):
             fig, axs = plt.subplots(2, 2, figsize=(14, 12), tight_layout=True)
-            axs = qis.to_flat_list(axs)
+            axs = plot.to_flat_list(axs)
 
         for idx, (key, params) in enumerate(fit_params.items()):
             print(f"{key}: {params}")

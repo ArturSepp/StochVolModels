@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import qis as qis
 from typing import Tuple
 from numba.typed import List
 from enum import Enum
@@ -28,7 +27,6 @@ import my_papers.logsv_model_wtih_quadratic_drift.ode_sol_in_time as osi
 from my_papers.logsv_model_wtih_quadratic_drift.model_fit_to_options_timeseries import report_calibration_timeseries
 
 LOGSV_BTC_PARAMS = LogSvParams(sigma0=1.0, theta=1.0, kappa1=3.1844, kappa2=3.058, beta=0.1514, volvol=1.8458)
-
 
 
 def plot_qvar_figure(params: LogSvParams):
