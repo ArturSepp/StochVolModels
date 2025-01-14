@@ -5,7 +5,6 @@ generic analytics for option pricing using Fourier transforms of payoffs
 import numpy as np
 from numba import njit
 from typing import Tuple
-
 from stochvolmodels.utils.config import VariableType
 
 

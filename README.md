@@ -34,6 +34,19 @@ Close using
 git clone https://github.com/ArturSepp/StochVolModels.git
 ```
 
+Core dependencies:
+    python = ">=3.8",
+    numba = ">=0.56.4",
+    numpy = ">=1.22.4",
+    scipy = ">=1.10",
+    pandas = ">=2.2.0",
+    matplotlib = ">=3.2.2",
+    seaborn = ">=0.12.2"
+
+Optional dependencies:
+    qis ">=2.1.38" (for running code in my_papers and volatility_book)
+
+
 # Table of contents
 1. [Model Interface](#introduction)
     1. [Log-normal stochastic volatility model](#logsv)

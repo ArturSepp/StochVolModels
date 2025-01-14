@@ -348,6 +348,7 @@ class UnitTests(Enum):
     MC_COMPARISION = 4
     MC_COMPARISION_QVAR = 5
 
+
 def run_unit_test(unit_test: UnitTests):
 
     import stochvolmodels.data.test_option_chain as chains

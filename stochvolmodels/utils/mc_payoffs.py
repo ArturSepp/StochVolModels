@@ -4,7 +4,6 @@ Montecarlo analytics for option pay-off computations
 
 import numpy as np
 from numba import njit
-
 from stochvolmodels.utils.config import VariableType
 
 

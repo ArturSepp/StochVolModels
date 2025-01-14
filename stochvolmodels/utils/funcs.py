@@ -94,3 +94,29 @@ def ncdf(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
 @njit(cache=False, fastmath=True)
 def npdf(x: Union[float, np.ndarray], mu: float = 0.0, vol: float = 1.0) -> Union[float, np.ndarray]:
     return np.exp(-0.5*np.square((x-mu)/vol))/(vol*np.sqrt(2.0*np.pi))
+
+
+def find_nearest(a: np.ndarray,
+                 value: float,
+                 is_sorted: bool = True,
+                 is_equal_or_largest: bool = False
+                 ) -> float:
+    """
+    find closes element
+    https://stackoverflow.com/questions/2566412/find-nearest-value-in-numpy-array
+    """
+    if is_sorted:
+        idx = np.searchsorted(a, value, side="left")
+        if is_equal_or_largest:  # return the equal or largest element
+            return a[idx]
+        else:
+            if idx > 0 and (idx == len(a) or np.abs(value - a[idx - 1]) < np.abs(value - a[idx])):
+                return a[idx - 1]
+            else:
+                return a[idx]
+    else:
+        a = np.asarray(a)
+        idx = (np.abs(a - value)).argmin()
+    return a[idx]
+
+

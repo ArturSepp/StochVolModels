@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import qis
+import qis as qis
 from typing import Tuple
 from scipy.optimize import minimize
 from enum import Enum

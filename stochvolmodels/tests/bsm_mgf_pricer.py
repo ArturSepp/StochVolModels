@@ -9,7 +9,7 @@ import seaborn as sns
 from typing import Tuple
 from enum import Enum
 
-from stochvolmodels.pricers.analytic import mgf_pricer as mgfp
+import stochvolmodels.utils.mgf_pricer as mgfp
 from stochvolmodels.pricers.analytic.bsm import infer_bsm_ivols_from_model_chain_prices
 from stochvolmodels.utils.config import VariableType
 

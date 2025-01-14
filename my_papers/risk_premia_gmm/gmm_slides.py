@@ -20,7 +20,7 @@ from stochvolmodels import (OptionChain, GmmParams, GmmPricer,
 from option_chain_analytics import OptionsDataDFs, create_chain_from_from_options_dfs
 from option_chain_analytics.ts_loaders import ts_data_loader_wrapper
 
-from stochvolmodels.pricers.gmm_pricer import plot_gmm_pdfs
+from my_papers.risk_premia.plot_gmm import plot_gmm_pdfs
 
 FIGSIZE = (16, 4.5)
 

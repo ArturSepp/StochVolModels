@@ -1,12 +1,13 @@
-from dataclasses import dataclass, asdict
-from typing import Optional, Dict, Any
-
+"""
+implementation of log sv params
+"""
 import numpy as np
 import pandas as pd
 from numpy import linalg as la
-from qis import find_nearest
+from dataclasses import dataclass, asdict
+from typing import Optional, Dict, Any
 
-from stochvolmodels import VariableType
+from stochvolmodels import VariableType, find_nearest
 from stochvolmodels.pricers.model_pricer import ModelParams
 
 

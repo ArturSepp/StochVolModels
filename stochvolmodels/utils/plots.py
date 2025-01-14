@@ -11,7 +11,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.lines import Line2D
 import matplotlib.ticker as mticker
 from os.path import join
-from typing import Union, Dict, Tuple, List, Optional, Literal
+from typing import Union, Dict, Tuple, List, Optional, Literal, Iterable, Any
 
 
 DATE_TIME_FORMAT = '%Y%m%d_%H%M'
@@ -449,9 +449,22 @@ def align_y_limits_axs(axs: List[plt.Subplot],
             if idx > 0:
                 ax.axes.get_yaxis().set_visible(False)
 
+
 def to_flat_list(items: Iterable) -> List[Any]:
     if isinstance(items, Iterable):
         flat_list = [item for item in flatten(items)]
     else:
         flat_list = [items]
     return flat_list
+
+
+def flatten(items: Iterable) -> Any:
+    """
+    flatten list/items from any nested iterable
+    """
+    for x in items:
+        if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
+            for sub_x in flatten(x):
+                yield sub_x
+        else:
+            yield x

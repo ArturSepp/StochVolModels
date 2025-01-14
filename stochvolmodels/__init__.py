@@ -22,7 +22,8 @@ from stochvolmodels.utils.funcs import (
     to_flat_np_array,
     update_kwargs,
     ncdf,
-    npdf
+    npdf,
+    find_nearest
 )
 
 from stochvolmodels.pricers.analytic.bsm import (
@@ -111,8 +112,7 @@ from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 
 from stochvolmodels.pricers.gmm_pricer import (
     GmmParams,
-    GmmPricer,
-    plot_gmm_pdfs
+    GmmPricer
 )
 
 from stochvolmodels.pricers.tdist_pricer import (

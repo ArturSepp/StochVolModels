@@ -3,7 +3,6 @@ run valuation for options on quadratic variance
 """
 import numpy as np
 import matplotlib.pyplot as plt
-import qis as qis
 import stochvolmodels.data.test_option_chain as chains
 from numba.typed import List
 from stochvolmodels import (LogSVPricer, LogSvParams, compute_analytic_qvar, OptionChain,
@@ -37,7 +36,7 @@ fig1 = logsv_pricer.plot_model_ivols_vs_mc(option_chain=option_chain,
                                            params=LOGSV_BTC_PARAMS,
                                            variable_type=VariableType.Q_VAR,
                                            nb_path=nb_path)
-qis.set_suptitle(fig1, title='Implied variance skew by Log-Normal SV model')
+fig1.suptitle('Implied variance skew by Log-Normal SV model')
 
 # run Heston prices
 heston_pricer = HestonPricer()
@@ -45,7 +44,7 @@ fig2 = heston_pricer.plot_model_ivols_vs_mc(option_chain=option_chain,
                                             params=BTC_HESTON_PARAMS,
                                             variable_type=VariableType.Q_VAR,
                                             nb_path=nb_path)
-qis.set_suptitle(fig2, title='Implied variance skew by Heston SV model')
+fig2.suptitle('Implied variance skew by Heston SV model')
 
 
 plt.show()

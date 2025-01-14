@@ -8,16 +8,15 @@ data is provided as:
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 from dataclasses import dataclass
 from typing import Tuple, Optional
-
-import pandas as pd
 from numba.typed import List
 
 import stochvolmodels.pricers.analytic.bsm as bsm
-from  stochvolmodels.utils.var_swap_pricer import compute_var_swap_strike
-from stochvolmodels.pricers.factor_hjm.rate_core import get_default_swap_term_structure, swap_rate
 import stochvolmodels.pricers.analytic.bachelier as bachel
+from stochvolmodels.utils.var_swap_pricer import compute_var_swap_strike
+from stochvolmodels.pricers.factor_hjm.rate_core import get_default_swap_term_structure, swap_rate
 
 
 @dataclass

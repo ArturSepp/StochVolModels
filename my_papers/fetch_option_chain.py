@@ -7,16 +7,14 @@ see https://pypi.org/project/option-chain-analytics
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import qis
 from qis import TimePeriod
 from typing import Dict, Tuple, Optional, Literal
 from numba.typed import List
 from enum import Enum
-
+import qis as qis
 # chain
 from option_chain_analytics import OptionsDataDFs, create_chain_from_from_options_dfs
 from option_chain_analytics.option_chain import SliceColumn, SlicesChain
-
 # analytics
 from stochvolmodels.data.option_chain import OptionChain
 

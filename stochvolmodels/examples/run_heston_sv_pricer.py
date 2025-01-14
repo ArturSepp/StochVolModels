@@ -1,8 +1,6 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from enum import Enum
-
 import stochvolmodels as sv
 from stochvolmodels import HestonPricer, HestonParams, OptionChain, BTC_HESTON_PARAMS
 

@@ -7,8 +7,8 @@ import seaborn as sns
 import qis as qis
 from stochvolmodels import (get_btc_test_chain_data,
                             get_spy_test_chain_data,
-                            OptionChain, GmmPricer,
-                            plot_gmm_pdfs)
+                            OptionChain, GmmPricer)
+from my_papers.risk_premia_gmm.plot_gmm import plot_gmm_pdfs
 
 # get test option chain data
 # option_chain = get_btc_test_chain_data()

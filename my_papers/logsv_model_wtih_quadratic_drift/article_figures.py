@@ -20,7 +20,7 @@ from option_chain_analytics.ts_loaders import ts_data_loader_wrapper
 # analytics
 from stochvolmodels import OptionChain, LogSvParams, LogSVPricer, VariableType, ExpansionOrder
 from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar
-from stochvolmodels.data.fetch_option_chain import generate_vol_chain_np
+from my_papers.fetch_option_chain import generate_vol_chain_np
 import stochvolmodels.data.test_option_chain as chains
 from stochvolmodels.utils.funcs import set_seed, compute_histogram_data
 import stochvolmodels.utils.plots as plot

@@ -7,7 +7,7 @@ from scipy.optimize import minimize
 from scipy.stats import norm
 from typing import Optional
 from enum import Enum
-import qis
+import qis as qis
 
 from my_papers.volatility_models.load_data import fetch_ohlc_vol
 from stochvolmodels import LogSvParams, HestonParams
