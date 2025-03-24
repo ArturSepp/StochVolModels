@@ -696,7 +696,7 @@ def simulate_hawkesjd_terminal(ttm: float,
         assert lambda_m0.shape[0] == nb_path
 
     # vars
-    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, nb_steps=int(5*360))  # need small dt step for large intensities
+    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, nb_steps_per_year=5*360)  # need small dt step for large intensities
     W0 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))
     U_P = -np.log(np.random.uniform(low=1e-16, high=1.0, size=(nb_steps, nb_path)))/dt
     U_M = -np.log(np.random.uniform(low=1e-16, high=1.0, size=(nb_steps, nb_path)))/dt

@@ -16,7 +16,7 @@ requirements = read_requirements("requirements.txt")
 
 setup(
     name='stochvolmodels',
-    version='1.0.26',
+    version='1.0.27',
     author='Artur Sepp, Parviz Rakhmonov',
     author_email='artursepp@gmail.com, parviz.msu@gmail.com',
     url='https://github.com/ArturSepp/StochVolModels',

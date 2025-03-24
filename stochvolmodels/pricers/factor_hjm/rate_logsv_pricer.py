@@ -877,7 +877,7 @@ def simulate_logsv_MF(ttms: np.ndarray,
     if seed is None:
         seed = 16
     np.random.seed(seed)  # fix seed
-    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, nb_steps=int(np.ceil(year_days*ttm)))
+    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, nb_steps_per_year=360)
     if W is None:
         W0 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path, basis.get_nb_factors()))  # TODO: undo
         W1 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))  # TODO: undo
@@ -1017,7 +1017,7 @@ def simulate_logsv_futures_MF2(params: MultiFactRateLogSvParams,
     if seed is None:
         seed = 16
     np.random.seed(seed)  # fix seed
-    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, year_days=720)
+    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, nb_steps_per_year=720)
     if W is None:
         W0 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path, basis.get_nb_factors()))  # TODO: undo
         W1 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))  # TODO: undo

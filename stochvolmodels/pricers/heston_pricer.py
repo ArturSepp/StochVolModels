@@ -298,7 +298,7 @@ def simulate_heston_x_vol_terminal(ttm: float,
                                    rho: float,
                                    volvol: float,
                                    nb_path: int = 100000,
-                                   nb_steps: int = 360
+                                   nb_steps_per_year: int = 360
                                    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
     if x0.shape[0] == 1:  # initial value
@@ -316,7 +316,7 @@ def simulate_heston_x_vol_terminal(ttm: float,
     else:
         assert qvar0.shape[0] == nb_path
 
-    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, nb_steps=nb_steps)
+    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, nb_steps_per_year=nb_steps_per_year)
     w0 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))
     w1 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))
 

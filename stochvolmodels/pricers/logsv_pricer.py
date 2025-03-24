@@ -15,7 +15,7 @@ from enum import Enum
 from stochvolmodels.utils.config import VariableType
 import stochvolmodels.utils.mgf_pricer as mgfp
 from stochvolmodels.utils.mc_payoffs import compute_mc_vars_payoff
-from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer, compute_histogram_data
+from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer, compute_histogram_data, set_seed
 
 # stochvolmodels pricers
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
@@ -42,6 +42,11 @@ class ConstraintsType(Enum):
     INVERSE_MARTINGALE = 3  # kappa_2 >= 2.0*beta
     MMA_MARTINGALE_MOMENT4 = 4  # kappa_2 >= beta &
     INVERSE_MARTINGALE_MOMENT4 = 5  # kappa_2 >= 2.0*beta
+
+
+class CalibrationEngine(Enum):
+    ANALYTIC = 1
+    MC = 2
 
 
 LOGSV_BTC_PARAMS = LogSvParams(sigma0=0.8376, theta=1.0413, kappa1=3.1844, kappa2=3.058, beta=0.1514, volvol=1.8458)
@@ -95,7 +100,7 @@ class LogSVPricer(ModelPricer):
                                      is_spot_measure=is_spot_measure,
                                      variable_type=variable_type,
                                      nb_path=nb_path,
-                                     nb_steps=nb_steps or int(360*np.max(option_chain.ttms))+1)
+                                     nb_steps_per_year=nb_steps or int(360 * np.max(option_chain.ttms)) + 1)
 
     def set_vol_scaler(self, option_chain: OptionChain) -> float:
         """
@@ -115,6 +120,10 @@ class LogSVPricer(ModelPricer):
                                         is_unit_ttm_vega: bool = False,
                                         model_calibration_type: LogsvModelCalibrationType = LogsvModelCalibrationType.PARAMS5,
                                         constraints_type: ConstraintsType = ConstraintsType.UNCONSTRAINT,
+                                        calibration_engine: CalibrationEngine = CalibrationEngine.ANALYTIC,
+                                        nb_path: int = 100000,
+                                        nb_steps: int = 360,
+                                        seed: int = 10,
                                         **kwargs
                                         ) -> LogSvParams:
         """
@@ -169,9 +178,38 @@ class LogSVPricer(ModelPricer):
                 raise NotImplementedError(f"{model_calibration_type}")
             return fit_params
 
+        if calibration_engine == CalibrationEngine.MC:
+            W0s, W1s, dts = get_randoms_for_chain_valuation(ttms=option_chain.ttms, nb_path=nb_path, nb_steps_per_year=nb_steps, seed=seed)
+
         def objective(pars: np.ndarray, args: np.ndarray) -> float:
             params = parse_model_params(pars=pars)
-            model_vols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params, vol_scaler=vol_scaler)
+
+            if calibration_engine == CalibrationEngine.ANALYTIC:
+                model_vols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params, vol_scaler=vol_scaler)
+
+            elif calibration_engine == CalibrationEngine.MC:
+                option_prices_ttm, option_std_ttm = logsv_mc_chain_pricer_fixed_randoms(ttms=option_chain.ttms,
+                                                                                        forwards=option_chain.forwards,
+                                                                                        discfactors=option_chain.discfactors,
+                                                                                        strikes_ttms=option_chain.strikes_ttms,
+                                                                                        optiontypes_ttms=option_chain.optiontypes_ttms,
+                                                                                        W0s=W0s,
+                                                                                        W1s=W1s,
+                                                                                        dts=dts,
+                                                                                        v0=params.sigma0,
+                                                                                        theta=params.theta,
+                                                                                        kappa1=params.kappa1,
+                                                                                        kappa2=params.kappa2,
+                                                                                        beta=params.beta,
+                                                                                        volvol=params.volvol,
+                                                                                        vol_backbone_etas=params.get_vol_backbone_etas(ttms=option_chain.ttms))
+                model_vols = option_chain.compute_model_ivols_from_chain_data(model_prices=option_prices_ttm)
+                print(f"option_prices_ttm\n{option_prices_ttm}")
+                print(f"model_vols\n{model_vols}")
+
+            else:
+                raise NotImplementedError(f"{calibration_engine}")
+
             resid = np.nansum(weights * np.square(to_flat_np_array(model_vols) - market_vols))
             return resid
 
@@ -278,7 +316,7 @@ class LogSVPricer(ModelPricer):
                                              volvol=params.volvol,
                                              nb_path=nb_path,
                                              is_spot_measure=is_spot_measure,
-                                             nb_steps=nb_steps,
+                                             nb_steps_per_year=nb_steps,
                                              brownians=brownians,
                                              **kwargs)
         return sigma_t, grid_t
@@ -512,7 +550,7 @@ def logsv_mc_chain_pricer(ttms: np.ndarray,
                           vol_backbone_etas: np.ndarray,
                           is_spot_measure: bool = True,
                           nb_path: int = 100000,
-                          nb_steps: int = 360,
+                          nb_steps_per_year: int = 360,
                           variable_type: VariableType = VariableType.LOG_RETURN
                           ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     # starting values
@@ -538,7 +576,7 @@ def logsv_mc_chain_pricer(ttms: np.ndarray,
                                                           volvol=volvol,
                                                           vol_backbone_eta=vol_backbone_eta,
                                                           nb_path=nb_path,
-                                                          nb_steps=nb_steps,
+                                                          nb_steps_per_year=nb_steps_per_year,
                                                           is_spot_measure=is_spot_measure)
         ttm0 = ttm
         option_prices, option_std = compute_mc_vars_payoff(x0=x0, sigma0=sigma0, qvar0=qvar0,
@@ -564,7 +602,7 @@ def simulate_vol_paths(ttm: float,
                        volvol: float,
                        is_spot_measure: bool = True,
                        nb_path: int = 100000,
-                       nb_steps: int = 360,
+                       nb_steps_per_year: int = 360,
                        brownians: np.ndarray = None,
                        **kwargs
                        ) -> Tuple[np.ndarray, np.ndarray]:
@@ -573,7 +611,7 @@ def simulate_vol_paths(ttm: float,
     """
     sigma0 = v0 * np.ones(nb_path)
 
-    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, nb_steps=nb_steps)
+    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, nb_steps_per_year=nb_steps_per_year)
 
     if brownians is None:
         brownians = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))
@@ -586,7 +624,7 @@ def simulate_vol_paths(ttm: float,
     vartheta2 = beta*beta + volvol*volvol
     vartheta = np.sqrt(vartheta2)
     vol_var = np.log(sigma0)
-    sigma_t = np.zeros((nb_steps+1, nb_path))  # sigma grid will increase to include the sigma_0 at t0 = 0
+    sigma_t = np.zeros((nb_steps_per_year + 1, nb_path))  # sigma grid will increase to include the sigma_0 at t0 = 0
     sigma_t[0, :] = sigma0  # keep first value
     for t_, w1_ in enumerate(brownians):
         vol_var = vol_var + ((kappa1 * theta / sigma0 - kappa1) + kappa2*(theta-sigma0) + adj*sigma0 - 0.5*vartheta2) * dt + vartheta*w1_
@@ -609,7 +647,10 @@ def simulate_logsv_x_vol_terminal(ttm: float,
                                   vol_backbone_eta: float = 1.0,
                                   is_spot_measure: bool = True,
                                   nb_path: int = 100000,
-                                  nb_steps: int = 360
+                                  nb_steps_per_year: int = 360,
+                                  W0: Optional[np.ndarray] = None,
+                                  W1: Optional[np.ndarray] = None,
+                                  dt: Optional[float] = None
                                   ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     mc simulator for terminal values of log-return, vol sigma0, and qvar for log sv model
@@ -628,10 +669,16 @@ def simulate_logsv_x_vol_terminal(ttm: float,
         sigma0 = sigma0 * np.ones(nb_path)
     else:
         assert sigma0.shape[0] == nb_path
-
-    nb_steps, dt, grid_t = set_time_grid(ttm=ttm, nb_steps=nb_steps)
-    W0 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))
-    W1 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))
+    if W0 is None and W1 is None:
+        nb_steps1, dt, grid_t = set_time_grid(ttm=ttm, nb_steps_per_year=nb_steps_per_year)
+        print(f"nb_steps1={nb_steps1}, dt={dt}")
+        sdt = np.sqrt(dt)
+        W0_ = sdt * np.random.normal(0, 1, size=(nb_steps1, nb_path))
+        W1_ = sdt * np.random.normal(0, 1, size=(nb_steps1, nb_path))
+    else:
+        sdt = np.sqrt(dt)
+        W0_ = sdt * W0
+        W1_ = sdt * W1
 
     if is_spot_measure:
         alpha, adj = -1.0, 0.0
@@ -641,7 +688,7 @@ def simulate_logsv_x_vol_terminal(ttm: float,
     vartheta2 = beta*beta + volvol*volvol
     vol_backbone_eta2 = vol_backbone_eta * vol_backbone_eta
     vol_var = np.log(sigma0)
-    for t_, (w0, w1) in enumerate(zip(W0, W1)):
+    for t_, (w0, w1) in enumerate(zip(W0_, W1_)):
         sigma0_2dt = vol_backbone_eta2 * sigma0 * sigma0 * dt
         x0 = x0 + alpha * 0.5 * sigma0_2dt + vol_backbone_eta * sigma0 * w0
         vol_var = vol_var + ((kappa1 * theta / sigma0 - kappa1) + kappa2*(theta-sigma0) + adj*sigma0 - 0.5*vartheta2) * dt + beta*w0+volvol*w1
@@ -649,6 +696,96 @@ def simulate_logsv_x_vol_terminal(ttm: float,
         qvar0 = qvar0 + 0.5*(sigma0_2dt + vol_backbone_eta2 * sigma0 * sigma0 * dt)
 
     return x0, sigma0, qvar0
+
+
+def get_randoms_for_chain_valuation(ttms: np.ndarray,
+                                    nb_path: int = 100000,
+                                    nb_steps_per_year: int = 360,
+                                    seed: int = 10
+                                    ) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
+    """
+    we need to fix random normals for suesequent evaluation using mc slices
+    outputs as numpy lists
+    """
+    #
+    set_seed(seed)
+    W0s = List()
+    W1s = List()
+    dts = List()
+    ttm0 = 0.0
+    for ttm in ttms:
+        # qqq
+        nb_steps_, dt, grid_t = set_time_grid(ttm=ttm - ttm0, nb_steps_per_year=nb_steps_per_year)
+        W0s.append(np.random.normal(0, 1, size=(nb_steps_, nb_path)))
+        W1s.append(np.random.normal(0, 1, size=(nb_steps_, nb_path)))
+        dts.append(dt)
+        ttm0 = ttm
+    return W0s, W1s, dts
+
+
+@njit(cache=False, fastmath=True)
+def logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
+                                        forwards: np.ndarray,
+                                        discfactors: np.ndarray,
+                                        strikes_ttms: Tuple[np.ndarray,...],
+                                        optiontypes_ttms: Tuple[np.ndarray, ...],
+                                        W0s: Tuple[np.ndarray, ...],
+                                        W1s: Tuple[np.ndarray, ...],
+                                        dts: Tuple[np.ndarray, ...],
+                                        v0: float,
+                                        theta: float,
+                                        kappa1: float,
+                                        kappa2: float,
+                                        beta: float,
+                                        volvol: float,
+                                        vol_backbone_etas: np.ndarray,
+                                        is_spot_measure: bool = True,
+                                        variable_type: VariableType = VariableType.LOG_RETURN
+                                        ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+    """
+    chain valuation using fixed randoms
+    """
+    # starting values
+    nb_path = W0s[0].shape[1]
+    x0 = np.zeros(nb_path)
+    qvar0 = np.zeros(nb_path)
+    sigma0 = v0*np.ones(nb_path)
+    ttm0 = 0.0
+
+    # outputs as numpy lists
+    option_prices_ttm = List()
+    option_std_ttm = List()
+    for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm, vol_backbone_eta, W0, W1, dt in zip(ttms, forwards, discfactors,
+                                                                                                strikes_ttms, optiontypes_ttms,
+                                                                                                vol_backbone_etas,
+                                                                                                W0s, W1s, dts):
+        x0, sigma0, qvar0 = simulate_logsv_x_vol_terminal(ttm=ttm - ttm0,
+                                                          x0=x0,
+                                                          sigma0=sigma0,
+                                                          qvar0=qvar0,
+                                                          theta=theta,
+                                                          kappa1=kappa1,
+                                                          kappa2=kappa2,
+                                                          beta=beta,
+                                                          volvol=volvol,
+                                                          vol_backbone_eta=vol_backbone_eta,
+                                                          nb_path=nb_path,
+                                                          dt=dt,
+                                                          is_spot_measure=is_spot_measure,
+                                                          W0=W0,
+                                                          W1=W1)
+        ttm0 = ttm
+        option_prices, option_std = compute_mc_vars_payoff(x0=x0, sigma0=sigma0, qvar0=qvar0,
+                                                           ttm=ttm,
+                                                           forward=forward,
+                                                           strikes_ttm=strikes_ttm,
+                                                           optiontypes_ttm=optiontypes_ttm,
+                                                           discfactor=discfactor,
+                                                           variable_type=variable_type)
+        option_prices_ttm.append(option_prices)
+        option_std_ttm.append(option_std)
+
+    return option_prices_ttm, option_std_ttm
 
 
 class UnitTests(Enum):

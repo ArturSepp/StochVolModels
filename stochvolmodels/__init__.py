@@ -106,7 +106,10 @@ from stochvolmodels.pricers.logsv_pricer import (
     LOGSV_BTC_PARAMS,
     LogSVPricer,
     LogsvModelCalibrationType,
-    ConstraintsType
+    ConstraintsType,
+    CalibrationEngine,
+    get_randoms_for_chain_valuation,
+    logsv_mc_chain_pricer_fixed_randoms
 )
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 

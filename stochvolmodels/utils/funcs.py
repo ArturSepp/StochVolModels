@@ -15,11 +15,13 @@ def to_flat_np_array(input_list: List[np.ndarray]) -> np.ndarray:
 
 
 @njit(cache=False, fastmath=False)
-def set_time_grid(ttm: float, nb_steps: int = 360) -> Tuple[int, float, np.ndarray]:
+def set_time_grid(ttm: float, nb_steps_per_year: int = 360) -> Tuple[int, float, np.ndarray]:
     """
     set daily steps
     """
+    nb_steps = int(ttm * nb_steps_per_year) + 1
     grid_t = np.linspace(0.0, ttm, nb_steps + 1)
+    # dt = ttm / nb_steps
     dt = grid_t[1] - grid_t[0]
     return nb_steps, dt, grid_t
 
@@ -102,7 +104,7 @@ def find_nearest(a: np.ndarray,
                  is_equal_or_largest: bool = False
                  ) -> float:
     """
-    find closes element
+    find closest element
     https://stackoverflow.com/questions/2566412/find-nearest-value-in-numpy-array
     """
     if is_sorted:
