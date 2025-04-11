@@ -204,8 +204,8 @@ class LogSVPricer(ModelPricer):
                                                                                         volvol=params.volvol,
                                                                                         vol_backbone_etas=params.get_vol_backbone_etas(ttms=option_chain.ttms))
                 model_vols = option_chain.compute_model_ivols_from_chain_data(model_prices=option_prices_ttm)
-                print(f"option_prices_ttm\n{option_prices_ttm}")
-                print(f"model_vols\n{model_vols}")
+                # print(f"option_prices_ttm\n{option_prices_ttm}")
+                # print(f"model_vols\n{model_vols}")
 
             else:
                 raise NotImplementedError(f"{calibration_engine}")

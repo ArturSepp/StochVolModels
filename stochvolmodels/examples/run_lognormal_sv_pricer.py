@@ -97,17 +97,6 @@ def run_unit_test(unit_test: UnitTests):
         logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=btc_option_chain,
                                                  params=btc_calibrated_params)
 
-    elif unit_test == UnitTests.CALIBRATE_MODEL_TO_BTC_OPTIONS:
-        btc_option_chain = sv.get_btc_test_chain_data()
-        params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=2.18, beta=0.15, volvol=2.0)
-        btc_calibrated_params = logsv_pricer.calibrate_model_params_to_chain(option_chain=btc_option_chain,
-                                                                             params0=params0,
-                                                                             model_calibration_type=LogsvModelCalibrationType.PARAMS4,
-                                                                             constraints_type=sv.ConstraintsType.INVERSE_MARTINGALE)
-        print(btc_calibrated_params)
-        logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=btc_option_chain,
-                                                 params=btc_calibrated_params)
-
     elif unit_test == UnitTests.MC_WITH_FIXED_RANDOMS:
         btc_option_chain = sv.get_btc_test_chain_data()
         W0s, W1s, dts = sv.get_randoms_for_chain_valuation(ttms=btc_option_chain.ttms,
@@ -138,6 +127,17 @@ def run_unit_test(unit_test: UnitTests):
         option_prices_ttm, option_std_ttm = sv.logsv_mc_chain_pricer_fixed_randoms(**args)
         print(option_prices_ttm)
 
+    elif unit_test == UnitTests.CALIBRATE_MODEL_TO_BTC_OPTIONS:
+        btc_option_chain = sv.get_btc_test_chain_data()
+        params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=2.18, beta=0.15, volvol=2.0)
+        btc_calibrated_params = logsv_pricer.calibrate_model_params_to_chain(option_chain=btc_option_chain,
+                                                                             params0=params0,
+                                                                             model_calibration_type=LogsvModelCalibrationType.PARAMS4,
+                                                                             constraints_type=sv.ConstraintsType.INVERSE_MARTINGALE)
+        print(btc_calibrated_params)
+        logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=btc_option_chain,
+                                                 params=btc_calibrated_params)
+
     elif unit_test == UnitTests.CALIBRATE_MODEL_TO_BTC_OPTIONS_WITH_MC:
         btc_option_chain = sv.get_btc_test_chain_data()
         params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=2.18, beta=0.15, volvol=2.0)
@@ -157,7 +157,7 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.CALIBRATE_MODEL_TO_BTC_OPTIONS_WITH_MC
+    unit_test = UnitTests.CALIBRATE_MODEL_TO_BTC_OPTIONS
 
     is_run_all_tests = False
     if is_run_all_tests:
