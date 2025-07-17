@@ -109,9 +109,7 @@ from stochvolmodels.pricers.logsv_pricer import (
     ConstraintsType,
     CalibrationEngine,
     get_randoms_for_chain_valuation,
-    get_randoms_roughvol,
-    logsv_mc_chain_pricer_fixed_randoms,
-    logsv_roughmc_chain_pricer_fixed_randoms
+    logsv_mc_chain_pricer_fixed_randoms
 )
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 

@@ -22,13 +22,11 @@ class LogSvParams(ModelParams):
     kappa2: Optional[float] = 2.5  # Optional is mapped to self.kappa1 / self.theta
     beta: float = -1.0
     volvol: float = 1.0
-    H: float = 0.5  # Hurst index
     vol_backbone: pd.Series = None
 
     def __post_init__(self):
         if self.kappa2 is None:
             self.kappa2 = self.kappa1 / self.theta
-        assert -0.5 < self.H <= 0.5
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -60,15 +58,15 @@ class LogSvParams(ModelParams):
 
     @property
     def kappa(self) -> float:
-        return self.kappa1 + self.kappa2 * self.theta
+        return self.kappa1+self.kappa2*self.theta
 
     @property
     def theta2(self) -> float:
-        return self.theta * self.theta
+        return self.theta*self.theta
 
     @property
     def vartheta2(self) -> float:
-        return self.beta * self.beta + self.volvol * self.volvol
+        return self.beta*self.beta + self.volvol*self.volvol
 
     @property
     def gamma(self) -> float:
@@ -89,25 +87,25 @@ class LogSvParams(ModelParams):
         spacial grid to compute density of x
         """
         sigma_t = np.sqrt(ttm * 0.5 * (np.square(self.sigma0) + np.square(self.theta)))
-        drift = - 0.5 * sigma_t * sigma_t
-        stdev = (n_stdevs + 1) * sigma_t
-        return np.linspace(-stdev + drift, stdev + drift, n)
+        drift = - 0.5*sigma_t*sigma_t
+        stdev = (n_stdevs+1)*sigma_t
+        return np.linspace(-stdev+drift, stdev+drift, n)
 
     def get_sigma_grid(self, ttm: float = 1.0, n_stdevs: float = 3.0, n: int = 200) -> np.ndarray:
         """
         spacial grid to compute density of sigma
         """
-        sigma_t = np.sqrt(0.5 * (np.square(self.sigma0) + np.square(self.theta)))
-        vvol = 0.5 * np.sqrt(self.vartheta2 * ttm)
-        return np.linspace(0.0, sigma_t + n_stdevs * vvol, n)
+        sigma_t = np.sqrt(0.5*(np.square(self.sigma0) + np.square(self.theta)))
+        vvol = 0.5*np.sqrt(self.vartheta2*ttm)
+        return np.linspace(0.0, sigma_t+n_stdevs*vvol, n)
 
     def get_qvar_grid(self, ttm: float = 1.0, n_stdevs: float = 3.0, n: int = 200) -> np.ndarray:
         """
         spacial grid to compute density of i
         """
         sigma_t = np.sqrt(ttm * (np.square(self.sigma0) + np.square(self.theta)))
-        vvol = np.sqrt(self.vartheta2) * ttm
-        return np.linspace(0.0, sigma_t + n_stdevs * vvol, n)
+        vvol = np.sqrt(self.vartheta2)*ttm
+        return np.linspace(0.0, sigma_t+n_stdevs*vvol, n)
 
     def get_variable_space_grid(self, variable_type: VariableType = VariableType.LOG_RETURN,
                                 ttm: float = 1.0,
@@ -139,36 +137,36 @@ class LogSvParams(ModelParams):
         lambda_m = np.zeros((n_terms, n_terms))
         lambda_m[0, 0] = -kappa
         lambda_m[0, 1] = -kappa2
-        lambda_m[1, 0] = 2.0 * c(2) * theta
-        lambda_m[1, 1] = c(2) - 2.0 * kappa
-        lambda_m[1, 2] = -2.0 * kappa2
+        lambda_m[1, 0] = 2.0*c(2) * theta
+        lambda_m[1, 1] = c(2) - 2.0*kappa
+        lambda_m[1, 2] = -2.0*kappa2
 
         for n_ in np.arange(2, n_terms):
             n = n_ + 1  # n_ is array counter, n is formula counter
             c_n = c(n)
             lambda_m[n_, n_ - 2] = c_n * theta2
             lambda_m[n_, n_ - 1] = 2.0 * c_n * theta
-            lambda_m[n_, n_] = c_n - n * kappa
+            lambda_m[n_, n_] = c_n - n*kappa
             if n_ + 1 < n_terms:
-                lambda_m[n_, n_ + 1] = -n * kappa2
+                lambda_m[n_, n_ + 1] = -n*kappa2
 
         return lambda_m
 
     def assert_vol_moments_stability(self, n_terms: int = 4):
         lambda_m = self.get_vol_moments_lambda(n_terms=n_terms)
         w, v = la.eig(lambda_m)
-        cond = np.all(np.real(w) < 0.0)
+        cond = np.all(np.real(w)<0.0)
         print(f"vol moments stable = {cond}")
 
     def print_vol_moments_stability(self, n_terms: int = 4) -> None:
         def c(n: int) -> float:
             return 0.5 * self.vartheta2 * n * (n - 1.0)
 
-        cond_m2 = c(2) - 2.0 * self.kappa
+        cond_m2 = c(2) - 2.0*self.kappa
         print(f"con2:\n{cond_m2}")
-        cond_m3 = c(3) - 3.0 * self.kappa
+        cond_m3 = c(3) - 3.0*self.kappa
         print(f"con3:\n{cond_m3}")
-        cond_m4 = c(4) - 4.0 * self.kappa
+        cond_m4 = c(4) - 4.0*self.kappa
         print(f"cond4:\n{cond_m4}")
 
         lambda_m = self.get_vol_moments_lambda(n_terms=n_terms)
@@ -176,4 +174,4 @@ class LogSvParams(ModelParams):
 
         w, v = la.eig(lambda_m)
         print(f"eigenvalues w:\n{w}")
-        print(f"vol moments stable = {np.all(np.real(w) < 0.0)}")
+        print(f"vol moments stable = {np.all(np.real(w)<0.0)}")
