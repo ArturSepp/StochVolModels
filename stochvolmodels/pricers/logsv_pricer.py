@@ -884,8 +884,8 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
         Z1_ = Z1[:nb_steps]
         log_spot_str, vol_str, qv_str = log_spot_full_combined(nodes, weights, v0_vec, theta, lamda, log_s0, v_init,
                                                                rho, volvol, timegrid, nb_path, Z0_, Z1_)
-        # print(f"Number of paths with negative vol: {np.sum(weights @ vol_str < 0.0)}")
-        # print(f"Mean spot Strand: {np.mean(np.exp(log_spot_str))}")
+        print(f"Number of paths with negative vol: {np.sum(weights @ vol_str < 0.0)}")
+        print(f"Mean spot Strand: {np.mean(np.exp(log_spot_str))}")
 
         option_prices, option_std = compute_mc_vars_payoff(x0=log_spot_str, sigma0=vol_str, qvar0=qv_str,
                                                            ttm=ttm,
