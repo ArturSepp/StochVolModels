@@ -5,7 +5,6 @@ run few unit test to illustrate implementation of log-normal sv model analytics
 import numpy as np
 import matplotlib.pyplot as plt
 from enum import Enum
-
 import stochvolmodels as sv
 from stochvolmodels import LogSVPricer, LogSvParams, OptionChain, LogsvModelCalibrationType
 
@@ -19,6 +18,8 @@ class UnitTests(Enum):
     CALIBRATE_MODEL_TO_BTC_OPTIONS = 6
     MC_WITH_FIXED_RANDOMS = 7
     CALIBRATE_MODEL_TO_BTC_OPTIONS_WITH_MC = 8
+    ROUGH_MC_WITH_FIXED_RANDOMS = 9
+    BENCHM_ROUGH_PRICER = 10
 
 
 def run_unit_test(unit_test: UnitTests):
@@ -124,8 +125,38 @@ def run_unit_test(unit_test: UnitTests):
         option_prices_ttm, option_std_ttm = sv.logsv_mc_chain_pricer_fixed_randoms(**args)
         print(option_prices_ttm)
 
-        option_prices_ttm, option_std_ttm = sv.logsv_mc_chain_pricer_fixed_randoms(**args)
+
+    elif unit_test == UnitTests.ROUGH_MC_WITH_FIXED_RANDOMS:
+        btc_option_chain = sv.get_btc_test_chain_data()
+        Z0, Z1, grid_ttms = sv.get_randoms_for_rough_vol_chain_valuation(ttms=btc_option_chain.ttms,
+                                                                             nb_path=10000,
+                                                                             nb_steps_per_year=360,
+                                                                             seed=10)
+        params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=0.0, beta=0.15, volvol=2.0)
+
+        nodes = np.array([0.03, 2.24, 46.83])
+        weights = np.array([0.55, 1.11, 6.08])
+
+        option_prices_ttm, option_std_ttm = sv.rough_logsv_mc_chain_pricer_fixed_randoms(ttms=btc_option_chain.ttms,
+                                                                                         forwards=btc_option_chain.forwards,
+                                                                                         discfactors=btc_option_chain.discfactors,
+                                                                                         strikes_ttms=btc_option_chain.strikes_ttms,
+                                                                                         optiontypes_ttms=btc_option_chain.optiontypes_ttms,
+                                                                                         Z0=Z0,
+                                                                                         Z1=Z1,
+                                                                                         sigma0=params0.sigma0,
+                                                                                         theta=params0.theta,
+                                                                                         kappa1=params0.kappa1,
+                                                                                         kappa2=params0.kappa2,
+                                                                                         beta=params0.beta,
+                                                                                         orthog_vol=params0.volvol,
+                                                                                         weights=weights,
+                                                                                         nodes=nodes,
+                                                                                         timegrids=grid_ttms)
         print(option_prices_ttm)
+
+    elif unit_test == UnitTests.BENCHM_ROUGH_PRICER:
+        raise NotImplementedError
 
     elif unit_test == UnitTests.CALIBRATE_MODEL_TO_BTC_OPTIONS:
         btc_option_chain = sv.get_btc_test_chain_data()
@@ -140,12 +171,14 @@ def run_unit_test(unit_test: UnitTests):
 
     elif unit_test == UnitTests.CALIBRATE_MODEL_TO_BTC_OPTIONS_WITH_MC:
         btc_option_chain = sv.get_btc_test_chain_data()
-        params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=2.18, beta=0.15, volvol=2.0)
+        params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=0.0, beta=0.15, volvol=2.0)
+        params0.H = 0.3
+        params0.approximate_kernel(T=btc_option_chain.ttms[-1], N=3)
         btc_calibrated_params = logsv_pricer.calibrate_model_params_to_chain(option_chain=btc_option_chain,
                                                                              params0=params0,
                                                                              model_calibration_type=LogsvModelCalibrationType.PARAMS4,
                                                                              constraints_type=sv.ConstraintsType.INVERSE_MARTINGALE,
-                                                                             calibration_engine=sv.CalibrationEngine.MC,
+                                                                             calibration_engine=sv.CalibrationEngine.ROUGH_MC,
                                                                              nb_path=100000,
                                                                              seed=7)
         print(btc_calibrated_params)
@@ -157,7 +190,7 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.CALIBRATE_MODEL_TO_BTC_OPTIONS
+    unit_test = UnitTests.CALIBRATE_MODEL_TO_BTC_OPTIONS_WITH_MC
 
     is_run_all_tests = False
     if is_run_all_tests:

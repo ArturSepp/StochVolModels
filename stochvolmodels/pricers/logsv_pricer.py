@@ -23,6 +23,7 @@ import stochvolmodels.pricers.logsv.affine_expansion as afe
 from stochvolmodels.pricers.model_pricer import ModelPricer
 from stochvolmodels.pricers.logsv.affine_expansion import ExpansionOrder
 from stochvolmodels.pricers.logsv.vol_moments_ode import fit_model_vol_backbone_to_varswaps
+from stochvolmodels.pricers.rough_logsv.split_simulation import log_spot_full_combined
 
 # data
 from stochvolmodels.data.option_chain import OptionChain
@@ -47,6 +48,7 @@ class ConstraintsType(Enum):
 class CalibrationEngine(Enum):
     ANALYTIC = 1
     MC = 2
+    ROUGH_MC = 3
 
 
 LOGSV_BTC_PARAMS = LogSvParams(sigma0=0.8376, theta=1.0413, kappa1=3.1844, kappa2=3.058, beta=0.1514, volvol=1.8458)
@@ -154,21 +156,30 @@ class LogSVPricer(ModelPricer):
                                          kappa1=params0.kappa1,
                                          kappa2=params0.kappa2,
                                          beta=pars[2],
-                                         volvol=pars[3])
+                                         volvol=pars[3],
+                                         H=params0.H,
+                                         nodes=params0.nodes,
+                                         weights=params0.weights)
             elif model_calibration_type == LogsvModelCalibrationType.PARAMS5:
                 fit_params = LogSvParams(sigma0=pars[0],
                                          theta=pars[1],
                                          kappa1=pars[2],
                                          kappa2=None,
                                          beta=pars[3],
-                                         volvol=pars[4])
+                                         volvol=pars[4],
+                                         H=params0.H,
+                                         nodes=params0.nodes,
+                                         weights=params0.weights)
             elif model_calibration_type == LogsvModelCalibrationType.PARAMS_WITH_VARSWAP_FIT:
                 fit_params = LogSvParams(sigma0=params0.sigma0,
                                          theta=params0.theta,
                                          kappa1=params0.kappa1,
                                          kappa2=params0.kappa2,
                                          beta=pars[0],
-                                         volvol=pars[1])
+                                         volvol=pars[1],
+                                         H=params0.H,
+                                         nodes=params0.nodes,
+                                         weights=params0.weights)
                 # set model backbone
                 vol_backbone = fit_model_vol_backbone_to_varswaps(log_sv_params=fit_params,
                                                                   varswap_strikes=varswap_strikes)
@@ -180,7 +191,9 @@ class LogSVPricer(ModelPricer):
 
         if calibration_engine == CalibrationEngine.MC:
             W0s, W1s, dts = get_randoms_for_chain_valuation(ttms=option_chain.ttms, nb_path=nb_path, nb_steps_per_year=nb_steps, seed=seed)
-
+        if calibration_engine == CalibrationEngine.ROUGH_MC:
+            Z0, Z1, grid_ttms = get_randoms_for_rough_vol_chain_valuation(ttms=option_chain.ttms, nb_path=nb_path,
+                                                                          nb_steps_per_year=nb_steps, seed=seed)
         def objective(pars: np.ndarray, args: np.ndarray) -> float:
             params = parse_model_params(pars=pars)
 
@@ -206,6 +219,25 @@ class LogSVPricer(ModelPricer):
                 model_vols = option_chain.compute_model_ivols_from_chain_data(model_prices=option_prices_ttm)
                 # print(f"option_prices_ttm\n{option_prices_ttm}")
                 # print(f"model_vols\n{model_vols}")
+
+            elif calibration_engine == CalibrationEngine.ROUGH_MC:
+                option_prices_ttm, option_std_ttm = rough_logsv_mc_chain_pricer_fixed_randoms(ttms=option_chain.ttms,
+                                                                                              forwards=option_chain.forwards,
+                                                                                              discfactors=option_chain.discfactors,
+                                                                                              strikes_ttms=option_chain.strikes_ttms,
+                                                                                              optiontypes_ttms=option_chain.optiontypes_ttms,
+                                                                                              Z0=Z0,
+                                                                                              Z1=Z1,
+                                                                                              sigma0=params.sigma0,
+                                                                                              theta=params.theta,
+                                                                                              kappa1=params.kappa1,
+                                                                                              kappa2=params.kappa2,
+                                                                                              beta=params.beta,
+                                                                                              orthog_vol=params.volvol,
+                                                                                              weights=params.weights,
+                                                                                              nodes=params.nodes,
+                                                                                              timegrids=grid_ttms)
+                model_vols = option_chain.compute_model_ivols_from_chain_data(model_prices=option_prices_ttm)
 
             else:
                 raise NotImplementedError(f"{calibration_engine}")
@@ -698,13 +730,14 @@ def simulate_logsv_x_vol_terminal(ttm: float,
     return x0, sigma0, qvar0
 
 
+
 def get_randoms_for_chain_valuation(ttms: np.ndarray,
                                     nb_path: int = 100000,
                                     nb_steps_per_year: int = 360,
                                     seed: int = 10
                                     ) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
     """
-    we need to fix random normals for suesequent evaluation using mc slices
+    we need to fix random normals for subsequent evaluation using mc slices
     outputs as numpy lists
     """
     #
@@ -721,6 +754,23 @@ def get_randoms_for_chain_valuation(ttms: np.ndarray,
         dts.append(dt)
         ttm0 = ttm
     return W0s, W1s, dts
+
+def get_randoms_for_rough_vol_chain_valuation(ttms: np.ndarray,
+                                    nb_path: int = 100000,
+                                    nb_steps_per_year: int = 360,
+                                    seed: int = 10
+                                    ) -> Tuple[np.ndarray, np.ndarray, List[np.ndarray]]:
+    set_seed(seed)
+    grid_ttms = List()
+    nb_steps_ttms = np.zeros_like(ttms).astype(int)
+    for i, ttm in enumerate(ttms):
+        nb_steps, dt, grid_t = set_time_grid(ttm, nb_steps_per_year)
+        nb_steps_ttms[i] = nb_steps
+        grid_ttms.append(grid_t)
+    Z0 = np.random.normal(0, 1, size=(nb_steps_ttms[-1], nb_path))
+    Z1 = np.random.normal(0, 1, size=(nb_steps_ttms[-1], nb_path))
+
+    return Z0, Z1, grid_ttms
 
 
 @njit(cache=False, fastmath=True)
@@ -776,6 +826,68 @@ def logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
                                                           W1=W1)
         ttm0 = ttm
         option_prices, option_std = compute_mc_vars_payoff(x0=x0, sigma0=sigma0, qvar0=qvar0,
+                                                           ttm=ttm,
+                                                           forward=forward,
+                                                           strikes_ttm=strikes_ttm,
+                                                           optiontypes_ttm=optiontypes_ttm,
+                                                           discfactor=discfactor,
+                                                           variable_type=variable_type)
+        option_prices_ttm.append(option_prices)
+        option_std_ttm.append(option_std)
+
+    return option_prices_ttm, option_std_ttm
+
+def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
+                                              forwards: np.ndarray,
+                                              discfactors: np.ndarray,
+                                              strikes_ttms: Tuple[np.ndarray, ...],
+                                              optiontypes_ttms: Tuple[np.ndarray, ...],
+                                              Z0: np.ndarray,
+                                              Z1: np.ndarray,
+                                              sigma0: float,
+                                              theta: float,
+                                              kappa1: float,
+                                              kappa2: float,
+                                              beta: float,
+                                              orthog_vol: float,
+                                              weights: np.ndarray,
+                                              nodes: np.ndarray,
+                                              timegrids: List[np.ndarray],
+                                              variable_type: VariableType = VariableType.LOG_RETURN
+                                              ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+    assert weights.shape == nodes.shape and weights.ndim == 1
+    assert kappa2 == 0.0
+    N = nodes.size
+    v0 = sigma0 / np.sum(weights) * np.ones((N,))
+
+    # need to redenote coefficients
+    lamda = kappa1
+    theta = kappa1 * theta
+    volvol = np.sqrt(beta ** 2 + orthog_vol ** 2)
+    rho = beta / volvol
+
+    nb_path = Z0.shape[1]
+    v0_vec = np.repeat(v0[:, None], nb_path, axis=1)
+    v_init = v0_vec.copy()
+    log_s0 = 0.0
+
+    # outputs as numpy lists
+    option_prices_ttm = List()
+    option_std_ttm = List()
+    for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm, timegrid in zip(ttms, forwards,
+                                                                                discfactors,
+                                                                                strikes_ttms,
+                                                                                optiontypes_ttms,
+                                                                                timegrids):
+        nb_steps = timegrid.size - 1
+        Z0_ = Z0[:nb_steps]
+        Z1_ = Z1[:nb_steps]
+        log_spot_str, vol_str, qv_str = log_spot_full_combined(nodes, weights, v0_vec, theta, lamda, log_s0, v_init,
+                                                               rho, volvol, timegrid, nb_path, Z0_, Z1_)
+        # print(f"Number of paths with negative vol: {np.sum(weights @ vol_str < 0.0)}")
+        # print(f"Mean spot Strand: {np.mean(np.exp(log_spot_str))}")
+
+        option_prices, option_std = compute_mc_vars_payoff(x0=log_spot_str, sigma0=vol_str, qvar0=qv_str,
                                                            ttm=ttm,
                                                            forward=forward,
                                                            strikes_ttm=strikes_ttm,
@@ -865,7 +977,7 @@ def run_unit_test(unit_test: UnitTests):
         fig = logsv_pricer.plot_model_ivols_vs_mc(option_chain=option_chain,
                                                   params=LOGSV_BTC_PARAMS,
                                                   variable_type=VariableType.Q_VAR)
-    
+
     elif unit_test == UnitTests.VOL_PATHS:
         logsv_pricer = LogSVPricer()
         nb_path = 10
