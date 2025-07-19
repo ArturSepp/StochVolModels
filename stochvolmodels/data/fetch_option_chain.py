@@ -105,7 +105,7 @@ def sample_option_chain_at_times(options_data_dfs: OptionsDataDFs,
 
 def load_price_data(options_data_dfs: OptionsDataDFs,
                     time_period: TimePeriod = None,
-                    data: Literal['spot', 'perp', 'funding_rate'] = 'spot',
+                    data: Literal['close', 'perp', 'funding_rate'] = 'close',
                     freq: Optional[str] = 'D'  # to do
                     ) -> pd.Series:
     #options_data_dfs = OptionsDataDFs(**ts_data_loader_wrapper(ticker=ticker, freq='D', hour_offset=8))
