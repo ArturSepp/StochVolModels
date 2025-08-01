@@ -1,6 +1,28 @@
-# StochVolModels
+# 🚀 **StochVolModels Package: stochvolmodels**
 
-Implementation of pricing analytics and Monte Carlo simulations for modeling of options and implied volatilities.
+> stochvolmodels package implements pricing analytics and Monte Carlo simulations for valuation of European call and put options and implied volatilities of different stochastic volatility models including Karasinski-Sepp long-normal stochastic volatility model and Heston stochastic volatility model.
+
+---
+
+| 📊 Metric | 🔢 Value |
+|-----------|----------|
+| PyPI Version | ![PyPI](https://img.shields.io/pypi/v/stochvolmodels?style=flat-square) |
+| Python Versions | ![Python](https://img.shields.io/pypi/pyversions/stochvolmodels?style=flat-square) |
+| License | ![License](https://img.shields.io/github/license/ArturSepp/StochVolModels.svg?style=flat-square)|
+
+
+### 📈 Package Statistics
+
+| 📊 Metric | 🔢 Value |
+|-----------|----------|
+| Total Downloads | [![Total](https://pepy.tech/badge/stochvolmodels)](https://pepy.tech/project/stochvolmodels) |
+| Monthly | ![Monthly](https://pepy.tech/badge/stochvolmodels/month) |
+| Weekly | ![Weekly](https://pepy.tech/badge/stochvolmodels/week) |
+| GitHub Stars | ![GitHub stars](https://img.shields.io/github/stars/ArturSepp/StochVolModels?style=flat-square&logo=github) |
+| GitHub Forks | ![GitHub forks](https://img.shields.io/github/forks/ArturSepp/StochVolModels?style=flat-square&logo=github) |
+
+
+## StochVolModels
 
 The StochVol package provides:
 1) Analytics for Black-Scholes and Normal vols
@@ -44,7 +66,7 @@ Core dependencies:
     seaborn = ">=0.12.2"
 
 Optional dependencies:
-    qis ">=2.1.38" (for running code in my_papers and volatility_book)
+    qis ">=2.1.38" (for running code in my_papers)
 
 
 # Table of contents
