@@ -1,46 +1,279 @@
-[tool.poetry]
-name = "stochvolmodels"
-version = "1.0.30"
-description = "Implementation of stochastic volatility models for option pricing"
-license = "LICENSE.txt"
-authors = ["Artur Sepp <artursepp@gmail.com>"]
-maintainers = ["Artur Sepp <artursepp@gmail.com>"]
-readme = "README.md"
-repository = "https://github.com/ArturSepp/StochVolModels"
-documentation = "https://github.com/ArturSepp/StochVolModels"
-keywords= ["volatility", "options", "Black-Scholes", "Heston", "Monte-Carlo"]
-classifiers=[
-        "Development Status :: 4 - Beta",
-        "Environment :: Console",
-        "Intended Audience :: Financial and Insurance Industry",
-        "Intended Audience :: Science/Research",
-        "License :: OSI Approved :: MIT License",
-        "Natural Language :: English",
-        "Operating System :: OS Independent",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3 :: Only",
-        "Topic :: Office/Business :: Financial :: Investment",
-    ]
-
-packages = [ {include = "stochvolmodels"}]
-
-exclude = ["stochvolmodel/my_papers/"]
-
-[tool.poetry.urls]
-"Issues" = "https://github.com/ArturSepp/StochVolModels/issues"
-"Personal website" = "https://artursepp.com"
-
-[tool.poetry.dependencies]
-python = ">=3.8"
-numba = ">=0.55"
-numpy = ">=1.22.4"
-scipy = ">=1.3"
-pandas = ">=0.19"
-matplotlib = ">=3.5.2"
-seaborn = ">=0.11.2"
+# pyproject.toml - Comprehensive configuration for StochVolModels package
+# Modern Python packaging configuration replacing setup.py
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "hatchling==1.27.0", "hatch-vcs"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stochvolmodels"
+version = "1.1.1"
+description = "Python implementation of pricing analytics and Monte Carlo simulations for stochastic volatility models including log-normal SV model, Heston"
+readme = "README.md"
+license = {file = "LICENSE.txt"}
+authors = [
+    {name = "Artur Sepp", email = "artursepp@gmail.com"}
+]
+maintainers = [
+            {name = "Artur Sepp", email = "artursepp@gmail.com"},
+            {name = "Parviz Rakhmonov", email = "ParvizRZ@gmail.com"}
+]
+keywords = [
+    "stochastic volatility",
+    "volatility modeling",
+    "option pricing",
+    "heston model",
+    "log-normal stochastic volatility",
+    "monte carlo simulation",
+    "fourier transform",
+    "black-scholes",
+    "quantitative finance",
+    "derivatives pricing",
+    "implied volatility",
+    "financial modeling",
+    "options analytics",
+    "volatility surface",
+    "stochastic processes",
+    "mathematical finance"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.8"
+
+# Core dependencies - always required for stochvolmodels to function
+dependencies = [
+    "numba>=0.60.0",
+    "numpy==2.2.6",  # for numba>=0.60.0
+    "scipy>=1.15.0",
+    "pandas>=2.3.1",
+    "matplotlib>=3.9.0",
+    "seaborn>=0.13.0",
+    "openpyxl>=3.1.0",
+    "PyYAML>=6.0",
+    "easydev>=0.12.0",
+    "pyarrow>=18.0.0",
+    "fsspec>=2024.12.0",
+]
+
+[project.optional-dependencies]
+# QIS package for research papers and advanced analytics
+research = [
+    "qis>=3.3.3",
+]
+
+# Enhanced visualization and interactive plots
+visualization = [
+    "plotly>=5.0.0",
+]
+
+# Jupyter notebook support and interactive development
+jupyter = [
+    "jupyter>=1.0.0",
+    "notebook>=6.5.0",
+    "jupyterlab>=3.0.0",
+    "ipykernel>=6.0.0",
+    "ipywidgets>=8.0.0",
+]
+
+# Development tools and testing
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "pytest-xdist>=3.0.0",
+    "black>=22.0.0",
+    "flake8>=5.0.0",
+    "mypy>=1.0.0",
+    "isort>=5.10.0",
+    "pre-commit>=3.0.0",
+]
+
+# Performance profiling and optimization
+performance = [
+    "memory-profiler>=0.60.0",
+    "line-profiler>=4.0.0",
+    "py-spy>=0.3.0",
+    "scalene>=1.5.0",
+]
+
+# Advanced numerical methods and optimization
+numerical = [
+    "scikit-learn>=1.7.0",
+    "statsmodels>=0.14.0",
+]
+
+# All optional dependencies combined
+all = [
+    "stochvolmodels[research,visualization,jupyter,performance,numerical]"
+]
+
+# Minimal additional packages for most users
+extras = [
+    "stochvolmodels[research,jupyter]"
+]
+
+[project.urls]
+Homepage = "https://github.com/ArturSepp/StochVolModels"
+Documentation = "https://github.com/ArturSepp/StochVolModels/blob/main/README.md"
+Repository = "https://github.com/ArturSepp/StochVolModels.git"
+Issues = "https://github.com/ArturSepp/StochVolModels/issues"
+Changelog = "https://github.com/ArturSepp/StochVolModels/blob/main/CHANGELOG.md"
+
+# Version is now manually set in [project] section above
+
+# Package discovery configuration
+[tool.setuptools.packages.find]
+include = ["stochvolmodels*"]
+exclude = [
+    "tests*",
+    "docs*",
+    "notebooks*",
+    "resources*"
+]
+
+# Include additional files in the package
+[tool.setuptools.package-data]
+stochvolmodels = [
+    "*.txt",
+    "*.md",
+    "*.yml",
+    "*.yaml",
+    "*.json",
+    "data/*.csv",
+    "templates/*.html",
+    "static/*.css",
+    "static/*.js"
+]
+
+# Explicitly exclude files from the package
+[tool.setuptools.exclude-package-data]
+"*" = [
+    "*/my_papers/figures/*",
+    "*/figures/*",
+    "*.png",
+    "*.jpg",
+    "*.jpeg",
+    "*.gif",
+    "*.svg"
+]
+
+# Black code formatting configuration
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+# isort import sorting configuration
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+# MyPy type checking configuration
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+# Pytest configuration
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "monte_carlo: marks tests for Monte Carlo methods",
+    "pricing: marks tests for option pricing functionality",
+    "heston: marks tests for Heston model",
+    "lognormal: marks tests for log-normal SV model",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["stochvolmodels"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "setup.py",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+# Flake8 linting configuration  
+[tool.flake8]
+max-line-length = 100
+extend-ignore = ["E203", "W503", "E501"]
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    ".venv",
+    "venv",
+    ".eggs",
+    "*.egg",
+]

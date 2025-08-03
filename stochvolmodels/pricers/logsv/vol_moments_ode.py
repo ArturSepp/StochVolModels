@@ -16,9 +16,9 @@ from stochvolmodels.utils.funcs import set_seed
 
 VOLVOL = 1.75
 
-DRIFT_PARAMS = {'$(\kappa_{1}=4, \kappa_{2}=0)$': LogSvParams(sigma0=1.0, theta=1.0, kappa1=4.0, kappa2=0.0, beta=0.0, volvol=VOLVOL),
-                '$(\kappa_{1}=4, \kappa_{2}=4)$': LogSvParams(sigma0=1.0, theta=1.0, kappa1=4.0, kappa2=4.0, beta=0.0, volvol=VOLVOL),
-                '$(\kappa_{1}=4, \kappa_{2}=8)$': LogSvParams(sigma0=1.0, theta=1.0, kappa1=4.0, kappa2=8.0, beta=0.0, volvol=VOLVOL)}
+DRIFT_PARAMS = {'$(kappa_{1}=4, kappa_{2}=0)$': LogSvParams(sigma0=1.0, theta=1.0, kappa1=4.0, kappa2=0.0, beta=0.0, volvol=VOLVOL),
+                '$(kappa_{1}=4, kappa_{2}=4)$': LogSvParams(sigma0=1.0, theta=1.0, kappa1=4.0, kappa2=4.0, beta=0.0, volvol=VOLVOL),
+                '$(kappa_{1}=4, kappa_{2}=8)$': LogSvParams(sigma0=1.0, theta=1.0, kappa1=4.0, kappa2=8.0, beta=0.0, volvol=VOLVOL)}
 
 
 def compute_analytic_vol_moments(params: LogSvParams,

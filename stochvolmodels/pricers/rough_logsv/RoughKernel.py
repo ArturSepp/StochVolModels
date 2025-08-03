@@ -1097,7 +1097,7 @@ class kernel_frac:
         Returns
         -------
         numpy array
-            The values \mathcal{K}_{j,j}(Delta), j=0, ..., N-1. Size = N.
+            The values mathcal{K}_{j,j}(Delta), j=0, ..., N-1. Size = N.
         """
         i = np.arange(N + 1)
         # Hint: i[-N:] = (i[1],...,i[N]), i[:N] = (i[0],...,i[N-1])
@@ -1113,7 +1113,7 @@ class kernel_frac:
         Returns
         -------
         double
-            The value \mathcal{K}_0(Delta).
+            The value mathcal{K}_0(Delta).
         """
         return self.eta_tilde * Delta ** (self.H + 0.5) / (self.H + 0.5)
 
@@ -1145,7 +1145,7 @@ class kernel_rheston:
         Returns
         -------
         double
-            The value \mathcal{K}_0(Delta).
+            The value mathcal{K}_0(Delta).
         """
         return integ.quad(lambda r: self._k(r), 0.0, Delta, epsabs=self.eps, epsrel=self.eps)[0]
 
@@ -1162,7 +1162,7 @@ class kernel_rheston:
         Returns
         -------
         numpy array
-            The values \mathcal{K}_{j,j}(Delta), j=0, ..., N-1. Size = N.
+            The values mathcal{K}_{j,j}(Delta), j=0, ..., N-1. Size = N.
         """
         return np.array([integ.quad(lambda r: self._k(r + i * Delta) ** 2, 0.0, Delta,
                                     epsabs=self.eps, epsrel=self.eps)[0] for i in range(N)])

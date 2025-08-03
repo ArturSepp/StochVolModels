@@ -26,7 +26,7 @@ def pdf_tdist(x: Union[np.ndarray, float], mu: float, vol: float, nu: float, ttm
 def cdf_tdist(x: Union[np.ndarray, float], mu: float, vol: float, nu: float, ttm: float) -> Union[float, np.ndarray]:
     """
     cumulative distribution of cumullative location-scale t-distribution
-    cdf = int^{x}_{-\infty} f(u)du
+    cdf = int^{x}_{-infty} f(u)du
     """
     upsilon = compute_upsilon(vol=vol, ttm=ttm, nu=nu)
     z = (x-mu*ttm) / upsilon
@@ -38,7 +38,7 @@ def cum_mean_tdist(x: Union[np.ndarray, float], mu: float = 0, vol: float = 0.2,
                    ) -> Union[float, np.ndarray]:
     """
     cumulative expected value
-    h = int^{x}_{-\infty} u f(u)du
+    h = int^{x}_{-infty} u f(u)du
     """
     upsilon = compute_upsilon(vol=vol, ttm=ttm, nu=nu)
     z = (x-mu*ttm) / upsilon

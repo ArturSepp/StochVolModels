@@ -1,0 +1,40 @@
+# MANIFEST.in
+# Controls what files are included in the source distribution (sdist)
+
+# Include essential package files
+include README.md
+include LICENSE.txt
+include pyproject.toml
+include requirements*.txt
+
+# Include all Python source files
+recursive-include stochvolmodels *.py
+
+# Include specific data files that the package needs
+recursive-include stochvolmodels/templates *.html
+recursive-include stochvolmodels/static *.css *.js
+recursive-include stochvolmodels *.yml *.yaml *.json *.txt *.md
+
+# Explicitly exclude figures, notebooks, and image files
+recursive-exclude stochvolmodels/my_papers/figures *
+recursive-exclude docs *
+recursive-exclude resources *
+recursive-exclude volatility_book *
+
+global-exclude *.png
+global-exclude *.jpg
+global-exclude *.jpeg
+global-exclude *.gif
+global-exclude *.svg
+global-exclude *.pdf
+global-exclude *.eps
+global-exclude *.ipynb
+
+# Exclude development and build artifacts
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * .DS_Store
+recursive-exclude * .git*
+recursive-exclude * *.egg-info
+global-exclude *.pyc
+global-exclude *.pyo
