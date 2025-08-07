@@ -722,7 +722,7 @@ def simulate_hawkesjd_terminal(ttm: float,
     return x0, lambda_p0, lambda_m0
 
 
-class UnitTests(Enum):
+class LocalTests(Enum):
     OPTION_PRICER = 1
     CHAIN_PRICER = 2
     SLICE_PRICER = 3
@@ -730,7 +730,12 @@ class UnitTests(Enum):
     CALIBRATOR = 5
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local_test(local_test: LocalTests):
+    """Run local tests for development and debugging purposes.
+
+    These are integration tests that download real data and generate reports.
+    Use for quick verification during development.
+    """
 
     params = HawkesJDParams(sigma=0.2,
                             shift_p=0.0,
@@ -756,7 +761,7 @@ def run_unit_test(unit_test: UnitTests):
     set_seed(3)
     np.random.seed(3)
 
-    if unit_test == UnitTests.OPTION_PRICER:
+    if local_test == LocalTests.OPTION_PRICER:
 
         model_price, vol = pricer.price_vanilla(params=params,
                                                 ttm=0.25,
@@ -765,7 +770,7 @@ def run_unit_test(unit_test: UnitTests):
                                                 optiontype='C')
         print(f"price={model_price:0.4f}, implied vol={vol: 0.2%}")
 
-    elif unit_test == UnitTests.CHAIN_PRICER:
+    elif local_test == LocalTests.CHAIN_PRICER:
         option_chain = get_btc_test_chain_data()
         # option_chain = OptionChain.get_uniform_chain(flat_vol=params.sigma)
         model_prices = pricer.price_chain(option_chain=option_chain, params=params)
@@ -778,7 +783,7 @@ def run_unit_test(unit_test: UnitTests):
 
         # pricer.plot_model_ivols_vs_mc(option_chain=option_chain, params=params, nb_path=400000)
 
-    if unit_test == UnitTests.SLICE_PRICER:
+    if local_test == LocalTests.SLICE_PRICER:
         ttm = 1.0
         forward = 1.0
         strikes = np.array([0.9, 1.0, 1.1])
@@ -800,7 +805,7 @@ def run_unit_test(unit_test: UnitTests):
                                                     optiontype=optiontype)
             print(f"{model_price}, {vol}")
 
-    elif unit_test == UnitTests.MC_COMPARISION:
+    elif local_test == LocalTests.MC_COMPARISION:
         option_chain = get_btc_test_chain_data()
         # option_chain = OptionChain.get_uniform_chain(ttms=np.array([0.25]), ids=np.array(['3m']), strikes=100.0*np.linspace(0.5, 2.0, 15))
 
@@ -808,7 +813,7 @@ def run_unit_test(unit_test: UnitTests):
                                       params=params,
                                       nb_path=100000)
 
-    elif unit_test == UnitTests.CALIBRATOR:
+    elif local_test == LocalTests.CALIBRATOR:
         option_chain = get_btc_test_chain_data()
         fit_params = pricer.calibrate_model_params_to_chain(option_chain=option_chain,
                                                             params0=params)
@@ -822,11 +827,4 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.MC_COMPARISION
-
-    is_run_all_tests = False
-    if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
-    else:
-        run_unit_test(unit_test=unit_test)
+    run_local_test(local_test=LocalTests.MC_COMPARISION)

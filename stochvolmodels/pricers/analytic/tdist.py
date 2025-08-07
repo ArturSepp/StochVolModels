@@ -197,14 +197,19 @@ def infer_tdist_implied_vols_from_model_slice_prices(ttm: float,
     return model_vol_ttm
 
 
-class UnitTests(Enum):
+class LocalTests(Enum):
     PLOT_PDF = 1
     PLOT_CDF = 2
     PLOT_CUM_X = 3
     PLOT_H = 4
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local_test(local_test: LocalTests):
+    """Run local tests for development and debugging purposes.
+
+    These are integration tests that download real data and generate reports.
+    Use for quick verification during development.
+    """
 
     import qis as qis
 
@@ -215,7 +220,7 @@ def run_unit_test(unit_test: UnitTests):
                'mu=0.2, vol=0.2': (0.2, 0.2),
                'mu=0.2, vol=0.4': (0.2, 0.4)}
 
-    if unit_test == UnitTests.PLOT_PDF:
+    if local_test == LocalTests.PLOT_PDF:
         pdfs = {}
         for key, mu_vol in mu_vols.items():
             pdf = dx * pdf_tdist(x=x, mu=mu_vol[0], vol=mu_vol[1], nu=3.0, ttm=ttm)
@@ -224,7 +229,7 @@ def run_unit_test(unit_test: UnitTests):
         pdfs = pd.DataFrame.from_dict(pdfs, orient='columns')
         qis.plot_line(df=pdfs)
 
-    elif unit_test == UnitTests.PLOT_CDF:
+    elif local_test == LocalTests.PLOT_CDF:
         pdfs = {}
         cpdfs = {}
         for key, mu_vol in mu_vols.items():
@@ -238,7 +243,7 @@ def run_unit_test(unit_test: UnitTests):
         colors = qis.get_n_colors(n=len(mu_vols.keys()))
         qis.plot_line(df=df, colors=2*colors)
 
-    elif unit_test == UnitTests.PLOT_CUM_X:
+    elif local_test == LocalTests.PLOT_CUM_X:
         pdfs = {}
         cpdfs = {}
         for key, mu_vol in mu_vols.items():
@@ -252,7 +257,7 @@ def run_unit_test(unit_test: UnitTests):
         colors = qis.get_n_colors(n=len(mu_vols.keys()))
         qis.plot_line(df=df, colors=2*colors)
 
-    elif unit_test == UnitTests.PLOT_H:
+    elif local_test == LocalTests.PLOT_H:
         x = np.linspace(-10.0, 10.0, 2000)
         h = pd.Series(cum_mean_tdist(x=x, mu=0.5, vol=1.0, nu=3.0, ttm=1.0), index=x, name='h')
         qis.plot_line(df=h, xlabel='x')
@@ -262,11 +267,4 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.PLOT_CUM_X
-
-    is_run_all_tests = False
-    if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
-    else:
-        run_unit_test(unit_test=unit_test)
+    run_local_test(local_test=LocalTests.PLOT_CUM_X)

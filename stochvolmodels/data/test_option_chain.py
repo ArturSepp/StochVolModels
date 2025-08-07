@@ -871,7 +871,7 @@ def get_qv_options_test_chain_data(num_strikes: int = 21) -> OptionChain:
     return data
 
 
-class UnitTests(Enum):
+class LocalTests(Enum):
     BTC = 1
     VIX = 2
     GLD = 3
@@ -879,36 +879,34 @@ class UnitTests(Enum):
     SPY = 5
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local_test(local_test: LocalTests):
+    """Run local tests for development and debugging purposes.
 
-    if unit_test == UnitTests.BTC:
+    These are integration tests that download real data and generate reports.
+    Use for quick verification during development.
+    """
+
+    if local_test == LocalTests.BTC:
         option_chain = get_btc_test_chain_data()
         print(option_chain)
 
-    elif unit_test == UnitTests.VIX:
+    elif local_test == LocalTests.VIX:
         option_chain = get_vix_test_chain_data()
         print(option_chain)
 
-    elif unit_test == UnitTests.GLD:
+    elif local_test == LocalTests.GLD:
         option_chain = get_gld_test_chain_data()
         print(option_chain)
 
-    elif unit_test == UnitTests.SQQQ:
+    elif local_test == LocalTests.SQQQ:
         option_chain = get_sqqq_test_chain_data()
         print(option_chain)
 
-    elif unit_test == UnitTests.SPY:
+    elif local_test == LocalTests.SPY:
         option_chain = get_spy_test_chain_data()
         print(option_chain)
 
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.BTC
-
-    is_run_all_tests = False
-    if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
-    else:
-        run_unit_test(unit_test=unit_test)
+    run_local_test(local_test=LocalTests.BTC)

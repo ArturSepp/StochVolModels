@@ -117,13 +117,18 @@ def load_price_data(options_data_dfs: OptionsDataDFs,
     return spot_price
 
 
-class UnitTests(Enum):
+class LocalTests(Enum):
     PRINT_CHAIN_DATA = 1
     GENERATE_VOL_CHAIN_NP = 2
     SAMPLE_CHAIN_AT_TIMES = 3
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local_test(local_test: LocalTests):
+    """Run local tests for development and debugging purposes.
+
+    These are integration tests that download real data and generate reports.
+    Use for quick verification during development.
+    """
 
     ticker = 'BTC'  # BTC, ETH
     value_time = pd.Timestamp('2021-10-21 08:00:00+00:00')
@@ -134,11 +139,11 @@ def run_unit_test(unit_test: UnitTests):
     options_data_dfs.get_start_end_date().print()
     chain = create_chain_from_from_options_dfs(options_data_dfs=options_data_dfs, value_time=value_time)
 
-    if unit_test == UnitTests.PRINT_CHAIN_DATA:
+    if local_test == LocalTests.PRINT_CHAIN_DATA:
         for expiry, eslice in chain.expiry_slices.items():
             eslice.print()
 
-    elif unit_test == UnitTests.GENERATE_VOL_CHAIN_NP:
+    elif local_test == LocalTests.GENERATE_VOL_CHAIN_NP:
         option_chain = generate_vol_chain_np(chain=chain,
                                              value_time=value_time,
                                              days_map={'1w': 7},
@@ -148,7 +153,7 @@ def run_unit_test(unit_test: UnitTests):
         skews = option_chain.get_chain_skews(delta=0.35)
         print(skews)
 
-    elif unit_test == UnitTests.SAMPLE_CHAIN_AT_TIMES:
+    elif local_test == LocalTests.SAMPLE_CHAIN_AT_TIMES:
         time_period = qis.TimePeriod('01Jan2023', '31Jan2023', tz='UTC')
         option_chains = sample_option_chain_at_times(options_data_dfs=options_data_dfs,
                                                      time_period=time_period,
@@ -164,11 +169,4 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.SAMPLE_CHAIN_AT_TIMES
-
-    is_run_all_tests = False
-    if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
-    else:
-        run_unit_test(unit_test=unit_test)
+    run_local_test(local_test=LocalTests.SAMPLE_CHAIN_AT_TIMES)

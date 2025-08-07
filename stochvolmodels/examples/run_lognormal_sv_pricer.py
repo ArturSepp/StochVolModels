@@ -9,7 +9,7 @@ import stochvolmodels as sv
 from stochvolmodels import LogSVPricer, LogSvParams, OptionChain, LogsvModelCalibrationType
 
 
-class UnitTests(Enum):
+class LocalTests(Enum):
     COMPUTE_MODEL_PRICES = 1
     PLOT_MODEL_IMPLIED_VOLS = 2
     PLOT_MODEL_VOLS_IN_PARAMS = 3
@@ -22,7 +22,12 @@ class UnitTests(Enum):
     BENCHM_ROUGH_PRICER = 10
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local_test(local_test: LocalTests):
+    """Run local tests for development and debugging purposes.
+
+    These are integration tests that download real data and generate reports.
+    Use for quick verification during development.
+    """
 
     # instance of pricer
     logsv_pricer = LogSVPricer()
@@ -30,7 +35,7 @@ def run_unit_test(unit_test: UnitTests):
     # define model params    
     params = LogSvParams(sigma0=1.0, theta=1.0, kappa1=5.0, kappa2=5.0, beta=0.2, volvol=2.0)
 
-    if unit_test == UnitTests.COMPUTE_MODEL_PRICES:
+    if local_test == LocalTests.COMPUTE_MODEL_PRICES:
         # 1. one price
         model_price, vol = logsv_pricer.price_vanilla(params=params,
                                                       ttm=0.25,
@@ -55,7 +60,7 @@ def run_unit_test(unit_test: UnitTests):
         print(model_prices)
         print(vols)
 
-    elif unit_test == UnitTests.PLOT_MODEL_IMPLIED_VOLS:
+    elif local_test == LocalTests.PLOT_MODEL_IMPLIED_VOLS:
         # define uniform option chain
         option_chain = OptionChain.get_uniform_chain(ttms=np.array([0.083, 0.25]),
                                                      ids=np.array(['1m', '3m']),
@@ -63,7 +68,7 @@ def run_unit_test(unit_test: UnitTests):
         logsv_pricer.plot_model_ivols(option_chain=option_chain,
                                       params=params)
 
-    elif unit_test == UnitTests.PLOT_MODEL_VOLS_IN_PARAMS:
+    elif local_test == LocalTests.PLOT_MODEL_VOLS_IN_PARAMS:
 
         # define uniform option chain
         option_chain = OptionChain.get_uniform_chain(ttms=np.array([0.083, 0.25]),
@@ -79,7 +84,7 @@ def run_unit_test(unit_test: UnitTests):
         logsv_pricer.plot_model_slices_in_params(option_slice=option_slice,
                                                  params_dict=params_dict)
 
-    elif unit_test == UnitTests.COMPARE_MODEL_VOLS_TO_MC:
+    elif local_test == LocalTests.COMPARE_MODEL_VOLS_TO_MC:
         btc_option_chain = sv.get_btc_test_chain_data()
         uniform_chain_data = OptionChain.to_uniform_strikes(obj=btc_option_chain, num_strikes=31)
         btc_calibrated_params = LogSvParams(sigma0=0.8327, theta=1.0139, kappa1=4.8609, kappa2=4.7940, beta=0.1988, volvol=2.3694)
@@ -92,13 +97,13 @@ def run_unit_test(unit_test: UnitTests):
                                                            params=btc_calibrated_params,
                                                            nb_path=100000)
 
-    elif unit_test == UnitTests.PLOT_FIT_TO_BITCOIN_OPTION_CHAIN:
+    elif local_test == LocalTests.PLOT_FIT_TO_BITCOIN_OPTION_CHAIN:
         btc_option_chain = sv.get_btc_test_chain_data()
         btc_calibrated_params = LogSvParams(sigma0=0.8327, theta=1.0139, kappa1=4.8609, kappa2=4.7940, beta=0.1988, volvol=2.3694)
         logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=btc_option_chain,
                                                  params=btc_calibrated_params)
 
-    elif unit_test == UnitTests.MC_WITH_FIXED_RANDOMS:
+    elif local_test == LocalTests.MC_WITH_FIXED_RANDOMS:
         btc_option_chain = sv.get_btc_test_chain_data()
         W0s, W1s, dts = sv.get_randoms_for_chain_valuation(ttms=btc_option_chain.ttms,
                                                            nb_path=10000,
@@ -126,7 +131,7 @@ def run_unit_test(unit_test: UnitTests):
         print(option_prices_ttm)
 
 
-    elif unit_test == UnitTests.ROUGH_MC_WITH_FIXED_RANDOMS:
+    elif local_test == LocalTests.ROUGH_MC_WITH_FIXED_RANDOMS:
         btc_option_chain = sv.get_btc_test_chain_data()
         Z0, Z1, grid_ttms = sv.get_randoms_for_rough_vol_chain_valuation(ttms=btc_option_chain.ttms,
                                                                              nb_path=10000,
@@ -154,7 +159,7 @@ def run_unit_test(unit_test: UnitTests):
                                                                                          timegrids=grid_ttms)
         print(option_prices_ttm)
 
-    elif unit_test == UnitTests.BENCHM_ROUGH_PRICER:
+    elif local_test == LocalTests.BENCHM_ROUGH_PRICER:
         btc_option_chain = OptionChain.get_uniform_chain(ttms=np.array([0.083, 0.25]),
                                                      ids=np.array(['1m', '3m']),
                                                      strikes=np.linspace(0.5, 1.5, 21))
@@ -234,7 +239,7 @@ def run_unit_test(unit_test: UnitTests):
         fig.suptitle(f"Conventional LogSV model vs Rough LogSV, H={H:.2f} via {N}f Markovian approximation",
                      color="darkblue")
 
-    elif unit_test == UnitTests.CALIBRATE_MODEL_TO_BTC_OPTIONS:
+    elif local_test == LocalTests.CALIBRATE_MODEL_TO_BTC_OPTIONS:
         btc_option_chain = sv.get_btc_test_chain_data()
         params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=2.18, beta=0.15, volvol=2.0)
         btc_calibrated_params = logsv_pricer.calibrate_model_params_to_chain(option_chain=btc_option_chain,
@@ -245,7 +250,7 @@ def run_unit_test(unit_test: UnitTests):
         logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=btc_option_chain,
                                                  params=btc_calibrated_params)
 
-    elif unit_test == UnitTests.CALIBRATE_MODEL_TO_BTC_OPTIONS_WITH_MC:
+    elif local_test == LocalTests.CALIBRATE_MODEL_TO_BTC_OPTIONS_WITH_MC:
         btc_option_chain = sv.get_btc_test_chain_data()
         params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=0.0, beta=0.15, volvol=2.0)
         params0.H = 0.3
@@ -266,11 +271,4 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.BENCHM_ROUGH_PRICER
-
-    is_run_all_tests = False
-    if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
-    else:
-        run_unit_test(unit_test=unit_test)
+    run_local_test(local_test=LocalTests.BENCHM_ROUGH_PRICER)

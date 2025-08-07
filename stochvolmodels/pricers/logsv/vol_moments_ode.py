@@ -150,14 +150,19 @@ def fit_model_vol_backbone_to_varswaps(log_sv_params: LogSvParams,
     return model_eta
 
 
-class UnitTests(Enum):
+class LocalTests(Enum):
     VOL_MOMENTS = 1
     EXPECTED_VOL = 2
     EXPECTED_QVAR = 3
     VOL_BACKBONE = 4
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local_test(local_test: LocalTests):
+    """Run local tests for development and debugging purposes.
+
+    These are integration tests that download real data and generate reports.
+    Use for quick verification during development.
+    """
 
     from stochvolmodels.pricers.logsv_pricer import LogSVPricer
     logsv_pricer = LogSVPricer()
@@ -170,7 +175,7 @@ def run_unit_test(unit_test: UnitTests):
     set_seed(8)  # 8
     sigma_t, grid_t = logsv_pricer.simulate_vol_paths(ttm=ttm, params=params, nb_path=nb_path)
 
-    if unit_test == UnitTests.VOL_MOMENTS:
+    if local_test == LocalTests.VOL_MOMENTS:
 
         mcs = []
         for n in np.arange(n_terms):
@@ -191,7 +196,7 @@ def run_unit_test(unit_test: UnitTests):
         print(df)
         df.plot()
 
-    elif unit_test == UnitTests.EXPECTED_VOL:
+    elif local_test == LocalTests.EXPECTED_VOL:
 
         mc_mean, mc_std = np.mean(sigma_t, axis=1), np.std(sigma_t, axis=1) / np.sqrt(nb_path)
         mc = pd.Series(mc_mean, index=grid_t, name='MC')
@@ -205,7 +210,7 @@ def run_unit_test(unit_test: UnitTests):
         print(df)
         df.plot()
 
-    elif unit_test == UnitTests.EXPECTED_QVAR:
+    elif local_test == LocalTests.EXPECTED_QVAR:
 
         q_var = pd.DataFrame(np.square(sigma_t)).expanding(axis=0).mean().to_numpy()
         mc_mean = np.sqrt(np.mean(q_var, axis=1))
@@ -223,7 +228,7 @@ def run_unit_test(unit_test: UnitTests):
             sns.lineplot(data=analytic_vol_moments, dashes=False, ax=ax)
             ax.errorbar(x=df.index[::5], y=mc_mean[::5], yerr=mc_std[::5], fmt='o', color='green', capsize=8)
 
-    elif unit_test == UnitTests.VOL_BACKBONE:
+    elif local_test == LocalTests.VOL_BACKBONE:
         fit_model_vol_backbone_to_varswaps(log_sv_params=params,
                                            varswap_strikes=pd.Series([1.0, 1.0], index=[1.0 / 12., 2 / 12.0]),
                                            verbose=True)
@@ -233,11 +238,4 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.VOL_BACKBONE
-
-    is_run_all_tests = False
-    if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
-    else:
-        run_unit_test(unit_test=unit_test)
+    run_local_test(local_test=LocalTests.VOL_BACKBONE)

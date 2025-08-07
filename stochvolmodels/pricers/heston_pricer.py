@@ -341,7 +341,7 @@ def v0_implied(v0: float, volvol: float, ttm: float):
     return v0
 
 
-class UnitTests(Enum):
+class LocalTests(Enum):
     CHAIN_PRICER = 1
     SLICE_PRICER = 2
     CALIBRATOR = 3
@@ -349,11 +349,16 @@ class UnitTests(Enum):
     MC_COMPARISION_QVAR = 5
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local_test(local_test: LocalTests):
+    """Run local tests for development and debugging purposes.
+
+    These are integration tests that download real data and generate reports.
+    Use for quick verification during development.
+    """
 
     import stochvolmodels.data.test_option_chain as chains
 
-    if unit_test == UnitTests.CHAIN_PRICER:
+    if local_test == LocalTests.CHAIN_PRICER:
         params = HestonParams(v0=0.85**2,
                               theta=1.4**2,
                               kappa=3.0,
@@ -368,7 +373,7 @@ def run_unit_test(unit_test: UnitTests):
         heston_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain,
                                                   params=params)
 
-    if unit_test == UnitTests.SLICE_PRICER:
+    if local_test == LocalTests.SLICE_PRICER:
         params = HestonParams(v0=0.85**2,
                               theta=1.4**2,
                               kappa=3.0,
@@ -396,7 +401,7 @@ def run_unit_test(unit_test: UnitTests):
                                                            optiontype=optiontype)
             print(f"{model_price}, {vol}")
 
-    elif unit_test == UnitTests.CALIBRATOR:
+    elif local_test == LocalTests.CALIBRATOR:
         option_chain = get_btc_test_chain_data()
         heston_pricer = HestonPricer()
         fit_params = heston_pricer.calibrate_model_params_to_chain(option_chain=option_chain,
@@ -405,13 +410,13 @@ def run_unit_test(unit_test: UnitTests):
         heston_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain,
                                                   params=fit_params)
 
-    elif unit_test == UnitTests.MC_COMPARISION:
+    elif local_test == LocalTests.MC_COMPARISION:
         option_chain = get_btc_test_chain_data()
         heston_pricer = HestonPricer()
         heston_pricer.plot_model_ivols_vs_mc(option_chain=option_chain,
                                              params=BTC_HESTON_PARAMS)
 
-    elif unit_test == UnitTests.MC_COMPARISION_QVAR:
+    elif local_test == LocalTests.MC_COMPARISION_QVAR:
         from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar
         from stochvolmodels import LogSvParams
         heston_pricer = HestonPricer()
@@ -437,11 +442,4 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.CALIBRATOR
-
-    is_run_all_tests = False
-    if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
-    else:
-        run_unit_test(unit_test=unit_test)
+    run_local_test(local_test=LocalTests.CALIBRATOR)

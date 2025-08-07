@@ -259,17 +259,22 @@ def gmm_vanilla_chain_pricer(gmm_weights: np.ndarray,
     return model_prices_ttms
 
 
-class UnitTests(Enum):
+class LocalTests(Enum):
     CALIBRATOR = 1
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local_test(local_test: LocalTests):
+    """Run local tests for development and debugging purposes.
+
+    These are integration tests that download real data and generate reports.
+    Use for quick verification during development.
+    """
 
     import seaborn as sns
     from stochvolmodels.utils import plots as plot
     from stochvolmodels.data.test_option_chain import get_btc_test_chain_data
 
-    if unit_test == UnitTests.CALIBRATOR:
+    if local_test == LocalTests.CALIBRATOR:
         option_chain = get_btc_test_chain_data()
         gmm_pricer = GmmPricer()
         fit_params = gmm_pricer.calibrate_model_params_to_chain(option_chain=option_chain)
@@ -288,11 +293,4 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.CALIBRATOR
-
-    is_run_all_tests = False
-    if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
-    else:
-        run_unit_test(unit_test=unit_test)
+    run_local_test(local_test=LocalTests.CALIBRATOR)

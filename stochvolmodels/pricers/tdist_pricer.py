@@ -161,17 +161,22 @@ def tdist_vanilla_chain_pricer(vol: float,
     return model_prices_ttms
 
 
-class UnitTests(Enum):
+class LocalTests(Enum):
     CALIBRATOR = 1
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local_test(local_test: LocalTests):
+    """Run local tests for development and debugging purposes.
+
+    These are integration tests that download real data and generate reports.
+    Use for quick verification during development.
+    """
 
     import seaborn as sns
     from stochvolmodels.utils import plots as plot
     import stochvolmodels.data.test_option_chain as chains
 
-    if unit_test == UnitTests.CALIBRATOR:
+    if local_test == LocalTests.CALIBRATOR:
         # option_chain = chains.get_btc_test_chain_data()
         option_chain = chains.get_spy_test_chain_data()
         # option_chain = chains.get_gld_test_chain_data()
@@ -193,11 +198,4 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.CALIBRATOR
-
-    is_run_all_tests = False
-    if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
-    else:
-        run_unit_test(unit_test=unit_test)
+    run_local_test(local_test=LocalTests.CALIBRATOR)

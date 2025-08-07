@@ -131,15 +131,20 @@ def compare_spot_and_inverse_qvar_options():
         sns.lineplot(data=prices, ax=ax)
 
 
-class UnitTests(Enum):
+class LocalTests(Enum):
     BSM_SLICE_PRICER = 1
     SPOT_INVERSE_COMP = 2
     SPOT_INVERSE_QVAR_COMP = 3
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local_test(local_test: LocalTests):
+    """Run local tests for development and debugging purposes.
 
-    if unit_test == UnitTests.BSM_SLICE_PRICER:
+    These are integration tests that download real data and generate reports.
+    Use for quick verification during development.
+    """
+
+    if local_test == LocalTests.BSM_SLICE_PRICER:
         ttm = 1.0
         forward = 1.0
         vol = 1.0
@@ -149,10 +154,10 @@ def run_unit_test(unit_test: UnitTests):
         print(bsm_prices)
         print(bsm_ivols)
 
-    elif unit_test == UnitTests.SPOT_INVERSE_COMP:
+    elif local_test == LocalTests.SPOT_INVERSE_COMP:
         compare_spot_and_inverse_options()
 
-    elif unit_test == UnitTests.SPOT_INVERSE_QVAR_COMP:
+    elif local_test == LocalTests.SPOT_INVERSE_QVAR_COMP:
         compare_spot_and_inverse_qvar_options()
 
     plt.show()
@@ -160,11 +165,4 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.BSM_SLICE_PRICER
-
-    is_run_all_tests = False
-    if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
-    else:
-        run_unit_test(unit_test=unit_test)
+    run_local_test(local_test=LocalTests.BSM_SLICE_PRICER)

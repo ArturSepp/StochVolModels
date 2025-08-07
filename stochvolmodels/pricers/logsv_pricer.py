@@ -900,7 +900,7 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
     return option_prices_ttm, option_std_ttm
 
 
-class UnitTests(Enum):
+class LocalTests(Enum):
     CHAIN_PRICER = 1
     SLICE_PRICER = 2
     CALIBRATOR = 3
@@ -911,20 +911,25 @@ class UnitTests(Enum):
     MMA_INVERSE_MEASURE_VS_MC = 8
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local_test(local_test: LocalTests):
+    """Run local tests for development and debugging purposes.
+
+    These are integration tests that download real data and generate reports.
+    Use for quick verification during development.
+    """
 
     import matplotlib.pyplot as plt
     import seaborn as sns
     import stochvolmodels.data.test_option_chain as chains
 
-    if unit_test == UnitTests.CHAIN_PRICER:
+    if local_test == LocalTests.CHAIN_PRICER:
         option_chain = get_btc_test_chain_data()
         logsv_pricer = LogSVPricer()
         model_prices = logsv_pricer.price_chain(option_chain=option_chain, params=LOGSV_BTC_PARAMS)
         print(model_prices)
         logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain, params=LOGSV_BTC_PARAMS)
 
-    if unit_test == UnitTests.SLICE_PRICER:
+    if local_test == LocalTests.SLICE_PRICER:
         ttm = 1.0
         forward = 1.0
         strikes = np.array([0.9, 1.0, 1.1])
@@ -947,7 +952,7 @@ def run_unit_test(unit_test: UnitTests):
                                                           optiontype=optiontype)
             print(f"{model_price}, {vol}")
 
-    elif unit_test == UnitTests.CALIBRATOR:
+    elif local_test == LocalTests.CALIBRATOR:
         option_chain = get_btc_test_chain_data()
         logsv_pricer = LogSVPricer()
         fit_params = logsv_pricer.calibrate_model_params_to_chain(option_chain=option_chain,
@@ -956,13 +961,13 @@ def run_unit_test(unit_test: UnitTests):
         logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain,
                                                  params=fit_params)
 
-    elif unit_test == UnitTests.MC_COMPARISION:
+    elif local_test == LocalTests.MC_COMPARISION:
         option_chain = get_btc_test_chain_data()
         logsv_pricer = LogSVPricer()
         logsv_pricer.plot_model_ivols_vs_mc(option_chain=option_chain,
                                             params=LOGSV_BTC_PARAMS)
 
-    elif unit_test == UnitTests.MC_COMPARISION_QVAR:
+    elif local_test == LocalTests.MC_COMPARISION_QVAR:
         from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar
         logsv_pricer = LogSVPricer()
         ttms = {'1m': 1.0/12.0, '6m': 0.5}
@@ -978,7 +983,7 @@ def run_unit_test(unit_test: UnitTests):
                                                   params=LOGSV_BTC_PARAMS,
                                                   variable_type=VariableType.Q_VAR)
 
-    elif unit_test == UnitTests.VOL_PATHS:
+    elif local_test == LocalTests.VOL_PATHS:
         logsv_pricer = LogSVPricer()
         nb_path = 10
         sigma_t, grid_t = logsv_pricer.simulate_vol_paths(params=LOGSV_BTC_PARAMS,
@@ -988,7 +993,7 @@ def run_unit_test(unit_test: UnitTests):
         vol_paths = pd.DataFrame(sigma_t, index=grid_t, columns=[f"{x+1}" for x in range(nb_path)])
         print(vol_paths)
 
-    elif unit_test == UnitTests.TERMINAL_VALUES:
+    elif local_test == LocalTests.TERMINAL_VALUES:
         logsv_pricer = LogSVPricer()
         params = LOGSV_BTC_PARAMS
         xt, sigmat, qvart = logsv_pricer.simulate_terminal_values(params=params)
@@ -1004,7 +1009,7 @@ def run_unit_test(unit_test: UnitTests):
                                   facecolor='lightblue', step='mid', alpha=0.8, lw=1.0)
             axs[idx].set_title(key)
 
-    elif unit_test == UnitTests.MMA_INVERSE_MEASURE_VS_MC:
+    elif local_test == LocalTests.MMA_INVERSE_MEASURE_VS_MC:
         option_chain = get_btc_test_chain_data()
         logsv_pricer = LogSVPricer()
         logsv_pricer.plot_comp_mma_inverse_options_with_mc(option_chain=option_chain,
@@ -1015,11 +1020,4 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.MC_COMPARISION_QVAR
-
-    is_run_all_tests = False
-    if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
-    else:
-        run_unit_test(unit_test=unit_test)
+    run_local_test(local_test=LocalTests.MC_COMPARISION_QVAR)

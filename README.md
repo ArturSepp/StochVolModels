@@ -27,7 +27,7 @@
 The StochVol package provides:
 1) Analytics for Black-Scholes and Normal vols
 2) Interfaces and implementation for stochastic volatility models,
-including log-normal SV model and Heston SV model 
+including Karasinski-Sepp log-normal SV model and Heston SV model 
 using analytical method with Fourier transform and Monte Carlo simulations
 3) Visualization of model implied volatilities
 
@@ -56,17 +56,18 @@ Close using
 git clone https://github.com/ArturSepp/StochVolModels.git
 ```
 
-Core dependencies:
-    python = ">=3.8",
-    numba = ">=0.56.4",
-    numpy = ">=1.22.4",
-    scipy = ">=1.10",
-    pandas = ">=2.2.0",
-    matplotlib = ">=3.2.2",
-    seaborn = ">=0.12.2"
+
+### Core Dependencies
+- `python >= 3.8`
+- `numba >= 0.56.4`
+- `numpy >= 1.22.4`
+- `scipy >= 1.10`
+- `pandas >= 2.2.0`
+- `matplotlib >= 3.2.2`
+- `seaborn >= 0.12.2`
 
 Optional dependencies:
-    qis ">=2.1.38" (for running code in my_papers)
+    qis ">=2.3.1" (for running code in my_papers)
 
 
 # Table of contents
@@ -94,7 +95,7 @@ The model interface is in stochvolmodels/pricers/model_pricer.py
 
 ### Log-normal stochastic volatility model <a name="logsv"></a>
 
-The analytics for the log-normal stochastic volatility model is based on the paper
+The analytics for Karasinki-Sepp log-normal stochastic volatility model is based on the paper
 
 [Log-normal Stochastic Volatility Model with Quadratic Drift](https://www.worldscientific.com/doi/10.1142/S0219024924500031) by Artur Sepp and Parviz Rakhmonov
 
@@ -287,3 +288,107 @@ https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4646925
 stochvolmodels/my_papers/sv_for_factor_hjm
 ```
 
+## Project Structure
+
+```
+StochVolModels/
+├── stochvolmodels/
+│   ├── pricers/
+│   │   ├── model_pricer.py         # Generic model interface
+│   │   ├── logsv_pricer.py         # Log-normal SV implementation  
+│   │   └── heston_pricer.py        # Heston SV implementation
+│   ├── data/
+│   │   └── option_chain.py         # Option chain data structures
+│   └── my_papers/                  # Research paper implementations
+│       ├── logsv_model_with_quadratic_drift/
+│       ├── volatility_models/
+│       ├── inverse_options/
+│       ├── il_hedging/
+│       └── sv_for_factor_hjm/
+├── examples/
+│   ├── run_lognormal_sv_pricer.py
+│   ├── run_heston_sv_pricer.py
+│   ├── run_heston.py
+│   └── plots_for_paper/
+└── README.md
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Citation
+
+If you use this package in your research, please cite the relevant papers:
+
+```bibtex
+@misc{sepp2024stochvolmodels,
+  title={StochVolModels: Python Implementation of Stochastic Volatility Models},
+  author={Sepp, Artur},
+  year={2024},
+  howpublished={\url{https://github.com/ArturSepp/StochVolModels}},
+  note={Python package for pricing analytics and Monte Carlo simulations}
+}
+
+@article{sepprakhmonov2023,
+title={Log-normal stochastic volatility model with quadratic drift},
+author={Sepp, Artur and Rakhmonov, Parviz},
+journal={International Journal of Theoretical and Applied Finance},
+volume={26},
+number={8},
+year={2023},
+url={https://www.worldscientific.com/doi/epdf/10.1142/S0219024924500031}
+}
+
+@article{sepprakhmonov2023b,
+title={What is a robust stochastic volatility model},
+author={Sepp, Artur and Rakhmonov, Parviz},
+year={2023},
+note={Working paper},
+url={http://ssrn.com/abstract=4647027}
+}
+
+@article{lucicsepp2024,
+title={Valuation and hedging of cryptocurrency inverse options},
+author={Lucic, Vladimir and Sepp, Artur},
+journal={Quantitative Finance},
+volume={24},
+number={7},
+pages={851--869},
+year={2024},
+url={https://www.tandfonline.com/doi/full/10.1080/14697688.2024.2364804}
+}
+
+@article{lucicsepp2024,
+title={Valuation and hedging of cryptocurrency inverse options},
+author={Lucic, Vladimir and Sepp, Artur},
+journal={Quantitative Finance},
+volume={24},
+number={7},
+pages={851--869},
+year={2024},
+url={https://www.tandfonline.com/doi/full/10.1080/14697688.2024.2364804}
+}
+
+@article{sepprakhmonov2024,
+title={Stochastic volatility for factor Heath-Jarrow-Morton framework},
+author={Sepp, Artur and Rakhmonov, Parviz},
+year={2025},
+journal={Review of Derivatives Research},
+note={Accepted},
+url={http://ssrn.com/abstract=4646925}
+}
+```
+
+## Acknowledgments
+
+Special thanks to co-authors and collaborators:
+- Parviz Rakhmonov  
+- Vladimir Lucic
+- Alexander Lipton
+
+For additional research and advanced analytics, see the companion modules and papers included in this package.
