@@ -392,3 +392,17 @@ Special thanks to co-authors and collaborators:
 - Alexander Lipton
 
 For additional research and advanced analytics, see the companion modules and papers included in this package.
+
+## BibTeX Citations for StochVolModels (Stochastic Volatility Models) Package
+
+If you use StochVolModels in your research, please cite it as:
+
+```bibtex
+@software{stochvolmodels2024,
+  author={Sepp, Artur},
+  title={StochVolModels: Python implementation of pricing analytics and Monte Carlo simulations for stochastic volatility models},
+  year={2024},
+  url={https://github.com/ArturSepp/StochVolModels},
+}
+```
+
