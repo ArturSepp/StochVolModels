@@ -4,8 +4,12 @@ run few unit test to illustrate implementation of log-normal sv model analytics
 
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+import matplotlib.ticker as mticker
 from enum import Enum
 import stochvolmodels as sv
+from stochvolmodels.utils import plots as plot
 from stochvolmodels import LogSVPricer, LogSvParams, OptionChain, LogsvModelCalibrationType
 
 
@@ -20,6 +24,7 @@ class LocalTests(Enum):
     CALIBRATE_MODEL_TO_BTC_OPTIONS_WITH_MC = 8
     ROUGH_MC_WITH_FIXED_RANDOMS = 9
     BENCHM_ROUGH_PRICER = 10
+
 
 
 def run_local_test(local_test: LocalTests):
@@ -160,23 +165,23 @@ def run_local_test(local_test: LocalTests):
         print(option_prices_ttm)
 
     elif local_test == LocalTests.BENCHM_ROUGH_PRICER:
-        btc_option_chain = OptionChain.get_uniform_chain(ttms=np.array([0.083, 0.25]),
-                                                     ids=np.array(['1m', '3m']),
-                                                     strikes=np.linspace(0.5, 1.5, 21))
-        params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=0.0, beta=0.15, volvol=2.0)
-        nb_path = 100000
-        H = 0.3
-        N = 3
+        btc_option_chain = sv.get_btc_test_chain_data()
+        # params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=1.0, beta=0.15, volvol=1.0)
+        params0 = LogSvParams(sigma0=1.32, theta=0.47, kappa1=9.98, kappa2=2.0, beta=0.45, volvol=0.83)
+        nb_path = 1000000
+        H = 0.4
+        N = 2
+        seed = 1
 
         def rough_vol():
             params1 = LogSvParams.copy(params0)
-            params1.H = 0.3
+            params1.H = H
             params1.approximate_kernel(T=btc_option_chain.ttms[-1], N=N)
 
             Z0, Z1, grid_ttms = sv.get_randoms_for_rough_vol_chain_valuation(ttms=btc_option_chain.ttms,
                                                                              nb_path=nb_path,
                                                                              nb_steps_per_year=360,
-                                                                             seed=10)
+                                                                             seed=seed)
 
 
             option_prices_ttm, option_std_ttm = sv.rough_logsv_mc_chain_pricer_fixed_randoms(ttms=btc_option_chain.ttms,
@@ -228,16 +233,28 @@ def run_local_test(local_test: LocalTests):
         ivols_logsv = regular_vol()
 
         nb_slices = btc_option_chain.ttms.size
-        fig, axs = plt.subplots(1, nb_slices, figsize=(4*nb_slices, 3), tight_layout=True)
+        assert nb_slices == 4
+
+        with sns.axes_style('darkgrid'):
+            fig, axs = plt.subplots(2, 2, figsize=(15, 9), tight_layout=True)
+        axs = plot.to_flat_list(axs)
 
         for i in range(nb_slices):
-            ax = axs[i] if nb_slices>1 else axs
-            ax.plot(btc_option_chain.strikes_ttms[i], ivols_logsv[i], label="LOG_SV", marker="*")
-            ax.plot(btc_option_chain.strikes_ttms[i], ivols_rough_logsv[i], label="ROUGH_LOG_SV", marker="o")
+            data = pd.DataFrame({"Rough Log-SV": ivols_rough_logsv[i],
+                                 "Log-SV": ivols_logsv[i]},
+                                index=np.log(
+                                    btc_option_chain.strikes_ttms[i] / btc_option_chain.forwards[i]))
+            ax = axs[i]
+            sns.lineplot(data, ax=ax, markers=["o"])
             ax.set_title("Expiry: " + btc_option_chain.ids[i])
+            ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda z, _: '{:.0%}'.format(z)))
+            ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda z, _: '{:.2f}'.format(z)))
             ax.legend()
-        fig.suptitle(f"Conventional LogSV model vs Rough LogSV, H={H:.2f} via {N}f Markovian approximation",
-                     color="darkblue")
+        fig.suptitle(f"Conventional LogSV model vs Rough LogSV, H={H:.2f} via {N}f Markovian approximation\n"
+                     f"{params0.to_str()}",
+                     color = "darkblue", fontsize = 14)
+
+        # fig.savefig("c:/temp/rough_vs_conven_vol.pdf")
 
     elif local_test == LocalTests.CALIBRATE_MODEL_TO_BTC_OPTIONS:
         btc_option_chain = sv.get_btc_test_chain_data()

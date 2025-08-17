@@ -703,7 +703,7 @@ def simulate_logsv_x_vol_terminal(ttm: float,
         assert sigma0.shape[0] == nb_path
     if W0 is None and W1 is None:
         nb_steps1, dt, grid_t = set_time_grid(ttm=ttm, nb_steps_per_year=nb_steps_per_year)
-        print(f"nb_steps1={nb_steps1}, dt={dt}")
+        # print(f"nb_steps1={nb_steps1}, dt={dt}")
         sdt = np.sqrt(dt)
         W0_ = sdt * np.random.normal(0, 1, size=(nb_steps1, nb_path))
         W1_ = sdt * np.random.normal(0, 1, size=(nb_steps1, nb_path))
@@ -760,7 +760,7 @@ def get_randoms_for_rough_vol_chain_valuation(ttms: np.ndarray,
                                     nb_steps_per_year: int = 360,
                                     seed: int = 10
                                     ) -> Tuple[np.ndarray, np.ndarray, List[np.ndarray]]:
-    set_seed(seed)
+    np.random.seed(seed)
     grid_ttms = List()
     nb_steps_ttms = np.zeros_like(ttms).astype(int)
     for i, ttm in enumerate(ttms):
@@ -856,13 +856,11 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
                                               variable_type: VariableType = VariableType.LOG_RETURN
                                               ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     assert weights.shape == nodes.shape and weights.ndim == 1
-    assert kappa2 == 0.0
+    # assert kappa2 == 0.0
     N = nodes.size
     v0 = sigma0 / np.sum(weights) * np.ones((N,))
 
     # need to redenote coefficients
-    lamda = kappa1
-    theta = kappa1 * theta
     volvol = np.sqrt(beta ** 2 + orthog_vol ** 2)
     rho = beta / volvol
 
@@ -882,8 +880,10 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
         nb_steps = timegrid.size - 1
         Z0_ = Z0[:nb_steps]
         Z1_ = Z1[:nb_steps]
-        log_spot_str, vol_str, qv_str = log_spot_full_combined(nodes, weights, v0_vec, theta, lamda, log_s0, v_init,
-                                                               rho, volvol, timegrid, nb_path, Z0_, Z1_)
+        weight_vec = np.repeat(weights[:, None], nb_path,axis=1)
+        nodes_vec = np.repeat(nodes[:, None], nb_path,axis=1)
+        log_spot_str, vol_str, qv_str = log_spot_full_combined(nodes_vec, weight_vec, v0_vec, theta, kappa1, kappa2, log_s0,
+                                                               v_init, rho, volvol, timegrid, nb_path, Z0_, Z1_)
         print(f"Number of paths with negative vol: {np.sum(weights @ vol_str < 0.0)}")
         print(f"Mean spot Strand: {np.mean(np.exp(log_spot_str))}")
 
