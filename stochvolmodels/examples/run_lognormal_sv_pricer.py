@@ -144,7 +144,7 @@ def run_local_test(local_test: LocalTests):
                                                                              seed=10)
         params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=0.0, beta=0.15, volvol=2.0)
         params0.H = 0.3
-        params0.approximate_kernel(T=btc_option_chain.ttms[-1], N=3)
+        params0.approximate_kernel(T=btc_option_chain.ttms[-1])
 
         option_prices_ttm, option_std_ttm = sv.rough_logsv_mc_chain_pricer_fixed_randoms(ttms=btc_option_chain.ttms,
                                                                                          forwards=btc_option_chain.forwards,
@@ -170,13 +170,12 @@ def run_local_test(local_test: LocalTests):
         params0 = LogSvParams(sigma0=1.32, theta=0.47, kappa1=9.98, kappa2=2.0, beta=0.45, volvol=0.83)
         nb_path = 1000000
         H = 0.4
-        N = 2
         seed = 1
 
         def rough_vol():
             params1 = LogSvParams.copy(params0)
             params1.H = H
-            params1.approximate_kernel(T=btc_option_chain.ttms[-1], N=N)
+            params1.approximate_kernel(T=btc_option_chain.ttms[-1])
 
             Z0, Z1, grid_ttms = sv.get_randoms_for_rough_vol_chain_valuation(ttms=btc_option_chain.ttms,
                                                                              nb_path=nb_path,
@@ -250,7 +249,7 @@ def run_local_test(local_test: LocalTests):
             ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda z, _: '{:.0%}'.format(z)))
             ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda z, _: '{:.2f}'.format(z)))
             ax.legend()
-        fig.suptitle(f"Conventional LogSV model vs Rough LogSV, H={H:.2f} via {N}f Markovian approximation\n"
+        fig.suptitle(f"Conventional LogSV model vs Rough LogSV, H={H:.2f} via Markovian approximation\n"
                      f"{params0.to_str()}",
                      color = "darkblue", fontsize = 14)
 
@@ -271,7 +270,7 @@ def run_local_test(local_test: LocalTests):
         btc_option_chain = sv.get_btc_test_chain_data()
         params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=0.0, beta=0.15, volvol=2.0)
         params0.H = 0.3
-        params0.approximate_kernel(T=btc_option_chain.ttms[-1], N=3)
+        params0.approximate_kernel(T=btc_option_chain.ttms[-1])
         btc_calibrated_params = logsv_pricer.calibrate_model_params_to_chain(option_chain=btc_option_chain,
                                                                              params0=params0,
                                                                              model_calibration_type=LogsvModelCalibrationType.PARAMS4,

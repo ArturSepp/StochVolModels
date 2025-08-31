@@ -33,16 +33,16 @@ class LogSvParams(ModelParams):
             self.kappa2 = self.kappa1 / self.theta
         assert 1e-4 < self.H <= 0.5
 
-    def approximate_kernel(self, T: float, N: int):
-        assert 1 <= N <= 5  # not keen to use large N
-        if self.H >= 0.4:
-            N = N if N<=2 else 2
-            self.nodes, self.weights = european_rule(self.H, N, T)
-        elif N > 1 and self.H<0.49:
-            self.nodes, self.weights = european_rule(self.H, N, T)
-        else:
+    def approximate_kernel(self, T: float):
+        if 0.49 < self.H <= 0.5:
             self.weights = np.array([1.0])
             self.nodes = np.array([1e-3])
+            return
+        elif 0.4 < self.H <= 0.49:
+            N = 2
+        else:
+            N = 3
+        self.nodes, self.weights = european_rule(self.H, N, T)
 
 
     def to_dict(self) -> Dict[str, Any]:
