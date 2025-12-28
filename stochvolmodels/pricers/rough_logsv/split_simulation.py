@@ -6,12 +6,13 @@ from scipy.linalg import expm
 from numba import njit
 from numba import njit, objmode
 
-# from stochvolmodels.examples.run_pricing_options_on_qvar import nb_path
+from stochvolmodels.pricers.rough_logsv.expm import batch_expA, batch_invA
 
 
 # from stochvolmodels.utils.config import VariableType
 # from RoughKernel import european_rule
 # from stochvolmodels.pricers.logsv_pricer import LogSvParams
+
 
 @njit(cache=False, fastmath=True)
 def drift_ode_solve(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: float, kappa2: float,
@@ -22,7 +23,7 @@ def drift_ode_solve(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: flo
     ----------
     nodes : (fixed argument) exponents x_i, array of size (n,)
     v0 : (fixed argument) array of size (n, nb_path)
-    theta : long-run level, scaled by lambda, scalar
+    theta : long-run level, scalar
     kappa1 : linear mean-reversion speed, scalar
     kappa2 : quadratic mean-reversion speed, scalar
     z0 : initial values, array of size (n, nb_path)
@@ -34,16 +35,32 @@ def drift_ode_solve(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: flo
     Array of size (n, nb_path)
     """
     assert nodes.shape == v0.shape == z0.shape == weight.shape
-    n = weight.shape[0]
+    n = z0.shape[0]
     z0w = np.sum(weight * z0, axis=0)
+    g0 = (kappa1 + kappa2*z0w)*(theta-z0w)
+    k1 = -nodes * (z0 - v0)
+    for j in range(n):
+        k1[j] += g0
+    k1 *= 0.5 * h
+
+    zmid = z0 + k1
+    zmidw = np.sum(weight * zmid, axis=0)
+    gmid = (kappa1 + kappa2 * zmidw) * (theta - zmidw)
+    k2 = -nodes * (zmid - v0)
+    for j in range(n):
+        k2[j] += gmid
+    k2 *= h
+    Dzh = z0 + k2
 
     # s1 = -nodes[:, None] * (z0 - v0) * h + (kappa1 + kappa2 * z0w) * (theta - z0w) * h
     # s2 = -nodes[:, None] * (z0 + 0.5 * s1 - v0) * h + (kappa1 + kappa2 * (z0w + 0.5 * s1)) * (theta - (z0w + 0.5 * s1)) * h
     # Dzh = z0 + s2
 
-    z1 =  -nodes * (z0 - v0) * h + (kappa1 + kappa2 * z0w) * (theta - z0w) * h
-    z2 = -nodes * (z0 + 0.5 * z1 - v0) * h + (kappa1 + kappa2 * (z0w + 0.5 * z1)) * (theta - (z0w + 0.5 * z1)) * h
-    Dzh = z0 + z2
+
+
+    # z1 =  -nodes * (z0 - v0) * h + (kappa1 + kappa2 * z0w) * (theta - z0w) * h
+    # z2 = -nodes * (z0 + 0.5 * z1 - v0) * h + (kappa1 + kappa2 * (z0w + 0.5 * z1)) * (theta - (z0w + 0.5 * z1)) * h
+    # Dzh = z0 + z2
 
     # lamda_vec = np.repeat(lamda, n)
     # theta_vec = np.repeat(theta, n)[:, None]
@@ -56,6 +73,73 @@ def drift_ode_solve(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: flo
     # Dzh = eAh @ z0 + (np.linalg.inv(A) @ (eAh - I)) @ b  # vector of size (n, nb_path)
 
     return Dzh
+
+
+@njit(cache=False, fastmath=True)
+def drift_ode_solve3(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: float, kappa2: float,
+                    z0: np.ndarray, weight: np.ndarray, h: float):
+    """
+
+    Parameters
+    ----------
+    nodes : (fixed argument) exponents x_i, array of size (n,)
+    v0 : (fixed argument) array of size (n, nb_path)
+    theta : long-run level, scalar
+    kappa1 : linear mean-reversion speed, scalar
+    kappa2 : quadratic mean-reversion speed, scalar
+    z0 : initial values, array of size (n, nb_path)
+    weight : wieghts, array of size (n, )
+    h : step size
+
+    Returns
+    -------
+    Array of size (n, nb_path)
+    """
+    assert nodes.shape == v0.shape == z0.shape == weight.shape
+    n, nb_path = weight.shape
+    z0w = np.sum(weight * z0, axis=0)
+    kappa = kappa1 + kappa2 * z0w
+
+    b_ = np.zeros((nb_path, n))
+    for k in range(n):
+        b_[:, k] = kappa * theta + nodes[k] * v0[k]
+
+    eAh = batch_expA(kappa, nodes.T * h, weight.T * h)
+    I = np.identity(n)
+    invA = batch_invA(kappa, nodes.T, weight.T)
+    tmp2 = np.zeros((nb_path, n, n))
+    for i in range(n):
+        for j in range(n):
+            for k in range(n):
+                tmp2[:,i,j] += invA[:,i,k] * (eAh[:, k, j] - I[k,j])
+
+    Dzh_v1 = np.zeros((nb_path, n))
+    for i in range(n):
+        for j in range(n):
+            Dzh_v1[:, i] += eAh[:, i, j] * z0[j, :] + tmp2[:, i, j] * b_[:, j]
+    # for p in range(nb_path):
+    #     Dzh_v1[p] = eAh[p] @ z0[..., p] + tmp2[p] @ b_[p]
+
+    # def ff2():
+    #     lamda = kappa1 + kappa2 * z0w
+    #     coeff0_vec = np.repeat(kappa1 * theta, n)
+    #     Dzh_v2 = np.zeros_like(z0)
+    #     for p in range(nb_path):
+    #         diag_x = np.diag(nodes[:, p])
+    #         lamda_vec = np.repeat(lamda[p], n)
+    #         A = -np.outer(lamda_vec, weight[:, p]) - diag_x  # matrix of size (n,n)
+    #         b = coeff0_vec + diag_x @ v0[:, p]
+    #         eAh_v2 = expm(A * h)
+    #         Dzh_v2[:, p] = eAh_v2 @ z0[:, p] + (np.linalg.inv(A) @ (eAh_v2 - I)) @ b
+    #
+    #     return Dzh_v2
+    #
+    # Dzh_v2 = ff2()
+    # diff = np.linalg.norm(Dzh_v2-Dzh_v1.T)
+    # assert diff < 1e-12
+
+    return Dzh_v1.T
+
 
 @njit(cache=False, fastmath=True)
 def diffus_sde_solve(y0: np.ndarray, weight: np.ndarray, volvol: float, h: float, nb_path: int,
@@ -101,9 +185,9 @@ def drift_diffus_strand(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1:
     -------
 
     """
-    D_inn = drift_ode_solve(nodes, v0, theta, kappa1, kappa2, v_init, weight, 0.5 * h)
+    D_inn = drift_ode_solve3(nodes, v0, theta, kappa1, kappa2, v_init, weight, 0.5 * h)
     S_inn = diffus_sde_solve(D_inn, weight, volvol, h, nb_path, z_rand)
-    sol = drift_ode_solve(nodes, v0, theta, kappa1, kappa2, S_inn, weight, 0.5 * h)
+    sol = drift_ode_solve3(nodes, v0, theta, kappa1, kappa2, S_inn, weight, 0.5 * h)
 
     return sol
 

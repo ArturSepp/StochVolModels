@@ -331,7 +331,11 @@ class ModelPricer(ABC):
         plot model slice_t vols
         optimized for 2*2 figure
         """
-        model_ivols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params, **kwargs)
+        if 'mode' in kwargs and kwargs['mode'] == 'mc':
+            model_ivols = self.compute_mc_chain_implied_vols(option_chain=option_chain, params=params, **kwargs)[3]
+        else:
+            model_ivols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params, **kwargs)
+
 
         num_slices = len(option_chain.ttms)
         with sns.axes_style('darkgrid'):

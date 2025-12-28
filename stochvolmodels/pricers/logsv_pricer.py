@@ -87,22 +87,44 @@ class LogSVPricer(ModelPricer):
                              **kwargs
                              ) -> (List[np.ndarray], List[np.ndarray]):
         vol_backbone_etas = params.get_vol_backbone_etas(ttms=option_chain.ttms)
-        return logsv_mc_chain_pricer(v0=params.sigma0,
-                                     theta=params.theta,
-                                     kappa1=params.kappa1,
-                                     kappa2=params.kappa2,
-                                     beta=params.beta,
-                                     volvol=params.volvol,
-                                     vol_backbone_etas=vol_backbone_etas,
-                                     ttms=option_chain.ttms,
-                                     forwards=option_chain.forwards,
-                                     discfactors=option_chain.discfactors,
-                                     strikes_ttms=option_chain.strikes_ttms,
-                                     optiontypes_ttms=option_chain.optiontypes_ttms,
-                                     is_spot_measure=is_spot_measure,
-                                     variable_type=variable_type,
-                                     nb_path=nb_path,
-                                     nb_steps_per_year=nb_steps or int(360 * np.max(option_chain.ttms)) + 1)
+        if 'use_rough_mc' in kwargs and kwargs['use_rough_mc']:
+            assert 'seed' in kwargs
+            seed = kwargs['seed']
+            Z0, Z1, grid_ttms = get_randoms_for_rough_vol_chain_valuation(ttms=option_chain.ttms, nb_path=nb_path,
+                                                                          nb_steps_per_year=nb_steps, seed=seed)
+            return rough_logsv_mc_chain_pricer_fixed_randoms(ttms=option_chain.ttms,
+                                                             forwards=option_chain.forwards,
+                                                             discfactors=option_chain.discfactors,
+                                                             strikes_ttms=option_chain.strikes_ttms,
+                                                             optiontypes_ttms=option_chain.optiontypes_ttms,
+                                                             Z0=Z0,
+                                                             Z1=Z1,
+                                                             sigma0=params.sigma0,
+                                                             theta=params.theta,
+                                                             kappa1=params.kappa1,
+                                                             kappa2=params.kappa2,
+                                                             beta=params.beta,
+                                                             orthog_vol=params.volvol,
+                                                             weights=params.weights,
+                                                             nodes=params.nodes,
+                                                             timegrids=grid_ttms)
+        else:
+            return logsv_mc_chain_pricer(v0=params.sigma0,
+                                         theta=params.theta,
+                                         kappa1=params.kappa1,
+                                         kappa2=params.kappa2,
+                                         beta=params.beta,
+                                         volvol=params.volvol,
+                                         vol_backbone_etas=vol_backbone_etas,
+                                         ttms=option_chain.ttms,
+                                         forwards=option_chain.forwards,
+                                         discfactors=option_chain.discfactors,
+                                         strikes_ttms=option_chain.strikes_ttms,
+                                         optiontypes_ttms=option_chain.optiontypes_ttms,
+                                         is_spot_measure=is_spot_measure,
+                                         variable_type=variable_type,
+                                         nb_path=nb_path,
+                                         nb_steps_per_year=nb_steps or int(360 * np.max(option_chain.ttms)) + 1)
 
     def set_vol_scaler(self, option_chain: OptionChain) -> float:
         """

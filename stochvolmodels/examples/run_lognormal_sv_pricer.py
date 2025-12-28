@@ -11,7 +11,7 @@ from enum import Enum
 import stochvolmodels as sv
 from stochvolmodels.utils import plots as plot
 from stochvolmodels import LogSVPricer, LogSvParams, OptionChain, LogsvModelCalibrationType
-
+# from uuid import uuid4
 
 class LocalTests(Enum):
     COMPUTE_MODEL_PRICES = 1
@@ -142,8 +142,8 @@ def run_local_test(local_test: LocalTests):
                                                                              nb_path=10000,
                                                                              nb_steps_per_year=360,
                                                                              seed=10)
-        params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=0.0, beta=0.15, volvol=2.0)
-        params0.H = 0.3
+        params0 = LogSvParams(sigma0=0.377, theta=0.347, kappa1=1.29, kappa2=1.93, beta=2.45, volvol=1.81)
+        params0.H = 0.1
         params0.approximate_kernel(T=btc_option_chain.ttms[-1])
 
         option_prices_ttm, option_std_ttm = sv.rough_logsv_mc_chain_pricer_fixed_randoms(ttms=btc_option_chain.ttms,
@@ -167,9 +167,9 @@ def run_local_test(local_test: LocalTests):
     elif local_test == LocalTests.BENCHM_ROUGH_PRICER:
         btc_option_chain = sv.get_btc_test_chain_data()
         # params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=1.0, beta=0.15, volvol=1.0)
-        params0 = LogSvParams(sigma0=1.32, theta=0.47, kappa1=9.98, kappa2=2.0, beta=0.45, volvol=0.83)
-        nb_path = 1000000
-        H = 0.4
+        params0 = LogSvParams(sigma0=0.377, theta=0.347, kappa1=1.29, kappa2=1.93, beta=2.45, volvol=1.81)
+        nb_path = 10000
+        H = 0.1
         seed = 1
 
         def rough_vol():
@@ -268,23 +268,31 @@ def run_local_test(local_test: LocalTests):
 
     elif local_test == LocalTests.CALIBRATE_MODEL_TO_BTC_OPTIONS_WITH_MC:
         btc_option_chain = sv.get_btc_test_chain_data()
-        params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=0.0, beta=0.15, volvol=2.0)
-        params0.H = 0.3
+        params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=2.18, beta=0.15, volvol=2.0)
+        params0.H = 0.2
         params0.approximate_kernel(T=btc_option_chain.ttms[-1])
         btc_calibrated_params = logsv_pricer.calibrate_model_params_to_chain(option_chain=btc_option_chain,
                                                                              params0=params0,
                                                                              model_calibration_type=LogsvModelCalibrationType.PARAMS4,
                                                                              constraints_type=sv.ConstraintsType.INVERSE_MARTINGALE,
                                                                              calibration_engine=sv.CalibrationEngine.ROUGH_MC,
-                                                                             nb_path=100000,
+                                                                             nb_path=5000,
                                                                              seed=7)
         print(btc_calibrated_params)
-        logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=btc_option_chain,
-                                                 params=btc_calibrated_params)
+        fig = logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=btc_option_chain,
+                                                 params=btc_calibrated_params,
+                                                       mode='mc',
+                                                       use_rough_mc=True,
+                                                       seed=16,
+                                                       nb_steps=360
+                                                       )
+
+        # uuid = str(uuid4())
+        # plot.save_fig(fig=fig, local_path=r"c:/temp/", file_name=f"fit_quality_{uuid}")
 
     plt.show()
 
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.BENCHM_ROUGH_PRICER)
+    run_local_test(local_test=LocalTests.ROUGH_MC_WITH_FIXED_RANDOMS)
