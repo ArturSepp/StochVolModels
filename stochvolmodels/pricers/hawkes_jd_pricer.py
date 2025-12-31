@@ -827,4 +827,4 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.MC_COMPARISION)
+    run_local_test(local_test=LocalTests.SLICE_PRICER)
