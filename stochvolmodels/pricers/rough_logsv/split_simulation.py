@@ -76,6 +76,57 @@ def drift_ode_solve(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: flo
 
 
 @njit(cache=False, fastmath=True)
+def drift_ode_solve2(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: float, kappa2: float,
+                    z0: np.ndarray, weight: np.ndarray, h: float):
+    """
+
+    Parameters
+    ----------
+    nodes : (fixed argument) exponents x_i, array of size (n,)
+    v0 : (fixed argument) array of size (n, nb_path)
+    theta : long-run level, scalar
+    kappa1 : linear mean-reversion speed, scalar
+    kappa2 : quadratic mean-reversion speed, scalar
+    z0 : initial values, array of size (n, nb_path)
+    weight : wieghts, array of size (n, )
+    h : step size
+
+    Returns
+    -------
+    Array of size (n, nb_path)
+    """
+    assert nodes.shape == v0.shape == z0.shape == weight.shape
+    n, nb_path = weight.shape
+
+    # --- k1 ---
+    z0w = np.sum(weight * z0, axis=0)
+    c1 = (kappa1 + kappa2 * z0w) * (theta - z0w)
+    s1 = -nodes * (z0 - v0) + c1
+
+    # --- k2 ---
+    z_tmp = z0 + 0.5 * h * s1
+    z1w = np.sum(weight * z_tmp, axis=0)
+    c2 = (kappa1 + kappa2 * z1w) * (theta - z1w)
+    s2 = -nodes * (z_tmp - v0) + c2
+
+    # --- k3 ---
+    z_tmp = z0 + 0.5 * h * s2
+    z2w = np.sum(weight * z_tmp, axis=0)
+    c3 = (kappa1 + kappa2 * z2w) * (theta - z2w)
+    s3 = -nodes * (z_tmp - v0) + c3
+
+    # --- k4 ---
+    z_tmp = z0 + h * s3
+    z3w = np.sum(weight * z_tmp, axis=0)
+    c4 = (kappa1 + kappa2 * z3w) * (theta - z3w)
+    s4 = -nodes * (z_tmp - v0) + c4
+
+    zh = z0 + (h / 6.0) * (s1 + 2.0 * s2 + 2.0 * s3 + s4)
+
+    return zh
+
+
+@njit(cache=False, fastmath=True)
 def drift_ode_solve3(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: float, kappa2: float,
                     z0: np.ndarray, weight: np.ndarray, h: float):
     """
@@ -185,9 +236,9 @@ def drift_diffus_strand(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1:
     -------
 
     """
-    D_inn = drift_ode_solve3(nodes, v0, theta, kappa1, kappa2, v_init, weight, 0.5 * h)
+    D_inn = drift_ode_solve2(nodes, v0, theta, kappa1, kappa2, v_init, weight, 0.5 * h)
     S_inn = diffus_sde_solve(D_inn, weight, volvol, h, nb_path, z_rand)
-    sol = drift_ode_solve3(nodes, v0, theta, kappa1, kappa2, S_inn, weight, 0.5 * h)
+    sol = drift_ode_solve2(nodes, v0, theta, kappa1, kappa2, S_inn, weight, 0.5 * h)
 
     return sol
 
@@ -208,6 +259,9 @@ def log_spot_full_solve2(nodes: np.ndarray, weight: np.ndarray,
     assert z0.shape == (nb_path,) and z1.shape == (nb_path,)
 
     vol_h = drift_diffus_strand(nodes, v0, theta, kappa1, kappa2, volvol, v, weight, h, nb_path, z0)
+    w_vol_h = np.sum(weight * vol_h, axis=0)
+    idx_bad = np.nonzero(np.logical_or(np.isnan(w_vol_h), w_vol_h <= 0.0))[0]
+    vol_h[:, idx_bad] = 1e-6
 
     wlam = weight * nodes
     vw = np.sum(weight * v, axis=0)
