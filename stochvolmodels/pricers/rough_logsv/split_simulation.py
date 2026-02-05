@@ -127,6 +127,43 @@ def drift_ode_solve2(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: fl
 
 
 @njit(cache=False, fastmath=True)
+def drift_ode_solve2_f32(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: float, kappa2: float,
+                         z0: np.ndarray, weight: np.ndarray, h: float):
+    """
+    Float32-friendly variant of drift_ode_solve2 (avoids float64 literals promoting intermediates).
+    """
+    assert nodes.shape == v0.shape == z0.shape == weight.shape
+    n, nb_path = weight.shape
+
+    half = np.float32(0.5)
+    two = np.float32(2.0)
+    six = np.float32(6.0)
+
+    z0w = np.sum(weight * z0, axis=0)
+    c1 = (kappa1 + kappa2 * z0w) * (theta - z0w)
+    s1 = -nodes * (z0 - v0) + c1
+
+    z_tmp = z0 + (half * h) * s1
+    z1w = np.sum(weight * z_tmp, axis=0)
+    c2 = (kappa1 + kappa2 * z1w) * (theta - z1w)
+    s2 = -nodes * (z_tmp - v0) + c2
+
+    z_tmp = z0 + (half * h) * s2
+    z2w = np.sum(weight * z_tmp, axis=0)
+    c3 = (kappa1 + kappa2 * z2w) * (theta - z2w)
+    s3 = -nodes * (z_tmp - v0) + c3
+
+    z_tmp = z0 + h * s3
+    z3w = np.sum(weight * z_tmp, axis=0)
+    c4 = (kappa1 + kappa2 * z3w) * (theta - z3w)
+    s4 = -nodes * (z_tmp - v0) + c4
+
+    zh = z0 + (h / six) * (s1 + two * s2 + two * s3 + s4)
+
+    return zh
+
+
+@njit(cache=False, fastmath=True)
 def drift_ode_solve3(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: float, kappa2: float,
                     z0: np.ndarray, weight: np.ndarray, h: float):
     """
@@ -193,9 +230,9 @@ def drift_ode_solve3(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: fl
 
 
 @njit(cache=False, fastmath=True)
-def diffus_sde_solve(y0: np.ndarray, weight: np.ndarray, volvol: float, h: float, nb_path: int,
-                     z_rand: np.ndarray):
-    assert y0.shape == weight.shape  and y0.shape[-1] == nb_path
+def diffus_sde_solve_f64(y0: np.ndarray, weight: np.ndarray, volvol: float, h: float, nb_path: int,
+                         z_rand: np.ndarray):
+    assert y0.shape == weight.shape and y0.shape[-1] == nb_path
     assert z_rand.shape == (nb_path,)
     weight_sum = np.sum(weight, axis=0)
     volvol_ = volvol * weight_sum
@@ -212,10 +249,11 @@ def diffus_sde_solve(y0: np.ndarray, weight: np.ndarray, volvol: float, h: float
 
     return Yh_vec
 
+
 @njit(cache=False, fastmath=True)
-def drift_diffus_strand(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: float, kappa2: float,
-                        volvol: float, v_init: np.ndarray, weight: np.ndarray, h: float,
-                        nb_path: int, z_rand: np.ndarray):
+def drift_diffus_strand_f64(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: float, kappa2: float,
+                            volvol: float, v_init: np.ndarray, weight: np.ndarray, h: float,
+                            nb_path: int, z_rand: np.ndarray):
     """
 
     Parameters
@@ -237,18 +275,18 @@ def drift_diffus_strand(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1:
 
     """
     D_inn = drift_ode_solve2(nodes, v0, theta, kappa1, kappa2, v_init, weight, 0.5 * h)
-    S_inn = diffus_sde_solve(D_inn, weight, volvol, h, nb_path, z_rand)
+    S_inn = diffus_sde_solve_f64(D_inn, weight, volvol, h, nb_path, z_rand)
     sol = drift_ode_solve2(nodes, v0, theta, kappa1, kappa2, S_inn, weight, 0.5 * h)
 
     return sol
 
 
 @njit(cache=False, fastmath=True)
-def log_spot_full_solve2(nodes: np.ndarray, weight: np.ndarray,
-                         v0: np.ndarray, y0: np.ndarray,
-                         theta: float, kappa1: float, kappa2: float, log_s: np.ndarray, v: np.ndarray, y: np.ndarray,
-                         rho: float, volvol: float, h: float, nb_path: int,
-                         z0: np.ndarray, z1: np.ndarray):
+def log_spot_full_solve2_f64(nodes: np.ndarray, weight: np.ndarray,
+                             v0: np.ndarray, y0: np.ndarray,
+                             theta: float, kappa1: float, kappa2: float, log_s: np.ndarray, v: np.ndarray, y: np.ndarray,
+                             rho: float, volvol: float, h: float, nb_path: int,
+                             z0: np.ndarray, z1: np.ndarray):
     # raise ValueError
     assert nodes.shape == weight.shape and weight.ndim == 2
     assert v.shape == weight.shape and v.shape[-1] == nb_path
@@ -258,7 +296,7 @@ def log_spot_full_solve2(nodes: np.ndarray, weight: np.ndarray,
     assert y0.shape == (1, nb_path)
     assert z0.shape == (nb_path,) and z1.shape == (nb_path,)
 
-    vol_h = drift_diffus_strand(nodes, v0, theta, kappa1, kappa2, volvol, v, weight, h, nb_path, z0)
+    vol_h = drift_diffus_strand_f64(nodes, v0, theta, kappa1, kappa2, volvol, v, weight, h, nb_path, z0)
     w_vol_h = np.sum(weight * vol_h, axis=0)
     idx_bad = np.nonzero(np.logical_or(np.isnan(w_vol_h), w_vol_h <= 0.0))[0]
     vol_h[:, idx_bad] = 1e-6
@@ -290,12 +328,13 @@ def log_spot_full_solve2(nodes: np.ndarray, weight: np.ndarray,
 
     return vol_h, y_h, log_spot_h
 
+
 @njit(cache=False, fastmath=True)
-def log_spot_full_combined(nodes: np.ndarray, weight: np.ndarray,
-                           v0: np.ndarray,
-                           theta: float, kappa1: float, kappa2: float, log_s0: float, v_init: np.ndarray,
-                           rho: float, volvol: float, timegrid: np.ndarray, nb_path: int,
-                           Z0: np.ndarray, Z1: np.ndarray):
+def log_spot_full_combined_f64(nodes: np.ndarray, weight: np.ndarray,
+                               v0: np.ndarray,
+                               theta: float, kappa1: float, kappa2: float, log_s0: float, v_init: np.ndarray,
+                               rho: float, volvol: float, timegrid: np.ndarray, nb_path: int,
+                               Z0: np.ndarray, Z1: np.ndarray):
     h = timegrid[1] - timegrid[0]
     # assert np.all(np.isclose(np.diff(timegrid)[1:], h)) and timegrid[0] == 0.0
     # assert Z0.shape == (timegrid.size - 1, nb_path) and Z1.shape == (timegrid.size - 1, nb_path)
@@ -306,11 +345,138 @@ def log_spot_full_combined(nodes: np.ndarray, weight: np.ndarray,
     y_h = np.zeros((1, nb_path))
     log_spot_h = np.ones((1, nb_path)) * log_s0
 
-    # a, b, c = solve_coeffs(nodes, weight, v0[:, 0], theta, lamda, rho, volvol)
-
     for idx, _ in enumerate(timegrid[:-1]):
-        vol_h, y_h, log_spot_h = log_spot_full_solve2(nodes, weight, v0, y0, theta, kappa1, kappa2,
-                                                     log_spot_h, vol_h, y_h, rho, volvol, h, nb_path,
-                                                      Z0[idx], Z1[idx])
+        vol_h, y_h, log_spot_h = log_spot_full_solve2_f64(nodes, weight, v0, y0, theta, kappa1, kappa2,
+                                                          log_spot_h, vol_h, y_h, rho, volvol, h, nb_path,
+                                                          Z0[idx], Z1[idx])
 
     return log_spot_h, vol_h, y_h
+
+
+@njit(cache=False, fastmath=True)
+def diffus_sde_solve_f32(y0: np.ndarray, weight: np.ndarray, weight_sum: np.ndarray,
+                         volvol_weight_sum: np.ndarray, h: float, sqrt_h: float, nb_path: int,
+                         z_rand: np.ndarray):
+    assert y0.shape == weight.shape and y0.shape[-1] == nb_path
+    assert z_rand.shape == (nb_path,)
+    yw = np.sum(weight * y0, axis=0)
+
+    half = np.float32(0.5)
+    one = np.float32(1.0)
+    dW = z_rand * sqrt_h
+    Yh = yw * np.exp(-half * volvol_weight_sum * volvol_weight_sum * h + volvol_weight_sum * dW)
+
+    Q = one / weight_sum * (Yh - yw)
+    Yh_vec = y0.copy()
+    for i in range(Yh_vec.shape[0]):
+        Yh_vec[i] += Q
+
+    return Yh_vec
+
+
+@njit(cache=False, fastmath=True)
+def drift_diffus_strand_f32(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: float, kappa2: float,
+                            volvol_weight_sum: np.ndarray, v_init: np.ndarray, weight: np.ndarray, h: float,
+                            sqrt_h: float, weight_sum: np.ndarray, nb_path: int, z_rand: np.ndarray):
+    half = np.float32(0.5)
+    D_inn = drift_ode_solve2_f32(nodes, v0, theta, kappa1, kappa2, v_init, weight, half * h)
+    S_inn = diffus_sde_solve_f32(D_inn, weight, weight_sum, volvol_weight_sum, h, sqrt_h, nb_path, z_rand)
+    sol = drift_ode_solve2_f32(nodes, v0, theta, kappa1, kappa2, S_inn, weight, half * h)
+
+    return sol
+
+
+@njit(cache=False, fastmath=True)
+def log_spot_full_solve2_f32(nodes: np.ndarray, weight: np.ndarray, wlam: np.ndarray, w_inv: np.ndarray,
+                             w_lam_v0: np.ndarray, weight_sum: np.ndarray, v0: np.ndarray, y0: np.ndarray,
+                             theta: float, kappa1: float, kappa2: float, log_s: np.ndarray, v: np.ndarray, y: np.ndarray,
+                             rho: float, rho_comp: float, inv_volvol: float, volvol_weight_sum: np.ndarray,
+                             h: float, sqrt_h: float, nb_path: int, z0: np.ndarray, z1: np.ndarray):
+    assert nodes.shape == weight.shape and weight.ndim == 2
+    assert v.shape == weight.shape and v.shape[-1] == nb_path
+    assert y.shape == (1, nb_path)
+    assert log_s.shape == (1, nb_path)
+    assert v0.shape == weight.shape and v0.shape[-1] == nb_path
+    assert y0.shape == (1, nb_path)
+    assert z0.shape == (nb_path,) and z1.shape == (nb_path,)
+
+    half = np.float32(0.5)
+    eps = np.float32(1e-6)
+
+    vol_h = drift_diffus_strand_f32(nodes, v0, theta, kappa1, kappa2, volvol_weight_sum, v, weight, h, sqrt_h, weight_sum, nb_path, z0)
+    volw_h = np.sum(weight * vol_h, axis=0)
+    idx_bad = np.nonzero(np.logical_or(np.isnan(volw_h), volw_h <= 0.0))[0]
+    vol_h[:, idx_bad] = eps
+
+    vw = np.sum(weight * v, axis=0)
+
+    c1 = half
+    c2 = half
+
+    sq_vw = np.square(vw)
+    sq_vhw = np.square(volw_h)
+
+    w_lam_vol = np.sum(wlam * v, axis=0)
+    w_lam_vol_h = np.sum(wlam * vol_h, axis=0)
+
+    term1 = inv_volvol * (((volw_h - vw) / h + c1 * w_lam_vol + c2 * w_lam_vol_h - w_lam_v0) * w_inv
+                          - kappa1 * theta + (kappa1 - kappa2 * theta) * (c1 * vw + c2 * volw_h)
+                          + kappa2 * (c1 * sq_vw + c2 * sq_vhw)) * h
+
+    term2 = c1 * h * sq_vw + c2 * h * sq_vhw
+    log_spot_h = log_s - half * term2 + rho * term1 + rho_comp * np.sqrt(term2) * z1
+
+    y_h = y + half * h * (vw * vw + volw_h * volw_h)
+
+    return vol_h, y_h, log_spot_h
+
+
+@njit(cache=False, fastmath=True)
+def log_spot_full_combined_f32(nodes: np.ndarray, weight: np.ndarray,
+                               v0: np.ndarray,
+                               theta: float, kappa1: float, kappa2: float, log_s0: float, v_init: np.ndarray,
+                               rho: float, volvol: float, timegrid: np.ndarray, nb_path: int,
+                               Z0: np.ndarray, Z1: np.ndarray):
+    one = np.float32(1.0)
+    h = timegrid[1] - timegrid[0]
+    sqrt_h = np.sqrt(h)
+    wlam = weight * nodes
+    weight_sum = np.sum(weight, axis=0)
+    w_inv = one / weight_sum
+    w_lam_v0 = np.sum(wlam * v0, axis=0)
+    rho_comp = np.sqrt(one - rho * rho)
+    inv_volvol = one / volvol
+    volvol_weight_sum = volvol * weight_sum
+
+    y0 = np.zeros_like(v0[:1, :])
+
+    vol_h = v_init.copy()
+    y_h = np.zeros_like(y0)
+    log_spot_h = np.empty_like(y0)
+    log_spot_h[:] = log_s0
+
+    for idx, _ in enumerate(timegrid[:-1]):
+        vol_h, y_h, log_spot_h = log_spot_full_solve2_f32(nodes, weight, wlam, w_inv, w_lam_v0, weight_sum, v0, y0,
+                                                          theta, kappa1, kappa2, log_spot_h, vol_h, y_h, rho,
+                                                          rho_comp, inv_volvol, volvol_weight_sum, h, sqrt_h,
+                                                          nb_path, Z0[idx], Z1[idx])
+
+    return log_spot_h, vol_h, y_h
+
+
+def log_spot_full_combined(nodes: np.ndarray, weight: np.ndarray,
+                           v0: np.ndarray,
+                           theta: float, kappa1: float, kappa2: float, log_s0: float, v_init: np.ndarray,
+                           rho: float, volvol: float, timegrid: np.ndarray, nb_path: int,
+                           Z0: np.ndarray, Z1: np.ndarray):
+    """
+    Dispatch to a float64-stable kernel by default; use float32 kernel only when all inputs are float32.
+    """
+    if (nodes.dtype == np.float32 and weight.dtype == np.float32 and v0.dtype == np.float32 and
+            timegrid.dtype == np.float32 and Z0.dtype == np.float32 and Z1.dtype == np.float32):
+        return log_spot_full_combined_f32(nodes, weight, v0, theta, kappa1, kappa2, log_s0, v_init,
+                                          rho, volvol, timegrid, nb_path, Z0, Z1)
+    return log_spot_full_combined_f64(nodes, weight, v0, theta, kappa1, kappa2, log_s0, v_init,
+                                      rho, volvol, timegrid, nb_path, Z0, Z1)
+
+

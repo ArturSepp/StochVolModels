@@ -875,12 +875,14 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
                                               weights: np.ndarray,
                                               nodes: np.ndarray,
                                               timegrids: List[np.ndarray],
-                                              variable_type: VariableType = VariableType.LOG_RETURN
+                                              variable_type: VariableType = VariableType.LOG_RETURN,
+                                              debug: bool = True
                                               ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     assert weights.shape == nodes.shape and weights.ndim == 1
     # assert kappa2 == 0.0
     N = nodes.size
-    v0 = sigma0 / np.sum(weights) * np.ones((N,))
+    dtype = weights.dtype
+    v0 = np.full((N,), sigma0 / np.sum(weights), dtype=dtype)
 
     # need to redenote coefficients
     volvol = np.sqrt(beta ** 2 + orthog_vol ** 2)
@@ -889,7 +891,9 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
     nb_path = Z0.shape[1]
     v0_vec = np.repeat(v0[:, None], nb_path, axis=1)
     v_init = v0_vec.copy()
-    log_s0 = 0.0
+    log_s0 = dtype.type(0.0)
+    weight_vec = np.repeat(weights[:, None], nb_path, axis=1)
+    nodes_vec = np.repeat(nodes[:, None], nb_path, axis=1)
 
     # outputs as numpy lists
     option_prices_ttm = List()
@@ -902,12 +906,11 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
         nb_steps = timegrid.size - 1
         Z0_ = Z0[:nb_steps]
         Z1_ = Z1[:nb_steps]
-        weight_vec = np.repeat(weights[:, None], nb_path,axis=1)
-        nodes_vec = np.repeat(nodes[:, None], nb_path,axis=1)
         log_spot_str, vol_str, qv_str = log_spot_full_combined(nodes_vec, weight_vec, v0_vec, theta, kappa1, kappa2, log_s0,
                                                                v_init, rho, volvol, timegrid, nb_path, Z0_, Z1_)
-        print(f"Number of paths with negative vol: {np.sum(weights @ vol_str < 0.0)}, nan vol: {np.count_nonzero(np.isnan(weights @ vol_str))}")
-        print(f"Mean spot Strand: {np.mean(np.exp(log_spot_str))}, nan spots: {np.count_nonzero(np.isnan(log_spot_str))}")
+        if debug:
+            print(f"Number of paths with negative vol: {np.sum(weights @ vol_str < 0.0)}, nan vol: {np.count_nonzero(np.isnan(weights @ vol_str))}")
+            print(f"Mean spot Strand: {np.mean(np.exp(log_spot_str))}, nan spots: {np.count_nonzero(np.isnan(log_spot_str))}")
 
         option_prices, option_std = compute_mc_vars_payoff(x0=log_spot_str, sigma0=vol_str, qvar0=qv_str,
                                                            ttm=ttm,
@@ -920,7 +923,6 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
         option_std_ttm.append(option_std)
 
     return option_prices_ttm, option_std_ttm
-
 
 class LocalTests(Enum):
     CHAIN_PRICER = 1

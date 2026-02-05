@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stochvolmodels"
-version = "1.1.5"
+version = "1.1.7"
 description = "Python implementation of pricing analytics and Monte Carlo simulations for stochastic volatility models including log-normal SV model, Heston"
 readme = "README.md"
 license = {file = "LICENSE.txt"}
@@ -95,9 +95,10 @@ jupyter = [
 
 # Development tools and testing
 dev = [
-    "pytest>=7.0.0",
+    "pytest>=8.4.2",
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
+    "pytest-regressions>=2.8.3",
     "pytest-xdist>=3.0.0",
     "black>=22.0.0",
     "flake8>=5.0.0",
