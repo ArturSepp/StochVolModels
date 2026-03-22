@@ -9,7 +9,7 @@
 | PyPI Version | ![PyPI](https://img.shields.io/pypi/v/stochvolmodels?style=flat-square) |
 | Python Versions | ![Python](https://img.shields.io/pypi/pyversions/stochvolmodels?style=flat-square) |
 | License | ![License](https://img.shields.io/github/license/ArturSepp/StochVolModels.svg?style=flat-square)|
-
+| CI Status | [![CI](https://github.com/ArturSepp/StochVolModels/actions/workflows/ci.yml/badge.svg)](https://github.com/ArturSepp/StochVolModels/actions) |
 
 ### 📈 Package Statistics
 
