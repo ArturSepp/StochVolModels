@@ -2,6 +2,7 @@
 # built in
 import numpy as np
 import matplotlib.pyplot as plt
+import qis
 from scipy.optimize import minimize
 from numba.typed import List
 from typing import Tuple, Optional, Dict, Any
@@ -730,6 +731,7 @@ class LocalTests(Enum):
     CALIBRATOR = 5
 
 
+@qis.timer
 def run_local_test(local_test: LocalTests):
     """Run local tests for development and debugging purposes.
 
@@ -827,4 +829,4 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.SLICE_PRICER)
+    run_local_test(local_test=LocalTests.CALIBRATOR)
