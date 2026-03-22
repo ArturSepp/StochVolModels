@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+
+    - name: Verify core imports
+      run: |
+        python -c "
+        from stochvolmodels import (
+            LogSVPricer, LogSvParams,
+            HestonPricer, HestonParams,
+            OptionType, OptionChain,
+            get_btc_test_chain_data,
+        )
+        print('All imports OK')
+        "
+
+    - name: Run tests (no external data, no plots)
+      run: |
+        python stochvolmodels/data/test_option_chain.py
+
+    - name: Run regression test
+      run: pytest stochvolmodels/tests/ -v
