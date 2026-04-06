@@ -1,6 +1,6 @@
 # 🚀 **StochVolModels Package: stochvolmodels**
 
-> stochvolmodels package implements pricing analytics and Monte Carlo simulations for valuation of European call and put options and implied volatilities of different stochastic volatility models including Karasinski-Sepp long-normal stochastic volatility model and Heston stochastic volatility model.
+> stochvolmodels package implements pricing analytics and Monte Carlo simulations for valuation of European call and put options and implied volatilities of different stochastic volatility models including Karasinski-Sepp log-normal stochastic volatility model and Heston stochastic volatility model.
 
 ---
 
@@ -51,7 +51,7 @@ Upgrade using
 ```python 
 pip install --upgrade stochvolmodels
 ```
-Close using
+Clone using
 ```python 
 git clone https://github.com/ArturSepp/StochVolModels.git
 ```
@@ -95,7 +95,7 @@ The model interface is in stochvolmodels/pricers/model_pricer.py
 
 ### Log-normal stochastic volatility model <a name="logsv"></a>
 
-The analytics for Karasinki-Sepp log-normal stochastic volatility model is based on the paper
+The analytics for Karasinski-Sepp log-normal stochastic volatility model is based on the paper
 
 [Log-normal Stochastic Volatility Model with Quadratic Drift](https://www.worldscientific.com/doi/10.1142/S0219024924500031) by Artur Sepp and Parviz Rakhmonov
 
@@ -139,7 +139,8 @@ examples/run_lognormal_sv_pricer.py
 ```
 
 Imports:
-```python 
+```python
+import numpy as np 
 import stochvolmodels as sv
 from stochvolmodels import LogSVPricer, LogSvParams, OptionChain
 ```
@@ -154,7 +155,7 @@ logsv_pricer = LogSVPricer()
 # define model params    
 params = LogSvParams(sigma0=1.0, theta=1.0, kappa1=5.0, kappa2=5.0, beta=0.2, volvol=2.0)
 
-# 1. compute ne price
+# 1. compute the price
 model_price, vol = logsv_pricer.price_vanilla(params=params,
                                              ttm=0.25,
                                              forward=1.0,
@@ -250,7 +251,7 @@ plt.show()
 
 ## Supporting Illustrations for Public Papers <a name="papers"></a>
 
-As illustrations of different analytics, this packadge includes module ```my_papers``` 
+As illustrations of different analytics, this package includes module ```my_papers``` 
 with codes for computations and visualisations featured in several papers
 for 
 
@@ -350,17 +351,6 @@ author={Sepp, Artur and Rakhmonov, Parviz},
 year={2023},
 note={Working paper},
 url={http://ssrn.com/abstract=4647027}
-}
-
-@article{lucicsepp2024,
-title={Valuation and hedging of cryptocurrency inverse options},
-author={Lucic, Vladimir and Sepp, Artur},
-journal={Quantitative Finance},
-volume={24},
-number={7},
-pages={851--869},
-year={2024},
-url={https://www.tandfonline.com/doi/full/10.1080/14697688.2024.2364804}
 }
 
 @article{lucicsepp2024,
