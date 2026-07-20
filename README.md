@@ -1,28 +1,25 @@
-# 🚀 **StochVolModels Package: stochvolmodels**
+# StochVolModels (`stochvolmodels`)
 
-> stochvolmodels package implements pricing analytics and Monte Carlo simulations for valuation of European call and put options and implied volatilities of different stochastic volatility models including Karasinski-Sepp log-normal stochastic volatility model and Heston stochastic volatility model.
+**stochvolmodels package implements pricing analytics and Monte Carlo simulations for valuation of European call and put options and implied volatilities of different stochastic volatility models including Karasinski-Sepp log-normal stochastic volatility model and Heston stochastic volatility model.**
+
+[![PyPI](https://img.shields.io/pypi/v/stochvolmodels?style=flat-square)](https://pypi.org/project/stochvolmodels/)
+[![Python](https://img.shields.io/pypi/pyversions/stochvolmodels?style=flat-square)](https://pypi.org/project/stochvolmodels/)
+[![License](https://img.shields.io/github/license/ArturSepp/StochVolModels.svg?style=flat-square)](LICENSE)
+[![CI](https://github.com/ArturSepp/StochVolModels/actions/workflows/ci.yml/badge.svg)](https://github.com/ArturSepp/StochVolModels/actions)
+[![Downloads](https://static.pepy.tech/badge/stochvolmodels)](https://pepy.tech/project/stochvolmodels)
+[![Monthly](https://static.pepy.tech/badge/stochvolmodels/month)](https://pepy.tech/project/stochvolmodels)
+
+**Paper:** Sepp, A. and Rakhmonov, P. (2023), *Log-normal stochastic volatility model with quadratic drift*, [International Journal of Theoretical and Applied Finance, 26(8)](https://www.worldscientific.com/doi/10.1142/S0219024924500031). See [Citation](#citation) for the full BibTeX list.
 
 ---
 
-| 📊 Metric | 🔢 Value |
-|-----------|----------|
-| PyPI Version | ![PyPI](https://img.shields.io/pypi/v/stochvolmodels?style=flat-square) |
-| Python Versions | ![Python](https://img.shields.io/pypi/pyversions/stochvolmodels?style=flat-square) |
-| License | ![License](https://img.shields.io/github/license/ArturSepp/StochVolModels.svg?style=flat-square)|
-| CI Status | [![CI](https://github.com/ArturSepp/StochVolModels/actions/workflows/ci.yml/badge.svg)](https://github.com/ArturSepp/StochVolModels/actions) |
+## Why stochvolmodels
 
-### 📈 Package Statistics
+`stochvolmodels` is the reference implementation of the Karasinski-Sepp log-normal beta stochastic volatility model, maintained by one of the model's originators, with the Heston model implemented alongside as a benchmark. The design goal is a single generic interface for a stochastic volatility model — a closed-form moment generating function for Fourier-transform pricing on one side, Monte Carlo dynamics on the other — so that analytic prices, simulated prices, and calibrated implied volatilities are directly comparable model to model.
 
-| 📊 Metric | 🔢 Value |
-|-----------|----------|
-| Total Downloads | [![Total](https://pepy.tech/badge/stochvolmodels)](https://pepy.tech/project/stochvolmodels) |
-| Monthly | ![Monthly](https://pepy.tech/badge/stochvolmodels/month) |
-| Weekly | ![Weekly](https://pepy.tech/badge/stochvolmodels/week) |
-| GitHub Stars | ![GitHub stars](https://img.shields.io/github/stars/ArturSepp/StochVolModels?style=flat-square&logo=github) |
-| GitHub Forks | ![GitHub forks](https://img.shields.io/github/forks/ArturSepp/StochVolModels?style=flat-square&logo=github) |
+The same analytics power the research: the `my_papers` module reproduces the computations and figures of five papers, from the quadratic-drift log-normal SV model (IJTAF) to cryptocurrency inverse options (Quantitative Finance), robust stochastic volatility modelling, impermanent-loss hedging in DeFi, and stochastic volatility for the factor HJM framework — see [Supporting Illustrations](#papers).
 
-
-## StochVolModels
+## Overview
 
 The StochVol package provides:
 1) Analytics for Black-Scholes and Normal vols
@@ -41,6 +38,12 @@ using Fourier transform with closed-form solution for moment generating function
 work is provided in top-level package ```my_papers``` 
 which contains computations and visualisations for several papers
 
+
+## When to use it — and when not
+
+Use `stochvolmodels` for European vanilla pricing and implied-volatility analytics under stochastic volatility, for model calibration to option chains (a calibration example to Bitcoin options data is included), and for replicating the papers above.
+
+It is not a general derivatives platform: no American or path-dependent payoffs, no local-volatility or term-structure models. For fast Black-Scholes-Merton and Bachelier array pricing without stochastic volatility, use [`vanilla-option-pricers`](https://github.com/ArturSepp/VanillaOptionPricers); for strategy backtesting and reporting, use [`qis`](https://github.com/ArturSepp/QuantInvestStrats).
 
 ## Installation
 Install using
@@ -314,6 +317,23 @@ StochVolModels/
 └── README.md
 ```
 
+## Ecosystem
+
+This package is part of an open-source Python stack for quantitative finance — full catalogue at [github.com/ArturSepp](https://github.com/ArturSepp):
+
+| Package | Purpose |
+|---|---|
+| [`qis`](https://github.com/ArturSepp/QuantInvestStrats) | Performance analytics, factsheets, and visualisation |
+| [`optimalportfolios`](https://github.com/ArturSepp/OptimalPortfolios) | Portfolio construction and backtesting |
+| [`factorlasso`](https://github.com/ArturSepp/factorlasso) | Sparse factor models and factor covariance estimation |
+| [`bbg-fetch`](https://github.com/ArturSepp/BloombergFetch) | Bloomberg data fetching |
+| [`trendfollowing`](https://github.com/ArturSepp/TrendFollowingSystems) | Trend-following systems: closed-form theory and replication |
+| [`goal-based-allocation`](https://github.com/ArturSepp/GoalBasedAllocation) | Dynamic MV allocation under regime-switching jump-diffusions |
+| [`stochvolmodels`](https://github.com/ArturSepp/StochVolModels) *(this package)* | Stochastic volatility pricing analytics |
+| [`vanilla-option-pricers`](https://github.com/ArturSepp/VanillaOptionPricers) | Vectorised vanilla option pricers and implied volatility fitters |
+
+Dependency links within the stack: `optimalportfolios` builds on `qis` and `factorlasso`; `trendfollowing` builds on `qis`.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
@@ -382,17 +402,3 @@ Special thanks to co-authors and collaborators:
 - Alexander Lipton
 
 For additional research and advanced analytics, see the companion modules and papers included in this package.
-
-## BibTeX Citations for StochVolModels (Stochastic Volatility Models) Package
-
-If you use StochVolModels in your research, please cite it as:
-
-```bibtex
-@software{stochvolmodels2024,
-  author={Sepp, Artur},
-  title={StochVolModels: Python implementation of pricing analytics and Monte Carlo simulations for stochastic volatility models},
-  year={2024},
-  url={https://github.com/ArturSepp/StochVolModels},
-}
-```
-
