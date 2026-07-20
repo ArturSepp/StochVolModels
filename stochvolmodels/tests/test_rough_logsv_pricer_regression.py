@@ -4,11 +4,7 @@ import stochvolmodels as sv
 from stochvolmodels import LogSVPricer, LogSvParams, LogsvModelCalibrationType
 
 
-def _array_list(values):
-    return [np.asarray(item).tolist() for item in values]
-
-
-def test_rough_logsv_pricer_pricing_regression(data_regression) -> None:
+def test_rough_logsv_pricer_pricing_regression(ndarrays_regression) -> None:
     btc_option_chain = sv.get_btc_test_chain_data()
     Z0, Z1, grid_ttms = sv.get_randoms_for_rough_vol_chain_valuation(
         ttms=btc_option_chain.ttms,
@@ -46,5 +42,8 @@ def test_rough_logsv_pricer_pricing_regression(data_regression) -> None:
         timegrids=grid_ttms,
     )
 
-    data_regression.check({"option_prices_ttm": _array_list(option_prices_ttm)})
-
+    # per-maturity arrays are ragged: one key each, compared with relative tolerance
+    ndarrays_regression.check({f"option_prices_ttm_{idx}": np.asarray(prices, dtype=float)
+                               for idx, prices in enumerate(option_prices_ttm)},
+                              default_tolerance=dict(rtol=1e-7, atol=0.0),
+                              )
