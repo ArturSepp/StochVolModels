@@ -1,8 +1,30 @@
+"""
+Double-exponential series pricer for swaptions and options on rate futures.
+
+Evaluates the Fourier inversion integrals of Sec. 7.2, Eqs. (121) and (122), by a
+double-exponential (tanh-sinh) quadrature rather than a fixed grid. The transform
+decays fast enough in the transform variable that a truncated series converges
+geometrically, so the number of nodes is set by the truncation index rather than
+by a step size.
+
+Reference
+---------
+A. Sepp and P. Rakhmonov (2025), Stochastic volatility for factor Heath-Jarrow-Morton
+framework, Review of Derivatives Research 28:12. Equation numbers throughout this
+module refer to that article.
+"""
 import numpy as np
 from typing import Tuple, Union
 
 
 def de_pricer(ff, ff_transf) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    value an option by double-exponential quadrature of the inversion integral.
+
+    Applies the transform-based valuation of Eqs. (121) and (122) with nodes placed
+    by the tanh-sinh rule, so the integrand is sampled densely where it carries mass
+    and sparsely in the tails.
+    """
     eps0 = 1e-6
     h = 0.5
     eps = 1e-6
@@ -67,6 +89,7 @@ def func(ff, x: Union[float, np.ndarray]) -> np.ndarray:
 
 
 def part_sum(ff, h2: float, delta: int, N: int) -> float:
+    """partial sum of the double-exponential series up to the truncation index."""
     s = 0.0
     func_vals = func(ff, h2 + np.arange(0.0, N, 1.0) * delta * h2)
     for idx, func_val in enumerate(func_vals):
@@ -80,6 +103,7 @@ def trunc_index(ff,
                 s: np.ndarray,
                 Nmax: float,
                 eps0: float) -> (int, np.ndarray):
+    """smallest index at which the series term falls below the tolerance."""
     x = h2
     k = 1
     for k in np.arange(1.0, Nmax):

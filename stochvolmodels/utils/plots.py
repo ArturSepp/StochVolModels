@@ -23,6 +23,7 @@ FIGSIZE = (18, 10)  # global display size
 
 # talk
 def set_fig_props(size: int = 14):
+    """set the global matplotlib font sizes used across the package figures."""
     sns.set_context("talk", rc={'font.size': size, 'axes.titlesize': size, 'axes.labelsize': size, 'legend.fontsize': size})
 
     SMALL_SIZE = 14
@@ -39,10 +40,12 @@ def set_fig_props(size: int = 14):
 
 
 def create_dummy_line(**kwargs):
+    """return an invisible Line2D, used to inject a title row into a legend."""
     return Line2D([], [], **kwargs)
 
 
 def get_n_sns_colors(n: int) -> List[str]:
+    """first n colours of the seaborn default palette, as hex strings."""
     return sns.color_palette(None, n)
 
 
@@ -51,6 +54,9 @@ def fig_to_pdf(fig: plt.Figure,
                local_path: str,
                orientation: Literal['portrait', 'landscape'] = 'portrait'
                ) -> str:
+    """
+    write a figure to a PDF under ``local_path`` and return the full file name.
+    """
     file_path = join(local_path, f"{file_name}.pdf")
     with PdfPages(file_path) as pdf:
         pdf.savefig(fig, orientation=orientation)
@@ -135,6 +141,12 @@ def vol_slice_fit(bid_vol: pd.Series,
                   **kwargs
                   ) -> Optional[plt.Figure]:
 
+    """
+    plot model implied volatilities against market bid and ask quotes for one slice.
+
+    The calibration-quality figure of Fig. 8: bid and ask as markers, the model
+    curve as a continuous line, and the ATM point highlighted.
+    """
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(8, 8))
     else:
@@ -217,6 +229,9 @@ def plot_model_risk_var(risk_var: Union[pd.Series, pd.DataFrame],
                         title: str = None,
                         ax: plt.Subplot = None
                         ) -> plt.Figure:
+    """
+    plot a model density or risk profile against the state variable grid.
+    """
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(8, 8))
     else:
@@ -268,6 +283,9 @@ def model_vols_ts(model_vols: Union[pd.Series, pd.DataFrame],
                   ax: plt.Subplot = None,
                   **kwargs
                   ) -> plt.Figure:
+    """
+    plot implied volatilities across strikes or deltas, one line per maturity slice.
+    """
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(8, 8))
     else:
@@ -316,6 +334,9 @@ def model_param_ts(param_ts: Union[pd.Series, pd.DataFrame],
                    legend_loc: str = 'upper center',
                    ax: plt.Subplot = None
                    ) -> plt.Figure:
+    """
+    plot a time series of calibrated model parameters, as in Fig. 7.
+    """
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(8, 8))
     else:
@@ -344,6 +365,7 @@ def set_legend_colors(ax: plt.Subplot,
                       **kwargs
                       ) -> None:
 
+    """recolour legend text to match the line colours, for dense multi-line plots."""
     leg = ax.get_legend()
     if colors is None:
         colors = [line.get_color() for line in leg.get_lines()]
@@ -359,6 +381,7 @@ def set_y_limits(ax: plt.Subplot,
                  y_limits: Tuple[Union[float, None], Union[float, None]]
                  ) -> None:
 
+    """apply y-axis limits, leaving either bound untouched when it is None."""
     ymin, ymax = ax.get_ylim()
     if y_limits[0] is not None:
         ymin = y_limits[0]
@@ -368,6 +391,7 @@ def set_y_limits(ax: plt.Subplot,
 
 
 def map_deltas_to_str(bsm_deltas: np.ndarray) -> List[str]:
+    """format an array of BSM deltas as percentage labels for axis ticks."""
     slice_index = []
     index_str = [f"{x:0.2f}" for x in bsm_deltas]
     for idx, x in enumerate(bsm_deltas):
@@ -387,6 +411,7 @@ def set_subplot_border(fig: plt.Figure,
                        n_ax_rows: int = 1
                        ) -> None:
 
+    """draw a border around the subplot grid of a figure."""
     n_ax1 = n_ax_rows
     n_ax2 = n_ax_col
 
@@ -413,6 +438,7 @@ def set_subplot_border(fig: plt.Figure,
 def align_x_limits_axs(axs: List[plt.Subplot],
                        is_invisible_xs: bool = False
                        ) -> None:
+    """give every axis the widest x range across the list, optionally hiding tick labels."""
     xmins = []
     xmaxs = []
     for ax in axs:
@@ -433,6 +459,7 @@ def align_x_limits_axs(axs: List[plt.Subplot],
 def align_y_limits_axs(axs: List[plt.Subplot],
                        is_invisible_ys: bool = False
                        ) -> None:
+    """give every axis the widest y range across the list, optionally hiding tick labels."""
     ymins = []
     ymaxs = []
     for ax in axs:
@@ -451,6 +478,7 @@ def align_y_limits_axs(axs: List[plt.Subplot],
 
 
 def to_flat_list(items: Iterable) -> List[Any]:
+    """flatten one level of nesting, returning a plain list."""
     if isinstance(items, Iterable):
         flat_list = [item for item in flatten(items)]
     else:

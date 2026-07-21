@@ -1,4 +1,9 @@
+from importlib.metadata import PackageNotFoundError as _PackageNotFoundError, version as _version
 
+try:
+    __version__ = _version("stochvolmodels")
+except _PackageNotFoundError:  # running from a source tree that was never installed
+    __version__ = "0.0.0"
 
 from stochvolmodels.utils.config import VariableType
 
@@ -74,7 +79,6 @@ from stochvolmodels.pricers.analytic.tdist import (
 
 from stochvolmodels.pricers.logsv.affine_expansion import (
     ExpansionOrder,
-    VariableType,
     compute_logsv_a_mgf_grid,
     func_a_ode_quadratic_terms,
     func_rhs,
@@ -85,9 +89,6 @@ from stochvolmodels.pricers.logsv.affine_expansion import (
     solve_analytic_ode_for_a,
     solve_analytic_ode_for_a0,
     solve_analytic_ode_grid_phi,
-    solve_ode_for_a,
-    compute_logsv_a_mgf_grid,
-    solve_a_ode_grid,
     solve_ode_for_a,
 )
 
@@ -129,7 +130,7 @@ from stochvolmodels.pricers.tdist_pricer import (
 from stochvolmodels.data.option_chain import OptionChain, OptionSlice
 
 
-from stochvolmodels.data.test_option_chain import (
+from stochvolmodels.data.sample_option_chains import (
     get_btc_test_chain_data,
     get_gld_test_chain_data,
     get_gld_test_chain_data_6m,

@@ -21,6 +21,12 @@ from stochvolmodels.data.option_chain import OptionChain
 
 @dataclass
 class TdistParams(ModelParams):
+    """
+    parameters of the Student-t model: volatility, drift and degrees of freedom nu.
+
+    Terminal log-returns are Student-t with nu > 2, scaled so the variance matches
+    vol^2 ttm. Lower nu gives heavier tails and a more pronounced smile.
+    """
     drift: float
     vol: float
     nu: float
@@ -29,6 +35,7 @@ class TdistParams(ModelParams):
 
 class TdistPricer(ModelPricer):
 
+    """ModelPricer valuing options under a Student-t terminal distribution."""
     def price_chain(self, option_chain: OptionChain, params: TdistParams, **kwargs) -> np.ndarray:
         """
         implementation of generic method price_chain using heston wrapper for tdist prices
@@ -49,6 +56,7 @@ class TdistPricer(ModelPricer):
                              variable_type: VariableType = VariableType.LOG_RETURN,
                              **kwargs
                              ) -> (List[np.ndarray], List[np.ndarray]):
+        """price an option chain by Monte Carlo rather than the analytic solution."""
         raise NotImplementedError
 
     @timer
@@ -90,12 +98,14 @@ class TdistPricer(ModelPricer):
             weights = np.ones_like(market_vols)
 
         def parse_model_params(pars: np.ndarray) -> TdistParams:
+            """map the optimizer parameter vector onto a model parameter object."""
             vol = pars[0]
             nu = pars[1]
             drift = td.imply_drift_tdist(rf_rate=rf_rate, vol=vol, nu=nu, ttm=ttm)
             return TdistParams(vol=vol, nu=nu, drift=drift, ttm=ttm)
 
         def objective(pars: np.ndarray, args: np.ndarray) -> float:
+            """weighted mean squared error between model and market implied volatilities."""
             params = parse_model_params(pars=pars)
             model_vols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params)
             resid = np.nansum(weights * np.square(to_flat_np_array(model_vols) - market_vols))
@@ -162,6 +172,7 @@ def tdist_vanilla_chain_pricer(vol: float,
 
 
 class LocalTests(Enum):
+    """cases for the local test dispatcher."""
     CALIBRATOR = 1
 
 
@@ -174,7 +185,7 @@ def run_local_test(local_test: LocalTests):
 
     import seaborn as sns
     from stochvolmodels.utils import plots as plot
-    import stochvolmodels.data.test_option_chain as chains
+    import stochvolmodels.data.sample_option_chains as chains
 
     if local_test == LocalTests.CALIBRATOR:
         # option_chain = chains.get_btc_test_chain_data()

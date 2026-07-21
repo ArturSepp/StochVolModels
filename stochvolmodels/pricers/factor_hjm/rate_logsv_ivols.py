@@ -1,3 +1,16 @@
+"""
+Implied volatility inversion and fitting for rates options.
+
+Converts model and market prices of swaptions and options on rate futures into
+normal or shifted log-normal implied volatilities, the space in which the
+calibrations of Secs. 7.5 and 7.7 are carried out.
+
+Reference
+---------
+A. Sepp and P. Rakhmonov (2025), Stochastic volatility for factor Heath-Jarrow-Morton
+framework, Review of Derivatives Research 28:12. Equation numbers throughout this
+module refer to that article.
+"""
 import numpy as np
 import pandas as pd
 from typing import Dict, Union
@@ -97,6 +110,12 @@ def fit_logsv_ivols(strikes: np.ndarray,
                     beta: float,
                     shift: float,
                     ttm: float) -> Dict[str, float]:
+    """
+    fit log-normal SV parameters to a slice of market implied volatilities.
+
+    Minimizes squared differences in volatility space, as in the swaption
+    calibration of Sec. 7.5.
+    """
     atm_fit_params = cals_logsv_parab_fit(strikes=strikes, mid_vols=mid_vols, f0=f0, beta=beta, shift=shift)
     bounds = ([0.001, 0.01, -0.999], [3.0*atm_fit_params[ALPHA], 5.0, 0.999])
     atm_fit_params[RHO] = np.maximum(-0.99, np.minimum(0.99, atm_fit_params[RHO])) if ~np.isnan(atm_fit_params[RHO]) else 0.0
@@ -162,6 +181,7 @@ def get_delta_at_strikes(strikes: np.ndarray,
                          shift: float,
                          optiontypes: np.ndarray = None
                          ) -> pd.Series:
+    """option deltas at the given strikes, for delta-based strike grids."""
     if optiontypes is None:
         optiontypes = np.repeat('C', strikes.size)
     st = np.sqrt(ttm)
@@ -188,6 +208,7 @@ def infer_strikes_from_deltas(deltas: np.ndarray,
     """
     st = np.sqrt(ttm)
     def func(strike: float, given_delta: float) -> float:
+        """objective evaluated by the optimizer."""
         moneyness = f0-strike
         vol_st = st * calc_logsv_ivols(strikes=strike, f0=f0, ttm=ttm, alpha=sigma0, rho=rho, total_vol=total_vol,
                                        beta=beta, shift=shift)

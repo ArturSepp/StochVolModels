@@ -16,7 +16,7 @@ import pandas as pd
 
 import stochvolmodels.pricers.logsv_pricer as sv
 from stochvolmodels import LogSvParams
-from stochvolmodels.data.test_option_chain import get_btc_test_chain_data
+from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
 from stochvolmodels.utils.funcs import set_time_grid
 
 import psutil

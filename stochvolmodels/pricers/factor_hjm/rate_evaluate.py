@@ -1,15 +1,36 @@
+"""
+Curve evaluation helpers: discount factors, bonds, annuities and par rates.
+
+Deterministic curve arithmetic used by the factor HJM pricers. Bond prices follow
+the zero-coupon representation of Eq. (15),
+
+    P(t, t + tau) = P(0, t + tau) / P(0, t) exp{ -B_P(tau) X_t - B~_P(tau) Y_t },
+
+with the integrated basis vectors B_P and B~_P defined in Eq. (16).
+
+Reference
+---------
+A. Sepp and P. Rakhmonov (2025), Stochastic volatility for factor Heath-Jarrow-Morton
+framework, Review of Derivatives Research 28:12. Equation numbers throughout this
+module refer to that article.
+"""
 import numpy as np
 from numba import njit
-from stochvolmodels.pricers.factor_hjm.rate_core import to_yearfrac
+from stochvolmodels.utils.rate_core import to_yearfrac
 
 
 @njit(cache=False, fastmath=True)
 def init_mean_rev():
+    """set the module-level mean-reversion rate used by the curve helpers."""
     return 0.025
 
 
 class Discount:
+    """
+    deterministic discount curve backing the bond and annuity calculations.
+    """
     def __init__(self, currency="USD"):
+        """store the curve specification."""
         self.today = 0
         # flat 0.8% zero rate for JPY and 3.5% for USD
         if currency == "USD":
@@ -20,12 +41,14 @@ class Discount:
             raise NotImplementedError
 
     def df(self, d) -> float:
+        """discount factor to time t on this curve."""
         year_frac = to_yearfrac(self.today, d)
         disc_factor = np.exp(-self.r * year_frac)
         return disc_factor
 
 
 def G(t, T):
+    """mean-reversion factor G(t, T) = (1 - exp(-k (T - t))) / k of the exponential basis."""
     k = init_mean_rev()
     G_tT = (1.0 - np.exp(-k * (T - t))) / k
     return G_tT
@@ -35,6 +58,9 @@ def bond(t, T, x, y,
          m: int,
          is_mc_mode: bool,
          discount: Discount = None):
+    """
+    zero-coupon bond price of Eq. (15), given the factor state.
+    """
     if discount is None:
         discount = Discount()
     if isinstance(t, np.ndarray) and isinstance(x, np.ndarray) and t.shape != x.shape:
@@ -52,6 +78,7 @@ def bond(t, T, x, y,
 def annuity(t, ts_sw: np.ndarray, x, y, m,
             discount: Discount = None,
             is_mc_mode: bool = False):
+    """annuity of a swap schedule, the numeraire of the measure Q^A in Sec. 3.1."""
     if discount is None:
         discount = Discount()
     ann = 0
@@ -64,6 +91,7 @@ def annuity(t, ts_sw: np.ndarray, x, y, m,
 def swap_rate(t, ts_sw: np.ndarray, x, y,
               discount: Discount = None,
               is_mc_mode: bool = False):
+    """par swap rate of Eq. (28), the floating leg over the annuity."""
     if discount is None:
         discount = Discount()
     if (isinstance(x, np.ndarray) and isinstance(y, float)) or (isinstance(x, float) and isinstance(y, np.ndarray)):
@@ -103,6 +131,7 @@ def libor_rate(t, t_start: float, t_end: float,
                x, y,
                discount: Discount = None,
                is_mc_mode: bool = False):
+    """simply compounded forward rate over the accrual period."""
     if discount is None:
         discount = Discount()
     if (isinstance(x, np.ndarray) and isinstance(y, float)) or (isinstance(x, float) and isinstance(y, np.ndarray)):

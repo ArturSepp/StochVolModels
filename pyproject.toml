@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stochvolmodels"
-version = "1.1.8"
+version = "1.2.1"
 description = "Python implementation of pricing analytics and Monte Carlo simulations for stochastic volatility models including log-normal SV model, Heston"
 readme = "README.md"
 license = {text = "MIT"}
@@ -36,7 +36,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -103,7 +102,7 @@ exclude = ["tests*", "docs*", "notebooks*", "resources*"]
 stochvolmodels = ["*.yaml"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["stochvolmodels/tests"]
 addopts = "-ra -q --tb=short"
 
 [tool.ruff]

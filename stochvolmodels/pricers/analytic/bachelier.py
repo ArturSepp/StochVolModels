@@ -46,6 +46,7 @@ def compute_normal_slice_prices(ttm: float,
     vectorised bsm deltas for array of aligned strikes, vols, and optiontypes
     """
     def f(strike: float, vol: float, optiontype: str) -> float:
+        """root function passed to the implied volatility solver."""
         return compute_normal_price(forward=forward,
                                     ttm=ttm,
                                     vol=vol,
@@ -80,6 +81,13 @@ def compute_normal_delta_from_lognormal_vol(ttm: float,
                                             optiontype: str,
                                             discfactor: float = 1.0
                                             ) -> float:
+    """
+    normal delta of an option quoted with a log-normal implied volatility.
+
+    Prices the option under Black-Scholes, re-implies a Bachelier volatility from
+    that price and returns the corresponding normal delta, so quotes in the two
+    conventions can be compared on one axis.
+    """
     if np.abs(ttm) < 1e-12:
         if optiontype == 'C' and forward > strike:
             delta = 1.0
@@ -235,6 +243,7 @@ def infer_normal_ivols_from_model_slice_prices(ttm: float,
                                                model_prices: np.ndarray,
                                                discfactor: float
                                                ) -> np.ndarray:
+    """invert model prices of one slice to Bachelier implied volatilities."""
     model_vol_ttm = np.zeros_like(strikes)
     for idx, (strike, model_price, optiontype) in enumerate(zip(strikes, model_prices, optiontypes)):
         model_vol_ttm[idx] = infer_normal_implied_vol(forward=forward, ttm=ttm, discfactor=discfactor,
@@ -292,6 +301,12 @@ def strikes_to_delta(strikes: np.ndarray,
                      ivols: np.ndarray,
                      f0: float,
                      ttm: float):
+    """
+    normal delta of each strike, N((F - K) / (vol sqrt(ttm))).
+
+    The Bachelier delta, so the result is a call delta on [0, 1] that is symmetric
+    about the forward, unlike its log-normal counterpart.
+    """
     assert strikes.shape == ivols.shape
     d = (f0 - strikes) / ivols / np.sqrt(ttm)
     deltas = ncdf(d)

@@ -1,6 +1,24 @@
 """
-Implementation of log-normal stochastic volatility model
-The lognormal sv model interface derives from ModelPricer
+Pricer for the log-normal beta SV model with quadratic drift.
+
+Implements the ModelPricer interface for the model of Eq. (3.12) in Sepp and
+Rakhmonov (2024). Vanilla and inverse options are valued by Fourier inversion of
+the affine expansion of the MGF: the capped payoff of Eq. (5.4) under the
+money-market account measure and Eq. (5.13) under the inverse measure, assembled
+into calls and puts by Eqs. (5.9) and (5.16), and options on quadratic variance by
+Eqs. (5.20) and (5.24). The Monte Carlo path implements the discretization of
+Corollary 3.5, Eq. (3.59).
+
+Calibration follows Sec. 6.2: kappa1 and kappa2 are estimated beforehand from the
+autocorrelation of the volatility process, leaving sigma0, theta, beta and
+epsilon to be fitted by minimizing the vega-weighted mean squared error of
+Eq. (6.3) against market implied volatilities.
+
+Reference
+---------
+A. Sepp and P. Rakhmonov (2024), Log-normal Stochastic Volatility Model with
+Quadratic Drift, International Journal of Theoretical and Applied Finance 26(8),
+2450003. Equation numbers throughout this module refer to that article.
 """
 # package
 import numpy as np
@@ -27,10 +45,17 @@ from stochvolmodels.pricers.rough_logsv.split_simulation import log_spot_full_co
 
 # data
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.data.test_option_chain import get_btc_test_chain_data
+from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
 
 
 class LogsvModelCalibrationType(Enum):
+    """
+    which model parameters the calibration solves for.
+
+    PARAMS4 is the setup of Sec. 6.2, where kappa1 and kappa2 are estimated
+    beforehand from the volatility autocorrelation and held fixed; the article
+    reports kappa1 = 2.21 and kappa2 = 2.18 for Bitcoin.
+    """
     PARAMS4 = 1  # v0, theta, beta, volvol; kappa1, kappa2 are set externally
     PARAMS5 = 2  # v0, theta, kappa1, beta, volvol
     PARAMS6 = 3  # v0, theta, kappa1, kappa2, beta, volvol
@@ -38,6 +63,18 @@ class LogsvModelCalibrationType(Enum):
 
 
 class ConstraintsType(Enum):
+    """
+    parameter constraints imposed during calibration.
+
+    MMA_MARTINGALE imposes kappa2 >= beta, which by Theorem 3.7(1) makes Z_t a
+    martingale under the MMA measure and by Theorem 3.6 makes Q and the inverse
+    measure equivalent. INVERSE_MARTINGALE imposes the stronger kappa2 >= 2 beta
+    of Theorem 3.7(2), needed for R_t to be a martingale under the inverse
+    measure; Sec. 6.2 calibrates Bitcoin under this constraint. The MOMENT4
+    variants add kappa >= 1.5 vartheta^2, the n = 4 diagonal stability condition
+    c(4) - 4 kappa < 0 of the moment generator in Eq. (3.48), which keeps the
+    fourth moment of the volatility finite.
+    """
     UNCONSTRAINT = 1
     MMA_MARTINGALE = 2  # kappa_2 >= beta
     INVERSE_MARTINGALE = 3  # kappa_2 >= 2.0*beta
@@ -46,6 +83,12 @@ class ConstraintsType(Enum):
 
 
 class CalibrationEngine(Enum):
+    """
+    how model implied volatilities are produced inside the calibration objective.
+
+    ANALYTIC uses the affine expansion of Sec. 4; MC and ROUGH_MC use simulation
+    with randoms fixed across the optimizer's iterations.
+    """
     ANALYTIC = 1
     MC = 2
     ROUGH_MC = 3
@@ -55,6 +98,13 @@ LOGSV_BTC_PARAMS = LogSvParams(sigma0=0.8376, theta=1.0413, kappa1=3.1844, kappa
 
 
 class LogSVPricer(ModelPricer):
+    """
+    ModelPricer for the log-normal beta SV model of Eq. (3.12).
+
+    Prices option chains by Fourier inversion of the affine expansion, simulates
+    the model by the scheme of Eq. (3.59), and calibrates to market implied
+    volatilities under the martingale constraints of Theorem 3.7.
+    """
 
     # @timer
     def price_chain(self,
@@ -64,7 +114,11 @@ class LogSVPricer(ModelPricer):
                     **kwargs
                     ) -> List[np.ndarray]:
         """
-        implementation of generic method price_chain using log sv wrapper
+        price an option chain, implementing the generic ModelPricer interface.
+
+        Delegates to :func:`logsv_chain_pricer`. With ``is_spot_measure=True`` the
+        chain is valued under the MMA measure by Eqs. (5.4) and (5.9); with False,
+        under the inverse measure by Eqs. (5.13) and (5.16).
         """
         model_prices = logsv_chain_pricer(params=params,
                                           ttms=option_chain.ttms,
@@ -86,6 +140,17 @@ class LogSVPricer(ModelPricer):
                              nb_steps: Optional[int] = None,
                              **kwargs
                              ) -> (List[np.ndarray], List[np.ndarray]):
+        """
+        price an option chain by Monte Carlo rather than the affine expansion.
+
+        Routes to the rough simulator when ``use_rough_mc`` is passed in kwargs, which
+        then also requires ``seed``; otherwise to :func:`logsv_mc_chain_pricer`.
+
+        Returns
+        -------
+        Tuple[List[np.ndarray], List[np.ndarray]]
+            Model prices and their standard errors, one array per maturity slice.
+        """
         vol_backbone_etas = params.get_vol_backbone_etas(ttms=option_chain.ttms)
         if 'use_rough_mc' in kwargs and kwargs['use_rough_mc']:
             assert 'seed' in kwargs
@@ -128,7 +193,10 @@ class LogSVPricer(ModelPricer):
 
     def set_vol_scaler(self, option_chain: OptionChain) -> float:
         """
-        use chain vols to set the scaler
+        set the transform grid scaler from the first ATM volatility of the chain.
+
+        Held fixed across calibration iterations so the Phi grid of Sec. 6.1 does
+        not move with sigma0 as the optimizer steps.
         """
         atm0 = option_chain.get_chain_atm_vols()[0]
         ttm0 = option_chain.ttms[0]
@@ -151,7 +219,45 @@ class LogSVPricer(ModelPricer):
                                         **kwargs
                                         ) -> LogSvParams:
         """
-        implementation of model calibration interface with nonlinear constraints
+        calibrate model parameters to a chain of market implied volatilities.
+
+        Minimizes the weighted mean squared error of Eq. (6.3),
+
+            WMSE = sum_n w_n(T, K) (sigma_n^model(T, K) - sigma_n^implied(T, K))^2,
+
+        with w_n set to Black-Scholes vega when ``is_vega_weighted`` is True, under
+        the constraints selected by ``constraints_type``. Sec. 6.2 uses SLSQP;
+        ``scipy.optimize.minimize`` is called with its default choice for the
+        given bounds and constraints here.
+
+        Parameters
+        ----------
+        option_chain : OptionChain
+            Market chain carrying maturities, strikes, option types and mid vols.
+        params0 : LogSvParams
+            Starting point. Under PARAMS4 its kappa1 and kappa2 are held fixed.
+        params_min, params_max : LogSvParams
+            Box bounds on the fitted parameters.
+        is_vega_weighted : bool, default True
+            Weight residuals by vega, per Eq. (6.3).
+        is_unit_ttm_vega : bool, default False
+            Normalize vegas within each maturity slice before weighting.
+        model_calibration_type : LogsvModelCalibrationType, default PARAMS5
+            Which parameters are free.
+        constraints_type : ConstraintsType, default UNCONSTRAINT
+            Martingale and moment constraints of Theorem 3.7.
+        calibration_engine : CalibrationEngine, default ANALYTIC
+            Analytic expansion or Monte Carlo inside the objective.
+        nb_path, nb_steps, seed : int
+            Monte Carlo controls, used only for the MC engines. The randoms are
+            drawn once and reused across iterations so the objective is smooth.
+
+        Returns
+        -------
+        LogSvParams
+            Fitted parameters. Compare with Eq. (6.4), which reports
+            sigma0 = 0.41, theta = 0.38, beta = 0.50, epsilon = 3.06 for Bitcoin
+            on 20 June 2023.
         """
         vol_scaler = self.set_vol_scaler(option_chain=option_chain)
 
@@ -449,6 +555,7 @@ def v0_implied(atm: float, beta: float, volvol: float, theta: float, kappa1: flo
 
 
 def set_vol_scaler(sigma0: float, ttm: float) -> float:
+    """transform grid scaler from the ATM volatility and the shortest maturity."""
     return sigma0 * np.sqrt(np.minimum(np.min(ttm), 0.5 / 12.0))  # lower bound is two weeks
 
 
@@ -607,6 +714,13 @@ def logsv_mc_chain_pricer(ttms: np.ndarray,
                           nb_steps_per_year: int = 360,
                           variable_type: VariableType = VariableType.LOG_RETURN
                           ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+    """
+    price an option chain by simulating the scheme of Eq. (3.59) slice by slice.
+
+    Each maturity is simulated from the terminal state of the previous one, so the
+    chain shares a single path set. Returns model prices and their Monte Carlo
+    standard errors, one array per slice.
+    """
     # starting values
     x0 = np.zeros(nb_path)
     qvar0 = np.zeros(nb_path)
@@ -646,7 +760,6 @@ def logsv_mc_chain_pricer(ttms: np.ndarray,
     return option_prices_ttm, option_std_ttm
 
 
-@njit(cache=False, fastmath=False)
 def simulate_vol_paths(ttm: float,
                        v0: float,
                        theta: float,
@@ -661,7 +774,46 @@ def simulate_vol_paths(ttm: float,
                        **kwargs
                        ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    simulate vol paths on grid_t = [0.0, ttm]
+    simulate paths of the volatility process on [0, ttm].
+
+    Steps the log-volatility L_t = ln sigma_t of Eq. (3.55), whose drift is
+
+        zeta(L) = (-kappa1 + kappa2 theta - 0.5 vartheta^2)
+                  + kappa1 theta exp(-L) - kappa2 exp(L),
+
+    with ``adj`` shifting the quadratic coefficient from kappa2 to kappa2 - beta
+    under the inverse measure, per Eq. (3.26).
+
+    Parameters
+    ----------
+    ttm : float
+        Horizon in years.
+    v0 : float
+        Initial volatility sigma_0.
+    theta, kappa1, kappa2, beta, volvol : float
+        Model parameters of Eq. (3.12).
+    is_spot_measure : bool, default True
+        MMA measure when True, inverse measure when False.
+    nb_path : int, default 100000
+        Number of paths.
+    nb_steps_per_year : int, default 360
+        Steps per year. The article uses daily steps.
+    brownians : np.ndarray, default None
+        Pre-drawn scaled increments of shape (nb_steps, nb_path). Drawn internally
+        when None.
+
+    Returns
+    -------
+    sigma_t : np.ndarray
+        Volatility paths including the initial value in the first row.
+    grid_t : np.ndarray
+        Time grid.
+
+    Notes
+    -----
+    The drift is evaluated at the current step, so this is an explicit Euler
+    scheme on the Lamperti transform, not the backward Euler-Maruyama scheme of
+    Eq. (3.56) for which Theorem 3.8 proves strong order 1.
     """
     sigma0 = v0 * np.ones(nb_path)
 
@@ -678,7 +830,7 @@ def simulate_vol_paths(ttm: float,
     vartheta2 = beta*beta + volvol*volvol
     vartheta = np.sqrt(vartheta2)
     vol_var = np.log(sigma0)
-    sigma_t = np.zeros((nb_steps_per_year + 1, nb_path))  # sigma grid will increase to include the sigma_0 at t0 = 0
+    sigma_t = np.zeros((nb_steps + 1, nb_path))  # one row per step plus the initial value at t0 = 0
     sigma_t[0, :] = sigma0  # keep first value
     for t_, w1_ in enumerate(brownians):
         vol_var = vol_var + ((kappa1 * theta / sigma0 - kappa1) + kappa2*(theta-sigma0) + adj*sigma0 - 0.5*vartheta2) * dt + vartheta*w1_
@@ -707,7 +859,43 @@ def simulate_logsv_x_vol_terminal(ttm: float,
                                   dt: Optional[float] = None
                                   ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    mc simulator for terminal values of log-return, vol sigma0, and qvar for log sv model
+    simulate terminal log-return, volatility and quadratic variance.
+
+    Implements the discretization of Corollary 3.5, Eq. (3.59): the log-price
+    X_t of Eq. (3.16), the log-volatility L_t of Eq. (3.55) and the quadratic
+    variance I_t of Eq. (3.12), driven by two independent Brownian motions
+    W^(0) and W^(1). Under the inverse measure the sign of the X drift flips, per
+    the dynamics of Eq. (3.36).
+
+    Parameters
+    ----------
+    ttm : float
+        Horizon in years.
+    x0, sigma0, qvar0 : np.ndarray
+        Initial values, either scalars broadcast to nb_path or full path vectors,
+        so that a chain can be simulated maturity by maturity from the previous
+        terminal state.
+    theta, kappa1, kappa2, beta, volvol : float
+        Model parameters of Eq. (3.12).
+    vol_backbone_eta : float, default 1.0
+        Maturity scaling of theta. 1.0 reproduces the article.
+    is_spot_measure : bool, default True
+        MMA measure when True, inverse measure when False.
+    nb_path : int, default 100000
+        Number of paths. Figs. 6 and 9 use 400,000.
+    nb_steps_per_year : int, default 360
+        Steps per year.
+    W0, W1 : Optional[np.ndarray], default None
+        Pre-drawn scaled Brownian increments. Supplying them fixes the randoms
+        across calibration iterations.
+    dt : Optional[float], default None
+        Step size matching W0 and W1 when those are supplied.
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray, np.ndarray]
+        Terminal log-return, volatility and quadratic variance, each of length
+        nb_path.
     """
     if x0.shape[0] == 1:  # initial value
         x0 = x0*np.zeros(nb_path)
@@ -782,6 +970,12 @@ def get_randoms_for_rough_vol_chain_valuation(ttms: np.ndarray,
                                     nb_steps_per_year: int = 360,
                                     seed: int = 10
                                     ) -> Tuple[np.ndarray, np.ndarray, List[np.ndarray]]:
+    """
+    draw the Brownian increments for the rough-kernel chain valuation.
+
+    Returns the two increment arrays and the per-maturity time grids, so that the
+    same randoms are reused across calibration iterations.
+    """
     np.random.seed(seed)
     grid_ttms = List()
     nb_steps_ttms = np.zeros_like(ttms).astype(int)
@@ -876,7 +1070,7 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
                                               nodes: np.ndarray,
                                               timegrids: List[np.ndarray],
                                               variable_type: VariableType = VariableType.LOG_RETURN,
-                                              debug: bool = True
+                                              debug: bool = False  # print per-slice path diagnostics
                                               ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     assert weights.shape == nodes.shape and weights.ndim == 1
     # assert kappa2 == 0.0
@@ -944,7 +1138,7 @@ def run_local_test(local_test: LocalTests):
 
     import matplotlib.pyplot as plt
     import seaborn as sns
-    import stochvolmodels.data.test_option_chain as chains
+    import stochvolmodels.data.sample_option_chains as chains
 
     if local_test == LocalTests.CHAIN_PRICER:
         option_chain = get_btc_test_chain_data()

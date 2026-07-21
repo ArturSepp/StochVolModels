@@ -1,3 +1,25 @@
+"""
+Pricer for the factor HJM model with a log-normal stochastic volatility driver.
+
+Values swaptions and options on rate futures by Fourier inversion of the moment
+generating function of Sec. 4. Swap rate dynamics under the annuity measure come
+from Proposition 3.1, reduced to the state-independent form of Proposition 3.2 by
+the drift freezing of Eq. (37); payer and receiver swaptions are the call and put
+of Corollary 4.2. Futures rates follow Eqs. (44) to (46), with the convexity
+adjustment of Theorem 3.3 and its analytic form in Theorem 3.5, built on the
+leading expansion term E^[0] of Eq. (148).
+
+The MGF itself is the first-order affine expansion of Theorem 6.1, Eq. (108). The
+Monte Carlo benchmark uses the backward Euler-Maruyama scheme of Eq. (124), which
+Sec. 7.3 shows has strong convergence rate 1 and needs no boundary treatment for
+the log driver.
+
+Reference
+---------
+A. Sepp and P. Rakhmonov (2025), Stochastic volatility for factor Heath-Jarrow-Morton
+framework, Review of Derivatives Research 28:12. Equation numbers throughout this
+module refer to that article.
+"""
 import numpy as np
 from numba.typed import List
 from typing import Tuple, Optional, Union
@@ -5,7 +27,7 @@ from enum import Enum
 from scipy.integrate import solve_ivp
 
 from stochvolmodels.pricers.factor_hjm.rate_factor_basis import NelsonSiegel
-from stochvolmodels.pricers.factor_hjm.rate_core import bracket, divide_mc, prod_mc, get_futures_start_and_pmt
+from stochvolmodels.utils.rate_core import bracket, divide_mc, prod_mc, get_futures_start_and_pmt
 from stochvolmodels.pricers.factor_hjm.rate_evaluate import swap_rate, annuity, bond
 from stochvolmodels.pricers.factor_hjm.rate_affine_expansion import compute_logsv_a_mgf_grid, UnderlyingType
 from stochvolmodels.pricers.factor_hjm.rate_logsv_params import RateLogSvParams, pw_const, get_default_swap_term_structure, MultiFactRateLogSvParams
@@ -19,12 +41,16 @@ from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer
 from stochvolmodels.pricers.factor_hjm.double_exp_pricer import de_pricer
 
 class Measure(Enum):
+    """
+    pricing measure: the annuity measure Q^A of Sec. 3.1 or the T-forward measure.
+    """
     RISK_NEUTRAL = 1
     ANNUITY = 2
     FORWARD = 3
 
 
 class FutSettleType(Enum):
+    """settlement convention of the rate futures contract."""
     EURODOLLAR = 1
     SOFR = 2
 
@@ -37,6 +63,7 @@ def conv_adj_rhs_MF(tau: float,
                     settlement_type: FutSettleType,
                     expansion_order: ExpansionOrder
                     ) -> np.ndarray:
+    """right-hand side of the ODE for the multi-factor convexity adjustment of Theorem 3.3."""
     M = params.M
     C = params.C
     Omega = params.Omega
@@ -128,6 +155,12 @@ def futures_conv_adj(t_start: float,
                      expansion_order: ExpansionOrder,
                      dense_output: bool = False,
                      t_grid: np.ndarray = None) -> Tuple[np.ndarray, ...]:
+    """
+    futures convexity adjustment of Theorem 3.3, in the analytic form of Theorem 3.5.
+
+    Built on the leading expansion term E^[0] of Eq. (148); Fig. 1 of the article
+    compares it against Monte Carlo estimates of the exact adjustment.
+    """
     assert basis_type == "NELSON-SIEGEL"
 
     bond_coeffs = params.basis.bond_coeffs(Delta)
@@ -206,6 +239,7 @@ def calc_futures_rate(ccy: str,
                       Delta: float,
                       settlement_type: FutSettleType,
                       expansion_order: ExpansionOrder) -> Tuple[np.ndarray, ...]:
+    """overnight-linked futures rate of Eqs. (44) to (46), including convexity."""
     assert basis_type == "NELSON-SIEGEL"
     assert 0 <= t0 <= t_start
     q = params.theta if params.q is None else params.q
@@ -253,6 +287,11 @@ def logsv_chain_de_pricer(params: MultiFactRateLogSvParams,
                           x0: np.ndarray = None,
                           y0: np.ndarray = None,
                           **kwargs) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+    """
+    price an option chain by double-exponential quadrature of the inversion integral.
+
+    Sec. 7.2, Eqs. (121) and (122).
+    """
     model_prices_tenors_ttms = List()
     model_ivs_tenors_ttms = List()
     t_grid0 = t_grid
@@ -399,6 +438,12 @@ def logsv_chain_de_pricer(params: MultiFactRateLogSvParams,
 
 
 class RateLogSVPricer(ModelPricer):
+    """
+    swaption pricer for the FHJM model with a log-normal SV driver.
+
+    Prices payer and receiver swaptions by Corollary 4.2, using the affine expansion
+    of the MGF from Theorem 6.1.
+    """
     def price_chain(self,
                     option_chain: SwOptionChain,
                     params: Union[RateLogSvParams, MultiFactRateLogSvParams],
@@ -431,6 +476,7 @@ class RateLogSVPricer(ModelPricer):
                              nb_path: int = 100000,
                              **kwargs
                              ) -> (List[np.ndarray], List[np.ndarray]):
+        """price an option chain by Monte Carlo rather than the affine expansion."""
         return logsv_mc_chain_pricer(sigma0=params.sigma0,
                                      theta=params.theta,
                                      kappa1=params.kappa1,
@@ -447,6 +493,12 @@ class RateLogSVPricer(ModelPricer):
 
 
 class RateFutLogSVPricer(ModelPricer):
+    """
+    pricer for rate futures and options on rate futures, per Sec. 4.2.
+
+    Works with the log-shifted futures rate and applies the convexity adjustment of
+    Theorem 3.3.
+    """
     def price_chain(self,
                     option_chain: FutOptionChain,
                     params: MultiFactRateLogSvParams,
@@ -496,6 +548,7 @@ class RateFutLogSVPricer(ModelPricer):
 
     @classmethod
     def populate_betas(cls, beta: float, basis: NelsonSiegel) -> np.ndarray:
+        """fill the per-factor volatility betas from the term structure."""
         if basis.get_nb_factors() == 3:
             return np.array([beta, -0.5*beta, 0.0])
         elif basis.get_nb_factors() == 1:
@@ -507,6 +560,7 @@ class RateFutLogSVPricer(ModelPricer):
 def update_params(param0: MultiFactRateLogSvParams,
                   idx: int,
                   opt_val: np.ndarray):
+    """return a copy of the pricer parameters with the given fields replaced."""
     nb_factors = param0.basis.get_nb_factors()
     a_ttm, beta_ttm, volvol_ttm = opt_val[:nb_factors] * 0.01, opt_val[nb_factors:nb_factors + nb_factors], opt_val[-1]
     # update parameters
@@ -533,6 +587,7 @@ def logsv_mc_chain_pricer(sigma0: float,
                           seed: int = None,
                           ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     # starting values
+    """price an option chain by Monte Carlo under the dynamics of Eq. (9)."""
     sigma0 = sigma0 * np.ones(nb_path)
 
     # outputs as numpy lists
@@ -613,6 +668,9 @@ def simulate_logsv_x_vol_terminal(ttm: float,
                                   qvar0: np.ndarray = None,
                                   seed: int = None
                                   ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    simulate terminal factor and volatility states under the scheme of Eq. (124).
+    """
     ttms = np.array([ttm])
     res = simulate_logsv_x_vol(ttms=ttms, x0=x0, y0=y0, I0=I0, sigma0=sigma0, theta=theta, kappa1=kappa1, kappa2=kappa2,
                                ts=ts, axs=axs, bxs=bxs, betaxs=betaxs, volvolxs=volvolxs, lamda=lamda,
@@ -654,6 +712,7 @@ def simulate_logsv_x_vol(ttms: np.ndarray,
                          cap_lsv: bool = False,
                          W: List[np.ndarray] = None,
                          ) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
+    """simulate full paths of the factors and the SV driver, per Eq. (124)."""
     assert ttms.shape[0] > 0
     ttm = ttms[-1]
     if x0.shape[0] == 1:  # initial value
@@ -795,6 +854,7 @@ def simulate_logsv_x_vol(ttms: np.ndarray,
     return x0s, y0s, I0s, qvar0s, sigma0s
 
 def make_mc_array(x: np.ndarray, nb_path: int):
+    """allocate the path array for the simulation."""
     x_ = np.zeros((nb_path, x.size))
     for idx, val in enumerate(x):
         x_[:, idx] = val
@@ -1106,6 +1166,7 @@ def simulate_logsv_futures_MF(ttm: float,
                               seed: int = None,
                               W: List[np.ndarray] = None
                               ) -> np.ndarray:
+    """simulate futures rates in the multi-factor model, including convexity."""
     assert ts.shape[0] > 0 and ts[0] == 0.0
     nb_times = ts.size - 1
 
@@ -1188,6 +1249,12 @@ def simulate_logsv_swap_approx_terminal(ttm: float,
                                         seed: float = None,
                                         nb_path: int = 100000
                                         ) -> np.ndarray:
+    """
+    simulate the state-independent swap rate of Proposition 3.2 to maturity.
+
+    Uses the frozen state means of Eq. (37), so the swap rate diffusion no longer
+    depends on the factor state.
+    """
     if sigma0.shape[0] == 1:
         sigma0 = sigma0 * np.ones(nb_path)
     else:
@@ -1236,6 +1303,7 @@ def compute_mcapprox_payoff(ttm: float,
                             s_mc: np.ndarray,
                             strikes_ttm: np.ndarray,
                             optiontypes_ttm: np.ndarray):
+    """average payoffs of the approximate state-independent swap rate."""
     payoffsign = np.where(optiontypes_ttm == 'P', -1, 1).astype(float)
     option_prices = np.zeros_like(strikes_ttm)
     option_std = np.zeros_like(strikes_ttm)
@@ -1255,6 +1323,7 @@ def calculate_swap_rate_terminal(ttm: float,
                                  ts_sw: np.ndarray):
     # calculate swap rates using simulated states
     # ts_sw = get_default_swap_term_structure(ttm)
+    """par swap rate of Eq. (28) at the option expiry, across paths."""
     s_mc = swap_rate(t=ttm, ts_sw=ts_sw, x=x0, y=y0, is_mc_mode=True)[0]
     ann_mc = annuity(t=ttm, ts_sw=ts_sw, x=x0, y=y0, m=0, is_mc_mode=True)
     numer = 1.0 / bond(t=0, T=ttm, x=0, y=0, m=0, is_mc_mode=True) * np.exp(I0)
@@ -1267,6 +1336,7 @@ def calculate_swap_rate(t: float,
                         y0: np.ndarray,
                         I0: np.ndarray,
                         ts_sw: np.ndarray = None):
+    """par swap rate of Eq. (28) from the simulated factor state."""
     if ts_sw is None:
         ts_sw = get_default_swap_term_structure(ttm)
     # calculate swap rates using simulated states
@@ -1284,6 +1354,7 @@ def compute_mc_vars_payoff(ttm: float,
                            strikes_ttm: np.ndarray,
                            optiontypes_ttm: np.ndarray,
                            is_annuity_measure: bool = False):
+    """average discounted payoffs across paths for one maturity slice."""
     ts_sw, s_mc, ann_mc, numer = calculate_swap_rate_terminal(ttm, x0, y0, I0)
     payoffsign = np.where(optiontypes_ttm == 'P', -1, 1).astype(float)
     option_prices = np.zeros_like(strikes_ttm)

@@ -1,3 +1,11 @@
+"""
+Student-t distribution analytics for option valuation.
+
+Terminal log-returns are Student-t with nu > 2 degrees of freedom, scaled by
+upsilon so that the variance matches vol^2 ttm. Finite variance requires nu > 2,
+and the kth moment exists only for k < nu, so low nu produces heavy tails and a
+pronounced smile while leaving the second moment intact.
+"""
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -10,12 +18,24 @@ from enum import Enum
 
 @njit
 def compute_upsilon(vol: float, ttm: float, nu: float) -> float:
+    """
+    scale parameter upsilon = vol sqrt(ttm (nu - 2) / nu) of the Student-t.
+
+    Chosen so that the distribution has variance vol^2 ttm, which makes the model
+    comparable with a Black-Scholes quote at the same volatility.
+
+    Raises
+    ------
+    ValueError
+        If nu <= 2, where the variance is not finite.
+    """
     if nu <= 2.0:
         raise ValueError(f"{nu} must be > 2.0")
     return vol*np.sqrt(ttm*(nu-2.0)/nu)
 
 
 def pdf_tdist(x: Union[np.ndarray, float], mu: float, vol: float, nu: float, ttm: float) -> Union[float, np.ndarray]:
+    """Student-t density with location mu ttm, scale upsilon and nu degrees of freedom."""
     upsilon = compute_upsilon(vol=vol, ttm=ttm, nu=nu)
     z = (x - mu * ttm) / upsilon
     c = (1.0/np.sqrt(np.pi*nu))*(gamma(0.5*(nu+1.0)) / gamma(0.5*nu))/upsilon
@@ -54,6 +74,7 @@ def imply_drift_tdist(rf_rate: float = 0.0, vol: float = 0.2, nu: float = 3.0, t
     rf_return = (np.exp(rf_rate*ttm) - 1.0)
 
     def func(mu: float) -> float:
+        """root function passed to the solver."""
         x_star = -(1.0+ttm*mu)
         return mu * ttm - cdf_tdist(x_star, mu=0.0, vol=vol, nu=nu, ttm=ttm) - cum_mean_tdist(x_star, mu=0.0, vol=vol, nu=nu, ttm=ttm) - rf_return
 
@@ -113,6 +134,7 @@ def compute_vanilla_price_tdist(spot: Union[float, np.ndarray],
     x_lower_bound = -1.0-risk_neutral_mu*ttm
 
     def compute(strike_: Union[float, np.ndarray], optiontype_: str) -> float:
+        """helper evaluated inside the enclosing routine."""
         y = strike_ / spot - (1.0 + risk_neutral_mu*ttm)
         c_y = cdf_tdist(x=y, mu=0.0, vol=vol, nu=nu, ttm=ttm)
         h_y = cum_mean_tdist(x=y, mu=0.0, vol=vol, nu=nu, ttm=ttm)
@@ -187,6 +209,7 @@ def infer_tdist_implied_vols_from_model_slice_prices(ttm: float,
                                                      rf_rate: float,
                                                      nu: float
                                                      ) -> np.ndarray:
+    """invert model prices of one slice to Student-t implied volatilities."""
     model_vol_ttm = np.zeros_like(strikes)
     for idx, (strike, model_price, optiontype) in enumerate(zip(strikes, model_prices, optiontypes)):
         model_vol_ttm[idx] = infer_implied_vol_tdist(spot=spot, ttm=ttm, rf_rate=rf_rate,
@@ -198,6 +221,7 @@ def infer_tdist_implied_vols_from_model_slice_prices(ttm: float,
 
 
 class LocalTests(Enum):
+    """cases for the local test dispatcher."""
     PLOT_PDF = 1
     PLOT_CDF = 2
     PLOT_CUM_X = 3

@@ -16,7 +16,7 @@ from numba.typed import List
 import stochvolmodels.pricers.analytic.bsm as bsm
 import stochvolmodels.pricers.analytic.bachelier as bachel
 from stochvolmodels.utils.var_swap_pricer import compute_var_swap_strike
-from stochvolmodels.pricers.factor_hjm.rate_core import get_default_swap_term_structure, swap_rate
+from stochvolmodels.utils.rate_core import get_default_swap_term_structure, swap_rate
 
 
 @dataclass
@@ -85,6 +85,7 @@ class OptionChain:
             self.discount_rates = np.zeros_like(self.ttms)
 
     def print(self) -> None:
+        """print the chain slice by slice, for interactive inspection."""
         this = dict(ttms=self.ttms,
                     forwards=self.forwards,
                     strikes_ttms=self.strikes_ttms,
@@ -105,6 +106,7 @@ class OptionChain:
                        id: Optional[str] = None
                        ) -> OptionChain:
 
+        """build a single-slice chain from raw arrays, for pricing one maturity."""
         return cls(ttms=np.array([ttm]),
                    forwards=np.array([forward]),
                    strikes_ttms=(strikes,),
@@ -113,12 +115,14 @@ class OptionChain:
                    ids=np.array([id]) if id is not None else np.array([f"{ttm:0.2f}"]))
 
     def get_mid_vols(self) -> List[np.ndarray]:
+        """mid implied volatilities per slice, the average of bid and ask."""
         if self.bid_ivs is not None and self.ask_ivs is not None:
             return List(0.5 * (bid_iv + ask_iv) for bid_iv, ask_iv in zip(self.bid_ivs, self.ask_ivs))
         else:
             return None
 
     def get_chain_deltas(self) -> List[np.ndarray]:
+        """Black-Scholes deltas per slice, computed at the mid volatilities."""
         deltas_ttms = bsm.compute_bsm_vanilla_deltas_ttms(ttms=self.ttms,
                                                           forwards=self.forwards,
                                                           strikes_ttms=self.strikes_ttms,
@@ -127,6 +131,12 @@ class OptionChain:
         return deltas_ttms
 
     def get_chain_vegas(self, is_unit_ttm_vega: bool = False) -> List[np.ndarray]:
+        """
+        Black-Scholes vegas per slice, the calibration weights of Eq. (6.3).
+
+        With ``is_unit_ttm_vega`` the vegas are computed at unit maturity, which stops
+        long-dated slices dominating the objective purely through their larger vega.
+        """
         if is_unit_ttm_vega:
             ttms = np.ones_like(self.ttms)
         else:
@@ -139,12 +149,16 @@ class OptionChain:
         return vegas_ttms
 
     def get_chain_atm_vols(self) -> np.ndarray:
+        """at-the-money volatility of each slice, interpolated to the forward."""
         atm_vols = np.zeros(len(self.ttms))
         for idx, (forward, strikes_ttm, y) in enumerate(zip(self.forwards, self.strikes_ttms, self.get_mid_vols())):
             atm_vols[idx] = np.interp(x=forward, xp=strikes_ttm, fp=y)
         return atm_vols
 
     def get_chain_skews(self, delta: float = 0.25) -> np.ndarray:
+        """
+        volatility skew of each slice, the put minus call vol at the given delta.
+        """
         skews = np.zeros(len(self.ttms))
         deltas_ttms = self.get_chain_deltas()
         for idx, (deltas, vols) in enumerate(zip(deltas_ttms, self.get_mid_vols())):
@@ -167,6 +181,12 @@ class OptionChain:
                                             model_prices: List[np.ndarray],
                                             forwards: np.ndarray = None
                                             ) -> List[np.ndarray]:
+        """
+        invert model prices to Black-Scholes implied volatilities, slice by slice.
+
+        The step between a pricer and the calibration objective, which compares model
+        and market in volatility rather than price terms.
+        """
         if forwards is None:
             forwards = self.forwards
 
@@ -218,6 +238,7 @@ class OptionChain:
                    bid_ivs=None, ask_ivs=None)
 
     def get_slice(self, id: str) -> OptionSlice:
+        """return the OptionSlice with the given id."""
         idx = list(self.ids).index(id)
         option_slice = OptionSlice(id=self.ids[idx],
                                    ttm=self.ttms[idx],
@@ -232,6 +253,12 @@ class OptionChain:
         return option_slice
 
     def get_slice_varswap_strikes(self, floor_with_atm_vols: bool = True) -> pd.Series:
+        """
+        variance swap strike per maturity, replicated from the option strip.
+
+        Floors the result with the ATM volatility when ``floor_with_atm_vols`` is set,
+        since a sparse strike grid biases the replication low.
+        """
         varswap_strikes = np.zeros_like(self.ttms)
         vols_ttms = self.get_mid_vols()
         for idx, ttm in enumerate(self.ttms):
@@ -292,6 +319,11 @@ class OptionChain:
                           strikes: np.ndarray = np.linspace(0.9, 1.1, 3),
                           flat_vol: float = 0.2
                           ) -> OptionChain:
+        """
+        construct a synthetic chain on a uniform strike grid, with no market quotes.
+
+        Used to plot model implied volatilities where no market data is needed.
+        """
         return cls(ttms=ttms,
                    ids=ids,
                    forwards=forwards,
@@ -303,6 +335,13 @@ class OptionChain:
 
 @dataclass
 class SwOptionChain:
+    """
+    container for a swaption cube: expiries by swap tenors by strikes.
+
+    Volatilities are nested one level deeper than in :class:`OptionChain`, since
+    each expiry carries a full set of swap tenors. Swap schedules and par rates
+    come from ``stochvolmodels.utils.rate_core``.
+    """
     ccy: str
     ttms: np.ndarray  # swaption expiries
     tenors: np.ndarray
@@ -315,6 +354,7 @@ class SwOptionChain:
     ticker: Optional[str] = None  # associated ticker
 
     def __post_init__(self):
+        """validate that the tenor, maturity and strike axes are consistent."""
         assert self.ttms.size == len(self.ttms_ids)
         assert self.tenors.size == len(self.tenors_ids)
         assert np.all(np.diff(self.ttms) >= 0) and np.all(self.ttms >= 0)  # check that expiries are sorted and positive
@@ -352,6 +392,9 @@ class SwOptionChain:
                                  ticker: str) -> SwOptionChain:
 
         # re-center strikes as we work with flat zero curve
+        """
+        build a swaption cube from a multi-factor model on the default swap schedule.
+        """
         for idx_tenor, tenor in enumerate(tenors):
             for idx_ttm, ttm in enumerate(ttms):
                 ts_sw = get_default_swap_term_structure(ttm, tenor)
@@ -373,6 +416,7 @@ class SwOptionChain:
         return data
 
     def reduce_strikes(self, nb_otms: int):
+        """keep only the given number of out-of-the-money strikes per slice."""
         nb_strikes = int((self.strikes_ttms[0][0].size - 1) / 2)
         if nb_otms > nb_strikes:
             raise ValueError(f"number of strikes ={nb_otms} to reduce is > number of otm strikes ={nb_strikes}")
@@ -397,6 +441,7 @@ class SwOptionChain:
         return chain
 
     def reduce_ttms(self, ttms_ids: List[str]):
+        """restrict the cube to the listed expiry ids."""
         if not np.all(np.isin(ttms_ids, self.ttms_ids)):
             raise ValueError(f"Expiries to be removed not present if chain")
         idx_ttms = np.where(np.isin(self.ttms_ids, ttms_ids))[0]
@@ -422,6 +467,7 @@ class SwOptionChain:
         return chain
 
     def reduce_tenors(self, tenors_ids: List[str]):
+        """restrict the cube to the listed swap tenor ids."""
         if not np.all(np.isin(tenors_ids, self.tenors_ids)):
             raise ValueError(f"Tenors to be removed not present if chain")
         idx_tenors = np.where(np.isin(self.tenors_ids, tenors_ids))[0]
@@ -447,6 +493,7 @@ class SwOptionChain:
         return chain
 
     def get_chain_atm_vols(self) -> List[np.ndarray]:
+        """at-the-money volatility per expiry and tenor."""
         atm_vols = List()
         for idx_tenor, (forwards_tenor, strikes_tenor, vols_tenor) in enumerate(zip(self.forwards, self.strikes_ttms, self.get_mid_vols())):
             atm_vols_tenor = np.zeros_like(forwards_tenor)
@@ -456,6 +503,7 @@ class SwOptionChain:
         return atm_vols
 
     def get_mid_vols(self) -> List[List[np.ndarray]]:
+        """mid implied volatilities, nested by expiry then tenor."""
         return [[0.5 * (self.bid_ivs[idx_tenor][idx_ttm] + self.ask_ivs[idx_tenor][idx_ttm]) for
                  idx_ttm, _ in enumerate(self.ttms_ids)] for idx_tenor, _ in enumerate(self.tenors_ids)]
 
@@ -468,6 +516,7 @@ class SwOptionChain:
     #     return deltas_ttms
 
     def get_chain_vegas(self, is_unit_ttm_vega: bool = False) -> List[List[np.ndarray]]:
+        """vegas nested by expiry then tenor, for calibration weighting."""
         if is_unit_ttm_vega:
             ttms = np.ones_like(self.ttms)
         else:
@@ -483,6 +532,7 @@ class SwOptionChain:
         return vegas_chain
 
     def compute_model_ivols_from_chain_data(self, model_prices: List[np.ndarray]) -> List[np.ndarray]:
+        """invert model swaption prices to implied volatilities."""
         model_ivols = bsm.infer_bsm_ivols_from_model_chain_prices(ttms=self.ttms,
                                                                   forwards=self.forwards,
                                                                   discfactors=self.discfactors,
@@ -493,6 +543,7 @@ class SwOptionChain:
 
     @classmethod
     def get_slices_as_chain(cls, option_chain: SwOptionChain, ids: List[str]) -> SwOptionChain:
+        """sub-cube containing only the listed slice ids."""
         indices = np.in1d(option_chain.ttms_ids, ids).nonzero()[0]
         option_chain = cls(ccy=option_chain.ccy,
                            ttms=option_chain.ttms[indices],
@@ -511,12 +562,14 @@ class SwOptionChain:
 
     @classmethod
     def remap_to_inc_delta(cls, vols: pd.Series) -> pd.Series:
+        """remap a strike-indexed vol series onto an incremental delta grid."""
         vols.index = [-x for x in vols.index]
         return vols
 
 
     @classmethod
     def remap_to_pc_delta(cls, inc_grid: np.ndarray) -> np.ndarray:
+        """convert an incremental delta grid to put-call delta convention."""
         put_cond = inc_grid < -0.5
         call_cond = inc_grid >= -0.5
         put_grid = -inc_grid[put_cond] - 1.0
@@ -548,6 +601,7 @@ class FutOptionChain:
 
 
     def __post_init__(self):
+        """validate the futures chain axes and derive the per-expiry forwards."""
         assert self.ttms.size == len(self.ttms_ids)
         assert np.all(np.diff(self.ttms) >= 0) and np.all(self.ttms >= 0)  # check that expiries are sorted and positive
         self.optiontypes_ttms = tuple([np.repeat('C', self.strikes_ttms[idx_ttm].size) for idx_ttm, ttm in enumerate(self.ttms)])
@@ -574,6 +628,11 @@ class FutOptionChain:
     def filter_by_oi(self,
                      max_strikes: int,
                      include_atm: bool) -> FutOptionChain:
+        """
+        keep the most liquid strikes per expiry, ranked by open interest.
+
+        Optionally forces the at-the-money strike into the selection regardless of rank.
+        """
         if self.call_oi is None:
             raise NotImplementedError(f"call/put open interest cannot be None")
 
@@ -621,9 +680,11 @@ class FutOptionChain:
 
 
     def get_mid_vols(self) -> List[np.ndarray]:
+        """mid implied volatilities per futures expiry."""
         return self.ivs_call_ttms
 
     def get_chain_vegas(self):
+        """vegas per futures expiry, for calibration weighting."""
         optiontypes_ttms = np.repeat('C', self.strikes_ttms[0].size)
 
         vegas_ttms = bachel.compute_normal_vegas_ttms(ttms=self.ttms,
@@ -634,6 +695,7 @@ class FutOptionChain:
         return vegas_ttms
 
     def reduce_ttms(self, ttms_ids: List[str]):
+        """restrict the chain to the listed expiry ids."""
         if not np.all(np.isin(ttms_ids, self.ttms_ids)):
             raise ValueError(f"Expiries to be removed not present if chain")
         idx_ttms = np.where(np.isin(self.ttms_ids, ttms_ids))[0]

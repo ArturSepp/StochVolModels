@@ -1,8 +1,23 @@
+"""
+Hawkes jump-diffusion pricer with self- and cross-exciting jump intensities.
+
+Log-returns follow a diffusion plus two independent jump streams, one with positive
+and one with negative jump sizes, each drawn from a shifted exponential. Their
+intensities are Hawkes processes: a jump on either side raises both intensities
+through the cross-excitation coefficients beta, after which they decay back to
+their mean levels at rates kappa. The model is affine, so the MGF solves a system
+of Riccati ODEs and options are valued by Fourier inversion.
+
+Reference
+---------
+F. Liu, N. Packham and A. Sepp (2025), Jump risk premia in the presence of
+clustered jumps, arXiv:2510.21297. The bivariate Hawkes specification, the
+positive and negative jump premia, and the Bitcoin option application.
+"""
 
 # built in
 import numpy as np
 import matplotlib.pyplot as plt
-import qis
 from scipy.optimize import minimize
 from numba.typed import List
 from typing import Tuple, Optional, Dict, Any
@@ -20,7 +35,7 @@ from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer, s
 
 # data
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.data.test_option_chain import get_btc_test_chain_data
+from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
 
 MAX_PHI = 500
 
@@ -53,13 +68,16 @@ class HawkesJDParams(ModelParams):
     risk_premia_gamma: float = None
 
     def __post_init__(self):
+        """validate the jump and intensity parameters."""
         self.compensator_p = np.exp(self.shift_p)/(1.0-self.mean_p) - 1.0
         self.compensator_m = np.exp(self.shift_m)/(1.0-self.mean_m) - 1.0
 
     def to_dict(self) -> Dict[str, Any]:
+        """return the parameters as a plain dict."""
         return asdict(self)
 
     def print(self) -> None:
+        """print the parameters, for interactive inspection."""
         for k, v in self.to_dict().items():
             print(f"{k}={v}")
         print('condifions')
@@ -68,32 +86,45 @@ class HawkesJDParams(ModelParams):
 
     @property
     def jump1_cond(self) -> float:
+        """
+        stationarity margin of the positive-jump intensity.
+
+        Returns kappa_p - beta1_p E[J_p] - beta2_p E[J_m]. The intensity is stationary
+        while this is positive: decay must outpace the excitation contributed by both
+        jump streams. Used as a calibration constraint, not enforced on construction.
+        """
         return self.kappa_p-self.beta1_p*self.exp_jump_p-self.beta2_p*self.exp_jump_m
 
     @property
     def jump2_cond(self) -> float:
+        """stationarity margin of the negative-jump intensity, the mirror of jump1_cond."""
         return self.kappa_m - self.beta2_m * self.exp_jump_m - self.beta1_m * self.exp_jump_p
 
     @property
     def exp_jump_p(self) -> float:
+        """expected positive jump size, shift_p + mean_p for a shifted exponential."""
         return self.shift_p+self.mean_p
 
     @property
     def exp_jump_m(self) -> float:
+        """expected negative jump size, shift_m + mean_m."""
         return self.shift_m+self.mean_m
 
     @property
     def jumps_var_m(self) -> float:
+        """second moment of the negative jump size, shift_m^2 + mean_m^2."""
         return np.square(self.shift_m) + np.square(self.mean_m)
 
     @property
     def jumps_var_p(self) -> float:
+        """second moment of the positive jump size, shift_p^2 + mean_p^2."""
         return np.square(self.shift_p) + np.square(self.mean_p)
 
 
 class HawkesJDPricer(ModelPricer):
 
     # @timer
+    """ModelPricer for the Hawkes jump-diffusion model."""
     def price_chain(self,
                     option_chain: OptionChain,
                     params: HawkesJDParams,
@@ -132,6 +163,7 @@ class HawkesJDPricer(ModelPricer):
                              nb_path: int = 100000,
                              **kwargs
                              ) -> (List[np.ndarray], List[np.ndarray]):
+        """price an option chain by Monte Carlo rather than the analytic solution."""
         return hawkesjd_mc_chain_pricer(ttms=option_chain.ttms,
                                         forwards=option_chain.forwards,
                                         discfactors=option_chain.discfactors,
@@ -227,6 +259,7 @@ class HawkesJDPricer(ModelPricer):
                   (1.0, 100.0), (1.0, 100.0), (1.0, 100.0))
 
         def unpack_pars(pars: np.ndarray) -> HawkesJDParams:
+            """map the optimizer parameter vector onto a model parameter object."""
             sigma, mean_p, mean_m, theta_p, theta_m, kappa, beta_p, beta_m \
                 = pars[0], pars[1], pars[2], pars[3], pars[4], pars[5], pars[6], pars[7]
             model_params = HawkesJDParams(mu=0.0,
@@ -248,12 +281,14 @@ class HawkesJDPricer(ModelPricer):
             return model_params
 
         def objective(pars: np.ndarray, args: np.ndarray) -> float:
+            """weighted mean squared error between model and market implied volatilities."""
             params = unpack_pars(pars=pars)
             model_vols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params)
             resid = np.nansum(weights * np.square(to_flat_np_array(model_vols) - market_vols))
             return resid
 
         def jump_cond(pars: np.ndarray) -> float:
+            """inequality constraint requiring both intensity stationarity margins to be positive."""
             params = unpack_pars(pars=pars)
             return params.jump1_cond + params.jump2_cond
 
@@ -297,6 +332,7 @@ class HawkesJDPricer(ModelPricer):
         bounds = ((0.01, 1.5), (-1.0, 1.0))
 
         def unpack_pars(pars: np.ndarray) -> HawkesJDParams:
+            """map the optimizer parameter vector onto a model parameter object."""
             model_params = params0
             model_params.sigma = pars[0]
             model_params.risk_premia_gamma = gamma_scaler*pars[1]  # scale by 5 to align with vol
@@ -305,6 +341,7 @@ class HawkesJDPricer(ModelPricer):
             return model_params
 
         def objective(pars: np.ndarray, args: np.ndarray) -> float:
+            """weighted mean squared error between model and market implied volatilities."""
             params = unpack_pars(pars=pars)
             model_vols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params)
             model_vols = to_flat_np_array(model_vols)
@@ -324,6 +361,7 @@ class HawkesJDPricer(ModelPricer):
 
 
 def set_vol_scaler(sigma0: float, ttm: float) -> float:
+    """set the transform grid scaler from the chain at-the-money volatility."""
     return np.clip(sigma0, 0.2, 0.5) * np.sqrt(np.minimum(ttm, 1.0 / 12.0))  # lower bound is two w
 
 
@@ -557,14 +595,28 @@ def solve_ode_for_a(ttm: float,
     next: numba implementation to compute in range of phi
     """
     def e_p(phi_: float):
+        """
+        moment generating function of the positive jump size at transform variable phi.
+
+        For a shifted exponential this is exp(-shift_p phi) / (1 + mean_p phi), which is
+        finite only for phi above -1 / mean_p.
+        """
         return np.exp(-model_params.shift_p*phi_) / (1.0+model_params.mean_p*phi_)
 
     def e_m(phi_: float):
+        """moment generating function of the negative jump size at transform variable phi."""
         return np.exp(-model_params.shift_m*phi_) / (1.0+model_params.mean_m*phi_)
 
     def func_rhs(t: float, #  dummy for ode solve
                  a0: np.ndarray
                  ) -> np.ndarray:
+        """
+        right-hand side of the Riccati ODEs for the MGF coefficients.
+
+        The jump terms enter through the jump-size MGFs evaluated at the transform
+        variable shifted by the intensity coefficients, which is what couples the two
+        streams.
+        """
         rhs = np.zeros(3, dtype=np.complex128)
 
         j_p = e_p(phi_=phi - model_params.beta1_p * a0[1] - model_params.beta1_m * a0[2]) - 1.0
@@ -619,6 +671,7 @@ def hawkesjd_mc_chain_pricer(ttms: np.ndarray,
                              ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
 
     # starting values
+    """price an option chain by simulating the jump-diffusion dynamics."""
     x0 = np.zeros(nb_path)
     lambda_p0 = lambda_p*np.ones(nb_path)
     lambda_m0 = lambda_m*np.ones(nb_path)
@@ -683,6 +736,9 @@ def simulate_hawkesjd_terminal(ttm: float,
                                nb_path: int = 100000
                                ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
+    """
+    simulate terminal log-returns with both Hawkes intensities evolving jointly.
+    """
     if x0.shape[0] == 1:  # initial value
         x0 = x0*np.zeros(nb_path)
     else:
@@ -724,6 +780,7 @@ def simulate_hawkesjd_terminal(ttm: float,
 
 
 class LocalTests(Enum):
+    """cases for the local test dispatcher."""
     OPTION_PRICER = 1
     CHAIN_PRICER = 2
     SLICE_PRICER = 3
@@ -731,7 +788,7 @@ class LocalTests(Enum):
     CALIBRATOR = 5
 
 
-@qis.timer
+@timer
 def run_local_test(local_test: LocalTests):
     """Run local tests for development and debugging purposes.
 

@@ -31,16 +31,31 @@ set_seed(24)
 
 @dataclass
 class ModelParams:
+    """
+    abstract container for the parameters of a pricing model.
+
+    Subclasses add the model parameters as dataclass fields and supply the
+    serialisation helpers the calibration and reporting layers call.
+    """
     pass
 
     @classmethod
     def copy(cls, obj: ModelParams) -> ModelParams:
+        """return a deep copy of the parameters."""
         return cls(**asdict(obj))
 
 
 class ModelPricer(ABC):
 
+    """
+    abstract pricer interface shared by every model in the package.
+
+    A concrete pricer supplies ``price_chain``; the base class builds the
+    implied-volatility, calibration and plotting layers on top of it, so that
+    chains, slices and single options are priced through one entry point.
+    """
     def __init__(self):
+        """initialise the pricer."""
         super().__init__()
 
     #########################################################
@@ -197,6 +212,7 @@ class ModelPricer(ABC):
                               nb_path: int = 100000
                               ) -> np.ndarray:
 
+        """histogram of simulated terminal log-returns, for comparison against an analytic density."""
         t_values = self.simulate_terminal_values(ttm=ttm, params=params, nb_path=nb_path)
 
         cut_off = 1e16

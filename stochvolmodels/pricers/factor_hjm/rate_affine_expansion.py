@@ -1,3 +1,22 @@
+"""
+Affine expansion of the MGF for the factor HJM model with a log-normal SV driver.
+
+Section 6 of the article. The log-normal SV driver makes the MGF of Eq. (106)
+non-affine in the volatility state, so the solution is truncated to a leading
+exponential-affine term. Theorem 6.1 gives the first-order expansion, Eq. (108),
+
+    E^[1](tau, T, v; phi) = exp{ sum_k A^(k)(tau) v^k },
+
+whose coefficients solve the quadratic ODE system of Eq. (109). The zeroth-order
+leading term E^[0] of Eq. (148) supplies the futures convexity adjustment of
+Theorem 3.5.
+
+Reference
+---------
+A. Sepp and P. Rakhmonov (2025), Stochastic volatility for factor Heath-Jarrow-Morton
+framework, Review of Derivatives Research 28:12. Equation numbers throughout this
+module refer to that article.
+"""
 import numpy as np
 from enum import Enum
 from typing import Tuple, Optional, Dict, Union, Any
@@ -8,6 +27,12 @@ from scipy.interpolate import splrep, splev
 
 
 class UnderlyingType(Enum):
+    """
+    underlying the MGF is taken with respect to.
+
+    The swap rate of Eq. (28) for swaptions, or the log-shifted futures rate of
+    Sec. 4.2 for options on rate futures.
+    """
     SWAP = 1
     FUTURES = 2
 
@@ -81,6 +106,7 @@ def solve_a_ode_grid(phi_grid: np.ndarray,
     """
 
     def fun(phi: np.complex128, a_t0: np.ndarray):
+        """right-hand side of the coefficient ODE system of Eq. (109), for the ODE solver."""
         oderesult = solve_ode_for_a(ttm=ttm, q=q, times=times, a0=a0, a1=a1, kappa0=kappa0, kappa1=kappa1,
                                     kappa2=kappa2, beta=beta, volvol=volvol, b=b,
                                     phi=phi, expansion_order=expansion_order,
@@ -230,7 +256,7 @@ def func_rhs_jac(tau: float,  # for ode solver compatibility
                                          underlying_type=underlying_type, expansion_order=expansion_order)
     for n_ in np.arange(n):
         quadratic[n_, :] = 2.0 * M[n_] @ A0
-    rhs = quadratic + A0
+    rhs = quadratic + L
     return rhs
 
 # @njit(cache=False, fastmath=True) # TODO: uncomment

@@ -1,21 +1,30 @@
 """
-this module is using option-chain-analytics package
-to fetch OptionChain data with options data
+fetch OptionChain data with live options data
+
+this module is not imported by ``stochvolmodels/__init__.py``: it needs two packages
+that are not core dependencies, ``qis`` (the [research] extra) and
+``option-chain-analytics`` (not packaged as an extra, install it directly)
 see https://pypi.org/project/option-chain-analytics
 """
 
+# packages
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from qis import TimePeriod
 from typing import Dict, Tuple, Optional, Literal
 from numba.typed import List
 from enum import Enum
-import qis as qis
-# chain
-from option_chain_analytics import OptionsDataDFs, create_chain_from_from_options_dfs
-from option_chain_analytics.option_chain import SliceColumn, SlicesChain
-# analytics
+
+try:
+    import qis as qis
+    from qis import TimePeriod
+    from option_chain_analytics import OptionsDataDFs, create_chain_from_from_options_dfs
+    from option_chain_analytics.option_chain import SliceColumn, SlicesChain
+except ImportError as error:
+    raise ImportError("stochvolmodels.data.fetch_option_chain needs qis and option-chain-analytics: "
+                      "pip install stochvolmodels[research] option-chain-analytics") from error
+
+# stochvolmodels
 from stochvolmodels.data.option_chain import OptionChain
 
 
@@ -70,6 +79,9 @@ def load_option_chain(options_data_dfs: OptionsDataDFs,
                       delta_bounds: Tuple[Optional[float], Optional[float]] = (-0.1, 0.1),
                       is_filtered: bool = True
                       ) -> Optional[OptionChain]:
+    """
+    build an OptionChain from an option-chain-analytics slice at a given date.
+    """
     chain = create_chain_from_from_options_dfs(options_data_dfs=options_data_dfs, value_time=value_time)
     if chain is not None:
         option_chain = generate_vol_chain_np(chain=chain,
@@ -90,6 +102,9 @@ def sample_option_chain_at_times(options_data_dfs: OptionsDataDFs,
                                  delta_bounds: Tuple[Optional[float], Optional[float]] = (-0.1, 0.1),
                                  hour_offset: int = 8
                                  ) -> Dict[pd.Timestamp, OptionChain]:
+    """
+    extract chains at a sequence of observation times, for time series calibration.
+    """
     value_times = qis.generate_dates_schedule(time_period=time_period,
                                               freq=freq,
                                               hour_offset=hour_offset)
@@ -109,6 +124,7 @@ def load_price_data(options_data_dfs: OptionsDataDFs,
                     freq: Optional[str] = 'D'  # to do
                     ) -> pd.Series:
     #options_data_dfs = OptionsDataDFs(**ts_data_loader_wrapper(ticker=ticker, freq='D', hour_offset=8))
+    """load the underlying price series accompanying the options data."""
     spot_price = options_data_dfs.get_spot_data()[data]
     if freq is not None:
         spot_price = spot_price.resample(freq).last()

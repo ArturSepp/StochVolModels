@@ -2,6 +2,16 @@
 
 Entries start at 1.2.0. For earlier releases see the git log.
 
+## [1.2.1] - 2026-07-21
+
+### Fixed
+- The 1.2.0 release shipped without any of the changes to modules inside `stochvolmodels/`; only
+  new files and renames reached the commit. `import stochvolmodels` therefore failed with
+  `ModuleNotFoundError: No module named 'qis'` unless the `research` extra was installed, because
+  `pricers/hawkes_jd_pricer.py` still imported `qis` for `@qis.timer`. 1.2.0 is yanked on PyPI.
+  Everything listed under 1.2.0 below is in this release.
+
+
 ## [1.2.0] - 2026-07-20
 
 ### Added

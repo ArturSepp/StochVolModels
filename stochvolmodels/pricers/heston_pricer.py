@@ -20,11 +20,19 @@ import stochvolmodels.utils.mgf_pricer as mgfp
 
 # data
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.data.test_option_chain import get_btc_test_chain_data
+from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
 
 
 @dataclass
 class HestonParams(ModelParams):
+    """
+    parameters of the Heston model.
+
+    Variance follows dv = kappa (theta - v) dt + volvol sqrt(v) dW, with rho the
+    return-variance correlation. The Feller condition 2 kappa theta >= volvol^2
+    keeps the variance away from zero; it is exposed as a calibration constraint
+    rather than enforced here.
+    """
     v0: float = 0.04
     theta: float = 0.04
     kappa: float = 4.0
@@ -37,6 +45,9 @@ BTC_HESTON_PARAMS = HestonParams(v0=0.8, theta=1.0, kappa=2.0, rho=0.0, volvol=2
 
 class HestonPricer(ModelPricer):
 
+    """
+    ModelPricer for the Heston model, valued by Fourier inversion of the analytic MGF.
+    """
     def price_chain(self, option_chain: OptionChain, params: HestonParams, **kwargs) -> np.ndarray:
         """
         implementation of generic method price_chain using heston wrapper for heston chain
@@ -83,6 +94,7 @@ class HestonPricer(ModelPricer):
                                  **kwargs
                                  ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
+        """simulate terminal state variables for the given parameters."""
         x0, var0, qvar0 = simulate_heston_x_vol_terminal(ttm=ttm,
                                                          x0=np.zeros(nb_path),
                                                          var0=params.v0 * np.ones(nb_path),
@@ -122,16 +134,23 @@ class HestonPricer(ModelPricer):
             weights = np.ones_like(market_vols)
 
         def parse_model_params(pars: np.ndarray) -> HestonParams:
+            """map the optimizer parameter vector onto a model parameter object."""
             v0, theta, kappa, rho, volvol = pars[0], pars[1], pars[2], pars[3], pars[4]
             return HestonParams(v0=v0, theta=theta, kappa=kappa, rho=rho, volvol=volvol)
 
         def objective(pars: np.ndarray, args: np.ndarray) -> float:
+            """weighted mean squared error between model and market implied volatilities."""
             params = parse_model_params(pars=pars)
             model_vols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params)
             resid = np.nansum(weights * np.square(to_flat_np_array(model_vols) - market_vols))
             return resid
 
         def feller(pars: np.ndarray) -> float:
+            """
+            Feller condition 2 kappa theta - volvol^2, as an inequality constraint.
+
+            Non-negative values keep the variance process from reaching zero.
+            """
             params = parse_model_params(pars=pars)
             return 2.0*params.kappa * params.theta - params.volvol*params.volvol
 
@@ -197,6 +216,7 @@ def heston_chain_pricer(v0: float,
                         ) -> List[np.ndarray]:
 
     # starting values
+    """price an option chain by Fourier inversion of the Heston MGF."""
     if vol_scaler is None:
         vol_scaler = np.minimum(0.3, np.sqrt(v0*ttms[0]))
     phi_grid, psi_grid, theta_grid = mgfp.get_transform_var_grid(vol_scaler=vol_scaler)
@@ -258,6 +278,7 @@ def heston_mc_chain_pricer(ttms: np.ndarray,
                            ) -> (List[np.ndarray], List[np.ndarray]):
 
     # starting values
+    """price an option chain by simulating the Heston dynamics."""
     ttm0 = 0.0
     x0 = np.zeros(nb_path)
     qvar0 = np.zeros(nb_path)
@@ -301,6 +322,12 @@ def simulate_heston_x_vol_terminal(ttm: float,
                                    nb_steps_per_year: int = 360
                                    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
+    """
+    simulate terminal log-return, variance and quadratic variance under Heston.
+
+    Uses a full truncation Euler scheme, which floors the variance at zero rather
+    than reflecting it, so paths remain well defined when the Feller condition fails.
+    """
     if x0.shape[0] == 1:  # initial value
         x0 = x0*np.zeros(nb_path)
     else:
@@ -342,6 +369,7 @@ def v0_implied(v0: float, volvol: float, ttm: float):
 
 
 class LocalTests(Enum):
+    """cases for the local test dispatcher."""
     CHAIN_PRICER = 1
     SLICE_PRICER = 2
     CALIBRATOR = 3
@@ -356,7 +384,7 @@ def run_local_test(local_test: LocalTests):
     Use for quick verification during development.
     """
 
-    import stochvolmodels.data.test_option_chain as chains
+    import stochvolmodels.data.sample_option_chains as chains
 
     if local_test == LocalTests.CHAIN_PRICER:
         params = HestonParams(v0=0.85**2,

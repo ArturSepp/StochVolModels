@@ -4,7 +4,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/stochvolmodels?style=flat-square)](https://pypi.org/project/stochvolmodels/)
 [![Python](https://img.shields.io/pypi/pyversions/stochvolmodels?style=flat-square)](https://pypi.org/project/stochvolmodels/)
-[![License](https://img.shields.io/github/license/ArturSepp/StochVolModels.svg?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/github/license/ArturSepp/StochVolModels.svg?style=flat-square)](LICENSE.txt)
 [![CI](https://github.com/ArturSepp/StochVolModels/actions/workflows/ci.yml/badge.svg)](https://github.com/ArturSepp/StochVolModels/actions)
 [![Downloads](https://static.pepy.tech/badge/stochvolmodels)](https://pepy.tech/project/stochvolmodels)
 [![Monthly](https://static.pepy.tech/badge/stochvolmodels/month)](https://pepy.tech/project/stochvolmodels)
@@ -17,7 +17,7 @@
 
 `stochvolmodels` is the reference implementation of the Karasinski-Sepp log-normal beta stochastic volatility model, maintained by one of the model's originators, with the Heston model implemented alongside as a benchmark. The design goal is a single generic interface for a stochastic volatility model — a closed-form moment generating function for Fourier-transform pricing on one side, Monte Carlo dynamics on the other — so that analytic prices, simulated prices, and calibrated implied volatilities are directly comparable model to model.
 
-The same analytics power the research: the `my_papers` module reproduces the computations and figures of five papers, from the quadratic-drift log-normal SV model (IJTAF) to cryptocurrency inverse options (Quantitative Finance), robust stochastic volatility modelling, impermanent-loss hedging in DeFi, and stochastic volatility for the factor HJM framework — see [Supporting Illustrations](#papers).
+The same analytics power the research: the `papers` module reproduces the computations and figures of five papers, from the quadratic-drift log-normal SV model (IJTAF) to cryptocurrency inverse options (Quantitative Finance), robust stochastic volatility modelling, impermanent-loss hedging in DeFi, and stochastic volatility for the factor HJM framework — see [Supporting Illustrations](#papers).
 
 ## Overview
 
@@ -35,7 +35,7 @@ using Fourier transform with closed-form solution for moment generating function
 
 
 [Illustrations](#papers) of using package analytics for research 
-work is provided in top-level package ```my_papers``` 
+work is provided in top-level package ```papers``` 
 which contains computations and visualisations for several papers
 
 
@@ -61,16 +61,29 @@ git clone https://github.com/ArturSepp/StochVolModels.git
 
 
 ### Core Dependencies
-- `python >= 3.8`
-- `numba >= 0.56.4`
-- `numpy >= 1.22.4`
-- `scipy >= 1.10`
+- `python >= 3.10`
+- `numba >= 0.60.0`
+- `numpy >= 2.0`
+- `scipy >= 1.12.0`
 - `pandas >= 2.2.0`
-- `matplotlib >= 3.2.2`
-- `seaborn >= 0.12.2`
+- `matplotlib >= 3.8.0`
+- `seaborn >= 0.13.0`
 
-Optional dependencies:
-    qis ">=2.3.1" (for running code in my_papers)
+### Optional extras
+
+| Extra | Installs | Needed for |
+|---|---|---|
+| `research` | `qis >= 3.5.7` | scripts in `papers/` |
+| `visualization` | `plotly >= 5.0.0` | interactive figures |
+| `numerical` | `scikit-learn >= 1.3.0`, `statsmodels >= 0.14.0` | statistical fits |
+| `jupyter` | `jupyter`, `notebook`, `jupyterlab`, `ipykernel`, `ipywidgets` | notebooks |
+| `dev` | `pytest`, `pytest-cov`, `pytest-regressions`, `ruff` | tests and linting |
+
+Install an extra using
+```python
+pip install stochvolmodels[research]
+```
+The library itself imports none of these: `import stochvolmodels` needs the core dependencies only.
 
 
 # Table of contents
@@ -254,21 +267,21 @@ plt.show()
 
 ## Supporting Illustrations for Public Papers <a name="papers"></a>
 
-As illustrations of different analytics, this package includes module ```my_papers``` 
+As illustrations of different analytics, this package includes module ```papers``` 
 with codes for computations and visualisations featured in several papers
 for 
 
 1) "Log-normal Stochastic Volatility Model with Quadratic Drift" by Artur Sepp 
 and Parviz Rakhmonov: https://www.worldscientific.com/doi/10.1142/S0219024924500031
 ```python 
-stochvolmodels/my_papers/logsv_model_wtih_quadratic_drift
+stochvolmodels/papers/logsv_model_with_quadratic_drift
 ```
 
 
 2) "What is a robust stochastic volatility model" by Artur Sepp and Parviz Rakhmonov, SSRN:
 https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027
 ```python 
-stochvolmodels/my_papers/volatility_models
+stochvolmodels/papers/volatility_models
 ```
 
 
@@ -276,20 +289,20 @@ stochvolmodels/my_papers/volatility_models
 and Vladimir Lucic, 
 SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4606748 
 ```python 
-stochvolmodels/my_papers/inverse_options
+stochvolmodels/papers/inverse_options
 ```
 
 4) "Unified Approach for Hedging Impermanent Loss of Liquidity Provision" by 
 Artur Sepp, Alexander Lipton and Vladimir Lucic, 
 SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4887298 
 ```python 
-stochvolmodels/my_papers/il_hedging
+stochvolmodels/papers/il_hedging
 ```
 
 5) "Stochastic Volatility for Factor Heath-Jarrow-Morton Framework" by Artur Sepp and Parviz Rakhmonov, SSRN:
 https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4646925
 ```python 
-stochvolmodels/my_papers/sv_for_factor_hjm
+stochvolmodels/papers/sv_for_factor_hjm
 ```
 
 ## Project Structure
@@ -297,23 +310,32 @@ stochvolmodels/my_papers/sv_for_factor_hjm
 ```
 StochVolModels/
 ├── stochvolmodels/
-│   ├── pricers/
-│   │   ├── model_pricer.py         # Generic model interface
-│   │   ├── logsv_pricer.py         # Log-normal SV implementation  
-│   │   └── heston_pricer.py        # Heston SV implementation
 │   ├── data/
-│   │   └── option_chain.py         # Option chain data structures
-│   └── my_papers/                  # Research paper implementations
-│       ├── logsv_model_with_quadratic_drift/
-│       ├── volatility_models/
-│       ├── inverse_options/
-│       ├── il_hedging/
-│       └── sv_for_factor_hjm/
-├── examples/
-│   ├── run_lognormal_sv_pricer.py
-│   ├── run_heston_sv_pricer.py
-│   ├── run_heston.py
-│   └── plots_for_paper/
+│   │   ├── option_chain.py           # OptionChain and OptionSlice containers
+│   │   ├── sample_option_chains.py   # BTC, VIX, GLD, SQQQ and SPY sample chains
+│   │   └── fetch_option_chain.py     # live chains via option-chain-analytics
+│   ├── pricers/
+│   │   ├── model_pricer.py           # ModelPricer and ModelParams interface
+│   │   ├── logsv_pricer.py           # log-normal SV
+│   │   ├── heston_pricer.py          # Heston
+│   │   ├── hawkes_jd_pricer.py       # Hawkes jump-diffusion
+│   │   ├── gmm_pricer.py             # Gaussian mixture
+│   │   ├── tdist_pricer.py           # t-distribution
+│   │   ├── analytic/                 # BSM, Bachelier and t-distribution formulas
+│   │   ├── logsv/                    # affine expansion, params, vol moment ODEs
+│   │   ├── rough_logsv/              # rough kernel and split simulation
+│   │   └── factor_hjm/               # rates: factor HJM with log-normal SV
+│   ├── utils/
+│   │   ├── mgf_pricer.py             # MGF grids and transform pricing
+│   │   ├── rate_core.py              # swap and bond conventions
+│   │   ├── var_swap_pricer.py        # variance swap strike
+│   │   └── config.py, funcs.py, mc_payoffs.py, plots.py
+│   ├── examples/                     # runnable demonstrations
+│   └── tests/                        # pytest regression tests and benchmarks
+├── papers/                        # figures and calibrations for published papers
+│   ├── logsv_model_with_quadratic_drift/paper/   # article PDF and LaTeX source
+│   └── sv_for_factor_hjm/paper/                  # article PDF and LaTeX source
+├── docs/
 └── README.md
 ```
 
@@ -340,7 +362,7 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.txt) file for details.
 
 ## Citation
 

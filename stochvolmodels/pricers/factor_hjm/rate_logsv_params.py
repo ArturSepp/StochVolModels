@@ -1,3 +1,22 @@
+"""
+Parameters of the factor HJM model with a log-normal stochastic volatility driver.
+
+Carries the deterministic factor volatility matrix C(t) and the parameters of the
+scalar SV driver sigma_t, which enter the volatility matrix of Eq. (7),
+
+    Kappa_t = sigma_t C(t),
+
+normalised so that sigma_0 = 1. Also holds the measure transforms: Theorem 3.1
+gives the state dynamics under the annuity measure Q^A, Eqs. (30) to (32), and the
+drift-freezing approximation of Eq. (37) replaces the state variables by their
+deterministic annuity-measure means.
+
+Reference
+---------
+A. Sepp and P. Rakhmonov (2025), Stochastic volatility for factor Heath-Jarrow-Morton
+framework, Review of Derivatives Research 28:12. Equation numbers throughout this
+module refer to that article.
+"""
 import numpy as np
 from typing import Union, Tuple
 from dataclasses import dataclass
@@ -6,12 +25,15 @@ from scipy.integrate import solve_ivp
 
 from stochvolmodels.pricers.model_pricer import ModelParams
 from stochvolmodels.pricers.factor_hjm.rate_factor_basis import Cheyette1D, NelsonSiegel, CheyettePEND
-from stochvolmodels.pricers.factor_hjm.rate_core import pw_const, G, bracket, get_default_swap_term_structure, \
+from stochvolmodels.utils.rate_core import pw_const, G, bracket, get_default_swap_term_structure, \
     generate_ttms_grid
 
 
 @dataclass
 class TermStructure:
+    """
+    piecewise constant term structure of a model parameter on a tenor grid.
+    """
     ts: np.ndarray
     xs: np.ndarray
     flat_extrapol: bool = False
@@ -37,6 +59,7 @@ class TermStructure:
 
     # @njit(cache=False, fastmath=True) # TODO: cannot make it numba as it is member function
     def interpolate(self, times: np.ndarray) -> np.ndarray:
+        """value of the term structure at a tenor, held piecewise constant."""
         interp_values = np.ones_like(times) * np.nan
         for idx, t in enumerate(times):
             interp_values[idx] = self.pw_const(t)
@@ -44,10 +67,12 @@ class TermStructure:
 
     @classmethod
     def create_from_scalar(cls, ts: np.ndarray, xs: float, flat_extrapol: bool = False):
+        """build a flat term structure from a single value."""
         return TermStructure(ts=ts, xs=np.ones_like(ts[1:]) * xs, flat_extrapol=flat_extrapol)
 
     @classmethod
     def create_multi_fact_from_vec(cls, ts: np.ndarray, xs: np.ndarray, flat_extrapol: bool = False):
+        """build a multi-factor term structure from a vector of per-factor values."""
         assert xs.ndim == 1
         # when value is 1D vector, its value are for each factor
         # we have as many columns as factors
@@ -80,9 +105,22 @@ class RateLogSvParamsBase(ModelParams):
 
 @dataclass
 class RateLogSvParams(RateLogSvParamsBase):
+    """
+    parameters of the FHJM model with a log-normal SV driver, per Eq. (9).
+
+    Holds the factor volatility matrix C(t) of Eq. (7), the SV driver parameters,
+    and the basis object supplying B(tau) and B~(tau).
+    """
     def calc_mean_states(self,
                          expiry: float,
                          t_grid: np.ndarray) -> (np.ndarray, np.ndarray):
+        """
+        deterministic annuity-measure means of the state variables, Eq. (37).
+
+        The drift-freezing step replacing X_t and Y_t by X_bar = E^A(X_t) and
+        Y_bar = E^A(Y_t), which makes the swap rate dynamics of Proposition 3.2
+        state-independent.
+        """
         mrv_r = self.basis.meanrev
         ts_sw = get_default_swap_term_structure(expiry=expiry, tenor=self.term)
 
@@ -95,6 +133,7 @@ class RateLogSvParams(RateLogSvParamsBase):
                           kappa1: float,
                           kappa2: float,
                           theta: float) -> np.ndarray:
+            """right-hand side of the ODE for the deterministic state means of Eq. (37)."""
             res = np.zeros((3,))
             x, y, sigma = arg[0], arg[1], arg[2]
             a_t = self.alpha.pw_const(t)
@@ -119,6 +158,12 @@ class RateLogSvParams(RateLogSvParamsBase):
                             tenor: float,
                             t_grid: np.ndarray):
 
+        """
+        transform parameters to the annuity measure Q^A, per Theorem 3.1.
+
+        Applies the drift adjustments of Eqs. (30) to (32) so the swap rate is a
+        martingale under the annuity numeraire of Sec. 3.1.
+        """
         theta = self.theta
         kappa1 = self.kappa1
         kappa2 = self.kappa2
@@ -162,6 +207,7 @@ class RateLogSvParams(RateLogSvParamsBase):
         return a, term0, term1, term2, beta_interp, volvol_interp, ts_sw
 
     def reduce(self, idx: int):
+        """restrict the term structure or parameter set to a subset of tenors."""
         param = RateLogSvParams(sigma0=self.sigma0,
                                 theta=self.theta,
                                 kappa1=self.kappa1,
@@ -181,6 +227,9 @@ class RateLogSvParams(RateLogSvParamsBase):
                             t_start: float,
                             t_end: float,
                             t_grid: np.ndarray):
+        """
+        transform parameters to the T-forward measure, used for options on rate futures.
+        """
         theta = self.theta
         kappa1 = self.kappa1
         kappa2 = self.kappa2
@@ -230,6 +279,7 @@ class MultiFactRateLogSvParams(ModelParams):
 
     @classmethod
     def make_A_2d(cls, A: np.ndarray, ts: np.ndarray):
+        """reshape the coefficient vector into the two-dimensional form the ODE solver expects."""
         if A.ndim == 1:
             A_ = np.zeros((ts.size - 1, A.shape[0]))
             for idx, t in enumerate(A_):
@@ -241,6 +291,7 @@ class MultiFactRateLogSvParams(ModelParams):
         return A_
 
     def __post_init__(self):
+        """validate dimensions and cache derived quantities."""
         self.key_terms = self.basis.key_terms
         # term-structure times for beta and vol-vol must be consistent
         assert np.all(self.beta.ts == self.volvol.ts)
@@ -300,6 +351,7 @@ class MultiFactRateLogSvParams(ModelParams):
                           kappa2: float,
                           theta: float) -> np.ndarray:
             # evolve vector \\bar X, vector \\barY and scalar vol
+            """right-hand side of the ODE for the deterministic state means of Eq. (37)."""
             sz_X = self.basis.nb_factors
             sz_Y = self.basis.nb_aux_factors
             sz = sz_X + sz_Y + 1
@@ -403,6 +455,9 @@ class MultiFactRateLogSvParams(ModelParams):
                             t_end: float,
                             t_grid: np.ndarray) -> Tuple[np.ndarray, ...]:
         # t_start, t_end = get_futures_fixing_and_pmt(expiry=expiry, lag=lag)
+        """
+        transform parameters to the T-forward measure, used for options on rate futures.
+        """
         assert expiry <= t_start < t_end
         theta = self.theta
         kappa1 = self.kappa1
@@ -448,6 +503,7 @@ class MultiFactRateLogSvParams(ModelParams):
         return a_interp, eta_interp, term0, term1, term2, beta_interp, volvol_interp
 
     def check_QT_kappa2(self, t_start: float, t_end: float = None) -> bool:
+        """check the quadratic mean-reversion bound under the T-forward measure."""
         if t_end is None:
             t_end = t_start + 0.25
         expiry = t_start
@@ -456,6 +512,13 @@ class MultiFactRateLogSvParams(ModelParams):
         return np.all(term2 > 0.0)
 
     def check_QA_kappa2(self, expiry: float, tenor: float) -> bool:
+        """
+        check the quadratic mean-reversion bound under the annuity measure.
+
+        The regularity condition on the moments of the SV driver; the measure change of
+        Theorem 3.1 shifts the quadratic coefficient, so the bound must be verified in
+        the transformed parameters rather than the original ones.
+        """
         t_grid = generate_ttms_grid(np.array([expiry]))
 
         a_interp, term0, term1, term2, beta_interp, volvol_interp, _ = self.transform_QA_params(expiry=expiry,
@@ -465,6 +528,7 @@ class MultiFactRateLogSvParams(ModelParams):
 
 
     def reduce(self, ids: List[str]):
+        """restrict the term structure or parameter set to a subset of tenors."""
         ttms = [MultiFactRateLogSvParams.get_frac(id) for id in ids]
         assert set(ttms) <= set(self.ts)
         indices = np.in1d(self.ts, ttms).nonzero()[0] - 1
@@ -488,6 +552,7 @@ class MultiFactRateLogSvParams(ModelParams):
     def update_params(self, idx: int, A_idx: np.ndarray = None, beta_idx: np.ndarray = None, volvol_idx: float = None,
                       kappa1: float = None, kappa2: float = None,
                       sigma0: float = None):
+        """return a copy with the given parameters replaced."""
         nb_factors = self.basis.get_nb_factors()
         if A_idx is not None:
             assert A_idx.shape == (nb_factors,)
@@ -509,6 +574,7 @@ class MultiFactRateLogSvParams(ModelParams):
 
     @classmethod
     def get_frac(cls, id: str) -> float:
+        """accrual fraction between two grid points of the term structure."""
         if id == '3m':
             return 0.25
         elif id == '6m':
@@ -550,6 +616,9 @@ class MultiFactRateLogSvParams(ModelParams):
 
 
     def calc_factor_vols(self, yield_vols: np.ndarray) -> np.ndarray:
+        """
+        deterministic factor volatility matrix C(t) entering Eq. (7).
+        """
         assert yield_vols.ndim == 1 and yield_vols.shape[0] == self.basis.get_nb_factors()
         B = self.basis.get_matrix_B()
         R_chol = np.linalg.cholesky(self.R)
@@ -562,6 +631,7 @@ class MultiFactRateLogSvParams(ModelParams):
                              b_dln: np.ndarray,
                              nb_path: int):
 
+        """factor volatilities under the displaced log-normal parametrisation."""
         nb_factors = self.basis.get_nb_factors()
         assert yield_vols.ndim == 1 and yield_vols.shape[0] == nb_factors
         assert b_dln.shape == yield_vols.shape

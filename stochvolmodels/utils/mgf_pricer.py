@@ -98,6 +98,26 @@ def get_transform_var_grid(variable_type: VariableType = VariableType.LOG_RETURN
 def compute_integration_weights(var_grid: np.ndarray,
                                 is_simpson: bool = True
                                 ) -> np.ndarray:
+    """
+    quadrature weights for the Fourier inversion integral.
+
+    Weights are built on the imaginary part of the transform grid, which is the
+    variable of integration in the valuation formulas. Simpson requires an odd
+    number of grid points; no check is made, and an even count silently biases
+    the composite rule.
+
+    Parameters
+    ----------
+    var_grid : np.ndarray, complex
+        Transform grid. Only its imaginary part is used.
+    is_simpson : bool, default True
+        Simpson's rule when True, trapezoidal otherwise.
+
+    Returns
+    -------
+    np.ndarray
+        Weights aligned with var_grid.
+    """
     p = np.imag(var_grid)
     if is_simpson:
         dp = 2.0*np.ones(len(p))

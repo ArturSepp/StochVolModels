@@ -13,6 +13,10 @@ from stochvolmodels.utils.funcs import ncdf, npdf
 
 
 class OptionType(str, Enum):
+    """
+    option payoff type: 'C' and 'P' for vanilla calls and puts, 'IC' and 'IP' for
+    their inverse counterparts, whose payoff is divided by the terminal spot.
+    """
     CALL = 'C'
     PUT = 'P'
     INVERSE_CALL = 'IC'
@@ -27,6 +31,13 @@ nb: numba loops are more efficient than vectorised implementations
 
 @njit
 def is_intrinsic(ttm: float, vol: float) -> bool:
+    """
+    whether an option has no time value and prices to its intrinsic payoff.
+
+    True when the maturity has passed, or the volatility is non-positive or NaN, in
+    which case the Black-Scholes formula degenerates and callers should return the
+    undiscounted intrinsic value instead.
+    """
     if ttm <= 0.0 or vol <= 0.0 or np.isnan(vol):
         return True
     else:
@@ -87,6 +98,7 @@ def compute_bsm_vanilla_slice_prices(ttm: float,
     vectorised bsm deltas for array of aligned strikes, vols, and optiontypes
     """
     def f(strike: float, vol: float, optiontype: str) -> float:
+        """root function passed to the implied volatility solver."""
         return compute_bsm_vanilla_price(forward=forward,
                                          ttm=ttm,
                                          vol=vol,
@@ -112,6 +124,7 @@ def compute_bsm_forward_grid_prices(ttm: float,
     vectorised bsm prices for array of aligned forwards
     """
     def f(forward: float) -> float:
+        """root function passed to the implied volatility solver."""
         return compute_bsm_vanilla_price(forward=forward,
                                          ttm=ttm,
                                          vol=vol,
@@ -177,6 +190,7 @@ def compute_bsm_vanilla_slice_deltas(ttm: float,
     bsm deltas for strikes and vols
     """
     def f(strike: float, vol: float, optiontype: str) -> float:
+        """root function passed to the implied volatility solver."""
         return compute_bsm_vanilla_delta(forward=forward,
                                          ttm=ttm,
                                          vol=vol,
@@ -217,6 +231,7 @@ def compute_bsm_vanilla_grid_deltas(ttm: float,
     vectorised bsm deltas for array of forwards grid
     """
     def f(forward: float) -> float:
+        """root function passed to the implied volatility solver."""
         return compute_bsm_vanilla_delta(forward=forward,
                                          ttm=ttm,
                                          vol=vol,
@@ -417,6 +432,7 @@ def infer_bsm_ivols_from_model_slice_prices(ttm: float,
                                             model_prices: np.ndarray,
                                             discfactor: float
                                             ) -> np.ndarray:
+    """invert model prices of one slice to Black-Scholes implied volatilities."""
     model_vol_ttm = np.zeros_like(strikes)
     for idx, (strike, model_price, optiontype) in enumerate(zip(strikes, model_prices, optiontypes)):
         model_vol_ttm[idx] = infer_bsm_implied_vol(forward=forward, ttm=ttm, discfactor=discfactor,

@@ -19,21 +19,31 @@ from stochvolmodels.data.option_chain import OptionChain
 
 @dataclass
 class GmmParams(ModelParams):
+    """
+    parameters of a Gaussian mixture model for terminal log-returns.
+
+    The terminal density is a weighted sum of normals, one per state, each with its
+    own drift and volatility. Weights sum to one and the mixture must reprice the
+    forward, which are the two equality constraints imposed during calibration.
+    """
     gmm_weights: np.ndarray
     gmm_mus: np.ndarray
     gmm_vols: np.ndarray
     ttm: float  # ttm is important as all params are fixed to this ttm, it is not part of calibration
 
     def sort_by_mus(self):
+        """order the mixture states by drift, so fitted states stay comparable across slices."""
         indices = np.argsort(self.gmm_mus)
         self.gmm_weights = self.gmm_weights[indices]
         self.gmm_mus = self.gmm_mus[indices]
         self.gmm_vols = self.gmm_vols[indices]
 
     def get_get_avg_vol(self) -> float:
+        """weight-averaged volatility, sqrt(sum w_i vol_i^2)."""
         return np.sqrt(np.sum(self.gmm_weights*np.square(self.gmm_vols)))
 
     def compute_state_pdfs(self, x: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """per-state densities and their weighted aggregate on a log-return grid."""
         state_pdfs = np.zeros((len(x), len(self.gmm_weights)))
         agg_pdf = np.zeros_like(x)
         for idx, (gmm_weight, mu, vol) in enumerate(zip(self.gmm_weights, self.gmm_mus, self.gmm_vols)):
@@ -43,6 +53,7 @@ class GmmParams(ModelParams):
         return state_pdfs, agg_pdf
 
     def compute_pdf(self, x: np.ndarray):
+        """aggregate mixture density on a log-return grid."""
         pdfs = np.zeros_like(x)
         for gmm_weight, mu, vol in zip(self.gmm_weights, self.gmm_mus, self.gmm_vols):
             pdfs = pdfs + gmm_weight*npdf(x, mu=mu*self.ttm, vol=vol*np.sqrt(self.ttm))
@@ -51,6 +62,7 @@ class GmmParams(ModelParams):
 
 class GmmPricer(ModelPricer):
 
+    """ModelPricer valuing options as a weighted sum of Black-Scholes prices."""
     def price_chain(self, option_chain: OptionChain, params: GmmParams, **kwargs) -> np.ndarray:
         """
         implementation of generic method price_chain using heston wrapper for heston chain
@@ -71,6 +83,7 @@ class GmmPricer(ModelPricer):
                              variable_type: VariableType = VariableType.LOG_RETURN,
                              **kwargs
                              ) -> (List[np.ndarray], List[np.ndarray]):
+        """price an option chain by Monte Carlo rather than the analytic solution."""
         raise NotImplementedError
 
     @timer
@@ -118,23 +131,32 @@ class GmmPricer(ModelPricer):
             weights = np.ones_like(market_vols)
 
         def parse_model_params(pars: np.ndarray) -> GmmParams:
+            """map the optimizer parameter vector onto a model parameter object."""
             gmm_weights = pars[:n_mixtures]
             gmm_mus = pars[n_mixtures:2*n_mixtures]
             gmm_vols = pars[2*n_mixtures:]
             return GmmParams(gmm_weights=gmm_weights, gmm_mus=gmm_mus, gmm_vols=gmm_vols, ttm=ttm)
 
         def objective(pars: np.ndarray, args: np.ndarray) -> float:
+            """weighted mean squared error between model and market implied volatilities."""
             params = parse_model_params(pars=pars)
             model_vols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params)
             resid = np.nansum(weights * np.square(to_flat_np_array(model_vols) - market_vols))
             return resid
 
         def weights_sum(pars: np.ndarray) -> float:
+            """equality constraint sum of mixture weights minus one."""
             params = parse_model_params(pars=pars)
             return np.sum(params.gmm_weights) - 1.0
 
         def martingale(pars: np.ndarray) -> float:
             # we set to 1.0, mutplication with foward will be set by pricing
+            """
+            equality constraint forcing the mixture to reprice the forward.
+
+            Returns sum_i w_i exp((mu_i + 0.5 vol_i^2) ttm) - 1, normalised to a unit
+            forward; the scaling by the actual forward happens at pricing time.
+            """
             params = parse_model_params(pars=pars)
             return np.sum(params.gmm_weights*np.exp((params.gmm_mus+0.5*params.gmm_vols*params.gmm_vols)*ttm)) - 1.0
 
@@ -214,6 +236,7 @@ def compute_gmm_vanilla_slice_prices(gmm_weights: np.ndarray,
     vectorised bsm deltas for array of aligned strikes, vols, and optiontypes
     """
     def f(strike: float, optiontype: str) -> float:
+        """helper evaluated inside the enclosing routine."""
         return compute_gmm_vanilla_price(gmm_weights=gmm_weights,
                                          gmm_mus=gmm_mus,
                                          gmm_vols=gmm_vols,
@@ -260,6 +283,7 @@ def gmm_vanilla_chain_pricer(gmm_weights: np.ndarray,
 
 
 class LocalTests(Enum):
+    """cases for the local test dispatcher."""
     CALIBRATOR = 1
 
 
@@ -272,7 +296,7 @@ def run_local_test(local_test: LocalTests):
 
     import seaborn as sns
     from stochvolmodels.utils import plots as plot
-    from stochvolmodels.data.test_option_chain import get_btc_test_chain_data
+    from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
 
     if local_test == LocalTests.CALIBRATOR:
         option_chain = get_btc_test_chain_data()

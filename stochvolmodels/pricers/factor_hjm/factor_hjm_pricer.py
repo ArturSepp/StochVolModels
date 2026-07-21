@@ -1,3 +1,15 @@
+"""
+Monte Carlo driver for the factor HJM model with a stochastic volatility driver.
+
+Simulates the model dynamics of Eq. (9) and reduces the paths to implied
+volatilities, for benchmarking the analytic solutions of Secs. 5 and 6.
+
+Reference
+---------
+A. Sepp and P. Rakhmonov (2025), Stochastic volatility for factor Heath-Jarrow-Morton
+framework, Review of Derivatives Research 28:12. Equation numbers throughout this
+module refer to that article.
+"""
 
 import numpy as np
 import pandas as pd
@@ -8,7 +20,7 @@ from numba.typed import List
 
 import stochvolmodels.pricers.analytic.bachelier as bachel
 from stochvolmodels.pricers.factor_hjm.rate_logsv_params import MultiFactRateLogSvParams
-from stochvolmodels.pricers.factor_hjm.rate_core import get_default_swap_term_structure
+from stochvolmodels.utils.rate_core import get_default_swap_term_structure
 from stochvolmodels.pricers.factor_hjm.rate_logsv_pricer import simulate_logsv_MF, Measure
 
 
@@ -29,6 +41,13 @@ def do_mc_simulation(basis_type: str,
                      T_fwd: float = None,
                      ) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
 
+    """
+    simulate model paths and return terminal state variables for a set of maturities.
+
+    Uses the backward Euler-Maruyama scheme of Eq. (124) for the log of the SV
+    driver, which Sec. 7.3 shows has strong convergence rate 1 and needs no boundary
+    treatment.
+    """
     if basis_type != "NELSON-SIEGEL" :
         raise NotImplementedError
     x0s, y0s, I0s, sigma0s = simulate_logsv_MF(ttms=ttms,
@@ -76,6 +95,7 @@ def calc_mc_vols(basis_type: str,
                  seed: int = None,
                  x_in_delta_space: bool = False) -> (List[np.ndarray], List[np.ndarray]):
     # checks
+    """invert simulated option prices to Black or normal implied volatilities."""
     assert len(strikes_ttms) == len(tenors)
     assert len(strikes_ttms[0]) == 1
     assert len(forwards) == len(tenors)
