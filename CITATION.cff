@@ -5,6 +5,7 @@ title: "StochVolModels: Python Implementation of Stochastic Volatility Models"
 authors:
   - family-names: Sepp
     given-names: Artur
+    orcid: "https://orcid.org/0000-0002-7038-1748"
 repository-code: "https://github.com/ArturSepp/StochVolModels"
 url: "https://pypi.org/project/stochvolmodels/"
 license: MIT
@@ -24,6 +25,7 @@ preferred-citation:
   authors:
   - family-names: Sepp
     given-names: Artur
+    orcid: "https://orcid.org/0000-0002-7038-1748"
   - family-names: Rakhmonov
     given-names: Parviz
   journal: "International Journal of Theoretical and Applied Finance"
