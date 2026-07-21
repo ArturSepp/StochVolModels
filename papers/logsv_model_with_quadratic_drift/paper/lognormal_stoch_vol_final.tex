@@ -1,0 +1,2893 @@
+\documentclass[pdftex,11pt,a4paper] {article}
+\usepackage{amsmath,amsfonts,amsthm,amssymb,amscd}
+\usepackage{latexsym}
+\usepackage[pdftex]{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{multirow}
+\usepackage{enumitem}   
+\usepackage{bbm}
+\usepackage{natbib} 
+\bibliographystyle{agsm}
+
+
+\usepackage{geometry}
+ \geometry{
+ a4paper,
+ total={165mm,245mm},
+ left=25mm,
+ top=25mm,
+ }
+\graphicspath{{../../draft/figures/}}
+
+\newtheorem{corollary}{Corollary}[section]
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{definition}{Definition}[section]
+\newtheorem{notations}{Notations}[section]
+\newtheorem{notation}{Notation}[section]
+\newtheorem{assumption}{Assumption}[section]
+\newtheorem*{remark}{Remark}%[section]
+
+
+%\parindent=0cm
+
+
+%\numberwithin{equation}{section}
+%\numberwithin{figure}{section}
+\def\bitcoinB{\leavevmode
+  {\setbox0=\hbox{\textsf{B}}%
+    \dimen0\ht0 \advance\dimen0 0.2ex
+    \ooalign{\hfil \box0\hfil\cr
+      \hfil\vrule height \dimen0 depth.2ex\hfil\cr
+    }%
+  }%
+}
+
+
+\usepackage[nodayofweek]{datetime}
+\newdate{date}{16}{02}{2024}
+\date{\displaydate{date}}
+
+\usepackage{hyperref}  %added
+\hypersetup{colorlinks=true,
+    linktoc=all,
+    linkcolor=blue,
+		citecolor=blue,
+		urlcolor=cyan,
+		bookmarksopen=true
+		}
+
+\begin{document}
+
+
+\title{Log-normal Stochastic Volatility Model with Quadratic Drift}
+
+\author{Artur Sepp\thanks{Clearstar Labs AG, Z\"{u}rich, Switzerland, artursepp@gmail.com} \and Parviz Rakhmonov\thanks{Marex, London, United Kingdom, parviz.msu@gmail.com}}
+
+
+\maketitle
+
+\begin{center}
+Forthcoming in International Journal of Theoretical and Applied Finance
+\end{center}
+
+
+\begin{abstract}
+We introduce the log-normal stochastic volatility (SV) model with a quadratic drift to allow arbitrage-free valuation of options on assets under money-market account and inverse martingale measures. We show that the proposed volatility process has the unique strong solution, despite non-Lipschitz quadratic drift, and we establish the corresponding Feynman-Kac partial differential equation (PDE) for computation of conditional expectations under this SV model. We derive conditions for arbitrage-free valuations when return-volatility correlation is positive to preclude the ``loss of martingality'', which occurs in many traditional SV models. Importantly, we develop an analytic approach to compute an affine expansion for the moment generating function of the log-price, its quadratic variance (QV) and the instantaneous volatility. Our solution allows for semi-analytic valuation of vanilla options under log-normal SV models closing a gap in existing studies.
+
+We apply our approach for solving the joint valuation problem of vanilla and inverse options, which are popular in the cryptocurrency option markets. We demonstrate the accuracy of our solution for valuation of vanilla and inverse options\footnote{Github project \url{https://github.com/ArturSepp/StochVolModels} provides Python code with the implementation of option valuation using the affine expansion and examples of model calibration to implied volatility data applied in this paper.}. By calibrating the model to time series of options on Bitcoin over the past four years, we show that the log-normal SV model can work efficiently in different market regimes. Our model can be well applied for modeling of implied volatilities of assets with positive return-volatility correlation.
+\end{abstract}
+
+\textit{Keywords} Log-normal stochastic volatility, Non-affine models, Closed-form solution, Moment generating function, Cryptocurrency derivatives, Quadratic variance
+
+
+\textit{JEL Classification Code:} G13, C63
+
+
+
+\section{Introduction}
+
+
+Empirical studies strongly support evidence that the volatility of price returns is itself a stochastic process (see, for an example, \cite{Shephard2005} for a comprehensive survey). It is accepted that the celebrated model by \cite{BS73} and \cite{Merton73}, which assumes constant volatility, cannot explain implied volatility surfaces observed in option markets, which are inhomogeneous in strike and maturity dimensions. In contrast, stochastic volatility (SV) models are able to fit to implied volatility surfaces and their dynamics. 
+
+
+\subsection{Evidence of Log-normality of Implied and Realized Volatilities}
+
+Applications of log-normal SV models, which are based either on the log-normal dynamics for the instantaneous volatility or on the Gaussian dynamics for the logarithm of the volatility, are widespread in practice. Predominantly, SABR model by \cite{Hagan2002} is widely used among practitioners for fitting implied volatility surfaces. However, for modeling the dynamics of volatility surfaces, we need to account for the mean-reversion of the volatility process like in conventional SV models. The mean-reversion ensures that the distribution of the volatility has a stationary long-run distribution and volatility paths simulated in Monte-Carlo do not explode. In another widely used specification, the so called Exp-OU specification, the SV process is defined for the logarithm of the volatility\footnote{Exp-OU SV models are studied in \cite{Fouque2000}, \cite{Detemple2000},  \cite{Masoliver2006}, \cite{perello2008}, \cite{MuhleKarbe2012}, \cite{drimus2012a}. Exp-OU SV models are widespread in industry as a basis for local SV models (\cite{Lipton2002}), see \cite{bergomi2005}, \cite{buhler2006}, \cite{RenMadan2007}, \cite{labord2009}, \cite{bergomi2012}.}. 
+
+In an excellent study \cite{Christof2010} examine the empirical performance of Heston (see \cite{Heston1993}), log-normal and 3/2 SV models using three sources of market data: the VIX index, the implied volatility for options of the S\&P500 index, and the realized volatility of returns on the S\&P500 index. They found that, for all three sources of data, the log-normal SV model outperforms its alternatives. \cite{Tegner2018} report similar finding using realized volatilities.  
+
+
+
+\subsection{Analytical Tractability}
+
+Log-normal SV models cannot be handled by semi-analytic Fourier methods available for affine SV models. The analytical intractability may have lead to a slow adaptation of log-normal SV models in spite of their empirical support. On the one hand, the log-normal SV model with the linear drift does not belong to the family of affine diffusions because the so-called admissibility conditions are not satisfied for the variance term, see \cite{DuffieFilipSchacer03}, \cite{FilipMayer09}. On the other hand, the log-normal SV model with the quadratic drift does not belong to a general family of polynomial diffusions, see  \cite{Filip16}, \cite{CuchKellRessTeich12}. \cite{CarrWill} introduce measure change to relate the model to a class of polynomial diffusions, which comes at cost of introducing an additional state variable. Authors then approximate the payoff function using an orthogonal polynomial expansion, see \cite{Filip19}, for option pricing applications. A related approach for computing moments under SV models using expansions is developed by \cite{Alos2020}.
+
+We contribute to these studies by developing a closed-form approximate and very accurate solution for the log-normal SV model which enables analytical intractability of this model. We develop an affine expansion to derive closed-form solution for the moment generating function (MGF) of the log-price process, volatility and its quadratic variance (QV). We show that our solution to the MGF produces valid probability density functions of the state variables, which are matched with Monte Carlo (MC) simulations. 
+
+
+
+
+\subsection{Properties of Log-normal SV Model}
+
+In a related research, \cite{Lewis2019} introduces a log-normal SV model with a quadratic drift without constant term. \cite{Lewis2019} suggests to apply the model only when return-volatility correlation is negative because, otherwise, the model leads to the loss of martingality. \cite{CarrWill} introduce the log-normal SV model with the quadratic drift, similar to our model. In our paper we augment the log-normal SV model with the linear drift term introduced in \cite{Sepp2012} to include the quadratic drift term. We contribute to studies of \cite{Lewis2019} and \cite{CarrWill} by defining the martingale conditions under both MMA and inverse martingale measures. We also formulate the Feynman-Kac theorem linking the model dynamics with the quadratic drift to the partial differential equation (PDE) approach, because the classic Feynman-Kac does not apply to non-Lipschitz coefficients. We then introduce the moment generating function as the solution to the model PDE and develop an analytic transform-based approach for the valuation of vanilla and inverse options. 
+
+
+
+
+\subsection{Assets with Positive Return-Volatility Correlation}
+
+\cite{CarrWu} propose the following three economic factors behind the negative return-volatility correlation, which most typically observed in the dynamics of stock prices and stock indices: aggregate financial leverage, systematic risk, positive auto-correlation of negative shocks. However, in many markets we actually observe price dynamics with positive return-volatility correlation either on a permanent basis (for VIX index, short and leveraged short exchange-traded funds (ETFs)) or on a transitory regime-based basis (for some commodities, foreign currencies, and cryptocurrencies). In fact, exp-ou and log-normal SV models with the linear drift lead to the ``loss of martingality'' of the price process when the return-volatility correlation is positive (see, for example, \cite{Lewis2000, Lewis2019} and \cite{Lions2007}). We contribute by establishing conditions on model parameters of log-normal SV model which produce true martingale dynamics. 
+
+
+
+\subsection{Inverse Martingale Measure}
+
+For inverse options, both option premium and final payoff are quoted in the units of the underlying asset. In particular, for options on cryptocurrencies, the advantage of inverse payoffs is that all option-related transactions can be handled using units of underlying cryptocurrencies, such as Bitcoin or Ether, without using fiat currencies (see \cite{Lucic2022} and \cite{LucicSepp2023} for a connection between the valuation of the inverse cryptocurrency options and FX options). In case of cryptocurrencies, cash settled options would require using a stablecoin as a tradable equivalent of United States Dollar (USD) or any other fiat currency. Given inherent and frequent depegging risk of stablecoins, \cite{Alexander2022} argue for wider adoptation of inverse and quanto options. We also suggest that similar pay-off can be advantageous for some commodity markets (such as gold) where option holders may opt for physical settlement of positive option premium through the delivery of the underlying commodity. 
+
+
+We contribute to the literature by incorporating the inverse measure in our valuation framework using log-normal SV model. We formulate and solve the joint valuation problem of vanilla and inverse options using Fourier transform methods.
+
+
+\subsection{Organization of the Paper}
+
+In Section \ref{sec:setup}, we provide the framework for valuation under money-market account (MMA) and inverse measures. 
+In Section \ref{sec:model_dynam}, we introduce the log-normal beta SV model with quadratic drift and  establish important properties of the volatility process. We further characterize martingale property for the drift-adjusted price process and its inverse under MMA and inverse measures, respectively. We also study moments of the volatility process by presenting an approximate solution of the finite-dimensional linear system of ordinary differential equations (ODEs). Finally, we present drift-implicit Euler scheme for Monte-Carlo simulation that preserves the positivity of the volatility process and study its convergence properties. In Section \ref{sec:affine_expansion}, we present first- and second-order affine expansion for the MGF of the log-price process, the QV and the volatility. 
+In Section \ref{sec:option_valuation}, we apply affine expansion to derive closed-form solutions for option valuation problem under MMA and inverse measures.
+In Section \ref{sec:empirics}, we apply our method for model calibration to market data and demonstrate the accuracy of both the model specification and our proposed solution methods. We conclude in Section \ref{sec:conclusion}. Technical proofs are provided in Appendix \ref{sec:appendix}. 
+
+
+
+\section{Framework and Definitions}\label{sec:setup}
+
+
+\subsection{Vanilla and Inverse Payoffs} \label{sec:der}
+
+The payoff of (cash-settled) vanilla options is settled in the units of cash. In contrast, the payoff of an inverse option is settled in the units of the underlying asset using the spot price observed at the option maturity. We denote the spot price at time $T$ by $S_T$ and option strike price by $K$, with both are quoted in United States Dollars (USD). We consider vanilla call and put payoffs settled in USD cash at maturity time $T$ and denote them by
+\begin{equation}\label{eq:call_put_vanilla}
+\begin{split}
+& u^{\text{call}}(S_{T}) = \max\left\{ S_{T} -K, 0\right\}, \  u^{\text{put}}(S_{T}) = \max\left\{ K-S_{T}, 0\right\}.
+\end{split}
+\end{equation}
+Payoffs of inverse call and put options are converted to units of the underlying asset at maturity $T$ as follows
+\begin{equation}\label{eq:call_put_inverse}
+\begin{split}
+& r^{\text{call}}(S_{T}) =  \frac{1}{S_{T}}\max\left\{ S_{T} -K, 0\right\} , \  r^{\text{put}}(S_{T}) =  \frac{1}{S_{T}}\max\left\{ K-S_{T}, 0\right\}.
+\end{split}
+\end{equation}
+
+
+\subsection{Valuation under Equivalent MMA and Inverse Measures}
+
+We consider a continuous-time market with a fixed horizon date $T^{*}>0$ and uncertainty modeled on probability space $(\Omega, \mathbb{F}, \mathbb{P})$ equipped with filtration $\mathbb{F}=\{\mathcal{F}_t\}_{0\le t\le T^*}$. We assume that $\mathbb{F}$  is right-continuous and satisfies usual conditions. 
+
+
+\subsubsection{Spot Markets}
+
+\begin{assumption}\label{a:r} Risk-free rate $r(t)$ is deterministic with the value of one unit of the money market account $M(T)$ given by $M(T)=e^{\bar{r}(0, T)}, \ \bar{r}(t, T)=\int^{T}_{t}r(s)ds$.
+\end{assumption}
+We assume that the market is complete and satisfies the so-called {\it No Free Lunch with Vanishing Risk} (NFLVR) and {\it No Dominance} (ND) conditions (see \cite{JarrowLarsson2012}). By choosing $M$ as a num\'eraire, we consider an equivalent martingale measure $\mathbb{Q}$, induced by $M$.  
+Accordingly, the time-$t$ value of an option, denoted by $U(t,S)$, with payoff function $u(S_T)$ at time $T$, equals
+\begin{equation}\label{eq:umma}
+U(t,S)=M(t)\mathbb{E}\left[\frac{1}{M(T)}\left.u(S_T)\right|\mathcal{F}_{t}\right],
+\end{equation}
+where expectation $\mathbb{E}$ is taken under the MMA martingale measure $\mathbb{Q}$.
+
+Next, by choosing spot price $S$ as a num\'eraire, we consider an inverse  martingale measure $\tilde{\mathbb{Q}}$, induced by $S$. The option value function, denoted by $\tilde U(t,S)$, with the payoff paid in units of $S$, equals
+\begin{equation}\label{eq:uinv}
+\tilde U(t,S)=S_t\tilde{\mathbb{E}}\left[\frac{1}{S_T}\left.u(S_T)\right|\mathcal{F}_{t}\right],
+\end{equation}
+where expectation $\tilde{\mathbb{E}}$ is taken under the inverse martingale measure $\tilde{\mathbb{Q}}$.
+
+\begin{theorem}\label{def1} We assume that market is complete and satisfies NFLVR and ND conditions. We further assume that both MMA measure $\mathbb{Q}$ and inverse measure $\tilde{\mathbb{Q}}$ are equivalent martingale measures. Then the values of options under MMA measure in Eq (\ref{eq:umma}) and under inverse measure in Eq (\ref{eq:uinv}) are unique and satisfy
+\begin{equation}\label{eq:meas_link2}
+ \begin{split}
+& M(t)\mathbb{E}\left[\frac{1}{M(T)}\left.u(S_T)\right|\mathcal{F}_{t}\right] = S_t\tilde{\mathbb{E}}\left[\left.\frac{1}{S_T}u(S_T)\right|\mathcal{F}_{t}\right].
+\end{split}
+\end{equation}
+\end{theorem}
+\begin{proof}
+As shown in Theorem 3.2 of \cite{JarrowLarsson2012} and Theorem 2.17 of \cite{HerdegenSchweizer2018}, the market satisfies NFLVR and ND conditions if and only if $\mathbb{Q}$ is a {\it true} martingale measure. Hence, asset prices, discounted by num\'eraire $M$ are true $\mathbb{Q}$-martingales. Consequently, due to the uniqueness of price, the equality in Eq \eqref{eq:meas_link2} holds. To justify the equality of both sides, we apply the existence and uniqueness of equivalent inverse (true) martingale measure $\tilde{\mathbb{Q}}$ for the num\'eraire $S$, see Theorem 4.4 and Corollary 3.11 in \cite{HerdegenSchweizer2018}. 
+\end{proof}
+
+
+
+\subsubsection{Futures Markets}
+
+Since most option markets for commodities and cryptocurrencies are based on futures, we also adopt our methodology for futures options. We consider a set of futures contracts settled at times $\{T_{k}\}_{k=1,..,K}$ with prices $\{F^{T_{k}}_t\}_{k=1,..,K}$.
+
+\begin{assumption}\label{a:r1} The convenience yield $q(t)$ of futures prices is deterministic with the integrated convenience yield given by
+\begin{equation}\label{eq:r1}
+\bar{q}(t, T) = \int^{T}_{t}q(s)ds
+\end{equation}
+\end{assumption}
+
+\begin{definition}
+Measure $\tilde{\mathbb{Q}}^{T}$ induced by price $F^{T}_t$ with futures maturity at $T$, $T\in\{T_{k}\}$, chosen as a num\'eraire is called the inverse $T$-futures measure.
+\end{definition}
+
+
+\begin{corollary}\label{def2} We assume that market is complete and satisfies NFLVR and ND conditions. We further assume that both MMA measure $\mathbb{Q}$ and inverse futures measure $\tilde{\mathbb{Q}}^{T}$ are equivalent martingale measures. Then option values under MMA and inverse measures are unique and satisfy
+\begin{equation}\label{eq:meas_link3}
+\begin{split}
+& M(t)\mathbb{E}\left[\frac{1}{M(T)}\left.u(F_T)\right|\mathcal{F}_{t}\right]
+=F_{t}\tilde{\mathbb{E}}^{T}\left[\left.\frac{1}{F_T}u(F_T)\right|\mathcal{F}_{t}\right].
+\end{split}
+\end{equation}
+
+\end{corollary}
+
+
+For markets with both vanilla and inverse options being tradable, such as cryptocurrency markets, any SV model applied for joint valuation of options across several exchanges and contract specifications must satisfy the conditions (\ref{eq:meas_link2}) and (\ref{eq:meas_link3}). For the proposed log-normal SV dynamics in Eq (\ref{eq:svmd1}), we must impose certain conditions on model parameters, which we address in Theorem \ref{thm::bounds_LN_model_quad_drift}.
+
+
+
+
+\subsubsection{Put-Call Parity}
+We will discuss an important topic of the put-call parity for inverse options under a generic SV model with stochastic volatility driver $\sigma_{t}$. We establish that the put-call parity is valid if volatility $\sigma_{t}$ is not explosive.
+\begin{lemma}\label{lem:put_call}
+We assume that volatility process $\sigma_t$ is non-explosive under $\mathbb{Q}$. Then put-call parity for vanilla call option, $C(t, S, K)$, and put option, $P(t, S, K)$, defined by
+\begin{equation} \label{eq:pc1}
+\begin{split}
+C(t, S, K)-P(t, S, K)= S -Ke^{-\bar r(t,T)}
+\end{split}
+\end{equation}
+holds irrespective whether the price process is a true martingale under $\mathbb{Q}$.
+
+We assume that volatility process $\sigma_t$ is non-explosive under $\tilde{\mathbb{Q}}$.  Put-call parity for inverse call option, $\tilde{C}(t, S, K)$, and inverse put option, $\tilde{P}(t, S, K)$, defined by
+\begin{equation} \label{eq:pc2}
+\begin{split}
+\tilde{C}(t, S, K)-\tilde{P}(t, S, K)= 1-S^{-1}Ke^{-\bar r(t,T)}
+\end{split}
+\end{equation}
+holds irrespective whether (drift-adjusted) inverse price process is a true martingale under $\tilde{\mathbb{Q}}$.
+\end{lemma}
+
+\begin{proof}
+We only provide a sketch of the proof and refer to Theorems 9.2 and 9.3 in \cite{Lewis2000} and to \cite{Sin1998} for details.
+As vanilla call option payoff is unbounded, the price of the call option is only local martingale under $\mathbb{Q}$. Taking into account 'correction' term (so-called {\it martingale} defect) reflecting the difference between true martingale and strict local martingale properties, yields Eq \eqref{eq:pc1}. Relationship in Eq \eqref{eq:pc2} follows from the same argument, but applied to $\tilde{\mathbb{Q}}$. 
+\end{proof}
+
+In Theorem \ref{th:bound_class}, we show that volatility process $\sigma_t$ does not explode under the proposed log-normal SV dynamics in Eq \eqref{eq:svmd1}.
+
+
+
+
+\section{Log-Normal Beta SV Model}\label{sec:model_dynam}
+
+\subsection{Dynamics under $\mathbb{P}$ Measure}\label{sec:logsv_quadrift}
+
+We start with statistical $\mathbb{P}$ measure and we consider the log-normal beta SV model introduced by \cite{Sepp2012}. We augment the dynamics with the quadratic drift in the volatility process following \cite{Lewis2019} and \cite{CarrWill}. 
+We first introduce the dynamics of price process $S_{t}$ and volatility process $\sigma_{t}$ under statistical measure $\mathbb{P}$ as follows
+\begin{equation}\label{eq:logsv_quadrift_P}
+\begin{split}
+&dS_t= \mu_{t}S_{t}dt+\sigma_t S_{t} dW^{(0)}_t,\\
+&d\sigma_t=(\kappa_1+\kappa_2\sigma_t)(\theta-\sigma_t)\,dt+\beta\sigma_t\,dW^{(0)}_t+\varepsilon\sigma_t\,dW^{(1)}_t
+\end{split}
+\end{equation}
+where $\mu_{t}$ is statistical drift, $W^{(0)}$, $W^{(1)}$ are uncorrelated Brownian motions under $\mathbb{P}$, $\kappa_1>0$ and $\kappa_2 \geq 0$ are linear and quadratic mean-reversion rates respectively, $\theta>0$ is the mean of the volatility, $\beta\in\mathbb{R}$ is the volatility beta which measures the sensitivity of the volatility to changes in the spot price, and $\varepsilon>0$ is the volatility of residual volatility.
+
+Empirically, \cite{Bakshi2006} find that the presence of non-linear terms, including the quadratic term, in the volatility drift is significant when using econometric estimation of the dynamics of the VIX index.
+
+We assume that statistical measure $\mathbb{P}$ and MMA measure $\mathbb{Q}$ are related by
+\begin{equation}\label{eq:RadonNikodym_logsv_quad}
+\zeta(t):=\left.\frac{d\mathbb{Q}}{d\mathbb{P}}\right|_{\mathcal{F}_t}=\mathcal{E}\left[-\int_0^t \lambda_0(u)dW^{(0)}_u+\lambda_1(u)dW^{(1)}_u\right]
+\end{equation}
+where $\mathcal{E}(\cdot)$ denotes It\^{o} exponential, and $\lambda_0(t)$ and $\lambda_1(t)$ are equity and volatility risk-premias, respectively.
+
+
+Assuming that process $\zeta(t)$ is a true martingale, the following processes
+\begin{equation}
+\begin{split}
+&\hat{W}^{(0)}_t=W^{(0)}_t+\int_0^t\lambda_0(u)du, \ \hat{W}^{(1)}_t=W^{(1)}_t+\int_0^t\lambda_1(u)du
+\end{split}
+\end{equation}
+define independent Brownian motions under $\mathbb{Q}$ by Girsanov theorem (we establish necessary and sufficient conditions for equivalence of measures in Theorem \ref{prop:meas_equiv_logsv_quadrift}). 
+Thus, the dynamics of price process in Eq \eqref{eq:logsv_quadrift_P} under MMA $\mathbb{Q}$ become
+\begin{equation*}
+dS_{t} =  \left(\mu_{t}-\lambda_0(t)\sigma_t\right) S_{t} dt + \sigma_t S_{t} d\hat{W}^{(0)}_{t}
+\end{equation*}
+As discounted price process must be a martingale under $\mathbb{Q}$, we need to require that 
+\begin{equation}\label{eq:MPR_logsv_quad}
+\mu_{t}-\lambda_0(t)\sigma_t=r_t\quad \Longleftrightarrow\quad \lambda_0(t)=\frac{\mu_{t}-r_t}{\sigma_t}
+\end{equation}
+
+
+As a result, the dynamics of volatility process under MMA measure $\mathbb{Q}$ become
+\begin{equation}\label{eq:logsv_quadrift_Q1}
+d\sigma_t=\left[\kappa_1\theta-(\kappa_1-\kappa_2\theta)\sigma_t-\kappa_2\sigma_t^2-(\beta\lambda_0(t)+\varepsilon\lambda_1(t))\sigma_t\right]dt+\beta\sigma_t d\hat{W}^{(0)}_t+\varepsilon\sigma_t d\hat{W}^{(1)}_t
+\end{equation}
+where $\hat{W}^{(0)}$, $\hat{W}^{(1)}$ are independent Brownian motions under $\mathbb{Q}$.
+
+As customary\footnote{Such linear specification is the simplest functional form that allows to establish simple relationship between gains on a delta-hedged option portfolio and level of the market volatility. As shown in \cite{BaskshiKapadia2003} such form  allows to get precise information about the sign and strength of the risk premium.}, we assume that the market price of risk is proportional to the volatilityas follows
+\begin{equation}\label{eq:MPVR_logsv_quadrift}
+\lambda_0(t)=\bar\lambda_0\sigma_t,\quad \lambda_1(t)=\bar\lambda_1\sigma_t
+\end{equation}
+where $\bar\lambda_0$ and $\bar\lambda_1$ are constants. As a result, we rewrite Eq \eqref{eq:logsv_quadrift_Q1} as follows
+\begin{equation}\label{eq:logsv_quadrift_Q2}
+d\sigma_t=\left[\kappa_1\theta-(\kappa_1-\kappa_2\theta)\sigma_t-(\kappa_2+\beta\bar\lambda_0+\varepsilon\bar\lambda_1)\sigma_t^2\right]\,dt+\beta\sigma_t\,d\hat{W}^{(0)}_t+\varepsilon\sigma_t\,d\hat{W}^{(1)}_t
+\end{equation}
+
+
+To retain the functional form of the volatility process, we rescale model parameters $\hat\theta$, $\hat\kappa_1$, $\hat\kappa_2$ under $\mathbb{Q}$ as follows
+\begin{equation}\label{eq:params_p}
+\begin{split}
+&\kappa_1\theta=\hat\kappa_1\hat\theta, \ \kappa_1-\kappa_2\theta=\hat\kappa_1-\hat\kappa_2\hat\theta, \ \kappa_2+\beta\bar\lambda_0+\varepsilon\bar\lambda_1=\hat\kappa_2
+\end{split}
+\end{equation}
+Analytic inversion of Eq \eqref{eq:params_p} yields risk-transformed model parameters under $\mathbb{Q}$:
+\begin{equation}
+\begin{split}
+& \hat\kappa_2 = \kappa_2+\beta\bar\lambda_0+\varepsilon\bar\lambda_1,\\
+& \hat \theta =  \frac{1}{2\hat\kappa_2}\left( - (\kappa_1-\kappa_2\theta) + \sqrt{(\kappa_1-\kappa_2\theta)^{2}+4\theta\kappa_{1}\hat\kappa_2} \right)\\
+& \hat \kappa_1 = \frac{1}{2} \left( (\kappa_1-\kappa_2\theta) +  \sqrt{(\kappa_1-\kappa_2\theta)^{2}+4\theta\kappa_{1}\hat\kappa_2} \right)
+\end{split}
+\end{equation}
+
+
+Thus, under martingale measure $\mathbb{Q}$, the dynamics of  price and volatility processes become
+\begin{equation}\label{eq:dynam_Q2}
+\begin{split}
+&dS_t= r_t S_tdt + \sigma_t S_t d\hat{W}^{(0)}_t,\\
+&d\sigma_t=(\hat\kappa_1+\hat\kappa_2\sigma_t)(\hat\theta-\sigma_t)\,dt+\beta\sigma_t\,d\hat{W}^{(0)}_t+\varepsilon\sigma_t\,d\hat{W}^{(1)}_t
+\end{split}
+\end{equation}
+
+\begin{theorem}\label{prop:meas_equiv_logsv_quadrift}
+We assume that $\kappa_1\ge 0$, $\theta>0$ . Then measures $\mathbb{P}$ and $\mathbb{Q}$ are equivalent, iff
+\begin{equation}
+\kappa_2\ge \max \left\{ -\beta\bar\lambda_0-\varepsilon\bar\lambda_1, 0 \right\}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+By analogy to the proof of theorem \ref{thm::meas_equiv_quad_drift}.
+\end{proof}
+
+
+As a result, we obtain that the functional form of log-normal SV model with the quadratic drift is invariant under the change of measure from $\mathbb{P}$ to $\mathbb{Q}$. We note that the log-normal volatility model with linear drift does not share such invariance property due to a quadratic term arising under $\mathbb{Q}$. The model invariance under the change of measure is an important feature shared by the log-normal SV model with quadratic. In contrast, \cite{SeppRakhmonov2023} show that most of conventional SV models do not satisfy the invariance of $\mathbb{P}$-model under the change of measure to $\mathbb{Q}$. In the following, we will consider model dynamics under $\mathbb{Q}$ and drop the hat notation in Eq \eqref{eq:dynam_Q2}.
+
+
+
+\subsection{Dynamics under MMA Measure}
+
+We consider price dynamics with the log-normal beta SV model in Eq \eqref{eq:logsv_quadrift_P} under the MMA measure $\mathbb{Q}$. The joint dynamics are specified for the spot price $S_{t}$, the instantaneous volatility $\sigma_{t}$ and the QV $I_{t}$ under the MMA measure $\mathbb{Q}$ as follows
+\begin{equation} \label{eq:svmd1}
+\begin{split}
+dS_{t}&=r(t)S_{t}dt+\sigma_{t}S_{t}dW^{(0)}_{t}, \ S_{0} =S, \\
+d\sigma_{t}& =\left(\kappa_{1} + \kappa_{2}\sigma_{t} \right)(\theta - \sigma_{t})dt+  \beta  \sigma_{t}dW^{(0)}_{t} +  \varepsilon \sigma_{t} dW^{(1)}_{t}, \ \sigma_{0}=\sigma, \\
+dI_{t}&=\sigma^{2}_{t}dt, \ I_{0}=I,
+\end{split}
+\end{equation}
+where $r(t)$ is the deterministic risk-free rate; $W^{(0)}_{t}$ and $W^{(1)}_t$  are uncorrelated Brownian motions, and the model parameters are the same as defined in Eq \eqref{eq:logsv_quadrift_P}. Using volatility beta $\beta$ and volatility-of-volatility $\varepsilon$, we introduce the total instantaneous variance of the volatility process $\vartheta^{2}$ as follows
+\begin{equation}\label{eq:vartheta}
+ \vartheta^{2}=\beta^{2}+\varepsilon^{2}.
+\end{equation}
+
+The mean-reversion of the volatility process is specified using the mean level of the volatility $\theta$, $\theta>0$, and the mean-reversion speed which is the linear function of the volatility $\kappa_{1} + \kappa_{2}\sigma_{t} $,  $\kappa_{1} \geq 0, \kappa_{2} \geq 0$. As a results, the quadratic drift of the volatility process is given by
+\begin{equation}\label{eq:tr1}
+\begin{split}
+\mu\left(\sigma\right) \equiv \left(\kappa_{1} + \kappa_{2}\sigma\right)(\theta - \sigma) =\kappa_{1} \theta - \left(\kappa_{1} - \kappa_{2}\theta \right)\sigma- \kappa_{2}\sigma^{2}.
+\end{split}
+\end{equation}
+
+
+We introduce the zero-drift stochastic driver $Z_t$, $Z_t = e^{ - \int^{t}_{0}r(t') dt'}S_{t}$ and its inverse $R_t$, $R_t = Z^{-1}_{t}$, with the following dynamics
+\begin{equation} \label{eq:zr}
+\begin{split}
+dZ_{t}&= Z_t\sigma_{t}dW^{(0)}_{t}, \ Z_0 =S_{0},\\
+dR_{t}&= \sigma^{2}_{t}R_{t}dt-R_{t}\sigma_{t}dW^{(0)}_{t}, \ R_{0} =1/Z_{0}.
+\end{split}
+\end{equation}
+
+Next, we introduce the log of the zero-drift price process $X_t = \ln Z_t$:
+\begin{equation} \label{eq:lnx}
+dX_{t}= -\frac{1}{2}\sigma^{2}_{t}dt+\sigma_{t}dW^{(0)}_{t}, \ X_{0} =\ln S_{0}.
+\end{equation}
+
+
+Using $X_{T}$ under Assumption \ref{a:r}, we represent the spot price $S_{T}$ by
+\begin{equation} \label{eq:lnx1}
+S_{T} = e^{\bar{r}(0, T)} e^{X_{T}}.
+\end{equation}
+Similarly, under the Assumption \ref{a:r1}, using Eq (\ref{eq:lnx1}), we represent the futures settled at time $T$ in $\mathbb{Q}$ as
+\begin{equation} \label {eq:qt}
+\begin{split}
+& f_{T}(T) = e^{\bar{r}(0, T)-\bar{q}(0, T)} e^{X_{T}}.
+\end{split}
+\end{equation}
+where the integrated convenience rate $\bar{q}(0, T)$ is defined in Eq \eqref{eq:r1}. Accordingly, for modeling purposes, we focus on the zero-drift price dynamics $Z_{t}$ and its log-price process $X_{t}$ defined in Eq (\ref{eq:lnx}). 
+
+
+\subsubsection{Properties of Log-normal SV Process}\label{sec:vol_process}
+
+We establish important properties related to the regularity of the volatility process. We consider the volatility process in model dynamics (\ref{eq:svmd1}) represented as follows
+\begin{equation} \label{eq:pm1}
+\begin{split}
+& d\sigma_{t} =\mu(\sigma_{t})dt + v(\sigma_{t}) dW^{(*)}_{t}, \ \sigma_{0}=\sigma,\\
+& \mu(\sigma)=\left(\kappa_{1} + \kappa_{2}\sigma \right)(\theta - \sigma), \  v(\sigma)  =\vartheta \sigma,
+\end{split}
+\end{equation}
+where $W^{(*)}_{t}$ is a standard Brownian motion and $\vartheta$ is the total volatility of volatility.
+
+We notice that the process $\sigma_t$ is not a polynomial diffusion, see \cite{Filip16}, Lemma 2.2, because the drift coefficient is a second-order polynomial in $\sigma_{t}$. Since the process in Eq \eqref{eq:pm1} has super-linearly growing drift, standard results for the uniqueness of strong solution are no longer applicable, see Section 5 of \cite{KaratzShre} for details. We will establish the existence of the unique strong solution in Theorem \ref{th:ExistQuadDrift}. 
+We first provide a boundary classification for the volatility process to show that log-normal volatility process $\sigma_{t}$ in dynamics (\ref{eq:pm1}) cannot reach 0 or explode to $+\infty$, which are important properties of the volatility dynamics. Our proof is based on existence of solutions for general stochastic differential equations (SDEs) with so-called monotonic coefficients, so that it is potentially applicable to wider class of diffusion processes. 
+
+
+\begin{assumption}\label{as:bound_class}
+We assume that model parameters $\kappa_1$, $\kappa_2$, $\theta$, $\vartheta$ satisfy
+\begin{equation}\label{eq:condExist}
+\kappa_1\ge 0, \ \kappa_2\ge 0, \ \theta>0, \ \vartheta\ge 0.
+\end{equation}
+\end{assumption}
+ 
+\begin{theorem}[Regularity]\label{th:bound_class}
+Under assumption \ref{as:bound_class}, the boundary points $\{0, +\infty\}$ are unattainable for process $\sigma_{t}$ in SDE (\ref{eq:pm1}). 
+\end{theorem}
+\begin{proof}
+Our proof is based on Feller boundary classification for one-dimensional diffusion processes with technical details given in Appendix \ref{appx:bound_class_proof}.
+\end{proof}
+
+
+\begin{theorem}[Existence and uniqueness of solution]\label{th:ExistQuadDrift}
+Under assumption \ref{as:bound_class}, SDE in Eq \eqref{eq:pm1} has the unique strong solution.
+\end{theorem}
+\begin{proof}
+
+We will refer to following theorem that guarantees the existence and uniqueness of general SDEs with monotonic coefficients.
+
+\begin{theorem}[\cite{GyonKryl}]%\label{th:MonotonExist}
+Let $a_t(x): [0,T]\times \mathbb{R}\to \mathbb{R}$, $b_t(x): [0,T]\times \mathbb{R}\to \mathbb{R}$ be functions, continuous in $x$, satisfying following conditions:
+\begin{enumerate}
+\item $\int_0^T \sup_{|x|\le R}\left(|a_t(x)| +|b_t(x)|^2\right)dt<\infty$ for any $T\ge 0$, $R\ge 0$,
+\item for $x,y,z\in \mathbb{R}$ such that $|x|\le R, |y|\le R, |z|\le R$ following conditions hold:
+\begin{enumerate}%[label=(\roman*)]
+\item\label{it:monoton_cond}(monotonicity condition):
+\begin{equation}
+2(x-y)(a_t(x)-a_t(y))+(b_t(x)-b_t(y))^2\le K_t(R)(x-y)^2
+\end{equation}
+\item\label{it:growth_cond} (growth condition): $2za_t(z)+(b_t(z))^2\le K_t(1)(1+z)^2$,
+\end{enumerate}
+where function $K_t(R): [0,T]\times \mathbb{R}_+\to \mathbb{R}_+$ satisfies $\int_0^t K_s(R)ds<\infty$  for any $T\ge 0$, $R\ge 0$.
+\end{enumerate}
+
+Then there exists unique solution of the SDE
+\begin{equation}
+x_t=x_0+\int_0^ta_s(x_s)ds + \int_0^tb_s(x_s)dW_s,\quad t\le T.
+\end{equation}
+\end{theorem}
+
+We show that SDE \eqref{eq:pm1}, where  $\kappa_1, \kappa_2, \theta, \vartheta$ satisfy \eqref{eq:condExist}, does indeed satisfy conditions 1-3. We emphasize that the positivity of the process demonstrated in Theorem \ref{th:bound_class} is important. Since in our case $a_t(x)=(\kappa_1+\kappa_2 x)(\theta-x)$, $b_t(x)=\vartheta x$, we get
+\begin{align*}
+&2(x-y)(a_t(x)-a_t(y))+(b_t(x)-b_t(y))^2=\\
+=&\left(\vartheta^2-2(\kappa_1-\kappa_2\theta)\right)(x-y)^2-2\kappa_2(x+y)(x-y)^2
+\le\left(\vartheta^2-2(\kappa_1-\kappa_2\theta)+2\kappa_2R\right)(x-y)^2
+\end{align*}
+when  $|x|\le R, |y|\le R$. As for any $R>0$ we have $\int_0^t\left[\vartheta^2-2(\kappa_1-\kappa_2\theta)+2\kappa_2R\right]ds<\infty$, we conclude that \ref{it:monoton_cond} is satisfied. For the growth condition, we have
+\begin{equation}\label{eq:growth_logSq}
+2za_t(z)+b_t(z)^2= 2\kappa_1\theta z+\left[\vartheta^2-2(\kappa_1-\kappa_2\theta)\right]z^2-2\kappa_2z^3
+\end{equation}
+
+Using that zero is unattainable boundary and simple inequalities $z\le 1+z^2$, $z^3<0$ 
+valid for $z>0$, we can estimate the right hand side of \eqref{eq:growth_logSq} as follows
+\begin{equation*}
+\begin{split}
+2\kappa_1\theta (z^2+1)+\left[\vartheta^2-2(\kappa_1-\kappa_2\theta)\right]z^2\le 
+2\kappa_1\theta +\left[2\kappa_1\theta+\vartheta^2-2(\kappa_1-\kappa_2\theta)\right]z^2.
+\end{split}
+\end{equation*}
+We conclude that the growth condition \ref{it:growth_cond} is also satisfied. 
+\end{proof}
+
+\begin{proposition}[Bounded moments]\label{prop:bound_moms}
+Assume that $\kappa_1\theta>0$, $\kappa_2>0$ and  remaining parameters $\kappa_2$, $\theta$, $\vartheta$ satisfy conditions \eqref{eq:condExist}. Let $|p|\ge 1$ and $T>0$. Then we have
+\begin{equation*}
+\mathbb{E}\left[\sup_{t\in[0,T]}\sigma_t^p\right]<\infty.
+\end{equation*}
+\end{proposition}
+\begin{proof}
+First we prove a slightly weaker result. 
+\begin{proposition}\label{prop:unif_bounded_mom1}
+Assume that $\kappa_1\theta>0$, $\kappa_2>0$ and  $\kappa_2$, $\theta$, $\vartheta$ satisfy conditions \eqref{eq:condExist}. Then, for every $|p|\ge 1$:  $\sup\limits_{t\in[0,T]}\mathbb{E}\sigma_t^p<\infty$ for any $T>0$.
+\end{proposition}
+\begin{proof}
+Let us first consider  the case $p\ge 1$. We use same approach as in \cite{Lions2007}. Applying It\^{o}'s lemma to $\sigma_t^p$, we have
+\begin{equation*}
+d\sigma_t^p=p\sigma_t^{p-1}\left[\kappa_1\theta-\left(\kappa_1-\kappa_2\theta-\frac{\vartheta^2}{2}p(p-1)\right)\sigma_t-\kappa_2\sigma_t^{2}\right]\,dt+p\vartheta\sigma_t^p\,dW_t
+\end{equation*}
+The function $U(\tau)=\mathbb{E}(\sigma_t^p)$ then solves the problem
+\begin{equation}\label{eq:boun_diffop1}
+\begin{split}
+&-\frac{\partial U}{\partial \tau}+\mathcal{L}^{(\sigma)}U=0,\quad  U(0,\sigma)=\sigma^p,\\
+&\mathcal{L}^{(\sigma)}=\left(\kappa_1\theta - (\kappa_1-\kappa_2\theta)\sigma-\kappa_2\sigma^2\right)\frac{\partial}{\partial \sigma}+\frac 12\vartheta^2\sigma^2\frac{\partial^2}{\partial \sigma^2}
+\end{split}
+\end{equation}
+Let us find supersolution $\bar U$ to \eqref{eq:boun_diffop1} using ansatz $\bar U(\sigma)=\sigma^p\exp\left(a\sigma+b\tau\right)$,  $a> 0$, $b> 0$. Inserting it into \eqref{eq:boun_diffop1}, we see that its left-hand side equals
+\begin{equation*}
+\begin{split}
+&\sigma^p\exp(a\sigma+b\theta)\left[\left(-b+a\kappa_1\theta-p(\kappa_1-\kappa_2\theta)+\frac{\vartheta^2}{2}p(p-1)\right)+p\kappa_1\theta\sigma^{-1}+\right.\\
+&+\left.\left(p\vartheta^2-a(\kappa_1-\kappa_2\theta)-\kappa_2p\right)\sigma+\left(-\kappa_2a+a^2\frac{\vartheta^2}{2}\right)\sigma^2\right]
+\end{split}
+\end{equation*}
+Since the term in the brackets is a second-order polynomial in $\sigma$, $\bar U$ is a supersolution as soon as $\kappa_2>0$. 
+
+The case $p\le -1$ is treated similarly: we denote $q:=-p\ge 1$ and introduce $\tilde\sigma_t:=\sigma_t^{-1}$ which is well-defined due to Theorem \ref{th:bound_class}. 
+We find that 
+$\tilde U(\tau):=\mathbb{E}(\tilde \sigma_t^q)$  solves the problem
+\begin{equation}\label{eq:boun_diffop3}
+\begin{split}
+&-\frac{\partial \tilde U}{\partial \tau}+\tilde{\mathcal{L}}^{(\sigma)}\tilde U=0,\quad  \tilde U(0,\sigma)=\tilde\sigma^q,\\
+&\tilde{\mathcal{L}}^{(\sigma)}=\left(\kappa_2+(\kappa_1-\kappa_2\theta+\vartheta^2)\tilde\sigma-\kappa_1\theta\tilde\sigma^2\right)\frac{\partial}{\partial \tilde\sigma}+\frac 12\vartheta^2\tilde\sigma^2\frac{\partial^2}{\partial \tilde\sigma^2}
+\end{split}
+\end{equation}
+Inserting ansatz into \eqref{eq:boun_diffop3}, we see that its left-hand side equals
+\begin{equation*}
+\tilde\sigma^{q-1}\exp(a\tilde\sigma+b\theta)\left[-b+(\ldots)+(\ldots)\tilde\sigma+(-2a\kappa_1\theta+a^2\vartheta^2)\tilde\sigma\right]
+\end{equation*}
+where we omitted the terms not depending on $b$ and $\tilde\sigma$ for brevity. 
+Since the term in square brackets is a second-order polynomial in $\tilde \sigma$, $ \tilde{U}$ is a supersolution if $\kappa_1\theta>0$. 
+\end{proof}
+
+
+Similarly to the proof of Proposition \ref{prop:unif_bounded_mom1}, we apply It\^{o}'s formula to $\sigma_t^p$
+\begin{equation*}
+\sigma_t^p=\sigma_0^p+\int_0^t\sigma_u^{p-1}\left((\kappa_1+\kappa_2\sigma_u)(\theta-\sigma_u) + \frac{\vartheta^2}{2}p(p-1)\sigma_u^p\right)dt+p\vartheta\int_0^t\sigma_u^{p}dW_u^{(*)}.
+\end{equation*}
+
+We obtain
+\begin{equation*}
+\begin{split}
+\mathbb{E}\sup_{t\in[0,T]}\sigma_t^p %&=\mathbb{E}\sup_{t\in[0,T]}|\sigma_t|^p
+& \le 
+\sigma_0^p+\mathbb{E}\sup_{t\in[0,T]}\int_0^t\left|p\sigma_u^{p-1}(k_0+k_1\sigma_u)(\theta-\sigma_u)+\frac{\vartheta^2}{2}p(p-1)\sigma_u^p\right|dt+\\
+&+p\vartheta\mathbb{E}\left[\sup_{t\in[0,T]}\int_0^t\sigma_u^pdW_u^{(*)}\right].
+\end{split}
+\end{equation*}
+Using Burkh\"{o}lder-Davis-Gundy inequality and Proposition \ref{prop:unif_bounded_mom1}, we establish
+\begin{equation*}
+\mathbb{E}\left[\sup_{t\in[0,T]}\int_0^u\sigma_u^pdW_u^{(*)}\right]\le C\mathbb{E}\left(\int_0^T\sigma_t^pdt\right)^{1/2}\le
+C\left(\int_0^T\mathbb{E}\sigma_t^{2p}\right)^{1/2}.
+\end{equation*}
+
+\end{proof}
+
+
+
+
+\subsection{Dynamics under Inverse Measure}\label{sc:emma}
+
+
+First we define the model dynamics (\ref{eq:svmd1}) under the inverse measure $\mathbb{\tilde{Q}}$. As a by-product, we show that in SDE (\ref{eq:invspot}) the quadratic term is important to preserve the functional specification of volatility drift under $\mathbb{\tilde{Q}}$. 
+
+\begin{theorem}\label{thm:inverse_meas}
+The dynamics of the volatility $\sigma_{t}$ in (\ref{eq:svmd1}) under $\mathbb{\tilde{Q}}$ are given by
+\begin{equation}\label{eq:invspot}
+\begin{split}
+d\sigma_{t}& =\left(\kappa_{1} \theta - \left(\kappa_{1} - \kappa_{2}\theta \right)\sigma_{t}- \left(\kappa_{2}-\beta\right)\sigma_{t}^{2} \right)dt+  \beta  \sigma_{t}d\widetilde W^{(0)}_{t} +  \varepsilon \sigma_{t} d\widetilde W^{(1)}_{t}.
+\end{split}
+\end{equation}
+
+MMA measure $\mathbb{Q}$ and inverse measure $\tilde{\mathbb{Q}}$ are related by the density process
+\begin{equation}\label{eq:dens_process}
+\Lambda_t=\mathbb{E}_t\left[d\tilde{\mathbb{Q}}/d\mathbb{Q}\right]=Z_t/Z_0, \ \Lambda_{0}=1,
+\end{equation}
+where zero-drift stochastic driver $Z_t$ is defined in Eq (\ref{eq:zr}).
+\end{theorem}
+
+\begin{proof}
+We consider $R_{t} = Z^{-1}_{t}$. Applying It\^{o}'s lemma, we see that $R_{t}$ satisfies 
+\begin{equation*}
+dR_t=\sigma_t^2 R_t  dt -\sigma_t R_t dW_t^{(0)}=
+-\sigma_t R_t(dW_t^{(0)}-\sigma_tdt).
+\end{equation*}
+
+Using Girsanov's theorem, we switch to the measure $\mathbb{\tilde{Q}}$ under which the processes $\widetilde W^{(0)}_{t}$ and $\widetilde W^{(1)}_{t}$ defined by $\widetilde W^{(0)}_{t}= W^{(0)}_{t}-\int_0^t \sigma_sds$, $\widetilde W^{(1)}_{t}= W^{(1)}_{t}$ are uncorrelated Brownian motions. Then the dynamics of volatility process $\sigma_t$ under $\mathbb{\tilde{Q}}$ become
+\begin{equation} \label {eq:svmd1_rev}
+\begin{split}
+d\sigma_{t}& =\left(\kappa_{1} + \kappa_{2}\sigma_{t} \right)(\theta - \sigma_{t})dt+  \beta  \sigma_{t}\left(d\widetilde W^{(0)}_{t}+\sigma_tdt\right)+  \varepsilon \sigma_{t} d\widetilde W^{(1)}_{t}
+\end{split}
+\end{equation}
+and Eq (\ref{eq:invspot}) follows. We note that $\tilde{\mathbb{Q}}$ and $\mathbb{Q}$ are related by the density $\Lambda_t$ as follows
+\begin{equation}\label{eq:density_process}
+d\Lambda_t/\Lambda_t=\sigma_tdW_t  \implies 
+\Lambda_t:= \exp\left(\int_0^t\sigma_s dW_s-\frac{1}{2}\int_0^t\sigma_s^2ds\right)=Z_t/Z_0. 
+\end{equation}
+\end{proof}
+
+We highlight that the idea of using change of measure to study the martingale property is widely used in the literature, see \cite{Ruf2015} and references therein. We now derive sufficient conditions for the equivalence of measures $\mathbb{Q}\sim \tilde{\mathbb{Q}}$ which is required for the application of Girsanov theorem in the proof of Theorem \ref{thm:inverse_meas}. 
+
+\begin{theorem}\label{thm::meas_equiv_quad_drift}
+Under Assumption \ref{as:bound_class}, measures $\mathbb{Q}$ and $\tilde{\mathbb{Q}}$ are equivalent if and only if $\kappa_2\ge \beta$. 
+\end{theorem}
+\begin{proof}
+By Theorem \ref{thm:inverse_meas}, the density $\mathbb{E}_t\left[d\tilde{\mathbb{Q}}/d\mathbb{Q}\right]=Z_t/Z_0$. Therefore, the martingale property for $Z_t$ under $\mathbb{Q}$ guarantees equivalence $\mathbb{Q}\sim \tilde{\mathbb{Q}}$. Using Theorem \ref{thm::bounds_LN_model_quad_drift} 1) concludes the proof. 
+\end{proof}
+
+
+
+
+
+\begin{theorem}\label{thm::bounds_LN_model_quad_drift}[Martingality of Log-normal SV model with quadratic drift]
+Under Assumption \ref{as:bound_class}, the price processes $Z_{t}$ and $R_{t}$ in Eq (\ref{eq:zr}) for model dynamics \eqref{eq:svmd1} have following properties:
+\begin{enumerate}%[label=(\roman*)]
+\item The process $Z_t$ is a martingale under the MMA measure $\mathbb{Q}$ iff $\kappa_2\ge \beta$.
+
+\item\label{item::inverse_matringale} The process $R_t$ is a martingale under the inverse measure $\tilde{\mathbb{Q}}$ iff $\kappa_2\ge 2\beta$.
+\end{enumerate}
+\end{theorem}
+%
+\begin{proof}
+
+(1). Theorem 9.2 in \cite{Lewis2000} or \cite{Sin1998} shows that $Z_t$ is $\mathbb{Q}$-martingale if and only if the process
+\begin{equation*}
+d\sigma_t=((\kappa_0+\kappa_1\sigma_t)(\theta-\sigma_t)+\beta \sigma_t^2)dt + \vartheta \sigma_t\,d\widetilde W^{(*)}_{t}
+\end{equation*}
+has unique strong solution under $\tilde{\mathbb{Q}}$. Using Theorem \ref{th:ExistQuadDrift}, we immediately obtain that the uniqueness holds iff  $\kappa_2\ge \beta$. 
+
+
+2. According to Theorem \ref{thm:inverse_meas}, the dynamics of $\{\sigma_t, R_t\}$ under $\tilde{\mathbb{Q}}$ become
+\begin{equation}\label{eq:ln_qd_1}
+\begin{split}
+d\sigma_{t}& =\left((\kappa_{1}+\kappa_2\sigma_t)(\theta-\sigma_t)+\beta\sigma_t^2\right)dt+  \beta  \sigma_{t}d\widetilde W^{(0)}_{t} +  \varepsilon \sigma_{t} d\widetilde W^{(1)}_{t},\\
+dR_t&=(-\sigma_t)R_t\,d\widetilde W_t^{(0)}.
+\end{split}
+\end{equation}
+
+Using Theorem 2.4 (i), (ii) of \cite{Lions2007}, $R_t$ is a martingale if
+\begin{equation*}
+\limsup_{\xi\uparrow +\infty}\left(\beta\xi^2+(\kappa_1+\kappa_2\xi)(\theta-\xi)+\beta\xi^2\right)\xi^{-1}<\infty,
+\end{equation*}
+which holds if $\kappa_2\ge 2\beta$. $R_t$ is not a martingale if for some smooth, positive, increasing function $\varphi$ we have
+\begin{equation}\label{eq:ln_qd_2}
+\liminf_{\xi\uparrow +\infty}\left(\beta\xi^2+(\kappa_1+\kappa_2\xi)(\theta-\xi)+\beta\xi^2\right)\varphi(\xi)^{-1}>0,
+\end{equation}
+where $\int_\varepsilon^{+\infty}\varphi(\xi)^{-1}d\xi<\infty$, $\varepsilon>0$.
+Choosing $\varphi(\xi)=\xi^2$, \eqref{eq:ln_qd_2} holds if $\kappa<2\beta$.
+\end{proof}
+
+
+\begin{corollary}\label{prop::bounds_LN_model_lin_drift}[Martingality of Log-normal SV model with linear drift]
+For dynamics \eqref{eq:svmd1} with $\kappa_2=0$ we obtain.
+\begin{enumerate}%[label=(\roman*)]
+\item The process $Z_t$ is martingale under $\mathbb{Q}$ iff $\beta\le 0$.
+\item The process $R_t$ is martingale under $\tilde{\mathbb{Q}}$ iff $\beta \le 0$.
+\end{enumerate} 
+\end{corollary}
+
+\begin{proof}
+Follows by setting $\kappa_2=0$ in Theorem \ref{thm::bounds_LN_model_quad_drift}.
+\end{proof}
+
+Importantly we conclude  that the log-normal SV model with linear drift leads to arbitrages when the return-volatility correlation is positive.
+
+
+
+\subsection{Joint Dynamics of State Variables under $\mathbb{Q}$ and $\tilde{\mathbb{Q}}$}
+
+We introduce the mean-adjusted volatility process $Y_t$
+\begin{equation} \label{eq:tr2}
+\begin{split}
+Y_{t} = \sigma_{t}  - \theta,\vspace*{-1.0\baselineskip}
+\end{split}
+\end{equation}
+on the domain $(-\theta, \infty)$. The marginal dynamics of $Y_{t}$ using SDE (\ref{eq:pm1}) become
+\begin{equation} \label {eq:vd2}
+\begin{split}
+dY_{t}& =  \left(- \kappa Y_{t}   - \kappa_{2}Y^{2}_{t}\right)dt+ \vartheta \left(Y_{t}+\theta\right) dW^{(*)}_{t}, \ Y_{0} \equiv Y =\sigma_{0} - \theta,\\
+\kappa&=\kappa_1+\kappa_2\theta
+\end{split}
+\end{equation}
+where $W^{(*)}_{t}$ is a standard Brownian motion. 
+
+\begin{corollary}[Dynamics under the MMA measure $\mathbb{Q}$]\label{coroll:mma_dynam} The joint dynamics of log-price $X_t$, the mean-adjusted volatility process $Y_t$, and the QV $I_t$ under the MMA measure $\mathbb{Q}$ are driven by
+\begin{equation} \label{eq:svmd2}
+\begin{split}
+dX_{t}&= -\frac{1}{2}\left(Y_{t}+\theta\right)^{2}dt+\left(Y_{t}+\theta\right)dW^{(0)}_{t}, \ X_{0} =X, \\
+dY_{t}& = \left(-\kappa Y_{t}-\kappa_{2}Y^{2}_{t}\right)dt +  \beta  \left(Y_{t}+\theta\right)dW^{(0)}_{t} +  \varepsilon \left(Y_{t}+\theta\right)dW^{(1)}_{t}, \ Y_{0}=Y, \\
+dI_{t}&=\left(Y_{t}+\theta\right)^{2}dt, \ I_{0}=I.
+\end{split}
+\end{equation}
+\end{corollary}
+
+
+It\^{o}'s lemma, applied to Eq (\ref{eq:vd2}), yields marginal dynamics of $Y$ under $\tilde{\mathbb{Q}}$:
+\begin{equation} \label{eq:vd3}
+\begin{split}
+dY_{t} &=  \left(\tilde\lambda- \tilde\kappa Y_{t}   - \tilde\kappa_{2}Y^{2}_{t}\right)dt+ \vartheta \left(Y_{t}+\theta\right) d\widetilde W^{(*)}_{t}, \ Y_{0}=Y, \\
+\tilde\lambda &= \beta\theta^{2}, \ \tilde\kappa = \kappa_{1} - \kappa_{2}\theta +2(\kappa_{2}-\beta)\theta, \ \tilde\kappa_2 = \kappa_{2} - \beta,
+\end{split}
+\end{equation}
+where $\widetilde W^{(*)}_{t}$ is a standard Brownian motion under $\tilde{\mathbb{Q}}$.
+
+
+\begin{corollary}[Dynamics under the inverse measure $\tilde{\mathbb{Q}}$] The joint dynamics of log-price $X_t$, the mean-adjusted volatility process $Y_t$, and the QV $I_t$ under the inverse measure $\tilde{\mathbb{Q}}$ are driven by
+\begin{equation} \label{eq:inverse}
+\begin{split}
+dX_{t}&= \frac{1}{2}\left(Y_{t}+\theta\right)^{2}dt+\left(Y_{t}+\theta\right)d\widetilde W^{(0)}_{t}, \ X_{0} =X, \\
+dY_{t}& = \left(\tilde\lambda-\tilde\kappa Y_{t}-\tilde\kappa_{2}Y^{2}_{t}\right)dt +  \beta  \left(Y_{t}+\theta\right)d\widetilde W^{(0)}_{t} +  \varepsilon \left(Y_{t}+\theta\right)d\widetilde W^{(1)}_{t}, \ Y_{0}=Y, \\
+dI_{t}&=\left(Y_{t}+\theta\right)^{2}dt, \ I_{0}=I.
+\end{split}
+\end{equation}
+\end{corollary}
+
+ 
+
+\subsection{Steady-state Distribution of Volatility Process}\label{sec:steady_state}
+
+It is important to establish that the steady-state density (SSD) of the volatility process $\sigma_{t}$ in SDE (\ref{eq:pm1}) exists. The SSD, denoted by $G(\sigma)$, solves the following ordinary differential equation (ODE):
+\begin{equation} \label {eq:ss1}
+\frac{1}{2}\vartheta^{2}\frac{\partial^2}{\partial\sigma^2}\left(\sigma^{2}G\right) - \frac{\partial}{\partial\sigma}\left((\kappa_{1} + \kappa_2\sigma)(\theta - \sigma)G\right)=0.
+\end{equation}
+The solution is Generalized Inverse Gaussian distribution (\cite{Jorgensen1982}):
+\begin{equation} \label{eq:ss2}
+\begin{split}
+& G(\sigma) = c \sigma^{\eta-1} \exp\left\{ -\left(\frac{q}{\sigma} +b\sigma \right)\right\},\quad \sigma>0,\\
+&q = 2\frac{\kappa_1\theta}{\vartheta^2}, \ b = 2\frac{\kappa_2}{\vartheta^2},\  \eta = 2\frac{\kappa_{2}\theta-\kappa_{1}}{\vartheta^{2}}-1, \ c(b) =\frac{\left(b/q\right)^{\eta/2}}{2K_{\eta}\left(2\sqrt{qb}\right)}.
+\end{split}
+\end{equation}
+where $b>0$, $q\ge 0$, $\eta\in\mathbb{R}$ and $K_{\eta}$ is a modified Bessel function of the second kind. For $\kappa_{2}=0$ we use $c(0)=q^{-\eta}\Gamma(-\eta)$, where $\Gamma(x)$ is the gamma function, and the steady state PDF is the inverse gamma function. The $r$-th moment $m(r)$ associated to the density in Eq (\ref{eq:ss2}) is given by
+\begin{equation} \label{eq:ss3}
+m(r)= \begin{cases} 
+      \left(\frac{q}{b}\right)^{r/2}\frac{K_{\eta+r}\left(2\sqrt{qb}\right)}{K_{\eta}\left(2\sqrt{qb}\right)} & b>0, \ r \in \mathbb{R}_{+}; \\
+      q^{r}\frac{\Gamma(-\eta-r)}{\Gamma(-\eta)} & b = 0, \ r < -\eta; \\
+      \infty & b = 0, \ r \geq -\eta.
+   \end{cases}
+\end{equation}
+We see that when $\kappa_2=0$, the volatility moments exist only to the order $r$ less than $r<1+2\kappa_{1}/\vartheta^{2}$.
+
+
+In Subplot (A) of Figure \ref{fig:vol_steady_state}, we show the SSD for the three sets of model parameters. The case $(\kappa_{1}=4, \kappa_{2}=0)$ corresponds to the linear mean-reversion; the case $(\kappa_{1}=4, \kappa_{2}=4)$ (generally the case with $\kappa_{2}=\kappa_{1}/\theta$) corresponds to the pure quadratic drift; the case $(\kappa_{1}=4, \kappa_{2}=8)$ corresponds to the quadratic drift. The linear model with $\kappa_{2}=0$ implies the heavy right tail for the distribution of the volatility. In Subplot (B), we show the skewness of the volatility as function of $\kappa_{2}$. As $\kappa_{2}$ increases, the skewness of the volatility declines. 
+
+
+\begin{figure}%[H]
+\begin{center}
+\includegraphics[width=0.9\textwidth, angle=0] {final_figures/figure1_steady_state.PNG}\vspace*{-\baselineskip}
+\end{center}
+\caption{Subplot (A) shows the steady state PDF of the volatility computed using Eq (\ref{eq:ss2}) with fixed $\kappa_{1}=4$ and $\kappa_{2}=\{0, 4, 8\}$. Subplot (B) and (C) show the skewness of the volatility computed using Eq (\ref{eq:ss3}) and the excess kurtosis of the unconditional returns distribution computed using Eq (\ref{eq:k}), respectively, both as functions of $\kappa_2$, for the three choices of $\kappa_{1}=1, 4, 8$. Other model parameters are fixed to $\theta=1$ and $\vartheta=1.5$.}\vspace*{-1.\baselineskip}
+\label{fig:vol_steady_state}
+\end{figure}
+
+
+
+\subsubsection{Unconditional Distribution of Returns}
+
+We make an interesting connection between the skewness of the volatility process and the kurtosis of returns distribution. Following Chapter 9 in \cite{BarndorffNielsen2005}, we assume that the distribution of  returns over period $\delta t$ is Gaussian conditional on $\sigma$:
+\begin{equation}
+\begin{split}
+q(x\left.\right|\sigma) = \frac{1}{\sqrt{2\pi \sigma^{2}\delta t}}\exp\left(-\frac{x^{2}}{2\sigma\sqrt{\delta t}}\right).
+\end{split}
+\end{equation}
+
+The unconditional distribution of returns under the SDD of the volatility is
+\begin{equation}
+\begin{split}
+& p(x) = \int^{\infty}_{0}  q(x\left.\right|\sigma) G(\sigma)d\sigma.
+\end{split}
+\end{equation}
+The above integral cannot be computed explicitly. Instead, we compute the central moments of returns under the unconditional distribution
+\begin{equation}
+\begin{split}
+m(n) & = \int^{\infty}_{-\infty}x^{n}p(x) dx = \int^{\infty}_{0}  \left[ \int^{\infty}_{-\infty}x^{n} q(x\left.\right|\sigma)dx\right] G(\sigma)d\sigma,
+\end{split}
+\end{equation}
+where we exchange the integration order. It is clear that for odd $n$, $m(n)=0$. For the second and the fourth moments, we have
+\begin{equation}
+\begin{split}
+m(2) & =  \delta t\int^{\infty}_{0} \sigma^{2} G(\sigma)d\sigma, \ m(4) =  3(\delta t)^{2}\int^{\infty}_{0} \sigma^{4} G(\sigma)d\sigma.
+\end{split}
+\end{equation}
+
+
+We compute the excess kurtosis of returns distribution using $k=3m(4)/m^{2}(2)-3$ with Eq (\ref{eq:ss3}) as follows
+\begin{equation} \label{eq:k}
+k= \begin{cases} 
+      \frac{3K_{\eta+4}\left(2\sqrt{qb}\right)K_{\eta}\left(2\sqrt{qb}\right)}{\left(K_{\eta+2}\left(2\sqrt{qb}\right)\right)^2} -3 & \kappa_{2}>0; \\
+      3\frac{q^{2}}{\eta^{2}} - 3 & \kappa_{2} = 0, \  \kappa_{1}/\vartheta^{2}>3/2; \\
+      \infty & \kappa_{2} = 0, \  \kappa_{1}/\vartheta^{2} \leq 3/2.
+   \end{cases}
+\end{equation}
+
+
+It follows that the kurtosis of the unconditional distribution in Eq \eqref{eq:k} is maximal when $b=0$ ($\kappa_{2}=0$). The kurtosis is finite only if liner mean-reversion parameter $\kappa_{1}$ is higher than the total volatility of variance. The kurtosis declines when rate $b$ ($\kappa_{2}$) increases. In Subplot (C) of Figure \ref{fig:vol_steady_state}, we show the kurtosis for the three choices of $\kappa_{1}=1, 4, 8$. We see that for the each choice, the parameter $\kappa_2$ can be thought as a dampening parameter to reduce both the skewness of the steady-state PDF of the volatility and the kurtosis of the unconditional PDF of returns.
+
+
+
+
+\subsection{Moments of Volatility Process}
+Computation of moments for the log-normal SV with the quadratic drift is an open problem with no exact solution. We show that there exists a closed-form solution based on a truncation method, which we further adopt for the affine expansion of the MGF. We consider the mean-adjusted volatility process defined in Eq (\ref{eq:tr2}). We define its power function $m^{(n)}_{t}$, $m^{(n)}_{t} = Y^{n}_{t} $, and the $m$-th moment, $\overline{m}^{(n)}_{\tau}$, $n=0,1,2,..$, as follows
+\begin{equation}\label {eq:mvp1}
+\begin{split}
+& \overline{m}^{(n)}_{t}(\tau) = \mathbb{E}\left[m^{(n)}_{\tau}\right].
+\end{split}
+\end{equation}
+
+Applying It\^{o}'s lemma to $m^{(n)}_{t}$ under the dynamics in Eq (\ref{eq:vd2}), we obtain
+\begin{equation} \label{eq:mvp2}
+\begin{split}
+dm^{(n)}_{t}& =  \left(- \kappa Y_{t}   - \kappa_{2}Y^{2}_{t}\right)nY_{t}^{n-1}dt +c(n) \left(Y_{t}+\theta\right)^{2}Y_{t}^{n-2}dt  + \vartheta \left(Y_{t}+\theta\right)nY^{n-1} dW^{(*)}_{t},
+\end{split}
+\end{equation}
+with $m^{(n)}_{0}=Y^{n}_{0}$ and $c(n)=\frac{1}{2} \vartheta^{2}n(n-1)$. We notice a pattern of the powers of $n$ which allows for a recursive solution as follows.
+
+
+
+
+\begin{proposition}\label{pr:vol_moments}  [Moments of Volatility Process]
+The solution to moments in Eq (\ref{eq:mvp1}), can be presented as a matrix equation for an infinite-dimensional vector
+\begin{equation} \label {eq:mvp5}
+\begin{split}
+&\partial_{\tau}M^{(0,\infty)}(\tau) =\Lambda^{(0,\infty)} M^{(0,\infty)}(\tau),
+\end{split}
+\end{equation}
+where $\partial_{\tau}$ is the derivative w.r.t. $\tau$ and
+\begin{equation*}
+\begin{split}
+& M^{(0,\infty)} (\tau) = \left(\overline{m}^{(0)}(\tau),\overline{m}^{(1)}(\tau),\overline{m}^{(2)}(\tau),\overline{m}^{(3)}(\tau),...
+\right)^{T}, \ 
+M^{(0,\infty)} (0) =  \left( 1, Y_{0}, Y^{2}_{0}, Y^{3}_{0}, ,... \right)^{T},\\
+&\Lambda^{(0,\infty)} = \begin{pmatrix}
+0 & 0 & 0 & 0 & 0& 0& ...\\
+0 & -\kappa  & -\kappa_{2}  &  0 & 0& 0& ...\\
+c(2)\theta^{2} & 2c(2)\theta & (c(2)-  2 \kappa) &  - 2\kappa_{2} & 0& 0& ...\\
+0 & c(3)\theta^{2} & 2c(3)\theta & (c(3)- 3\kappa) &  - 3\kappa_{2} & 0& ...\\
+0 & 0 &  c(4)\theta^{2} & 2c(4)\theta & (c(4)- 4\kappa) &  - 4\kappa_{2} & ...\\
+...\\
+\end{pmatrix}.
+\end{split}
+\end{equation*}
+
+An approximate solution to ODEs (\ref{eq:mvp5}) is obtained by truncating the number of terms to $k^{*}$ and defining a finite dimensional vector of $m$-th moments $M^{(1,k^{*})}$, $m=1,...,k^{*}$, as follows
+\begin{equation} \label {eq:mvp8}
+\begin{split}
+&\partial_{\tau}M^{(1,k^{*})} =\Lambda^{(1,k^{*})} M^{(1,k^{*})}+C^{(1,k^{*})},\\
+&  M^{(1,k^{*})}(0)=\left(Y_{0}, Y^{2}_{0}, ... , Y^{k^{*}}_{0} \right)^{T}, \\ 
+& C^{(1,k^{*})} = \left( 0, c(2)\theta^{2}, 0, 0, ..., - k^{*}\kappa_{2}Y^{k^{*}+1}_{0}\right)^{T}\vspace*{-1\baselineskip}
+\end{split}
+\end{equation}
+\begin{equation*}
+\Lambda^{(1,k^{*})} = \begin{pmatrix}
+-\kappa & -\kappa_{2} &  0 & 0& 0& ... \\
+ 2c(2)\theta & (c(2)- 2\kappa) &  -2\kappa_{2} & 0& 0& ...\\
+c(3)\theta^{2} & 2c(3)\theta & (c(3)- 3\kappa) &  - 3\kappa_{2} & 0& ...\\
+0 & c(4)\theta^{2} & 2c(4)\theta & (c(4)- 4\kappa) &   -4\kappa_{2} & ...\\
+...\\
+... & 0 &  0 & c(k^{*})\theta^{2} & 2c(k^{*})\theta & (c(k^{*})- k^{*}\kappa) & \\
+\end{pmatrix}.
+\end{equation*}
+
+
+
+
+The analytic solution to ODE system (\ref{eq:mvp8}) is given by
+\begin{equation} \label {eq:mvp9}
+\begin{split}
+M^{(1,k^{*})}(\tau) = \text{expm}\left\{\Lambda^{(1,k^{*})} t \right\} \cdot M^{(1,k^{*})}(0)+\left(\Lambda^{(1,k^{*})}\right)^{-1}\cdot\left(\text{expm}\left\{\Lambda^{(1,k^{*})} t \right\}-I^{(k^{*})}\right)\cdot C^{(1,k^{*})},\\
+\end{split}
+\end{equation}
+where $\text{expm}()$ is the matrix exponent, $\cdot$ and $^{-1}$ are the matrix product and inverse, respectively, and $I^{(k^{*})}$ is $k^{*}\times k^{*}$ identity matrix.
+
+\end{proposition} 
+
+\begin{proof}
+%See Appendix \ref{ap:vol_moments}.
+We first present Eq (\ref{eq:mvp2}) as follows
+\begin{equation*}
+\begin{split}
+dm^{(n)}_{t}& =  \left(- n\kappa Y^{n}_{t}   - n\kappa_{2}Y^{n+1}_{t}\right)dt +c(n) \left(Y^{n}_{t}+2\theta Y^{n-1}+\theta^{2}Y^{n-2}\right)dt  + \vartheta \left(Y_{t}+\theta\right)Y^{n-1} dW^{(*)}_{t}\\
+& =  \left[c(n)\theta^{2}Y^{n-2}+ 2c(n)\theta Y^{n-1} + (c(n)- n\kappa) Y^{n}_{t}  - n\kappa_{2}Y^{n+1}_{t}\right]dt   + \vartheta \left(Y_{t}+\theta\right)mY^{n-1} dW^{(*)}_{t}.
+\end{split}
+\end{equation*}
+
+
+Thus, moment $\overline{m}^{(n)}_{\tau}$ solves recursive equation (omitting subscript $t$)
+\begin{equation} \label {eq:mvp4}
+\begin{split}
+\partial_{\tau}\overline{m}^{(n)}& =  c(n)\theta^{2}\overline{m}^{(n-2)}+ 2c(n)\theta \overline{m}^{(n-1)}+  (c(n)- n\kappa )\overline{m}^{(n)}  + (2\theta c(n)- n\kappa_{2})\overline{m}^{(n+1)}.
+\end{split}
+\end{equation}
+
+Using the fact that $\overline{m}^{(0)}=1$ and $c(1)=0$ we can present Eq (\ref{eq:mvp4}) for $n=0,1,...$ as a matrix equation for infinite-dimensional column vector in Eq (\ref{eq:mvp5}). Clearly, that under regularity conditions (real parts of eigenvalues of $\Lambda^{(0,\infty)}$ are negative), we must have $\lim_{k\rightarrow \infty} \partial_{\tau}\overline{m}^{(k)} = 0$. Thus, to make a finite-dimensional approximation of Eq (\ref{eq:mvp5}), we fix $k^{*}$ and assume
+\begin{equation} \label {eq:mvp7}
+\begin{split}
+& \partial_{\tau}\overline{m}^{(k^{*}+1)}=0  \Rightarrow \overline{m}^{(k^{*}+1)} = Y^{k^{*}+1}_{0}.
+\end{split}
+\end{equation}
+
+Finally, by substituting fixed values for $\overline{m}^{(0)}$ and $\overline{m}^{(k^{*}+1)}$, we present (\ref{eq:mvp5}) for finite-dimensional vector of $m$-th moments, $m=1,...,k^{*}$, in Eq (\ref{eq:mvp8}). Solution in Eq (\ref{eq:mvp9}) is obtained by integration.
+\end{proof}
+
+
+In Figure \ref{fig:vol_moments}, we plot first four moments of the volatility process computed using Eq (\ref{eq:mvp9}) with truncation order $k^{*}=4$ (Subplot A) and $k^{*}=8$ (Subplot B). For comparison, we show estimates and $95\%$ confidence intervals obtained by MC simulations. We see that the low-order truncation with $k^{*}=4$ is consistent with MC estimates for the first and second moments. The high-order truncation with $k^{*}=8$ is consistent with the first four moments compared to MC estimates.
+
+\begin{remark}\label{rem:volmoment}
+We note that if $\kappa_{2}=0$, the system (\ref{eq:mvp8}) becomes lower tridiagonal so that it can be solved exactly for all moments up to $k^{*}$ by the sequential integration from $n=1$ to $n=k^{*}$.
+\end{remark}
+
+\begin{figure}%[H]
+\begin{center}
+\includegraphics[width=0.95\textwidth, angle=0] {final_figures/figure2_vol_moments.PNG}\vspace*{-\baselineskip}
+\end{center}
+\caption{The first four moments of mean-adjusted volatility computed using Eq (\ref{eq:mvp9}) with the truncation order $k^{*}=4$ (Subplot A) and $k^{*}=8$ (Subplot B) as functions of $\tau$. The model parameters $\sigma_{0}=1.5$, $\theta=1.0$, $\kappa_{1}=\kappa_{2}=4$, $\vartheta=1.5$. Dots and error bars denote the estimate and 95\% confidence interval, respectively, computed using MC simulations of model dynamics using scheme in Eq (\ref{eq:msj}) with number of path equal $100,000$ and daily time steps.}\vspace*{-1.\baselineskip}
+\label{fig:vol_moments}
+\end{figure}
+
+
+
+\subsection{Properties of Quadratic Variance (QV) Process}\label{sec:QV_process}
+
+We consider the QV process $I_{t}$ defined by $dI_{t}=d\sigma^{2}_{t}dt$. The QV is an important quantity for option pricing. In particular, the expected QV equals  model-based fair value of the continuous-time variance swap, which could be used for model calibration.
+
+
+\begin{proposition}[Bounded moments]\label{prop:qv_moms}
+Under assumption \ref{as:bound_class} and $\kappa_1\theta>0$, the QV is well-defined under the MMA measure and $\mathbb{E}\left[(I_t)^p\right]<\infty$ for any $p$, $|p|\ge 1$. 
+If $\kappa_2\ge \beta$, then the QV is well-defined under the inverse measure and $\mathbb{\tilde E}\left[(I_t)^p\right]<\infty$ for any $p$, $|p|\ge 1$. 
+\end{proposition} 
+\begin{proof}
+As $\mathbb{E}[(I_t)^p]=
+\mathbb{E}\left[\left(\int_0^t\sigma_s\right)^p\right]\le 
+t^p\mathbb{E}\left[\sup_{s\in[0,t]}\sigma_s^p\right]<\infty
+$, 
+the first statement follows from Proposition \ref{prop:bound_moms}. The second statement follows using the volatility dynamics under $\mathbb{\tilde{Q}}$ in Eq \eqref{eq:svmd1_rev}.
+\end{proof}
+
+
+
+We define the annualized expected QV as follows
+\begin{equation} \label {eq:eqv1}
+\begin{split}
+\widehat{I}_{\tau}&=\frac{1}{\tau}\mathbb{E}\left[\int^{\tau}_{0}\sigma^{2}_{t}dt\right] = \frac{1}{\tau}\mathbb{E}\left[\int^{\tau}_{0}\left(Y_{t} + \theta\right)^{2}dt\right], \ \widehat{I}_{0}=0. \\
+\end{split}
+\end{equation}
+
+\begin{corollary} [Expected value] The expected value of the QV using $k^{*}$-th order truncation in Proposition \ref{pr:vol_moments} is given by
+\begin{equation} \label {eq:eqv2}
+\begin{split}
+\widehat{I}_{\tau} & \equiv \frac{1}{\tau}\int^{\tau}_{0} \left(\overline{m}^{(2)}_0(\tau') + 2\theta\overline{m}^{(1)}_0(\tau')\right)d\tau' + \theta^{2}\\
+& = \frac{1}{\tau} \left(\widehat{\overline{m}}^{(2)}(\tau) + 2\theta\widehat{\overline{m}}^{(1)}(\tau)\right) + \theta^{2} + O(k^{*}),
+\end{split}
+\end{equation}
+where $\widehat{\overline{m}}^{(1)}$ and $\widehat{\overline{m}}^{(2)}$ are the first and second elements in vector $\widehat{M}^{(1,k^{*})}(\tau)$ computed using Eq (\ref{eq:mvp10}), and $O(k^{*})$ is the truncation error. The integrated moments of the volatility with the $k^{*}$-order truncation are computed by
+\begin{equation} \label {eq:mvp10}
+\begin{split}
+& \widehat{M}^{(1,k^{*})}(\tau) \equiv \int^{\tau}_{0} M^{(1,k^{*})}(\tau)  = \left(\Lambda^{(1,k^{*})}\right)^{-1}\cdot\left(\text{expm}\left\{\Lambda^{(1,k^{*})} t \right\}-I\right)\cdot M^{(1,k^{*})}(0)\\
+&+ \left(\Lambda^{(1,k^{*})}\right)^{-1}\cdot\left(\left(\Lambda^{(1,k^{*})}\right)^{-1}\cdot\left(\text{expm}\left\{\Lambda^{(1,k^{*})} t \right\}-I\right)-\tau I\right)\cdot C^{(1,k^{*})}.\\
+\end{split}
+\end{equation}
+\end{corollary}
+
+The approximation term $O(k^{*})$ includes only the truncation error $O(k^{*})$, because Eq (\ref{eq:mvp10}) is computed analytically using matrix exponentiation. In Figure \ref{fig:qvar_exp}, we present comparison of the analytical solution for the expected QV using Eq (\ref{eq:eqv2}) to the estimate and $95\%$ confidence interval based on Monte Carlo simulations. The truncation-based analytic solution is consistent with MC estimates.
+
+\begin{figure}%[H]
+\begin{center}
+\includegraphics[width=1.0\textwidth, angle=0] {final_figures/figure3_qvar_exp.PNG}\vspace*{-\baselineskip}
+\end{center}
+\caption{The expected QV computed using Eq (\ref{eq:eqv2}) with $k^{*}=4$. The top and bottom 3 lines correspond to $\sigma_{0}=1.5$ and $\sigma_{0}=0.5$, respectively. The dot and the error bars denote the estimate and 95\% confidence interval computed using MC simulations of model dynamics with scheme in SDE (\ref{eq:msj}) with number of path equal $100,000$ and daily time steps. The model cases of mean-reversion correspond to $\kappa_{1}=4$ and three choices $\kappa_{2}=\{0, 4, 8\}$ with other model parameters set to $\theta=1.0$, $\vartheta=1.5$.}
+\label{fig:qvar_exp}
+\end{figure}
+
+
+\subsection{Monte Carlo Discretization}\label{sec:discretiz_and_conv}
+
+We consider the SDE (\ref{eq:pm1}) for the volatility process $\sigma_t$ and introduce the log-volatility process $L_{t}=\ln \sigma_{t}$. Applying It\^{o}'s formula, we obtain the following dynamics for $L_{t}$:
+\begin{equation} \label{eq:lv1}
+\begin{split}
+& dL_{t} =\zeta(L_{t})dt + \vartheta dW^{(*)}_{t}, \quad L_{0}=\ln \sigma_{0},\\
+& \zeta(L)=\left(-\kappa_{1}+ \kappa_{2}\theta-\frac{1}{2}\vartheta^{2}\right) + \kappa_{1}\theta e^{-L}  - \kappa_{2}e^{L}.
+\end{split}
+\end{equation}
+
+We consider a time horizon $T>0$ and an equidistant time grid $t_k=k\Delta$, $\Delta=\frac{T}{n}$, $0\le k\le n$. Backward Euler-Maruyama (BEM) scheme for $L_t$ is defined by
+\begin{equation} \label{eq:lv2}
+\hat L_{t_{k+1}}=\hat L_{t_k}+\zeta\left(\hat L_{t_{k+1}}\right)(t_{k+1}-t_k)+\vartheta\left(W^{(*)}_{t_{k+1}}-W^{(*)}_{t_k}\right).
+\end{equation}
+BEM scheme (also known as drift implicit Euler-Maruyama scheme) is based on Lamperti transform where original SDE \eqref{eq:pm1} is transformed into an SDE \eqref{eq:lv1} with constant diffusion coefficient and non-linearity in the diffusion coefficient shifted into the drift of the process. We refer to \cite{NeuenSzp2014}, \cite{Alfonsi2}, and \cite{Chassagneux} for further details.
+
+
+We prove that SDE \eqref{eq:lv2} has a unique solution in $L_{t_{k+1}}$ in order to make BEM scheme well-defined. Although BEM scheme in Eq \eqref{eq:lv2} cannot be solved analytically in $\hat L_{t_{k+1}}$, we still can solve Eq \eqref{eq:lv2} numerically due to the smoothness and monotonicity of function $G(L):=L-\zeta(L)\Delta$, using just few iterations of Newton algorithm, using Proposition \ref{prop:smooth_G}.
+
+\begin{proposition}\label{prop:smooth_G}
+We introduce $G(l):=l-\zeta(l)\Delta$. Then, for every $c\in \mathbb{R}$, the equation $G(l)=c$ has a unique solution in $l\in \mathbb{R}$.
+\end{proposition}
+\begin{proof}
+As $G(l)$ is continuous, $G'(l)>0$ and $\lim\limits_{l\to \pm\infty}G(l)=\pm\infty$, the result  follows.
+\end{proof}
+
+
+\begin{theorem}\label{thm:stron_conv_log_vol2}
+Backward Euler-Maruyama scheme for log-volatility process $L_t$ in SDE \eqref{eq:lv1} has a strong convergence rate of 1. 
+\end{theorem}
+
+
+\begin{proof}
+The proof of the Theorem is based on Proposition 3 of \cite{Alfonsi2}. We present it below in Proposition \ref{prop:stron_conv_log_vol}  
+\begin{proposition}\label{prop:stron_conv_log_vol}
+We fix $p\ge 1$ and assume that
+\begin{equation}\label{eq:lv3}
+\mathbb{E}\left[\int_0^T\left|\zeta'(L_u)\zeta(L_u)+\frac{\vartheta^2}{2}\zeta''(L_u)\right|du\right]^p+
+\mathbb{E}\left[\int_0^T\zeta'(L_u)^2du\right]^{p/2}<\infty.
+\end{equation}
+Then, there exists a constant $K_p>0$ such that $
+\left(\mathbb{E}\sup_{t\in [0,T]}\left|\hat L_t-L_t\right|^p\right)^{1/p}\le K_p\Delta
+$.
+\end{proposition}
+Instead of Eq \eqref{eq:lv3}, we prove slightly stronger estimate in Eq \eqref{eq:lv3-1}. The latter follows from the combination of H\"{o}lder inequality and  Proposition \ref{prop:bound_moms}. We omit straightforward details to obtain
+\begin{equation}\label{eq:lv3-1}
+\mathbb{E}\sup_{u\in [0,T]}\left|\zeta'(L_u)\zeta(L_u)+\frac{\vartheta^2}{2}\zeta''(L_u)\right|^p+
+\mathbb{E}\sup_{u\in [0,T]}\left|\zeta'(L_u)\right|^p<\infty.
+\end{equation}
+\end{proof}
+
+
+
+\begin{corollary} Monte Carlo discretization scheme of the model dynamics (\ref{eq:svmd1}) under the MMA measure using log-price $X_{t}$ in SDE (\ref{eq:lnx}) is given by
+\begin{equation} \label{eq:msj}
+\begin{split}
+&X_{t_{k+1}}=X_{t_{k}}-\frac{1}{2}\sigma^{2}_{t_{k}}(t_{k+1}-t_k) +\sigma_{t_{k}} \left(W^{(0)}_{t_{k+1}}-W^{(0)}_{t_k}\right),\\
+&  L_{t_{k+1}}= L_{t_k}+\zeta\left( L_{t_{k+1}}\right)(t_{k+1}-t_k)+\beta\left(W^{(0)}_{t_{k+1}}-W^{(0)}_{t_k}\right)+\varepsilon\left(W^{(1)}_{t_{k+1}}-W^{(1)}_{t_k}\right), \\
+& I_{t_{k+1}}=I_{t_{k}}+ \sigma^{2}_{t_{k}}(t_{k+1}-t_k), \\
+& \sigma_{t_{k+1}} = \exp( L_{t_{k+1}}),
+\end{split}
+\end{equation}
+with $X_{t_{0}} = \ln S_{0}$, $L_{t_{0}}=\ln \sigma_{0}$, $I_{t_{0}}=I_{0}$, and where $W^{(0)}$ and $W^{(1)}$ are independent Brownian motions. 
+%The scheme (\ref{eq:msj}) has the convergence rate of 1 in the log-volatility and of $1/2$ in the log-price.
+\end{corollary}
+
+We note that the first two dynamics are defined in $(-\infty, +\infty)$, which does not require extra handling of boundary conditions, in contrast to some affine models for the variance process. 
+
+
+
+
+
+
+
+
+\section{Affine Expansion of Moment Generating Function}\label{sec:affine_expansion}
+
+We consider the valuation problem of a derivative security with payoff function $u(X,I)$ settled at maturity time $T$ using log-price process $X_{T}$ defined in Eq \eqref{eq:lnx}. We denote current time by $t$ and introduce time-to-maturity variable $\tau=T-t$. We denote the undiscounted value function of this derivative security by $U(\tau,X,I,Y)$.
+
+To solve the general valuation problem under both $\mathbb{Q}$ and $\tilde{\mathbb{Q}}$, we parametrise the value function using binary parameter $p$, $p\in\left\{1,-1\right\}$, respectively, as follows
+\begin{equation} \label{eq:val}
+U(\tau,X,I,Y; p) = 
+\begin{cases}
+\mathbb{E}[u(X_T,I_T)\left.\right|X_t=X, I_t=I, Y_t=Y], & p=1\\
+\tilde{\mathbb{E}}[u(X_T,I_T)\left.\right|X_t=X, I_t=I, Y_t=Y], & p=-1.\\
+\end{cases}
+\end{equation}
+where the expectation $\mathbb{E}$ under the MMA measure $\mathbb{Q}$ is computed using  dynamics \eqref{eq:svmd2} and the expectation $\tilde{\mathbb{E}}$ under the inverse measure $\tilde{\mathbb{Q}}$ is computed using dynamics \eqref{eq:inverse}. Here we apply the fact that the dynamics are Markovian under the both measures.
+
+\begin{theorem}\label{thm:FeynmannKac}
+The value function $U(\tau,X,I,Y; p)$ solves the following PDE on the domain $[0,T]\times\mathbb{R}\times\mathbb{R}_{+}\times(-\theta,\infty)$
+\begin{equation}\label{eq:pdeY}
+\begin{split}
+-U_{\tau} +\left( \mathcal{L}^{(Y;\,p)} + \mathcal{L}^{(X;\,p)} + \mathcal{L}^{(I;\,p)} \right)U =0, \quad U(0,X,I,Y)=u(X,I),
+\end{split}
+\end{equation}
+where diffusive operators $\mathcal{L}^{(Y;\,p)}$, $\mathcal{L}^{(X;\,p)}$ and $\mathcal{L}^{(I;\,p)}$ are defined as follows
+\begin{equation} \label{eq:pdeLY1}
+\begin{split}
+&\mathcal{L}^{(Y;\,p)}U= \frac{1}{2} \vartheta^{2} (Y+\theta)^{2} U_{YY}+\left(\lambda^{(p)} - \kappa^{(p)} Y   - \kappa_{2}^{(p)}Y^{2}\right)U_{Y},\\
+&\mathcal{L}^{(X;\,p)}U= (Y+\theta)^{2} \left[ \frac{1}{2}\left( U_{XX} -p U_{X} \right)+\beta U_{XY}\right],\\
+&\mathcal{L}^{(I;\,p)}U= (Y+\theta)^{2}U_{I},\vspace*{-1\baselineskip}
+\end{split}
+\end{equation}\vspace*{-1.0\baselineskip}
+\begin{equation*}\vspace*{-1.0\baselineskip}
+\begin{split}
+& \kappa^{(p)}=\kappa_1-\kappa_2\theta+2\kappa_2^{(p)} \theta, \ \lambda^{(p)}=(\kappa_2-\kappa_2^{(p)})\theta^2, \ \kappa_2^{(p)}=
+\begin{cases}
+\kappa_2,& p=1,\\
+\kappa_2-\beta,& p=-1\\
+\end{cases}.
+\end{split}
+\end{equation*}
+\end{theorem}
+
+\begin{proof}
+We note that the classic Feynman-Kac formula (for an example, see Section A.17 in \cite{Musiela2009}) cannot be applied directly to Eq (\ref{eq:val}) because the model dynamics \eqref{eq:svmd2} and \eqref{eq:inverse} do not satisfy the linear growth condition. In Appendix (\ref{app:FeynmanKac}) we prove that the existence and the uniqueness is guaranteed by Theorem (\ref{thm:fc_exten}). This theorem states that if the covariance matrix of diffusive operator $\mathcal{L} \equiv \mathcal{L}^{(Y;\,p)} + \mathcal{L}^{(X;\,p)} + \mathcal{L}^{(I;\,p)}$ is non-negative definite and the state variables neither explode nor leave an open domain, then there exists a unique solution to the PDE representation of the conditional expectation under corresponding model dynamics.
+
+Now using the diffusive operators in the valuation PDE (\ref{eq:pdeY}), we obtain that the diffusion matrix $a$ in Eq (\ref{eq:fc_generator}) equals
+\begin{equation}
+a=
+\begin{pmatrix} 
+(Y_t+\theta)^2 & \beta(Y_t+\theta)^2 & 0\\ 
+\beta(Y_t+\theta)^2 & \vartheta^2(Y_t+\theta)^2 & 0\\ 
+0 & 0 & 0\\ 
+\end{pmatrix}
+\end{equation}
+with eigenvalues given by
+\begin{equation*}
+\lambda_1=0, \ \lambda_{2,3}=\left(1+\vartheta^2\pm\sqrt{1+4\beta^2-2\vartheta^2+\vartheta^4}\right)(Y_t+\theta)^2.
+\end{equation*}
+Since $\beta<\vartheta$, we observe that $0=\lambda_1<\lambda_2<\lambda_3$, hence matrix $a$ is only non-negative definite and its smallest eigenvalue is always zero. 
+
+We now set the domain $D$ of state variables $\{X_t, Y_t, I_t\}$ in PDE (\ref{eq:pdeY}) by $D=\mathbb{R}\times (-\theta, +\infty)\times \mathbb{R}_+$. 
+As we showed in Theorem (\ref{th:bound_class}), under the MMA measure \eqref{eq:svmd2} and the inverse measure \eqref{eq:inverse}, the boundary points $\{0, +\infty\}$ are unattainable for the volatility process $\sigma_t$, hence solution for mean-adjusted volatility process $Y_t$ and QV $I_t$ cannot explode or leave $D$ before $T$. Same applies to $X_t$ as $\{0, +\infty\}$ are unattainable for $\sigma_t$.  Thus, condition \ref{fc:explosion} of Theorem \ref{thm:fc_exten} is satisfied. 
+As boundedness condition \ref{fc:bounded}  is satisfied by construction, the statement of Theorem \ref{thm:FeynmannKac} follows from Theorem \ref{thm:fc_exten} stated in Appendix \ref{app:FeynmanKac}.
+
+\end{proof}
+
+
+
+
+\subsection{Moment Generating Function}
+
+We introduce the moment generating function (MGF) of the three model variables: the log-price $X_t$, the QV $I_t$, and the mean-adjusted volatility driver $Y_t=\sigma_{t}-\theta$. We extend our analysis using the transform variable in $Y_{t}$ to generalize our solution method for all the three state variables in the model. We denote the MGF by $G(\tau,X,I,Y; \Phi,\Psi, \Theta; p)$ using respective complex-valued transform variables $\Phi,\Psi,\Theta\in\mathbb{C}$
+\begin{equation} \label{eq:mgf}
+G(\tau,X,I,Y; \Phi,\Psi,\Theta;\,p) = 
+\begin{cases}
+\mathbb{E}[e^{-\Phi X_\tau-\Psi I_\tau-\Theta Y_\tau}\left.\right|X_0=X, I_0=I, Y_0=Y], & p=1\\
+\tilde{\mathbb{E}}[e^{-\Phi X_\tau-\Psi I_\tau-\Theta Y_\tau}\left.\right|X_0=X, I_0=I, Y_0=Y], & p=-1.\\
+\end{cases}
+\end{equation}
+
+Using model dynamics \eqref{eq:svmd2} under the MMA measure and model dynamics (\ref{eq:inverse}) under the inverse measure, respectively, the MGF solves the following PDE on the domain $[0,T]\times\mathbb{R}\times\mathbb{R}_{+}\times (-\theta,\infty)$
+\begin{equation} \label{eq:mgf1}
+\begin{split}
+&-G_{\tau}  +\left( \mathcal{L}^{(Y;\,p)} + \mathcal{L}^{(X;\,p)} + \mathcal{L}^{(I;\,p)} \right)G=0,\\
+&  G(0,X,I,Y; \Phi,\Psi,\Theta;\,p) = e^{-\Phi X-\Psi I-\Theta Y},
+\end{split}
+\end{equation}
+with operators defined in Eq (\ref{eq:pdeLY1}). First, we establish a sufficient condition for the existence of the MGF for the three state variables. 
+\begin{theorem}\label{thm::existence_MGF_X}
+Given the transform variable $\Phi=\Phi_R+i\Phi_I\in \mathbb{C}$, the MGF of the log-price $X_\tau$
+\begin{equation*}
+G(\tau,X;\Phi;p=1)=\mathbb{E}[\left. e^{-\Phi X_\tau}\right|X_0=X]
+\end{equation*}
+exists for $\Phi_R\in (-1,0)$, if $Z_\tau$ is a martingale under the MMA measure. By Theorem \ref{thm::bounds_LN_model_quad_drift} 1), the necessary condition is $\kappa_2\ge \beta$.
+
+
+Similarly, the MGF of the log-price $X_\tau$
+\begin{equation*}
+G(\tau,X;\Phi;p=-1)=\tilde{\mathbb{E}}[\left. e^{-\Phi X_\tau}\right|X_0=X]
+\end{equation*}
+exists for $\Phi_R\in (0,1)$ if $R_\tau$ is a martingale under inverse measure. By Theorem \ref{thm::bounds_LN_model_quad_drift} 2), the necessary condition is $\kappa_2\ge 2\beta$. 
+\end{theorem}
+%
+\begin{proof}
+%See Appendix \ref{appx::existence_MGF_X_proof}.
+As $Z_T$ is $\mathbb{Q}$-martingale, the result immediately follows from Jensen's inequality, as the function $g(y):=y^{|\Phi_R|^{-1}}$ is is convex for $|\Phi_R|\in (0,1)$. Result for the inverse measure follows analogously. 
+\end{proof}
+
+
+
+\begin{theorem}\label{thm::existence_MGF_I}
+Given transform variable $\Psi=\Psi_R+i\Psi_I\in \mathbb{C}$, the MGF of QV $I_\tau$
+\begin{equation*}
+G(\tau,I;\Psi;p=1)=\mathbb{E}[e^{-\Psi I_\tau}]
+\end{equation*}
+exists for $\Psi_R<0$ if $\kappa_2>\vartheta\sqrt{-2\Psi_R}$.
+\end{theorem}
+\begin{proof}
+%See Appendix \ref{appx::existence_MGF_I_proof}.
+We denote $K_t=e^{I_t}$ which satisfies SDE $dK_t=K_t\, dI_t = K_t\sigma_t^2\, dt$
+and set $p=-\Psi_R$. Feynman-Kac formula allows to recast the solution 
+$
+U(\tau, \sigma, K)=\mathbb{E}\left(\left. K_T^{p}\right| K_t=K, \sigma_t=\sigma\right)
+$
+as the solution of the Cauchy problem
+\begin{equation}\label{eq:ex_mgf_4}
+-\frac{\partial U}{\partial\tau}+\mathcal{L}^{(\sigma, K)}U=0,\quad U(0,\sigma,K)=K,
+\end{equation}
+where operator $\mathcal{L}^{(\sigma, K)}$ is defined by
+\begin{equation*}
+\mathcal{L}^{(\sigma, K)}=(\kappa_1+\kappa_2\sigma)(\theta-\sigma)\frac{\partial}{\partial\sigma}+
+\frac{1}{2}\vartheta^2\sigma^2\frac{\partial^2}{\partial\sigma^2}+K\sigma^2\frac{\partial}{\partial K}.
+\end{equation*}
+
+We build a supersolution $\bar{U}(\tau, \sigma, K)$ to \eqref{eq:ex_mgf_4} using the following ansatz 
+\begin{equation}\label{eq:ex_mgf_5}
+\bar{U}=K^{p}u(\tau,\sigma),\quad u(\tau,\sigma)=e^{a\sigma+b\tau},
+\end{equation}
+which yields
+\begin{equation*}
+-uK^{p}\left[-b+\kappa_1\theta a+(\kappa_2\theta-\kappa_1)a\sigma + \left(\frac{1}{2}\vartheta^2a^2+p-\kappa_2a\right)\sigma^2\right].
+\end{equation*}
+
+We show there exists $a\ge 0$ such that
+\begin{equation}\label{eq:ex_mgf_6}
+\lim_{\sigma\uparrow+\infty}-b+\kappa_1\theta a+(\kappa_2\theta-\kappa_1)a\sigma + \left(\frac{1}{2}\vartheta^2a^2-\kappa_2a+p\right)\sigma^2<+\infty.
+\end{equation}
+We notice that inequality \eqref{eq:ex_mgf_6} holds if there exist $a>0$ such that
+$
+\frac{1}{2}\vartheta^2a^2-\kappa_2a+p<0
+$. 
+As latter defines a parabola in $a$, we can always find required positive $a$, if 
+$
+\kappa_2>\vartheta\sqrt{2p}=\vartheta\sqrt{-2\Psi_R}.
+$
+\end{proof}
+
+
+\begin{theorem}\label{thm::existence_MGF_Y}
+Given the transform variable $\Theta=\Theta_R+i\Theta_I\in \mathbb{C}$, the MGF of the mean-adjusted volatility variable $Y_\tau$
+\begin{equation*}
+G(\tau,Y;\Theta;p)=
+\begin{cases}
+\mathbb{E}[\left. e^{-\Theta Y_\tau}\right|Y_0=Y], & p=1,\\
+\tilde{\mathbb{E}}[\left. e^{-\Theta Y_\tau}\right|Y_0=Y], & p=-1
+\end{cases}
+\end{equation*}
+exists for $\Theta_R<0$, if $\kappa_2>\frac{\vartheta^2}{2}|\Theta_R|$, $p=1$ and $\kappa_2-\beta>\frac{\vartheta^2}{2}|\Theta_R|$, $p=-1$.
+\end{theorem}
+\begin{proof}
+%See Appendix \ref{appx::existence_MGF_Y_proof}.
+We set $c=-\Phi_R$ and consider
+\begin{equation} \label{eq:mgf_Y_1}
+U(\tau,Y; c;\,p) := 
+\begin{cases}
+\mathbb{E}[e^{cY_\tau}\left.\right|Y_0=Y], & p=1\\
+\tilde{\mathbb{E}}[e^{cY_\tau}\left.\right|Y_0=Y], & p=-1.
+\end{cases}
+\end{equation}
+
+Using Feynman-Kac formula we can rewrite $U(\tau,Y; c;\,p)$ as the solution of the Cauchy problem
+\begin{equation}\label{eq:ex_mgf_Y_2}
+-\frac{\partial U}{\partial\tau}+\mathcal{L}^{(Y;\,p)}U=0,\quad 
+U(0,Y;c;\,p)=e^{cY}
+\end{equation}
+where operator $\mathcal{L}^{(Y;\,p)}$ is defined by Eq \eqref{eq:pdeLY1}.
+We build a supersolution $\bar{U}(\tau,Y; c;\,p)$ to \eqref{eq:ex_mgf_Y_2} using ansatz  
+$
+\bar{U}=e^{aY+b\tau},\quad a\ge c, \quad b\ge 0
+$. 
+Inserting $\bar{U}$ into Eq \eqref{eq:ex_mgf_Y_2}, we have
+\begin{equation}\label{eq:ex_mgf_Y_3}
+\begin{split}
+-\frac{\partial \bar{U}}{\partial\tau}+\mathcal{L}^{(Y;\,p)}\bar{U}&=
+-\bar{U}\left[b-\left(\lambda^{(p)} - \kappa^{(p)} Y   - \kappa_{2}^{(p)}Y^{2}\right)b-\frac{1}{2} \vartheta^{2} (Y+\theta)^{2}b^2\right]
+\end{split}
+\end{equation}
+where coefficients are defined in \eqref{eq:pdeLY1}. 
+We show there exists $a\ge c$ such that
+\begin{equation*}
+\lim_{Y\uparrow+\infty}b-\left(\lambda^{(p)} - \kappa^{(p)} Y   - \kappa_{2}^{(p)}Y^{2}\right)a-\frac{1}{2} \vartheta^{2} (Y+\theta)^{2}a^2<\infty.
+\end{equation*}
+We notice that last inequality is satisfied if there exist $a\ge c>0$ such that
+$
+-\kappa_{2}^{(p)}a+\frac{1}{2} \vartheta^{2}a^2<0
+$. 
+Dividing by $a>0$ we conclude that it is satisfied if
+$
+\kappa_{2}^{(p)}>\frac{\vartheta^2}{2}c. 
+$
+Rewriting the last condition in terms of $\kappa_2$, $\beta$ using \eqref{eq:pdeLY1}, completes the proof.
+\end{proof}
+
+
+\subsection{Affine Expansion}
+
+
+Given that coefficients in PDE (\ref{eq:mgf1}) are non-affine in state variable $Y$, the PDE cannot be solved by assuming an exponential affine-solution with a finite number of coefficients. Instead, we can show that the solution to the PDE (\ref{eq:mgf1}) can be represented by an exponential-affine ansatz $E^{[\infty]}$ using an infinite dimensional vector $\mathbf{A}(\tau)=\left\{A^{(k)}(\tau;\Phi,\Psi,\Theta;\,p)\right\}$,  $k=0,1,...,\infty$, as
+\begin{equation}\label{eq:gc1}
+\begin{split}
+& E^{[\infty]}(\tau,X,I,Y; \Phi,\Psi,\Theta;\,p)= \exp \left\{-\Phi X-\Psi I +  \sum^{\infty}_{k=0}A^{(k)}(\tau;\Phi,\Psi,\Theta;\,p)Y^{k}  \right\},
+\end{split}
+\end{equation}
+where vector function $\mathbf{A}(\tau)$ solve an infinite-dimensional system of quadratic ODEs:
+\begin{equation}
+\begin{split}
+A^{(k)}_\tau&=\mathbf{A}^\top M^{(k)}\mathbf{A} + \left(L^{(k)}\right)^\top\mathbf{A} + H^{(k)}, \ k=0,1,...,\infty,
+\end{split}
+\end{equation}
+where $M^{(k)}$, $L^{(k)}$, $H^{(k)}$ are infinite-dimensional sparse matrices and vectors. 
+
+
+We note the similarity between the current ansatz (\ref{eq:gc1}) for problem (\ref{eq:mgf1}) and the problem of computing the moments of the volatility process addressed in Proposition \ref{pr:vol_moments}. There we first represent the recursive solution to the moments as an infinite dimensional vector in Eq (\ref{eq:mvp5}). We then obtain an approximate solution by a truncation of infinite series and specifying a boundary condition to reduce the problem to a finite-dimensional vector (\ref{eq:mvp8}), which can be solved using analytical methods. Here we follow this insight for solving PDE (\ref{eq:mgf1}) and term our (truncated) solution as the affine expansion for a given order.
+
+
+\subsubsection{First-order Expansion}
+ 
+\begin{theorem}\label{pr:b1} [First-order affine expansion] The MGF in Eq \eqref{eq:mgf} can be decomposed as follows
+\begin{equation}\label{eq:b11}
+\begin{split}
+G(\tau,X,I,Y; \Phi,\Psi,\Theta;\,p)&= \exp \left\{-\Phi X-\Psi I \right\}  \left[E^{[1]}(\tau,Y; \Phi,\Psi,\Theta;\,p) + R^{[1]}(\tau,Y; \Phi,\Psi,\Theta;\,p) \right],
+\end{split}
+\end{equation}
+ where $E^{[1]}$ is the leading first-order term and $R^{[1]}$ is the remainder term, such that $E^{[1]}(\tau=0)=1$ and $R^{[1]}(\tau=0)=0$. The leading term $E^{[1]}$ is given by the exponential-affine form
+\begin{equation}\label{eq:b12}
+\begin{split}
+& E^{[1]}(\tau,Y; \Phi,\Psi,\Theta;\,p)= \exp \left\{\sum^{2}_{k=0}A^{(k)}(\tau;\Phi,\Psi,\Theta;\,p)Y^{k}  \right\},
+\end{split}
+\end{equation}
+where vector function $\mathbf{A}(\tau)=\left\{A^{(k)}(\tau;\Phi,\Psi,\Theta;\,p)\right\}$, $k=0,1,2$, solve the quadratic differential system as a function of $\tau$:
+\begin{equation}\label{eq:OrigMGFLogAndQVFirsOrder}
+A^{(k)}_\tau=\mathbf{A}^\top M^{(k)}\mathbf{A} + \left(L^{(k)}(p)\right)^\top \mathbf{A} + H^{(k)}(p),
+\end{equation}
+\begin{equation*}
+\begin{split}
+M^{(k)}&=\left\{
+\begin{pmatrix} % first matrix
+0 & 0 & 0 \\
+0 & \frac{\theta^2\vartheta^2}{2} & 0 \\
+0 & 0 & 0 \\
+\end{pmatrix}, 
+\begin{pmatrix} % second matrix
+0 & 0 & 0 \\
+0 & \theta\vartheta^2 & \theta^2\vartheta^2 \\
+0 & \theta^2\vartheta^2 & 0 \\
+\end{pmatrix}, 
+\begin{pmatrix} % third matrix
+0 & 0 & 0 \\
+0 & \frac{\vartheta^2}{2} & 2\theta\vartheta^2 \\
+0 &  2\theta\vartheta^2  & 2\theta^2\vartheta^2 \\
+\end{pmatrix}
+\right\},\\
+L^{(k)}(p)&=\left\{\begin{pmatrix} % linear terms 
+0 \\ \lambda^{(p)}-\theta^2\beta\Phi \\ \theta^2\vartheta^2 \\
+\end{pmatrix},
+\begin{pmatrix} % linear terms 
+0 \\ -\kappa^{(p)}-2\theta\beta\Phi \\ 2(\lambda^{(p)}+\theta\vartheta^2-\theta^2\beta\Phi)\\
+\end{pmatrix},
+\begin{pmatrix} % linear terms 
+0 \\  -\beta\Phi-\kappa_2^{(p)}\\ \vartheta-2\kappa^{(p)}-4\theta\beta\Phi
+\end{pmatrix}
+\right\},\\
+H^{(k)}(p)&=\left\{
+\frac{1}{2}\theta^2\left(\Phi ^2+p\Phi-2\Psi\right), \
+\theta\left(\Phi ^2+p\Phi-2\Psi\right), \
+\frac{1}{2}\left(\Phi ^2+p\Phi-2\Psi\right) \right\}
+\end{split}
+\end{equation*}
+with the initial condition $\mathbf{A}(0)=( 0, \ -\Theta, \ 0 )^\top$.
+
+
+The remainder term $R^{[1]}$ solves the following PDE (omitting arguments):
+\begin{equation}\label{eq:OrigMGFLogAndQVOrd1Rem1}
+\begin{split}
+ -&R^{[1]}_\tau + \mathcal{L}^{(Y;\,p)} R^{[1]}=- E^{[1]} F^{[1]}(Y,A^{(1)},A^{(2)})\\
+&R^{[1]}(0,Y; \Phi,\Psi;\,p)=0,
+\end{split}
+\end{equation}
+with operator $\mathcal{L}^{(Y)}$ defined in Eq (\ref{eq:pdeLY1}) and residual $F^{[1]}$ defined by
+\begin{equation}\label{eq:OrigMGFLogAndQVOrd1Rem2}
+\begin{split}
+& F^{[1]}(Y,A^{(1)},A^{(2)})=\sum^{4}_{n=3}C^{(n)}(\tau; A^{(1)}, A^{(2)}) Y^n,\\
+& C^{(3)}(\tau)  = 2 A^{(2)} \left(\vartheta^2 \left(2 \theta A^{(2)}+A^{(1)}\right)-\beta  \Phi -\kappa_2\right),\quad C^{(4)}(\tau)  = 2 \vartheta ^2 (A^{(2)})^2.
+\end{split}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+We take as an ansatz the leading term $E^{[1]}(\tau,Y; \Phi,\Psi,\Theta;p)$ in decomposition \eqref{eq:b12} and substitute it into the PDE \eqref{eq:mgf1}. 
+To obtain the ODEs \eqref{eq:OrigMGFLogAndQVFirsOrder} for $A^{(k)}$, we match terms with $Y^k$, $k = 0,1,2$. To obtain the PDE for the remainder term  $R^{[1]}$, we account for higher powers of $Y^k$, $k = 0,1,2$. Finally, initial conditions for ODEs  \eqref{eq:OrigMGFLogAndQVFirsOrder} and PDE \eqref{eq:OrigMGFLogAndQVOrd1Rem1} are set to reproduce conditions of Eq \eqref{eq:mgf1}.
+\end{proof}
+
+
+
+\begin{proposition}
+We take $\Psi=\Theta=0$ and $\Re \Phi=-p/2$, $p\in \{-1, 1\}$. Assuming that hypotheses \ref{assump:blow_up_uppbound},  \ref{assump:lead_term_infin}, \ref{assump:rem_term_bound} listed in Theorem \ref{thm:contin_solutions} hold, the continuous solution  $\mathbf{A}(\tau)$ in Eq (\ref{eq:OrigMGFLogAndQVFirsOrder}) exists on $[0, +\infty)$.
+\end{proposition}
+
+\begin{proof}
+The proof is identical to that of Theorem \ref{thm:contin_solutions} for the second-order expansion. We skip it for brevity.
+\end{proof}
+
+ 
+In Figure \ref{first_order_fig}, we show the real and imaginary parts of ODE solutions $\mathbf{A}(\tau)$ and $E^{[1]}$. We see that functions $A^{(1)}$ and $A^{(2)}$ quickly reach an equilibrium point, while $A^{(0)}$ is the non-stationary part which contributes to the leading term $E^{[1]}$.
+
+
+\begin{figure}%[H]
+\begin{center}
+\includegraphics[width=1.0\textwidth, angle=0] {final_figures/figure4_first_order.PNG}\vspace*{-1.\baselineskip}
+\end{center}
+\caption{The solution of ODEs of the first order expansion in Eq (\ref{eq:OrigMGFLogAndQVFirsOrder}) as function of $\tau$ for $\Phi=-0.5+2i$, $p=1$. We use the model parameters calibrated to Bitcoin options data and reported in Eq 
+\eqref{eq:mf2}. Subplot (A) shows the real part of the solution, (B) shows the imaginary part of the solution, (C) shows the the real and imaginary parts of the exponential term $E^{[1]}$ in Eq (\ref{eq:b12}).}\vspace*{-1.\baselineskip}
+\label{first_order_fig}
+\end{figure}
+
+
+
+\begin{corollary} \label {pr:ar1} [Estimate of the first-order remainder term]. We obtain the following estimate for the remainder term $R^{[1]}$ in Eq (\ref{eq:OrigMGFLogAndQVOrd1Rem1})
+\begin{equation} \label {eq:rem1}
+\begin{split}
+\left| R^{[1]}(\tau,Y; \Phi,\Psi,\Theta;p) \right|  & \leq  \sum^{4}_{n=3}C^{(4)}(\tau^{*})\times M^{(n)}_{\sigma}(\tau^{*}),
+\end{split}
+\end{equation}
+where $M^{(n)}_{\sigma}(\tau)$ is the $n$-th central moment of the volatility defined by:
+\begin{equation}\label{eq:central_mom_vol}
+M^{(n)}_{\sigma}(\tau) \equiv \mathbb{E}\left[(\sigma(\tau)-\theta)^n\right] = \mathbb{E}\left[Y^n(\tau)\right].
+\end{equation}
+\end{corollary}
+\begin{proof}
+The proof is analogous to the second-order expansion in Proposition (\ref{pr:ar2}).
+\end{proof}
+
+\begin{corollary} \label {pr:emgf1} First-order affine expansion for the MGF \eqref{eq:mgf} is obtained by using the leading term $E^{[1]}$ in Eq (\ref{eq:b11})
+\begin{equation}\label{eq:emgf1}
+\begin{split}
+& G(\tau,X,I,Y; \Phi,\Psi,\Theta;\,p) = \exp \left\{-\Phi X-\Psi I \right\}  E^{[1]}(\tau,Y; \Phi,\Psi,\Theta;\,p),
+\end{split}
+\end{equation}
+where the approximation error arises from the truncation of the infinite dimensional affine anzats in Eq (\ref{eq:gc1}) with the error magnitude estimated using Eq (\ref{eq:rem1}).
+\end{corollary}
+
+In Figure \ref{pdfs_btc}, we illustrate that the first-order approximation (\ref{eq:emgf1}) for the MGF produces valid and accurate PDFs for all three state variables.
+
+
+
+\subsubsection{Second-order Expansion}
+ 
+\begin{theorem}\label{pr:b2} [Second-order affine expansion] The MGF in Eq \eqref{eq:mgf} can be decomposed as follows
+\begin{equation}\label{eq:b21}
+\begin{split}
+G(\tau,X,I,Y; \Phi,\Psi,\Theta;\,p)& = \exp \left\{-\Phi X-\Psi I \right\}\left[ E^{[2]}(\tau,Y; \Phi,\Psi,\Theta;\,p)+ R^{[2]}(\tau,Y; \Phi,\Psi,\Theta;\,p)  \right],
+\end{split}
+\end{equation}
+where $E^{[2]}$ is the leading term such that $E^{[2]}(\tau=0)=1$  and $R^{[2]}(\tau=0)=0$ is the remainder term.
+
+
+The leading term $E^{[2]}(\tau,Y; \Phi,\Psi;\,p)$ is given by the exponential-affine form:
+\begin{equation}\label{eq:b22}
+\begin{split}
+& E^{[2]}(\tau,Y; \Phi,\Psi,\Theta;\,p)= \exp \left\{\sum^{4}_{k=0}A^{(k)}(\tau;\Phi,\Psi,\Theta;\,p)Y^{k}  \right\},
+\end{split}
+\end{equation}
+where vector function $\mathbf{A}(\tau)=\left\{A^{(k)}(\tau;\Phi,\Psi,\Theta;\,p)\right\}$,  $k=0,...,4$, solve the system the quadratic differential system as a function of $\tau$: 
+\begin{equation}\label{eq:OrigMGFLogAndQVOrd2}
+\begin{split}
+A^{(k)}_\tau&=\mathbf{A}^\top M^{(k)}\mathbf{A} + \left(L^{(k)}(p)\right)^\top\mathbf{A} + H^{(k)}(p),\vspace*{-1.0\baselineskip}
+\end{split}
+\end{equation}
+\begin{equation*}
+\begin{split}
+M^{(k)}&=\left\{
+\begin{pmatrix} % first matrix
+0 & 0 & 0 & 0 & 0 \\
+0 & \frac{\theta^2\vartheta^2}{2} & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 \\
+\end{pmatrix}, 
+\begin{pmatrix} % second matrix
+0 & 0 & 0 & 0 & 0 \\
+0 & \theta\vartheta^2 & \theta^2\vartheta^2 & 0 & 0 \\
+0 & \theta^2\vartheta^2 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 \\
+\end{pmatrix}, 
+\begin{pmatrix} % third matrix
+0 & 0 & 0 & 0 & 0 \\
+0 & \frac{\vartheta^2}{2}& 2\theta\vartheta^2 & \frac{3}{2}\theta^2\vartheta^2 & 0 \\
+0 &  2\theta\vartheta^2  & 2\theta^2\vartheta^2 & 0 & 0 \\
+0 & \frac{3}{2}\theta^2\vartheta^2 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 \\
+\end{pmatrix},\right.\vspace*{-1\baselineskip}
+\end{split}
+\end{equation*}
+\begin{equation*}
+\begin{split}
+&
+\left.
+\begin{pmatrix} % fourth matrix
+0 & 0 & 0 & 0 & 0 \\
+0 & 0 & \vartheta^2 & 3\theta\vartheta^2 & 2\theta^2\vartheta^2 \\
+0 & \vartheta^2 & 4\theta\vartheta^2 & 3\theta^2\vartheta^2 & 0 \\
+0 & 3\theta\vartheta^2 & 3\theta^2\vartheta^2 & 0 & 0 \\
+0 & 2\theta^2\vartheta^2 & 0 & 0 & 0\\
+\end{pmatrix},
+\begin{pmatrix} % fifth matrix
+0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & \frac{3}{2}\vartheta^2 & 4\theta\vartheta^2 \\
+0 & 0 & 2\vartheta^2 & 6\theta\vartheta^2 & 4\theta^2\vartheta^2 \\
+0 & \frac{3}{2}\vartheta^2 & 6\theta\vartheta^2 & \frac{9}{2}\theta^2\vartheta^2 & 0 \\
+0 & 4\theta\vartheta^2 & 4\theta^2\vartheta^2 & 0 & 0\\
+\end{pmatrix}\right\},\vspace*{-1\baselineskip}
+\end{split}
+\end{equation*}
+\begin{equation*}
+\begin{split}
+L^{(k)}(p)&= \left\{
+\begin{pmatrix} % linear terms 
+0 \\ \lambda^{(p)}-\theta^2\beta\Phi \\ \theta^2\vartheta^2  \\ 0 \\ 0 
+\end{pmatrix},
+\begin{pmatrix} % linear terms 
+0 \\ -\kappa^{(p)}-2\theta\beta\Phi \\ 2(\lambda^{(p)}+\theta\vartheta^2-\theta^2\beta\Phi) \\ 3\theta^2\vartheta^2 \\ 0
+\end{pmatrix},
+\begin{pmatrix} % linear terms 
+0 \\ -\beta\Phi-\kappa_2^{(p)} \\ \vartheta^2-2\kappa^{(p)}-4\theta\beta\Phi \\ 3(2q\vartheta^2+\lambda^{(p)}-\theta^2\beta\Phi) \\ 6\theta^2\vartheta^2
+\end{pmatrix},\right.\\
+&\left.\begin{pmatrix} % linear terms 
+0 \\ 0 \\ -2(\beta\Phi+\kappa_2^{(p)}) \\ 3(\vartheta^2-\kappa^{(p)}-2\theta\beta\Phi) \\ 4(3\theta\vartheta^2+\lambda^{(p)}-\theta^2\beta\Phi) \\
+\end{pmatrix},
+\begin{pmatrix} % linear terms 
+0 \\ 0 \\ 0 \\ -3(\beta\Phi+\kappa_2^{(p)}) \\ 2(3\vartheta^2-2\kappa^{(p)}-4\theta\beta\Phi)
+\end{pmatrix}  \right\},\vspace*{-1\baselineskip}
+\end{split}
+\end{equation*}
+\begin{equation*}
+\begin{split}
+H^{(k)}(p)&= \left\{
+\frac{1}{2}\theta^2\left(\Phi ^2+p\Phi-2\Psi\right),
+\theta\left(\Phi ^2+p\Phi-2\Psi\right) ,
+\frac{1}{2}\left(\Phi ^2+p\Phi-2\Psi\right) ,
+0 ,
+0\right\},
+\end{split}
+\end{equation*}
+with initial condition $\mathbf{A}(0)=(0, -\Theta, 0, 0, 0)^\top$.
+
+
+The remainder term $R^{[2]}$ solves the following PDE (omitting arguments)
+\begin{equation}\label{eq:OrigMGFLogAndQVOrd2Rem1}
+\begin{split}
+ -&R^{[2]}_\tau +  \mathcal{L}^{(Y;\,p)} R^{[2]}=-E^{[2]}F^{[2]}\\
+&R^{[2]}(0,Y; \Phi,\Psi,\Theta;\,p)=0,
+\end{split}
+\end{equation}
+with operator $\mathcal{L}^{(Y)}$ defined in Eq (\ref{eq:pdeLY1}) and function $F^{[2]}$ defined by
+\begin{equation}\label{eq:OrigMGFLogAndQVOrd2Rem2Coeffs}
+\begin{split}
+&F^{[2]}(\tau,Y;A^{(1)},A^{(2)},A^{(3)},A^{(4)})=\sum_{k=5}^8 C^{(k)}(\tau;A^{(1)},A^{(2)},A^{(3)},A^{(4)})Y^k\vspace*{-1\baselineskip}
+\end{split}
+\end{equation}\vspace*{-1\baselineskip}
+\begin{equation*}
+\begin{split}
+C^{(5)}(\tau) &=3 \vartheta ^2 A^{(3)} \left(3 \theta A^{(3)}+2 A^{(2)}\right)+4 A^{(4)} \left(\vartheta ^2 \left(3\theta^2 A^{(3)}+4 \theta A^{(2)}+A^{(1)}\right)-\kappa_2\right) ,\\
+C^{(6)}(\tau) &=\frac{1}{2} \vartheta ^2 \left(16 \theta^2 (A^{(4)})^2+16 A^{(4)} \left(3 \theta A^{(3)}+A^{(2)}\right)+9 (A^{(3)})^2\right) ,\\
+C^{(7)}(\tau) &=4 \vartheta ^2 A^{(4)} \left(4 \theta A^{(4)}+3 A^{(3)}\right),\ C^{(8)}(\tau) = 8 \vartheta ^2 \left(A^{(4)}\right)^2.\vspace*{-1\baselineskip} 
+\end{split}
+\end{equation*}
+\end{theorem}
+\begin{proof}
+The proof follows by analogy to the first-order expansion in Theorem \ref{pr:b1}.
+\end{proof}
+
+\begin{remark}
+We emphasize that sparse matrices $M^{(k)}$ in the quadratic term  do not depend on the measure parameter $p$, while the linear $L^{(k)}(p)$ and free terms $H^{(k)}(p)$ depend on $p$ in ODEs (\ref{eq:OrigMGFLogAndQVFirsOrder}), (\ref{eq:OrigMGFLogAndQVOrd2}) for the first- and the second-order expansion.
+\end{remark}
+
+We now present the result on the existence of continuous solution to Eq (\ref{eq:OrigMGFLogAndQVOrd2}) in Proposition \ref{prop:existence_cont_sol} and discuss it further in Section \ref{sec:sol}.
+
+
+\begin{proposition}\label{prop:existence_cont_sol}
+We take $\Psi=\Theta=0$ and $\Re \Phi=-p/2$, $p\in \{-1, 1\}$. Assuming that hypotheses \ref{assump:blow_up_uppbound},  \ref{assump:lead_term_infin}, \ref{assump:rem_term_bound} listed in Theorem \ref{thm:contin_solutions} hold, the continuous solution $\mathbf{A}(\tau)$ in Eq (\ref{eq:OrigMGFLogAndQVOrd2}) exists on $[0, +\infty)$.
+\end{proposition}
+\begin{proof}
+See Theorem \ref{thm:contin_solutions}. 
+\end{proof}
+
+
+
+In Figure \ref{second_order_fig}, we show the real and imaginary parts of $\mathbf{A}(\tau)$ for the second-order expansion and the leading term $E^{[2]}$. We see that, similarly to the first order expansion illustrated in Figure \ref{first_order_fig}, functions $A^{(1)}, A^{(2)}, A^{(3)}, A^{(4)}$ reach an equilibrium point, while $A^{(0)}$ is the non-stationary part which contributes to the leading term $E^{[2]}$. By comparing the small order terms $A^{(0)}, A^{(1)}, A^{(2)}$ between the first and the second expansions, we notice no visible difference, which suggest that the expansion is rather recursive and higher order terms make insignificant contribution to the low order terms. We also notice that terms $A^{(3)}$ and $A^{(4)}$ are very small in magnitude compared to the first three terms, which suggest that higher order term only provide a small marginal contribution.
+
+
+\begin{figure}%[H]
+\begin{center}
+\includegraphics[width=1.0\textwidth, angle=0] {final_figures/figure5_second_order.PNG}\vspace*{-1.\baselineskip}
+\end{center}
+\caption{The solution of ODEs in Eq (\ref{eq:OrigMGFLogAndQVOrd2}) as function of $\tau$ for $\Phi=-0.5+2i$, $p=1$. We use the model parameters calibrated to Bitcoin options data and reported in Eq \eqref{eq:mf2}. Subplot (A) shows the real part of the solution, (B) shows the imaginary part of the solution, (C) shows the the real and imaginary parts of the exponential term $E^{[2]}$ in Eq (\ref{eq:b22}).}\vspace*{-1.\baselineskip}
+\label{second_order_fig}
+\end{figure}
+
+\begin{corollary} \label{pr:ar2}[Estimate of the second-order remainder term]. We obtain the following estimate for the remainder term $R^{[2]}$ which solves Eq \eqref{eq:OrigMGFLogAndQVOrd2Rem1}: 
+\begin{equation} \label{eq:rem2}
+\begin{split}
+\left| R^{[2]}(\tau,X; \Phi,\Psi,\Theta;p) \right|  & \leq  \sum^{8}_{n=5}C_{n}(\tau^{*})\times M^{(n)}_{\sigma}(\tau^{*}),\vspace*{-1.0\baselineskip} 
+\end{split}
+\end{equation}
+where $M^{(n)}_{\sigma}$ is the $n$-th central moment of the volatility defined by \eqref{eq:central_mom_vol}.
+\end{corollary}
+
+
+\begin{proof}
+The formal solution for the remainder term $R^{[2]}$ solving Problem \eqref{eq:OrigMGFLogAndQVOrd2Rem1} is obtained by applying the Feynman-Kac formula and is given by
+\begin{equation} \label {eq:rtr1}
+\begin{split}
+R^{[2]}(\tau,Y; \Phi,\Psi)&  = \int^{\tau}_{0}\int^{\infty}_{-\theta}\left[ E^{[2]}(\tau-t,Y'; \Phi,\Psi) F^{[2]}(\tau-t,Y') \right]P(t,Y;Y')dtdY',
+\end{split}
+\end{equation}
+where $P(t,Y;Y')$ is PDF of $Y'=Y(t)$ conditional on $Y$. $P$ solves PDE (\ref{eq:pdeY}), subject to initial condition $P(0,Y;Y')=\delta(Y'-Y)$. Using Eq (\ref{eq:rtr1}), we obtain
+\begin{equation} \label {eq:rt22}
+\begin{split}
+&\left| R^{[2]}(\tau,Y; \Phi,\Psi) \right|   \leq  \int^{\tau}_{0}\int^{\infty}_{-\theta} \left|E^{[2]}(\tau-t,Y'; \Phi,\Psi)F^{[2]}(\tau-t,Y') P(t,Y;Y')  \right|dtdY'\\
+& \leq \int^{\tau}_{0}\int^{\infty}_{-\theta} \left| F^{[2]}(\tau-t,Y') P(t,Y;Y')  \right|dtdY'.\end{split}
+\end{equation}
+Here, we apply the bound on the MGF $\left|E^{[2]}(\tau-t,Y'; \Phi,\Psi) \right|\leq 1$ and integrate out the log-return $X$ and the QV $I$. 
+Next we substitute the polynomial function $F^{[2]}$ in Eq \eqref{eq:OrigMGFLogAndQVOrd2Rem2Coeffs}. We use the continuity of functions $A^{(k)}$, $k=1,2,3,4$, and apply the first mean value theorem for definite integrals to estimate the time integral. Finally, we approximate the expected moments of the mean-adjusted volatility by its steady-state $n$-th order central moments $M^{(n)}_{\sigma}$ specified in Eq \eqref{eq:central_mom_vol}.
+
+\end{proof}
+
+
+\begin{corollary} \label {pr:emgf2} Second-order affine expansion for the MGF \eqref{eq:mgf} is obtained by using the leading term $E^{[2]}$ in Eq (\ref{eq:b22}) as
+\begin{equation}\label{eq:emgf2}
+\begin{split}
+& G(\tau,X,I,Y; \Phi,\Psi,\Theta;p) =  \exp \left\{-\Phi X-\Psi I \right\} E^{[2]}(\tau,Y; \Phi,\Psi,\Theta;p),\vspace*{-1.0\baselineskip}
+\end{split}
+\end{equation}
+where the approximation error arises from the truncation of the infinite dimensional affine anzats in (\ref{eq:gc1}) with the error magnitude estimated by Eq (\ref{eq:rem2}).
+\end{corollary}
+
+In Figure \ref{pdfs_btc}, we illustrate that the second-order approximation (\ref{eq:emgf2}) for the MGF produces valid and accurate PDFs for all three state variables.
+
+
+
+
+
+\subsubsection{Solution of Quadratic Differential Systems}\label{sec:sol}
+
+
+It is established that the global existence problem for the solution of quadratic differential systems is non-trivial, see \cite{Coppel1966}, \cite{Perko1970}, \cite{Jacobson1977}, \cite{Baris2008} among others. We can show that the matrices of quadratic terms in Eq \eqref{eq:OrigMGFLogAndQVFirsOrder} and \eqref{eq:OrigMGFLogAndQVOrd2} are indefinite because their eigenvalues are of both signs. Thus, we can provide a result for global existence that is only conditional by nature. We focus on important case of option valuation on underlying assets with $\Re \Phi=-p/2$, $p\in\{-1,1\}$, and $\Psi=\Theta=0$.
+
+\cite{Perko1970} show that complex-valued solution of quadratic ODEs such as $\mathbf{A}(\tau;\Phi)$ in Eq \eqref{eq:OrigMGFLogAndQVFirsOrder} or \eqref{eq:OrigMGFLogAndQVOrd2} has maximal interval of existence $\left[0,\tau_+(\Phi;\mathbf{A})\right)$, where $\tau_+(\Phi;\mathbf{A})$ denotes its {\it blow-up time}.
+
+
+\begin{theorem}\label{thm:contin_solutions}
+Assume following conditions are satisfied:
+\begin{enumerate}%[label=(\roman*)]
+\item \label{assump:blow_up_uppbound}  $\tau_+(\Phi;\Re \mathbf{A})\ge \tau_+(\Re \Phi; \mathbf{A})$, $\Phi\in \mathbb{C}$, i.e. real part of  $\mathbf{A}(\tau;\Phi)$ cannot blow up before $\mathbf{A}(\tau;\Re\Phi)$.
+
+\item \label{assump:lead_term_infin} $\sum_{k=0}^{2m} A_k(\tau;\Phi;p)Y^k \to +\infty$ as $\tau\uparrow \tau_+(\Phi)$, $\Phi\in \mathbb{R}$, i.e. leading term of the affine expansion does not vanish as we approach blow-up time when transform variable $\Phi$ is real. 
+
+\item \label{assump:rem_term_bound} $\lim_{\tau\uparrow \tau_+(\Phi)}R^{[n]}(\tau;\Phi)>-\infty$, $\Phi\in \mathbb{R}$, i.e. remainder term is uniformly bounded from below.
+\end{enumerate}
+
+If MGF in Eq \eqref{eq:mgf1} is finite with $G(\tau_0;X,I,Y; \Psi=\Re \Phi,\Psi=0,\Theta=0)<\infty$, 
+then continuous solution $A(\tau;\Phi,\Psi=0,\Theta=0)$ of Eq \eqref{eq:OrigMGFLogAndQVFirsOrder} and of Eq \eqref{eq:OrigMGFLogAndQVOrd2} exists on $[0,\tau_0)$.
+\end{theorem}
+
+\begin{proof}
+See Appendix \ref{app:contin_solutions}.
+\end{proof}
+
+By Theorem \ref{thm:contin_solutions}, we obtain that continuous solution $\mathbf{A}(\tau)$ for the first- and second-order affine expansions in Eqs (\ref{eq:b12}) and (\ref{eq:b22}), respectively, exists on $[0, +\infty)$ if \ref{assump:blow_up_uppbound}, \ref{assump:lead_term_infin}, \ref{assump:rem_term_bound} hold.
+
+
+
+\subsection{Properties of Affine Expansions}
+
+We now consider the key properties of the affine expansion of the MGF. For brevity, we focus on the properties of the second-order expansion, which is our key development. For the first order expansion, martingale conditions stated in Proposition \ref{pr:mart2} hold, and the consistency with the expected values (but not with their variances) of three state variables is ascertained in the same way as for the second-order expansion.
+
+\begin{proposition}\label{pr:mart2} [Martingale conditions] Assuming that hypotheses \ref{assump:blow_up_uppbound},  \ref{assump:lead_term_infin}, \ref{assump:rem_term_bound} in Theorem \ref{thm:contin_solutions} hold, the second-order expansion of the MGF in \eqref{eq:emgf2} with $E^{[2]}$ defined in Eq \eqref{eq:b22} satisfies the martingale conditions for log-return $X_\tau$
+\begin{equation}\label{eq:mart21}
+G^{[2]}(\tau,Y; \Phi=0,\Psi=0,\Theta=0;p) \equiv E^{[2]}(\tau,Y; \Phi=0,\Psi=0,\Theta=0;p) =1
+\end{equation}
+\begin{equation}\label{eq:mart22}
+\begin{split}
+&\mathbb{E}\left[e^{X_\tau}\right] \equiv e^{X_0} E^{[2]}(\tau,Y; \Phi=-1,\Psi=0,\Theta=0;\,p=1)=e^{X_0},\\
+&\tilde{\mathbb{E}}\left[e^{-X_\tau}\right] \equiv e^{-X_0} E^{[2]}(\tau,Y; \Phi=1,\Psi=0,\Theta=0;\,p=-1)=e^{-X_0}.
+\end{split}
+\end{equation}
+\end{proposition}
+
+
+\begin{proof}
+For $\Phi=\Psi=\Theta=0$, we obtain $H^{(p)}\equiv 0$ in \eqref{eq:OrigMGFLogAndQVOrd2}. Given zero initial conditions, $A^{(k)}(\tau;\Phi=0,\Psi=0,\Theta=0;\,p)\equiv 0$ due to the uniqueness of the solution. Similarly, for $\Phi=-1$ and $\Theta=\Psi=0$, we obtain that $H^{(1)}\equiv 0$, hence $A^{(k)}(\tau;\Phi=-1,\Psi=0,\Theta=0;\,p=1)\equiv 0$. 
+Similarly, for $\Phi=1$ and $\Psi=0$ we obtain that $H^{(-1)}\equiv 0$, hence $A^{(k)}(\tau;\Phi=1,\Psi=0,\Theta=0;\,p=-1)\equiv 0$. 
+\end{proof}
+
+
+\begin{proposition}\label{pr:volmoment} [Volatility moments] The MGF in Eq \eqref{eq:emgf2} with  the second-order affine term $E^{[2]}$ in \eqref{eq:b22} reproduces exactly the expected value and the variance of the volatility for $\kappa_{2}=0$.
+\end{proposition}
+
+
+\begin{proposition}\label{pr:logmoment} [Log-price moments] The MGF in Eq \eqref{eq:emgf2} with the second-order affine term reproduces exactly the expected value and the variance of the log-price for $\kappa_{2}=0$.
+\end{proposition}
+
+\begin{proposition}\label{pr:qvarmoment} [QV moments] The MGF in Eq \eqref{eq:emgf2} with the second-order affine term  reproduces exactly the expected value and the variance of QV for $\kappa_{2}=0$.
+\end{proposition}
+
+\begin{proof}
+Proposition \ref{pr:volmoment} and \ref{pr:logmoment} are proved in Appendix \ref{app:volmoment} and \ref{app:logmoment}, respectively. Proof of Proposition \ref{pr:qvarmoment}  is similar to the proof of Proposition \ref{pr:logmoment}. 
+\end{proof}
+
+\begin{remark}\label{rem:volmoment2}
+In Remark \ref{rem:volmoment} we noted that the system of volatility moments \eqref{eq:mvp8} is solved exactly for $\kappa_{2}=0$ , otherwise the solution is approximate. Thus, we cannot generalize above statements for $\kappa_{2}>0$. However, it is our hypothesis that moments obtained using \eqref{eq:b22} correspond to moments computed in \eqref{eq:mvp8} using truncation order $k^{*}=4$ and that truncation error as function of $\kappa_{2}$ is very small. 
+\end{remark}
+
+
+In Figure \ref{pdfs_btc}, we show PDFs computed using the inversion of first-order solution $E^{[1]}$ in Eq (\ref{eq:b12}) and second-order solution $E^{[2]}$ in Eq (\ref{eq:b22}) for the three state variables in model dynamics \eqref{eq:svmd2}. The blue histogram is computed using MC simulations of the joint model dynamics. We see that both first- and second-order expansions produce valid PDFs and match consistently histograms produced by the MC simulations. The first-order expansion may not be very accurate for the QV and the volatility variables because it is not consistent with variances of these variables. The second-order expansion is consistent with variances anc co-variances of all state variables and it accurately matches PDFs computed using MC simulations.
+
+\begin{figure}%[H]
+\begin{center}
+\includegraphics[width=1.0\textwidth, angle=0] {final_figures/figure6_joint_pdf.PNG}\vspace*{-1.\baselineskip}
+\end{center}
+\caption{PDFs computed using the inversion of the first order expansion term $E^{[1]}$ in Eq (\ref{eq:b12}) and the second-order expansion term $E^{[2]}$ in Eq (\ref{eq:b22}) for the state variables under the MMA measure: Subplots (A), (B), (C) show PDFs of log-return, $X_{\tau}$, of QV normalized by $\tau$, $I_{\tau}/\tau$, of volatility $\sigma_{\tau}$, $\sigma_{\tau}=Y_{\tau}+\theta$, respectively. We use the model parameters for Bitcoin options reported in Eq \eqref{eq:mf2} with time to maturity of one month, $\tau=1.0/12.0$. The blue histogram is computed using realizations from MC simulations of joint model dynamics \eqref{eq:svmd1} using scheme in Eq (\ref{eq:msj}) with the number of path equal $400,000$ and daily time steps.}\vspace*{-1.\baselineskip}
+\label{pdfs_btc}
+\end{figure}
+
+
+
+
+\section{Option Valuation}\label{sec:option_valuation}
+
+We apply the zero-drift log-price process $X_{t}$ in Eq (\ref{eq:lnx}) and Eqs (\ref{eq:lnx1}) and (\ref{eq:qt}) for spot and futures prices, respectively, to consider option valuation on both spot and futures underlyings. We denote by $P_{T}$ the price of either spot or futures asset
+\begin{equation} \label{eq:pt1}
+P_{T} =  e^{\bar{\mu}(T)} e^{X_{T}}, \ X_{0} = \ln S_{0},
+\end{equation}
+where $\bar{\mu}(T)=\bar{r}(0, T)$ for spot price and $\bar{\mu}(T)=\bar{r}(0, T)-\bar{q}(0, T)$ for futures. 
+
+As we conclude in Corollaries \ref{pr:emgf1} and \ref{pr:emgf2}, we apply affine expansion given by either the first order in Eq (\ref{eq:b12}) or the second order in Eq (\ref{eq:b22}) as analytic solutions to the MGF under the dynamics (\ref{eq:lnx}). Given that the MFG is available analytically, we then apply Lewis~--~Lipton approach for valuation of vanilla options using Fourier transform, see \cite{Lewis2000}, \cite{Lipton2001}, \cite{Lipton2002}.
+
+
+\subsection{Vanilla Calls and Puts}
+
+Using Eq (\ref{eq:pt1}), we represent put and call payoff functions for strike price $K$ using capped payoff by
+\begin{equation} \label {eq:v1}
+\begin{split}
+  & u^{call}(P_{T},K) = \max\left\{P_{T}-K, 0\right\}=P_{T}- \min\left\{P_{T}, K\right\}=P_{T}-\min\left\{e^{\overline{\mu}(T)+X_{T}},K\right\},\\
+	& u^{put}(P_{T},K) = \max\left\{K-P_{T}, 0\right\}=K - \min\left\{P_{T}, K\right\} = K - \min\left\{e^{\overline{\mu}(T)+X_{T}},K\right\}.\vspace*{-1.0\baselineskip}
+\end{split} 
+\end{equation}
+
+Thus, we evaluate capped payoff $u(P_{T})=\min\left\{P_{T}, K\right\}$ under MMA measure $\mathbb{Q}$ by
+\begin{equation} \label {eq:v2}
+\begin{split}
+  & U(\tau, X) = e^{-\overline{r}(T)}\mathbb{E}\left[\left. \min\left\{e^{\overline{\mu}(T)+X_{T}},K\right\}\right|\mathcal{F}_{t}\right]
+\end{split} 
+\end{equation}
+
+\begin{proposition}\label{sc:capped}
+The valuation formula for capped payoff is given by
+\begin{equation} \label {eq:v8}
+\begin{split}
+  U(\tau, X)&  = \frac{e^{-\overline{r}(T)} K}{\pi} \Re\left[\int^{\infty}_{0} e^{-(iy-1/2) X^{*}}  \frac{1}{y^{2}+1/4} E^{[m]}(\tau,Y; \Phi=iy-1/2,\Psi=0,\Theta=0;\,p=1)dy\right],\vspace*{-1\baselineskip}
+\end{split} 
+\end{equation}
+where $X^{*}=\ln(S_{0}/K)+\overline{\mu}(T)$ is log-moneyness, $E^{[1]}$ and $E^{[2]}$ are given in Eq (\ref{eq:b12}) and Eq (\ref{eq:b22}), respectively.
+\end{proposition}
+
+
+\begin{proof}
+Using affine expansion for MGF $G$  with either first-order in Eq \eqref{eq:emgf1} or second-order in Eq \eqref{eq:emgf2}, the PDF of $X_{\tau}$ is computed by Fourier inversion
+\begin{equation}\label {eq:v3}
+\begin{split}
+& PDF(\tau,X,Y; X';\,p=1) = \frac{1}{\pi}\Re\left[ \int^{\infty}_{0}\exp \left\{ \Phi (X'-X) \right\} E^{[m]}(\tau,Y; \Phi,\Psi=0;\,p=1)\,d\Phi\right]
+\end{split}
+\end{equation}
+
+
+For valuation problem in Eq \eqref{eq:v2}, we obtain
+\begin{equation*}
+\begin{split}
+    U(\tau, X) = &e^{-\overline{r}(T)}\Re\left[ \int^{\infty}_{-\infty}\min\left\{e^{\overline{\mu}(T)+X'},K\right\} \left[\frac{1}{\pi} \int^{\infty}_{0}e^{\Phi (X'-X)} E^{[m]}(\tau,Y; \Phi,\Psi=0;\,p=1)d\Phi\right]dX'\right]
+\end{split} 
+\end{equation*}
+
+Assuming that inner integrals are finite, we exchange the integration order as
+\begin{equation} \label {eq:v5}
+\begin{split}
+  & U(\tau, X) = \frac{1}{\pi} e^{-\overline{r}(T)} \Re\left[\int^{\infty}_{0}\widehat{u}(\Phi)E^{[m]}(\tau,Y; \Phi,\Psi=0;\,p=1)d\Phi\right],
+\end{split} 
+\end{equation}
+where $\widehat{u}(\Phi)$ is the transformed payoff function
+\begin{equation} \label {eq:v6}
+\begin{split}
+&   \widehat{u}(\Phi)  =  e^{-\Phi X}\int^{\infty}_{-\infty}e^{\Phi X'} \min\left\{e^{ X'+\overline{\mu}(T)},K\right\}  dX'  \\
+& =e^{-\Phi X} \left( e^{\overline{\mu}(T)}  \frac{e^{(\Phi+1) k^{*}}}{\Phi+1} - e^{k^{*}+\overline{\mu}(T)}\frac{1}{\Phi}e^{\Phi k^{*}}\right) \\
+		& =-  Ke^{-\Phi\left(\ln (S/K)+ \overline{\mu}(T)\right)}\frac{1}{(\Phi+1)\Phi} = -K e^{-\Phi X^{*}} \frac{1}{(\Phi+1)\Phi}
+\end{split} 
+\end{equation}
+where $X^{*}=\ln(S/K)+\overline{\mu}(T)$ is log-moneyness, $k^{*}=\ln K-\overline{\mu}(T)$ with the first integral being finite for $\Re[\Phi]>-1$ and the second integral being finite for $\Re[\Phi]<0$. Integral in Eq (\ref{eq:v6}) is finite for $-1<\Re[\Phi]<0$. For $\Phi=iy-1/2$, we get Eq (\ref{eq:v8})
+\begin{equation}\label{eq:v7}
+\widehat{u}(\Phi = iy-1/2) = 
+K e^{-(iy-1/2) X^{*}}  \frac{1}{y^{2}+1/4}
+\end{equation}
+\end{proof}
+
+As a result, calls and puts on spot underlying are valued using Eqs (\ref{eq:v1})
+\begin{equation} \label{eq:v9}
+\begin{split}
+  & U^{call}(\tau, S,K)  = e^{-\overline{r}(T)+\overline{\mu}(T)}S- U(\tau, X), \\
+	& U^{put}(\tau, S,K)  = e^{-\overline{r}(T)} K - U(\tau, X).
+\end{split} 
+\end{equation}
+The value of call option on future underlying, in turn, equals
+\begin{equation} \label{eq:v9a}
+\begin{split}
+  & U^{call}(\tau, F,K) =  e^{-\overline{r}(T)}f_{0}(T)- U(\tau, X).\vspace*{-1.0\baselineskip}
+\end{split} 
+\end{equation}
+where $f_{0}(T)$ is the futures and $X^{*}=\ln(f_{0}(T)/K)$ denotes log-moneyness. Hence, given a set of futures prices quoted in the market, we can evaluate options on this set of futures without need to compute the convenience yield explicitly.
+
+We emphasize that in valuation equations \eqref{eq:v9} we implicitly assume that the price process $Z_t=\exp(X_t)$, $t \in (0, T]$, is $\mathbb{Q}$-martingale under the MMA measure, otherwise formulas \eqref{eq:v9} are not valid. For that we need a restriction $\kappa_2\ge \beta$, see Theorem \ref{thm::bounds_LN_model_quad_drift}. 
+
+
+\subsection{Inverse Calls and Puts}
+
+Using generic price process of underlying spot and futures given in Eq (\ref{eq:pt1}), we represent the payoffs of inverse calls and puts by
+\begin{equation}\label{eq:io1}
+\begin{split}
+  & \widetilde{u}^{call}(P_{T},K) = \frac{1}{P_{T}}\max\left\{P_{T}-K, 0\right\}=1-e^{-X_{T}-\overline{\mu}(T)}\min\left\{e^{\overline{\mu}(T)+X_{T}},K\right\}\\
+	& \widetilde{u}^{put}(P_{T},K) = \frac{1}{P_{T}}\max\left\{K-P_T, 0\right\} = \frac{K}{P_{T}}  - e^{-X_{T}-\overline{\mu}(T)}\min\left\{e^{\overline{\mu}(T)+X_{T}},K\right\}.\vspace*{-1.0\baselineskip}
+\end{split} 
+\end{equation}
+As a result, we need to evaluate option on the inverse capped payoff under $\tilde{\mathbb{Q}}$
+\begin{equation} \label{eq:io2}
+\begin{split}
+  & \tilde{U}(\tau, X) = \tilde{\mathbb{E}}\left[\left.e^{-X_{T}-\overline{\mu}(T)} \min\left\{e^{\overline{\mu}(T)+X_{T}},K\right\}\right|\mathcal{F}_{t}\right].
+\end{split} 
+\end{equation}
+
+\begin{proposition} \label{invopt}
+
+The valuation formula (\ref{eq:v5}) for the inverse capped payoff becomes
+\begin{equation} \label{eq:io5}
+\begin{split}
+   \widetilde{U}(\tau, X)&  =  \frac{1}{\pi}  \int^{\infty}_{0} e^{-(iy+1/2) X^{*}}  \frac{1}{y^{2}+1/4} E^{[m]}(\tau,Y; \Phi=iy+1/2,\Psi=0, \Theta=0, p=-1)dy,\vspace*{-1.0\baselineskip}
+\end{split}
+\end{equation}
+where $X^{*}=\ln(S_{0}/K)+\overline{\mu}(T)$ is log-moneyness, $E^{[1]}$ and $E^{[2]}$ are given in Eq (\ref{eq:b12}) and Eq (\ref{eq:b22}), respectively.
+
+\end{proposition}
+
+
+\begin{proof}
+As in Eq (\ref{eq:v6}), we compute the transform $\widehat{u}(\Phi)$ of the inverse capped option
+\begin{equation} \label{eq:io3}
+\begin{split}
+   \widehat{u}(\Phi) & =  e^{-\Phi X}\int^{\infty}_{-\infty}e^{\Phi X'} e^{-X'-\overline{\mu}(T)} \min\left\{e^{ X'+\overline{\mu}(T)},K\right\}  dX'  \\
+	& = e^{-\Phi X} \left(\int^{k^{*}}_{-\infty}e^{\Phi X'}  dX' +K  \int^{\infty}_{k^{*}}e^{\Phi X'-X'-\overline{\mu}(T)}  dX'\right)\\
+	& =  -e^{-\Phi X^{*}}\frac{1}{\Phi(\Phi-1)},
+\end{split} 
+\end{equation}
+where $X^{*}=\ln(S/K)+\overline{\mu}(T)$ is the log-moneyness and $k^{*}=\ln K-\overline{\mu}(T)$, with the first integral being finite for $\Re[\Phi]>0$ and the second integral being finite for $\Re[\Phi]<1$. Integral in Eq (\ref{eq:io3}) is finite for $0<\Re[\Phi]<1$. We set $\Phi = iy+1/2$, then
+\begin{equation} \label{eq:io4}
+\begin{split}
+   \widehat{u}(\Phi = iy+1/2) & =  e^{-(iy+1/2) x^{*}}  \frac{1}{y^{2}+1/4}
+\end{split}
+\end{equation}
+\end{proof}
+
+
+
+
+As a result, calls and puts are valued using capped payoff (\ref{eq:io2})
+\begin{equation} \label{eq:io6}
+\begin{split}
+&\widetilde{U}^{call}(\tau, S,K) =1- \widetilde{U}(\tau, X), \ \widetilde{U}^{put}(\tau, S,K)=K e^{-X-\overline{\mu}(T)} - \widetilde{U}(\tau, X).
+\end{split} 
+\end{equation}
+
+
+Hereby, we need to compute
+\begin{equation} \label{eq:io7}
+\begin{split}
+  & f(\tau, X) = \mathbb{\tilde{E}}\left[\left.\frac{1}{P_{T}}\right|\mathcal{F}_{t}\right]=
+  \mathbb{\tilde{E}}\left[\left.e^{-X_T-\overline{\mu}(T)}\right|\mathcal{F}_{t}\right]=
+  e^{-\overline{\mu}(T)}e^{-X},
+\end{split}
+\end{equation}
+with the last equality following from Eq (\ref{eq:mart22}). Given the term structure of futures prices $f_{0}(T)$ in Eq (\ref{eq:qt}), the put option on the future is
+\begin{equation} \label{eq:io10}
+\begin{split}
+  & p(\tau, F,K) =   \frac{K}{f_{0}(T)}- \widetilde{U}(\tau, X),
+\end{split} 
+\end{equation}
+with log-moneyness $X^{*}=\ln(f_{0}(T)/K)$. 
+We emphasize that Eq (\ref{eq:io6}) holds only if $\mathbb{Q}\sim \tilde{\mathbb{Q}}$, which requires restriction $\kappa_2\ge \beta$, see Theorem \ref {thm::meas_equiv_quad_drift}. 
+In addition, we assume that the inverse process $R_t=\exp(-X_t)$, $t\in(0,T]$, is a true $\tilde{\mathbb{Q}}$-martingale. For this we need $\kappa_2\ge 2\beta$ by Theorem \ref{thm::bounds_LN_model_quad_drift}.
+
+
+
+\subsection{Options on Quadratic Variance}
+
+We consider a call option on QV with the payoff function
+\begin{equation}\label{eq:qv0}
+u(I)=\frac{1}{T}\max\{I(T)-TK,0\},
+\end{equation}
+where $K$ is the strike in terms of the annualized variance.
+
+
+\begin{proposition}\label{qmma} The value of the call option on the QV under $\mathbb{Q}$ is given by
+\begin{equation}\label{eq:qv1}
+\begin{split}
+U&(\tau,X,Y,I)=e^{-\bar{r}(T)}\mathbb{E}\left[\left.u(I_T)\right|\mathcal{F}_{t}\right]\\
+& =\frac{e^{-\bar{r}(T)}}{T}\frac{1}{\pi}\int_0^{+\infty}\Re\left[\hat{u}(\Psi) E^{[m]}(\tau,Y; \Phi=0,\Psi;\Theta=0;p=1)\right]d\Psi,
+\end{split}
+\end{equation}
+where
+\begin{equation}\label{eq:qv1a}
+\hat{u}(\Psi)=\frac{e^{-\Psi I}}{\Psi^2}e^{\Psi TK}
+\end{equation}
+provided $\Re[\Psi]<0$, with $E^{[1]}$ and $E^{[2]}$ given in Eq (\ref{eq:b12}) and Eq (\ref{eq:b22}), respectively.
+\end{proposition}
+
+
+\begin{proof}
+%See \ref{sc:qmma_proof}. 
+Consider an option on quadratic variance $I_T$ with terminal payoff $u(I_T)$. Using \cite{Sepp2008}, we find that option value is given by Eq (\ref{eq:qv1}),
+where $\hat{u}(\Psi)$ is the transformed payoff function
+\begin{equation}\label{eq:qv2}
+\hat{u}(\Psi)=\int_0^{+\infty}u(I')e^{\Psi (I'-I)}dI'.
+\end{equation}
+
+For a call option on QV with strike $K$, provided $\Re[\Psi]<0$, Eq \eqref{eq:qv2} becomes
+\begin{equation*}%\label{eq:qv3}
+\begin{split}
+\hat{u}(\Psi)=e^{-\Psi I}\int_0^{+\infty}u(I')e^{\Psi I'}dI'=e^{-\Psi I}\int_0^{+\infty}\max\{I'-TK,0\}e^{\Psi I'}dI'=
+\frac{e^{-\Psi I}}{\Psi^2}e^{\Psi TK}.
+\end{split}
+\end{equation*} 
+
+\end{proof}
+\cite{Sepp2008} derives transforms $\hat{u}(\Psi)$ for typical payoff on the QV including puts and calls on the square root of the QV. Assuming that the inverse measure $\tilde{\mathbb{Q}}$ is a martingale measure for generic spot and futures underlying $P_{t}$ defined in Eq (\ref{eq:pt1}), the inverse option on the QV is given under $\tilde{\mathbb{Q}}$ by
+\begin{equation}\label{eq:iqv1}
+\tilde{U}(\tau, X, Y, I)=\tilde{\mathbb{E}}\left[\left.\frac{u(I_T)}{P_T}\right|\mathcal{F}_{t}\right].
+\end{equation}
+Similarly to Eq (\ref{eq:meas_link2}), values $\tilde{U}(\tau, X, Y, I)$ and $U(\tau, X, Y, I)$ in Eqs \eqref{eq:iqv1} and \eqref{eq:qv1}, respectively, are related by:
+\begin{equation*}
+U(\tau, X, Y, I)=P_t\tilde{U}(\tau, X, Y, I).
+\end{equation*}
+
+
+\begin{proposition}\label{qinv} The value of the call option on the QV under the inverse measure $\tilde{\mathbb{Q}}$ is given by
+\begin{equation}\label{eq:iqv1a}
+\begin{split}
+\tilde{U}(\tau,X,Y,I)&=\frac{e^{-\bar{r}(T)}}{T}\frac{1}{\pi}\int_0^{+\infty}\Re\left[\hat{u}(\Psi) e^{X-\overline{\mu}(T)} E^{[m]}(\tau,Y; \Phi=1,\Psi,\Theta=0;\,p=1)\right]d\Psi,\vspace*{-1.0\baselineskip}
+\end{split}
+\end{equation}
+provided $\Re[\Psi]<0$, with $E^{[m]}$ and $\hat{u}(\Psi)$ defined as in Eq (\ref{eq:qv1a}).
+\end{proposition}
+
+\begin{proof}
+Using affine expansion for MGF $G$  with either first-order in Eq \eqref{eq:emgf1} or second-order in Eq \eqref{eq:emgf2}, we compute the joint density of $\{X_\tau, I_\tau\}$ using inverse Fourier transform by
+\begin{equation*}
+\begin{split}
+&PDF_{X,I}(\tau, X, Y,I;X',I')=\frac{1}{4\pi^2}\Re\left[\int_{-\infty}^{+\infty}\int_{-\infty}^{+\infty}e^{\Phi (X'-X)+\Psi (I'-I)}E^{[m]}(\tau,Y;\Phi,\Psi)d\Phi\,d\Psi\right].
+\end{split}
+\end{equation*}
+
+As a result, we obtain
+\begin{equation*}
+\begin{split}
+\tilde{U}(\tau, X, Y, I)&=\frac{e^{-\bar{r}(T)}}{T}\Re\left[
+\int_{-\infty}^{+\infty}\int_0^{+\infty}e^{-X'-\bar{\mu}(T)}u(I')\times\right.\\
+&\left. \times
+\frac{1}{4\pi^2}\int_{-\infty}^{+\infty}\int_{-\infty}^{+\infty}e^{\Phi (X'-X)+\Psi (I'-I)}E^{[m]}(\tau,Y;\Phi,\Psi)d\Phi\,d\Psi\right]dX'dI'.
+\end{split}
+\end{equation*}
+
+Exchanging the integration order, we have
+\begin{equation}\label{eq:iqv2}
+\tilde{U}(\tau, X, Y, I)=\frac{e^{-\bar{r}(T)}}{T}\frac{1}{4\pi^2}\int_{-\infty}^{+\infty}\int_{-\infty}^{+\infty}\Re\left[E^{[m]}(\tau,Y;\Phi,\Psi)\hat{u}(\Phi,\Psi)\right]d\Phi\,d\Psi,
+\end{equation}
+where $\hat{u}(\Phi,\Psi)$ is the transformed payoff function
+\begin{equation}\label{eq:iqv3}
+\begin{split}
+&\hat{u}(\Phi,\Psi)=e^{-\Phi X-\Psi I}\int_{-\infty}^{+\infty}\int_0^{+\infty}e^{-X'-\bar{\mu}(T)}u(I')e^{\Phi X'+\Psi I'}dX'\,dI'=\\
+&=e^{-\Phi X-\Psi I}e^{-\bar{\mu}(T)}\int_{-\infty}^{+\infty}e^{(\Phi-1)X'}dX'\int_0^{+\infty}u(I')e^{\Psi I'}dI'\\
+& =2\pi e^{-\Phi X-\bar{\mu}(T)}\delta_0(\Phi-1)\hat{u}(\Psi), \ \hat{u}(\Psi)=e^{-\Psi I}\int_0^{+\infty}u(I')e^{\Psi I'}dI',
+\end{split}
+\end{equation}
+provided $\Re[\Psi]<0$. We integrated out the complex exponential in Eq \eqref{eq:iqv3} using results of \cite{Sepp2007}. 
+Thus, Eq \eqref{eq:iqv2} becomes
+\begin{equation}
+\tilde{U}(\tau, X, Y, I)=\frac{e^{-\bar{r}(T)}}{T}\frac{1}{2\pi}\int_{-\infty}^{+\infty}\Re\left[e^{-X-\bar{\mu}(T)}E^{[m]}(\tau,Y;\Phi=1,\Psi)\hat{u}(\Psi)\right]d\Psi. 
+\end{equation}
+\end{proof}
+
+
+\section{Model Implementation and Calibration to Options Data}\label{sec:empirics}
+
+\subsection{Implementation}
+
+In practical applications, either for model calibration or for options valuation, we need to compute call and put option prices on a grid consisting of several maturities and strikes, also referred to as an option chain. We consider grid with $M$ maturities and $J$ strikes. For option valuation using the MGF, we apply the affine expansion given by either the first order in Eq (\ref{eq:b12}) or the second order in Eq (\ref{eq:b22}).
+
+First, we fix the space grid with size $P$ (typically, $P\approx 500)$ of transform variable $\Phi$ for the log-price. We solve the system of ODEs numerically for either the first-order expansion in Eq (\ref{eq:b12}) or for the second-order expansion in Eq (\ref{eq:b22}) in time up to the last maturity time. The computational cost of this step is
+\begin{equation}\label {eq:comp2}
+\begin{split}
+\mathcal{C}^{(1)} = \mathcal{O} \left( P \times N_{\max} \right),
+\end{split}
+\end{equation}
+where $N_{\max}$ is the number of time steps for ODE solver (typically we have one-two steps per one week) and $\mathcal{O}$ is the number of arithmetic (elementary) operations.
+
+
+Second, we compute values of the MGF on the grid of $\Phi$ for each maturity slice. We then compute values of capped payoffs for the MMA measure in Eq (\ref{eq:v8}) or for the inverse measure in Eq (\ref{eq:io5}) using Simpson rule for numerical integration. We then value all options in a given chain. The computational cost of this step is
+\begin{equation}\label {eq:comp3}
+\begin{split}
+\mathcal{C}^{(2)} = \mathcal{O}  \left( J \times M \times P \right)
+\end{split}
+\end{equation}
+
+
+The main difference with numerical implementation of affine models is that the first step can be computed with cost close to $\mathcal{O} \left( P \times M\right)$ because the solution to the MGF can be computed analytically without solving ODEs numerically. The cost ratio between the implementation of the log-normal SV model and an affine SV model compares favorably when the number of maturities becomes large with $M$ close to $N_{\max}$, and when the number of strikes $J$ becomes large as well.
+
+
+\subsection{Model Calibration}\label{sec:kappa2calib}
+
+To illustrate that the log-normal SV model can handle different market regimes, we use  time series of option prices on Bitcoin observed on Deribit exchange from April 2019 to October 2023. We focus on short-dated options with expiries including one and two weeks and one month, because these are the most liquid and actively traded expiries. We use time series of options chains  traded on Deribit. We fix calibration every week with option prices samples each Friday at $10$:$00$ UTC. We include puts and calls with absolute values of option deltas between $[-0.10, -0.50]$ and $[0.10, 0.50]$, respectively.
+
+
+For the stability of calibration, we estimate mean-reversion parameters $\kappa_{1}$ and $\kappa_{2}$ beforehand. The reason is that mean-reversion parameters and volatility-of-volatility with volatility beta are co-dependent so that it is possible to produce similar smiles and skews using different values of these parameters. We follow the procedure in \cite{SeppRakhmonov2023} for estimation of parameters $\kappa_{1}$ and $\kappa_{2}$ by fitting the model implied auto-correlation of the log-normal volatility process to the empirical auto-correlation. This is efficient because the model auto-correlation function is determined solely by mean-reversion parameters. The estimated values of $\kappa_{1}$ and $\kappa_{2}$ are the following $\hat{\kappa}_{1}=2.21$ and $\hat{\kappa}_{2}=2.18$, which are kept fixed through the entire period (in practice we would adjust these estimate regularly using most recent data).
+
+Thus, we need to estimate four model parameters $\sigma_{0}, \theta, \beta, \varepsilon$. Parameters $\sigma_{0}$ and $\theta$ control the level and the slope of at-the-money (ATM) implied volatilities, and $\beta$ and $\varepsilon$ control the skewness and the convexity of implied volatilities, respectively. We apply a stronger constraint $\kappa_2\ge 2\beta$ that guarantees martingale property for the inverse process $R_t$ under $\tilde{\mathbb{Q}}$ using Theorem \ref{thm::bounds_LN_model_quad_drift}. To compue model prices we apply the second-order affine expansion in Eq (\ref{eq:v9}). For each set of sampled option prices, we minimize the weighted mean squared error (WMSE) between model implied volatilities, $\sigma^{model}_{n}(T,K)$, and market mid-point implied volatilities, $\sigma^{implied}_{n}(T,K)$, where $K$ and $T$ are option's strike and maturity, respectively, as follows\footnote{We apply {\tt scipy} implementation of Sequential Least Squares Programming (SLSQP) algorithm.} 
+\begin{equation} \label{eq:mf1}
+\begin{split}
+& WMSE = \sum_{n} w_{n}(T,K)\left( \sigma^{model}_{n}(T,K) - \sigma^{implied}_{n}(T,K)  \right) ^{2}
+\end{split}
+\end{equation}
+with weight $w_{n}(T,K)=\mathcal{V}_{n}(T,K)$ set to option Black-Scholes vega $\mathcal{V}_{n}(T,K)$.
+
+
+In Subplot (A) of Figure \ref{fig:btc_calibration_w}, we show the time series with the quality of the model fit which is computed using the square root of average squared differences between model and market implied volatilities. As a benchmark, we show the average spread between implied volatilities of ask and bid quotes for options in the calibration set. We observe that most of the times, the average model mis-pricing is within the average bid-ask spread. We see that year 2020 of COVID-19 pandemic is characterized by high volatility and high spreads, yet the model is able to fit these markets well. In recent years of 2022 and 2023, bid-ask spreads declined while the model error (the average difference between market and model implied volatility) became less than $1\%$ most of the times.
+
+
+In Subplots (B), (C), and (D) of Figure \ref{fig:btc_calibration_w}, we show the time series of calibrated values of initial volatility $\sigma_{0}$ and mean volatility $\theta$, volatility beta $\beta$, and volatility-of-volatility $\varepsilon$, respectively. We observe downward trend in the level of implied volatility, falling from average levels of $80\%$ in years 2021 and 2022 to most recent averages of about $40\%$. At the same time, volatility beta and volatility-of-volatility remain range bound suggesting than relative value of calls and puts is intact despite falling level of the overall volatility. The volatility beta fluctuates between positive and negative values most of the times following the market sentiment. When the sentiment is bullish, calls are bid and volatility beta becomes positive and, vice versa, during bearish sentiment, puts are bid and the volatility beta becomes negative. Thus, as we discuss in Section \ref{sc:emma}, the conventional SV models may not be arbitrage-free for the valuation of options on cryptocurrencies when return-volatility correlation become positive.
+
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=1.0\textwidth, angle=0] {final_figures/figure7_btc_calibrations.PNG}\vspace*{-\baselineskip}
+\end{center}
+\caption{Time series of the quality of the model calibration and of calibrated model parameters using weekly model calibrations to prices of option on Bitcoin traded on Deribit exchange from April 2019 to October 2023. Subplot (A) shows time series of the mean squared error (MSE) between model and market implied volatilities and the average bid-ask (Bid/Ask) spread of quoted implied volatilities. Subplots (B), (C), (D) show time series of estimated initial volatility $\sigma_{0}$ and mean volatility $\theta$, volatility beta $\beta$, and volatility-of-volatility $\varepsilon$, respectively.}
+\label{fig:btc_calibration_w}\vspace*{-\baselineskip}
+\end{figure}
+
+
+In Figure \ref{fig:quality_fit_Oct21}, we show the quality of model fit to Bitcoin options traded on Deribit exchange on 20 June 2023. On this day, fitted model parameters are the following
+\begin{equation}\label{eq:mf2}
+\hat{\sigma}_{0} =0.41, \ \hat{\theta}=0.38, \ \hat{\beta} = 0.50, \ \hat{\varepsilon}=3.06, \ \hat{\kappa}_{1}=2.21, \ \hat{\kappa}_{2}=2.18
+\end{equation}
+
+In Figure \ref{fig:quality_fit_Oct21}, we show the quality of model fit on this date. We observe positive skewness of implied volatilities, which results in positive volatility beta. Continuous black line shows model implied volatilities computed using the second-order affine expansion in Eq (\ref{eq:v9}). Bid and ask displays the market bid and ask quotes, the ATM is the at-the-money mid-point volatility. MSE denotes the mean squared error between the model implied volatilities and the mid of market bid-ask implied volatilities. We see that the log-normal SV model calibrated to Bitcoin options is able to capture the market implied skew very well across most liquid maturities with only four parameters. The average MSE is about $0.5\%$ for longer maturities, which is within the bid-ask spread. Calibration to the at-the-money region can be further improved using a term structure of the mean volatility $\theta$. In a practical setting, the SV model dynamics can be augmented with a local volatility (\cite{Lipton2002}) to accurately fit the implied volatility surface.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=1.0\textwidth, angle=0] {final_figures/figure8_btc_fit.PNG}
+\end{center}
+\caption{Quality of model fit to Bitcoin options on 20 June 2023 reported in Eq \eqref{eq:mf2} using the three most liquid slices: one week (Subplot A), two weeks (B), one month (C). Continuous black line is model implied volatilities computed using the second-order affine expansion in Eq (\ref{eq:v9}) and (\ref{eq:io6}). Bid and ask displays the market bid and ask quotes, the ATM is the at-the-money mid-point volatility. Model implied volatility is displayed using the continuous black line. MSE is the mean squared error between the model and the mid of market bid-ask volatilities.}
+\label{fig:quality_fit_Oct21}\vspace*{-\baselineskip}
+\end{figure}
+
+
+
+
+
+
+
+\subsection{Comparison of Valuation under MMA and Inverse Measures}
+
+Since Bitcoin options, which are traded on the Deribit exchange, have inverse payoffs, it is important that there is no-arbitrage between the MMA and the inverse measures. In Figure (\ref{fig:model_vs_mc_btc_logsv}), we compare the model implied volatilities computed from prices of vanilla and inverse options valued under the MMA and inverse measures, respectively. We use the second-order affine expansion with model parameters reported in Eq \eqref{eq:mf2} for computing model implied volatilities for the same maturities as in Figure \ref{fig:quality_fit_Oct21}. As benchmark, we use the MC simulation of the model dynamics (\ref{eq:svmd1}) using scheme in Eq (\ref{eq:msj}) with the number of paths equal $400,000$ and daily time steps. We show the 95\% confidence interval of MC estimates as dashed lines like bid/ask lines.  
+
+\begin{figure}%[H]
+\begin{center}
+\includegraphics[width=1.0\textwidth, angle=0] {final_figures/figure9_btc_mc_comp.PNG}
+\end{center}
+\caption{Implied volatilities of Bitcoin options which correspond to the slices used in model calibration and a uniform range of strikes and which are using computed using model parameters reported in Eq \eqref{eq:mf2} under the MMA measure (MMA) and the inverse measure (Inverse). Continuous aqua and pink lines show model implied volatilities computed using the second-order affine expansion in Eq (\ref{eq:v9}) and (\ref{eq:io6}), respectively. Dashed lines labeled by $MC-0.95ci$ and $MC+0.95ci$ are MC 95\% confidence intervals computed using scheme in Eq (\ref{eq:msj}) with number of path equal $400,000$ and daily time steps. MSE is the mean squared error between BSM volatilities inferred from model values and the MC estimates.}\vspace*{-\baselineskip}
+\label{fig:model_vs_mc_btc_logsv}
+\end{figure}
+
+
+
+We observe that option values computed using the second order affine expansion under the MMA and inverse measures are very close to each other with the differences being within the numerical accuracy of an ODE solver and Fourier inversion (of order $10^{-4}$). The difference in terms of implied volatilities does not exceed $10^{-4}$. 
+
+
+
+
+In Figure \ref{model_vs_mc_qvar_logsv}, we show model prices of call options on the QV computed using the second-order affine expansion under the MMA and inverse measures, and the comparison with MC estimates. We use the same expiries as for the model calibration and the same parameters reported in Eq \eqref{eq:mf2}. We also observe that the solution under the both measures are consistent and agree with MC simulations. Interestingly, we observe that the implied volatility skew of options on the QV is upward sloping, which is observed in market data of options on the QV and listed options on VIX index. It is known that Heston model, even augmented with jumps, produces downward sloping skews on options on the QV (see for an example \cite{drimus2012a} and \cite{Sepp2012a}). As a result, the log-normal SV model implies realistic patterns of implied volatility-of-volatility.
+
+
+
+\begin{figure}%[H]
+\begin{center}
+\includegraphics[width=1.0\textwidth, angle=0] {final_figures/figure10_qvar.PNG}\vspace*{-\baselineskip}
+\end{center}
+\caption{Implied volatilities of call options on Quadratic Variance of Bitcoin using model in Eq \eqref{eq:mf2} and for the same maturities as in model calibration in Figure \ref{fig:quality_fit_Oct21}. We use the valuation under the MMA measure (MMA) and the inverse measure (Inverse). BSM volatilities are implied from model prices using expected QV $\widehat{I}_{\tau}=\{0.18, 0.20, 0.23\}$ computed using Eq (\ref{eq:eqv2}). Continuous aqua and pink lines show model implied volatilities computed using the second-order affine expansion under MMA measure in Eq (\ref{eq:qv1}) and under inverse measure in (\ref {eq:iqv1a}), respectively. Dashed lines labeled by $MC-0.95ci$ and $MC+0.95ci$ are MC 95\% confidence intervals computed using scheme in Eq (\ref{eq:msj}) with number of path equal $400,000$ and daily time steps. MSE is the mean squared error between BSM volatilities inferred from model values and the MC estimates.}\vspace*{-\baselineskip}
+\label{model_vs_mc_qvar_logsv}
+\end{figure}
+
+
+
+
+
+
+\section{Conclusion}\label{sec:conclusion}
+We have considered the log-normal SV model with the quadratic drift which plays an important role for the existence of martingale measures. We have shown that the log-normal volatility process has the strong solution in spite of having quadratic drift. We have derived admissible bounds of model parameters for the existence of both the money market account measure and the inverse measures. Based on that, we applied proposed SV model for modelling  implied volatility surfaces of assets with positive return-volatility correlation. 
+
+Since the log-normal SV model is not affine, there is no analytical solution for the MGF in this model. To circumvent this, we have developed an affine expansion approach under which the joint moment generating function (MGF) of three state variables (log-price, the quadratic variance (QV), and the volatility) is decomposed into a leading term, which has exponential-affine form, and a residual term, whose estimate depends on the higher order moments of the volatility process. We have proved that the second-order leading term is consistent with the expected values and the variances of the state variables. We have applied Fourier inversion techniques for valuation of vanilla and inverse options on spot and futures underlying. By comparison of model values computed using our method with estimates obtained from Monte Carlo simulations, we have shown that the second-order leading term is very accurate for option valuation. We have demonstrated that our model fits implied volatilities of assets with positive return-volatility correlation. We have shown that the log-normal SV model fits well different market regimes by calibrating model parameters to time series of options on Bitcoin for the past four years.
+
+We have derived backward Euler-Maruyama scheme for discretization of the log-volatility process and show that it has a strong convergence rate of 1. Proposed scheme for the simulation of the log-normal stochastic volatility model is robust, computationally efficient and does not require any special treatment in discretization. 
+
+As an extension of the framework\footnote{\cite{SeppRakhmonov2023a} apply the developed solution for modeling of stochastic volatility in Cheyette-type interest rate model and obtain closed-form solution for valuation of swaptions under this model} we shall consider the applications to the rough SV models proposed by \cite{Gatheral} using log-normal volatility. We shall also consider a path-dependent model of the log-normal volatility following approaches in \cite{Guyon2023} and \cite{Lipton2023}\footnote{The volatility beta is an interesting variable to make path-dependent as well. We observe that in many markets the implied options skewness follows most recent price performance. For example, in options on Bitcoin, the skewness implied from option prices becomes positive following strong performance of Bitcoin.}.
+
+
+
+
+\appendix
+\section{Proofs}\label{sec:appendix}
+
+
+
+
+
+\subsection{Proof of Theorem \ref{th:bound_class}}\label{appx:bound_class_proof}
+We consider the interval $(l,r)$ and define the scale function and its density, denoted by $S(x)$ and $s(x)$, respectively, as follows (see Chapter IV.15 in \cite{Bor})
+\begin{equation} \label {eq:pm2}
+s(x)=\exp\left\{-\int_c^x\frac{2\mu(\sigma)}{v(\sigma)^2}d\sigma\right\}, \quad 
+S(x)=\int_c^x s(y)dy,\vspace*{-0.5\baselineskip}
+\end{equation}
+where $x\in (l,r)$ and $c$ is an arbitrary but fixed interior point of $(l,r)$. We define the speed function and its density, denoted by $M(x)$ and $m(x)$, respectively, by
+\begin{equation} \label {eq:pm3}
+m(x)=\frac{2}{v(x)^2}\exp\left\{\int_c^x\frac{2\mu(\sigma)}{v(\sigma)^2}d\sigma\right\}, x\in (l,r), \quad 
+M(x)=\int_c^x m(y)dy.
+\end{equation}
+
+Choosing $c$ such that $\int_c^x\frac{2\mu(\sigma)}{v(\sigma)^2}d\sigma=0$ and setting $\eta=2\frac{\kappa_1-\kappa_2\theta}{\vartheta^2}$, we obtain
+\begin{equation*}
+\begin{split}
+&s(x)=x^\eta\exp\left\{\frac{2\kappa_1\theta}{\vartheta^2}\frac{1}{x}+\frac{2\kappa_2}{\vartheta^2}x\right\}, \quad 
+m(x)=\frac{2}{\vartheta^2}x^{-\eta-2}\exp\left\{-\frac{2\kappa_1\theta}{\vartheta^2}\frac{1}{x}-\frac{2\kappa_2}{\vartheta^2}x\right\}. 
+\end{split}
+\end{equation*}
+\begin{equation}\label{eq:pm5}
+\begin{split}
+&S(x)=\int_c^xs(y)dy\le \int_c^xy^\eta\exp\left\{\frac{2\kappa_1\theta}{\vartheta^2}\frac{1}{y}\right\}dy,\quad x\downarrow 0+, \\
+&S(x)=\int_c^xs(y)dy\ge \int_c^xy^\eta\exp\left\{\frac{2\kappa_2}{\vartheta^2}y\right\}dy, \quad x\uparrow +\infty.
+\end{split}
+\end{equation}
+Using upper and lower bounds in \eqref{eq:pm5}, we find that
+\begin{equation}
+\begin{split}
+&S(0+)=\lim_{x\downarrow 0+}S(x)=-\infty, \ S(+\infty)=\lim_{x\uparrow +\infty}S(x)=+\infty.
+\end{split}
+\end{equation}
+Consequently, boundaries $l=0$, $r=+\infty$ are not attractive.
+
+Now we show that boundary $r=+\infty$ is unattainable. We define $\Sigma(l)$, $\Sigma(r)$ by
+\begin{equation}\label{eq:SigmaLeftRight}
+\Sigma(l):=\iint\limits_{l<z<y<x}s(z)m(y)dzdy,\quad 
+\Sigma(r):=\iint\limits_{x<y<z<r}s(z)m(y)dzdy\vspace*{-0.5\baselineskip}
+\end{equation}\vspace*{-1.0\baselineskip}
+\begin{equation}\label{eq:SigmaRight1}
+\begin{split}
+&\Sigma(r)=\int_x^r\left(\int_y^r s(z)dz\right)m(y)dy=
+\int_x^r\left(\int_x^y m(z)dz\right)s(y)dy=\\
+&=\int_x^r\left(\int_x^y \frac{2}{\vartheta^2}z^{-\eta-2}\exp\left\{-\frac{2\kappa_1\theta}{\vartheta^2}\frac{1}{z}-\frac{2\kappa_2}{\vartheta^2}z\right\}dz\right)y^\eta\exp\left\{\frac{2\kappa_1\theta}{\vartheta^2}\frac{1}{y}+\frac{2\kappa_2}{\vartheta^2}y\right\}dy.\vspace*{-1\baselineskip}
+\end{split}
+\end{equation}
+
+We note that the right hand side of \eqref{eq:SigmaRight1} is finite if and only if\vspace*{-0.5\baselineskip}
+\begin{equation}\label{eq:SigmaRight2}
+\widehat\Sigma(r):=\int_x^r\left(\int_x^yz^{-\eta-2}\exp\left\{-\frac{2\kappa_2}{\vartheta^2}z\right\}dz\right)y^\eta\exp\left\{\frac{2\kappa_2}{\vartheta^2}y\right\}dy
+\end{equation}
+is finite. We split inner integral into two integrals, over $[x,+\infty)$ and $[y,+\infty)$
+\begin{equation}\label{eq:SigmaRight3}
+\int_x^yz^{-\eta-2}\exp\left\{-\frac{2\kappa_2}{\vartheta^2}z\right\}dz=
+\int_x^{+\infty} \cdots dz-\int_y^{+\infty} \cdots dz=I_1-I_2.
+\end{equation}
+
+We see that $I_1$ is finite for all $\kappa_1, \kappa_2>0$. Using asymptotics of incomplete gamma function (see Eq 6.5.32 in \cite{AbramSteg}), we obtain for $y\to +\infty$
+\begin{equation}\label{eq:SigmaRight4}
+I_2=\int_y^{+\infty}z^{-\eta-2}\exp\left\{-\frac{2\kappa_2}{\vartheta^2}z\right\}dz=
+\left(\frac{2\kappa_2}{\vartheta^2}\right)^{-1}y^{-\eta-2}\exp\left\{-\frac{2\kappa_2}{\vartheta^2}y\right\}\left(1+O\left(\frac{1}{y}\right)\right).
+\end{equation}
+
+Substituting asymptotic expansion \eqref{eq:SigmaRight4} into Eq \eqref{eq:SigmaRight3} and Eq \eqref{eq:SigmaRight2}, we have
+\begin{equation*}%\label{eq:SigmaRight5}
+\widehat\Sigma(r)=I_1
+\int_x^ry^\eta\exp\left\{\frac{2\kappa_2}{\vartheta^2}y\right\}dy-
+\left(\frac{2\kappa_2}{\vartheta^2}\right)^{-1}\int_x^ry^{-2}dy+O\left(\int_x^ry^{-3}dy\right),\quad y\to +\infty
+\end{equation*}
+
+We conclude that $\widehat\Sigma(+\infty)=+\infty$. Hence, boundary $r=+\infty$ is unattainable. 
+Next, we show that boundary $l=0$ is unattainable as well. By definition of $\Sigma(l)$
+\begin{equation*}%\label{eq:SigmaLeft1}
+\begin{split}
+&\Sigma(l)=\int_l^x\left(\int_l^y s(z)dz\right)m(y)dy=
+\int_l^x\left(\int_y^x m(z)dz\right)s(y)dy=\\
+&=\int_l^x\left(\int_y^x \frac{2}{\vartheta^2}z^{-\eta-2}\exp\left\{-\frac{2\kappa_1\theta}{\vartheta^2}\frac{1}{z}-\frac{2\kappa_2}{\vartheta^2}z\right\}dz\right)y^\eta\exp\left\{\frac{2\kappa_1\theta}{\vartheta^2}\frac{1}{y}+\frac{2\kappa_2}{\vartheta^2}y\right\}dy
+\end{split}
+\end{equation*}
+We make an reciprocal transformation $\left\{z\to 1/z, y\to 1/y\right\}$ to obtain:
+\begin{equation*}%\label{eq:SigmaLeft1Tr}
+\begin{split}
+\Sigma(l)&=\int_{1/x}^{1/l}\left(\int_{1/x}^y \frac{2}{\vartheta^2}z^{\eta}\exp\left\{-\frac{2\kappa_1\theta}{\vartheta^2}z-\frac{2\kappa_2}{\vartheta^2}\frac{1}{z}\right\}dz\right)y^{-\eta-2}\exp\left\{\frac{2\kappa_1\theta}{\vartheta^2}y+\frac{2\kappa_2}{\vartheta^2}\frac{1}{y}\right\}dy.
+\end{split}
+\end{equation*}
+The right hand side of is finite if and only if
+\begin{equation}\label{eq:SigmaLeft2}
+\widehat\Sigma(l):=\int_{1/x}^{1/l}\left(\int_{1/x}^y z^{\eta}\exp\left\{-\frac{2\kappa_1\theta}{\vartheta^2}z\right\}dz\right)y^{-\eta-2}\exp\left\{\frac{2\kappa_1\theta}{\vartheta^2}y\right\}dy
+\end{equation}
+is finite. Splitting inner integral into two, over $[1/x,+\infty)$ and $[y,+\infty)$, respectively
+\begin{equation}\label{eq:SigmaLeft3}
+\int_{1/x}^{y}z^{\eta}\exp\left\{-\frac{2\kappa_1\theta}{\vartheta^2}z\right\}dz=
+\int_{1/x}^{+\infty} \cdots dz-\int_{y}^{+\infty} \cdots dz=I_1-I_2
+\end{equation}
+we see that $I_1$ if finite for all $\kappa_1, \kappa_2>0$. 
+As before, using asymptotic expansion of incomplete gamma function we have for $y\to +\infty$:
+\begin{equation}\label{eq:SigmaLeft4}
+\begin{split}
+I_2&=\int_y^{+\infty}z^{\eta}\exp\left\{-\frac{2\kappa_1\theta}{\vartheta^2}z\right\}dz
+=\left(\frac{\vartheta^2}{2\kappa_1\theta}\right)y^{\eta}\exp\left\{-\frac{2\kappa_1\theta}{\vartheta^2}y\right\}\left(1+O\left(\frac{1}{y}\right)\right)
+\end{split}
+\end{equation}
+
+Substituting Eq \eqref{eq:SigmaLeft4} into Eq \eqref{eq:SigmaLeft3} and Eq \eqref{eq:SigmaLeft2}, we have for $y\to +\infty$
+\begin{equation*}
+\widehat\Sigma(l)=I_1
+\int_{1/x}^{1/l}y^{-\eta-2}\exp\left\{\frac{2\kappa_1\theta}{\vartheta^2}y\right\}dy-
+\left(\frac{\vartheta^2}{2\kappa_1\theta}\right)\int_{1/x}^{1/l}y^{-2}dy+O\left(\int_{1/x}^{1/l}y^{-3}dy\right).
+\end{equation*}
+We conclude that $\widehat\Sigma(+\infty)=+\infty$. Hence, boundary $l=0$ is unattainable. 
+
+
+
+\subsection{Proof of Theorem \ref{thm:FeynmannKac}}\label{app:FeynmanKac}
+
+We provide a version of Feynman-Kac formula in general multidimensional setting, building on results in \cite{Heath2000}. Let $T>0$ be a fixed time horizon and $D$ be a domain in $\mathbb{R}^d$. We consider Cauchy problem
+\begin{equation}\label{app:Cauchy_prob}
+\begin{split}
+& \frac{\partial U}{\partial t}+\mathcal{L}U=0, \ (t,x)\in Q, \  Q=(0,T)\times D,\\
+& U(T,x)=\phi(x), \quad x\in D,\vspace*{-1.0\baselineskip}
+\end{split}
+\end{equation}
+where $b_t: D\to \mathbb{R}^d$,  $a_t: D\to \mathbb{R}^{d\times d}$ are continuous functions and operator $\mathcal{L}$ is
+\begin{equation}\label{eq:fc_generator}
+\mathcal{L}U=\sum_{i=1}^d b_t^i(x)\frac{\partial U}{\partial x_i}(t,x) + \frac{1}{2}\sum_{i,k=1}^d a_t^{ik}(x)\frac{\partial^2 U}{\partial x_i\partial x_k}(t,x).
+\end{equation}
+
+We assume that  matrix $(a_t^{ij})$ is non-negative definite for every $t$.
+Under certain restrictions on the coefficients of operator $\mathcal{L}$ and growth conditions on $\phi$, it is possible to  represent the solution of \eqref{app:Cauchy_prob} by means of conditional expectation known as a Feynman--Kac formula. However, standard results require uniform ellipticity of the operator $\mathcal{L}$, see \cite{Friedman75}, which is not satisfied in our case, because the QV $I_{t}$ is degenerate. Thus, the problem \eqref{app:Cauchy_prob} becomes degenerate parabolic one.  
+
+We consider the multi-dimensional SDE
+\begin{equation}\label{eq:fc_sde}
+dX_s=b_s(X_s)ds + \sigma_s(X_s)dW_s,\quad X_t=x\in D,
+\end{equation}
+where $W=(W^{(1)},\ldots, W^{(d)})^\top$ is $d$-dimensional Brownian motion and  $\sigma_t(x)=(\sigma^{ij}_t(x))$ denotes square root of matrix $a_t(x)$: $a^{ik}_t(x)=\left(\sigma_t(x)\sigma_t(x)^\top\right)^{ik}$.
+We assume that \eqref{eq:fc_sde} admits unique strong solution and define $U^*: [0,T]\times D\to [0, +\infty]$ by
+$
+U^*(\tau,x)=\mathbb{E}\left[\left.\phi(X_T)\right|X_t=x\right]
+$
+which is well-defined in $[0,+\infty]$ if $X$ does not explode or leave $D$ before $T$. 
+We give sufficient conditions to ensure that $U^*$ solves the problem \eqref{app:Cauchy_prob}. 
+
+\begin{theorem}[Existence]\label{thm:fc_exten}
+Suppose that following conditions hold.
+\begin{enumerate}%[label=(\roman*)]
+\item\label{fc:explosion} Solution $X$ of \eqref{eq:fc_sde} neither explodes nor leaves $D$ before $T$
+\begin{equation*}
+\mathbb{P}\left(\sup_{t\le s\le T}|X_s|<\infty\right)=\mathbb{P}\left(X_s\in D,\, \forall s\in [t,T]\right)=1.
+\end{equation*}
+\item\label{fc:bounded} $\phi(x)$ is bounded in $D$.
+\end{enumerate}
+Let $U\in C(\overline{Q})\cap C^2(Q)$ be the solution of problem \eqref{app:Cauchy_prob}. Then $U(t,x)=U^*(t,x)$ for any $(t,x)\in \overline{Q}$. 
+\end{theorem}
+
+
+\begin{proof}
+Consider sequence of bounded domains $\{D_n\}_{n=1}^{\infty}$ contained in $D$ such that $\bigcup\limits_{n=1}^{\infty} D_n=D$ and $D_n\subseteq \{x\in \mathbb{R}^d: \|x\|< n\}$. We fix $x\in D$ and find $n$ such that $x\in D_n$. Let
+$\eta=\inf\{s\ge t: X_s\not\in D\}$, $\eta_n=\inf\{s\ge t: X_s\not\in D_n\}$ denote exit time from domains $D$ and $D_n$. By It\^{o}'s formula:
+\begin{equation*}
+u(\eta_n\wedge T, X_{\eta_n\wedge T})=u(x)+\int_t^{\eta_n\wedge T}\left[\frac{\partial U}{\partial s}-\mathcal{L}U(s,X_s)\right]\, ds + \int_t^{\eta_n\wedge T}\frac{\partial U}{\partial x_i}\sigma_{ij}(X_s)\,dW_s^{(j)}.
+\end{equation*}
+
+As domain $D_n$ is bounded and $U\in C^2(Q)$, we have
+\begin{equation}\label{eq:fc_bound_dom}
+\mathbb{E}^{t,x}\left[ \int_t^{\eta_n\wedge T}\frac{\partial U}{\partial x_i}\sigma_{ij}(X_s)\,dW_s^{(j)}\right]=0
+\implies 
+u(x)=\mathbb{E}^{t,x}\left[u(\eta_n\wedge T, X_{\eta_n\wedge T})\right]
+\end{equation}
+
+We show that $\mathbb{P}^{t,x}\left[\tau_n\le T\right]\le c_1(1+\|x\|^2)n^{-2}$
+. Using Markov inequality and estimate from \cite{KaratzShre}, p. 306:
+\begin{equation*}
+\begin{split}
+&\mathbb{P}^{t,x}\left[\tau_n\le T\right]\le \mathbb{P}^{t,x}\left[\sup_{s\in [t,T]}\|X_s\|\ge n\right]\le 
+\mathbb{E}^{t,x}\left[\sup_{s\in [t,T]}|X_s|^2\right]n^{-2}\\
+&\mathbb{E}^{t,x}\left[\sup_{s\in [t,T]}|X_s|^2\right]\le c\left(1+\|x\|^2\right).
+\end{split}
+\end{equation*}
+
+Thus $\lim_{n\to +\infty}u(\eta_n\wedge T, X_{\eta_n\wedge T}) = \phi(X_T)$ a.s. 
+It implies that $u(t,x)$ is bounded by the maximum principle. Finally, by the dominated convergence theorem:\vspace*{-0.5\baselineskip}
+\begin{equation}\label{eq:fc_converg}
+\lim_{n\to +\infty}\mathbb{E}\left[u(\eta_n\wedge T, X_{\eta_n\wedge T})\right] = \mathbb{E}\left[\phi(X_T)\right].
+\end{equation}
+Combining \eqref{eq:fc_bound_dom} and \eqref{eq:fc_converg} concluded the proof.
+\end{proof}
+
+
+\subsection{Consistency of Moment for Second-order Affine Expansion}
+
+We apply the following lemma relating moments to derivatives of MGF. 
+\begin{lemma} \label {lemma:g}
+The MGF defined by the following equation
+\begin{equation} \label {eq:mmg1}
+\begin{split}
+& G(\Phi) = \mathbb{E}[e^{-\Phi Z }]
+\end{split}
+\end{equation}
+where $Z$ is a random variable with finite MGF has the following properties
+  \begin{equation} \label {eq:mmg2}
+\begin{split}
+& G(0) = 1\\
+& \partial_{\Phi} G(\Phi) \left.\right|_{\Phi=0} \equiv G_{\Phi}(0)= -\mathbb{E}[Z],\\
+& \partial^{2}_{\Phi} G(\Phi) \left.\right|_{\Phi=0} \equiv  G_{\Phi\Phi}(0)= \mathbb{E}[Z^{2}].\vspace*{-1.0\baselineskip}
+\end{split}
+\end{equation}
+\end{lemma}
+
+\begin{corollary}
+Given that MGF assumes an exponential-affine form
+\begin{equation} \label {eq:mmg3}
+G(\Phi) = e^{f(\Phi)},
+\end{equation}
+with $f(0)=0$, we have:
+\begin{equation} \label {eq:mmg4}
+f_{\Phi}(0)= -\mathbb{E}[Z] \ , \  f_{\Phi\Phi}(0)= \mathbb{V}ar[Z].
+\end{equation}
+\end{corollary}
+
+
+\subsubsection{Proof of Proposition \ref{pr:volmoment}}\label{app:volmoment}
+
+We set $\Phi=\Psi=0$ in the second-order expansion in Proposition \ref{pr:volmoment} and suppress arguments for brevity. We consider $R^{[2]}(\tau, Y;\Theta)$ in Eq \eqref{eq:OrigMGFLogAndQVOrd2Rem1}. 
+Differentiating it w.r.t. $\Theta$, we see that remainder term  $R_{\Theta}^{[2]}$ solves the following problem
+\begin{equation}\label{eq:mv3}
+\begin{split}
+-R_{\Theta,\tau}^{[2]}+\mathcal{L}^{(Y)}R_{\Theta}^{[2]}=
+-\sum_{k=5}^8Y^k\left[C_{\Theta}^{(k)}(\tau;\Theta)E^{[2]}+C^{(k)}(\tau;\Theta)E_{\Theta}^{[2]}\right],\vspace*{-1.0\baselineskip}
+\end{split}
+\end{equation}
+subject to boundary condition $R_{\Theta}^{[2]}(0,Y;\Theta)=0$, where $C^{(k)}(\tau;\Theta)$ are given by Eq \eqref{eq:OrigMGFLogAndQVOrd2Rem2Coeffs}. We note that $A^{(k)}(\tau; \Theta)$ vanish at $\Theta=0$\vspace*{-0.5\baselineskip}
+\begin{equation}\label{eq:mv_bc2}
+A^{(k)}(\tau; \Theta=0)=0.\vspace*{-0.5\baselineskip}
+\end{equation}
+
+Calculating $C^{(k)}_{\Theta}(\tau; \Theta)$ and taking into account conditions \eqref{eq:mv_bc2} at $\Theta=0$:
+\begin{equation}\label{eq:mv31}
+\left.C^{(k)}_{\Theta}(\tau; \Theta)\right|_{\Theta=0}=
+\begin{cases}
+-4\kappa_2 \left. A^{(4)}_{\Theta}(\tau; \Theta)\right|_{\Theta=0}, & k=5,\\
+0, & k\ge 6
+\end{cases}
+\end{equation}
+
+
+Using condition $C^{(k)}(\tau; \Theta=0)\equiv 0$, we simplify problem \eqref{eq:mv3} at $\Theta=0$:
+\begin{equation}\label{eq:mv4}
+-R_{\Theta,\tau}^{[2]}+\mathcal{L}^{(Y)}R_{\Theta}^{[2]}=4\kappa_2 A_{\Theta}^{(4)}Y^5,\quad 
+R_{\Theta}^{[2]}(0,Y;\Theta)=0,\vspace*{-0.5\baselineskip}
+\end{equation}
+
+We see that $R_{\Theta}^{[2]}(\tau,Y;\Theta=0)\equiv 0$ when $\kappa_2=0$. Hence, second order decomposition $E^{[2]}(\tau,Y; \Theta)$ is consistent with expected value of $Y_t$ for $\kappa_2=0$. 
+
+To prove the consistency for variance, we first differentiate \eqref{eq:OrigMGFLogAndQVOrd2} w.r.t. $\Theta$ to obtain that $A^{(k)}_{\Theta}(\tau,\Theta)$ solve the system of ODEs \eqref{eq:mv1}  at $\Theta=0$ as functions of $\tau$
+\begin{equation}\label{eq:mv1}
+\begin{split}
+A^{(0)}_{\Theta, \tau}=&\theta^2\vartheta^2A_{\Theta}^{(2)}+\lambda(p) A_{\Theta}^{(1)},\\
+A^{(1)}_{\Theta, \tau}=&-\kappa A_{\Theta}^{(1)} +2(\theta\vartheta^2+\lambda(p)) A_{\Theta}^{(2)}+3\theta^2\vartheta^2 A_{\Theta}^{(3)},\\
+A^{(2)}_{\Theta, \tau}=&-\kappa_2A_{\Theta}^{(1)}+(\vartheta^2-2\kappa)A_{\Theta}^{(2)}+6\theta\vartheta^2 A_{\Theta}^{(3)}+3\lambda(p) A_{\Theta}^{(3)}+6\theta A_{\Theta}^{(4)},\\
+A^{(3)}_{\Theta, \tau}=&-2\kappa_2A_{\Theta}^{(2)}+3(\vartheta^2-\kappa)A_{\Theta}^{(4)}+12\theta\vartheta^2 A_{\Theta}^{(4)}+4\lambda(p) A_{\Theta}^{(4)},\\
+A^{(4)}_{\Theta, \tau}=&-3\kappa_2A_{\Theta}^{(3)}+2(3\vartheta^2-2\kappa)A_{\Theta}^{(4)},
+\end{split}
+\end{equation}
+with boundary condition: $\left.A^{(1)}_{\Theta}(\tau; \Theta)\right|_{\Theta=0}=-1$, $\left.A^{(k')}_{\Theta}(\tau; \Theta)\right|_{\Theta=0}=0$, $k'\neq 1$.
+
+We verify that last two functions in solution of Eq \eqref{eq:mv1} are zero for $\kappa_{2}=0$:
+\begin{equation}\label{eq:mv_bc3}
+A^{(3)}(\tau; \Theta)\equiv A^{(4)}(\tau; \Theta)\equiv 0.
+\end{equation}
+
+Now, taking the second derivative w.r.t. $\Theta$ in \eqref{eq:OrigMGFLogAndQVOrd2Rem1}, we obtain for $R_{\Theta\Theta}^{[2]}$
+\begin{equation*}%\label{eq:mv5}
+-R_{\Theta\Theta,\tau}^{[2]}+\mathcal{L}^{(Y)}R_{\Theta\Theta}^{[2]}=
+-\sum_{k=5}^8\left\{Y^k\left[C_{\Theta\Theta}^{(k)}(\tau;\Theta)E^{[2]} + 2C_{\Theta}^{(k)}(\tau;\Theta)E_{\Theta}^{[2]} + C^{(k)}(\tau;\Theta)E_{\Theta\Theta}^{[2]}\right]\right\}
+\end{equation*}
+with $R_{\Theta\Theta}^{[2]}(0,Y;\Theta)=0$. Taking the second derivative of $C^{(k)}(\tau;\Theta)$ in \eqref{eq:OrigMGFLogAndQVOrd2Rem2Coeffs} wrt $\Theta$, and accounting for conditions \eqref{eq:mv_bc2} and \eqref{eq:mv_bc3} at $\Theta=0$, we find that
+\begin{equation}\label{eq:mv51}
+\left.C^{(k)}_{\Theta\Theta}(\tau; \Theta)\right|_{\Theta=0}=
+\begin{cases}
+-4\kappa_2 \left. A^{(4)}_{\Theta}(\tau; \Theta)\right|_{\Theta=0}, & k=5,\\
+0, & k\ge 6.
+\end{cases}
+\end{equation}
+
+We note that following straightforward relationships are valid:
+\begin{equation}\label{eq:mv52}
+\begin{split}
+\left.E^{[2]}(\tau;\Theta)\right|_{\Theta=0}=1, \quad 
+\left.E_{\Theta}^{[2]}(\tau;\Theta)\right|_{\Theta=0}=-Y.
+\end{split}
+\end{equation}
+
+Combining Eqs \eqref{eq:mv51}, \eqref{eq:mv31}, and \eqref{eq:mv52}, we simplify Eq \eqref{eq:mv4} at $\Theta=0$:
+\begin{equation}\label{eq:mv6}
+-R_{\Theta\Theta,\tau}^{[2]}+\mathcal{L}^{(Y)}R_{\Theta\Theta}^{[2]}=4\kappa_2\left(Y^5 A_{\Theta\Theta}^{(4)}-2Y^6 A_{\Theta}^{(4)}\right),\quad 
+R_{\Theta\Theta}^{[2]}(0,Y;\Theta)=0.
+\end{equation}
+Thus, when $\kappa_2=0$, $R_{\Theta\Theta}^{[2]}(\tau,Y;\Theta=0)\equiv 0$, and $E^{[2]}(\tau; \Theta)$ reproduces the variance of $Y_t$. 
+
+
+
+
+\subsubsection{Proof of Proposition \ref{pr:logmoment}}\label{app:logmoment}
+
+
+We proceed as in Proposition \ref{pr:volmoment}. We set $\Theta=\Psi=0$ and consider the remainder term $R^{[2]}(\tau, Y;\Phi)$ in \eqref{eq:OrigMGFLogAndQVOrd2Rem1}. 
+Differentiating it w.r.t. $\Phi$, we see that $R_{\Phi}^{[2]}$ solves following problem:
+\begin{equation}\label{eq:mpr3}
+\begin{split}
+&-R_{\Phi,\tau}^{[2]}+\mathcal{L}^{(Y)}R_{\Phi}^{[2]}=
+-\frac{\partial}{\partial\Phi}\left[\sum_{k=5}^8C^{(k)}(\tau;\Phi)E^{[2]}Y^k\right]=\\
+&=-\sum_{k=5}^8Y^k \left[C_{\Phi}^{(k)}(\tau;\Phi)E^{[2]}+ C^{(k)}(\tau;\Phi)E^{[2]}_{\Phi}\right],\\
+& R_{\Phi}^{[2]}(0,Y;\Phi)=0,
+\end{split}
+\end{equation}
+where $C^{(k)}(\tau;\Phi)$ are given by \eqref{eq:OrigMGFLogAndQVOrd2Rem2Coeffs}. We note that $A^{(k)}(\tau; \Phi)$ vanish at $\Phi=0$:
+\begin{equation}\label{eq:mpr_bc2}
+\left.A^{(k)}(\tau; \Phi)\right|_{\Phi=0}=0.
+\end{equation}
+
+Differentiating $C^{(k)}(\tau;\Phi)$ w.r.t. $\Phi$ and considering \eqref{eq:mpr_bc2} at $\Phi=0$, we find
+\begin{equation}\label{eq:mpr31}
+\left.C^{(k)}_{\Phi}(\tau; \Phi)\right|_{\Phi=0}=
+\begin{cases}
+-4\kappa_2 \left. A^{(4)}_{\Phi}(\tau; \Phi)\right|_{\Phi=0}, & k=5,\\
+0, & k\ge 6
+\end{cases}
+\end{equation}
+
+Due to condition $C^{(k)}(\tau; \Phi=0)= 0$, we simplify Eq \eqref{eq:mpr3} at $\Phi=0$ as:
+\begin{equation}\label{eq:mpr4}
+-R_{\Phi,\tau}^{[2]}+\mathcal{L}^{(Y)}R_{\Phi}^{[2]}=4\kappa_2 A_{\Phi}^{(4)}Y^5,\quad 
+R_{\Phi}^{[2]}(0,Y;\Phi)=0.
+\end{equation}
+
+We see that $R_{\Phi}^{[2]}(\tau,Y;\Phi=0)\equiv 0$ when $\kappa_2=0$. Hence, the second-order expansion term $E^{[2]}(\tau,Y; \Phi)$ is consistent with the expected value of $X_{\tau}$ for $\kappa_2=0$. 
+
+
+To show that the second-order expansion reproduces the variance of the log-price, we differentiate Eq \eqref{eq:OrigMGFLogAndQVOrd2} with respect to $\Phi$ and find that $A^{(k)}_{\Phi}(\tau,\Phi)$ solve the system of ODEs \eqref{eq:mpr1} at $\Phi=0$ as functions of $\tau$:
+\begin{equation}\label{eq:mpr1}
+\begin{split}
+A^{(0)}_{\Phi, \tau}=&\theta^2\vartheta^2A_{\Phi}^{(2)}+\lambda(p) A_{\Phi}^{(1)}+\frac{1}{2}\theta^2,\\
+A^{(1)}_{\Phi, \tau}=&-\kappa A_{\Phi}^{(1)} +2(\theta\vartheta^2+\lambda(p)) A_{\Phi}^{(2)}+3\theta^2\vartheta^2 A_{\Phi}^{(3)}+\theta,\\
+A^{(2)}_{\Phi, \tau}=&-\kappa_2A_{\Phi}^{(1)}+(\vartheta^2-2\kappa)A_{\Phi}^{(2)}+6\theta\vartheta^2 A_{\Phi}^{(3)}+3\lambda(p) A_{\Phi}^{(3)}+6\theta A_{\Phi}^{(4)}+\frac{1}{2},\\
+A^{(3)}_{\Phi, \tau}=&-2\kappa_2A_{\Phi}^{(2)}+3(\vartheta^2-\kappa)A_{\Phi}^{(4)}+12\theta\vartheta^2 A_{\Phi}^{(4)}+4\lambda(p) A_{\Phi}^{(4)},\\
+A^{(4)}_{\Phi, \tau}=&-3\kappa_2A_{\Phi}^{(3)}+2(3\vartheta^2-2\kappa)A_{\Phi}^{(4)},\vspace*{-0.5\baselineskip}
+\end{split}
+\end{equation}
+with boundary condition
+\begin{equation}\label{eq:mpr_bc}
+\left.A^{(k)}_{\Phi}(\tau; \Phi)\right|_{\Phi=0}=
+\begin{cases}
+-1, & k=1,\\
+0, & k\neq 1.\vspace*{-0.5\baselineskip}
+\end{cases}
+\end{equation}
+
+Now, taking the second derivative in \eqref{eq:OrigMGFLogAndQVOrd2Rem1} wrt $\Phi$, we obtain for $R_{\Phi\Phi}^{[2]}$
+\begin{equation}\label{eq:mpr5}
+\begin{split}
+&-R_{\Phi\Phi,\tau}^{[2]}+\mathcal{L}^{(Y)}R_{\Phi\Phi}^{[2]}=
+-\frac{\partial^2}{\partial\Phi^2}\left[\sum_{k=5}^8C^{(k)}(\tau;\Phi)E^{[2]}Y^k\right]=\\
+&=-\sum_{k=5}^8\left\{Y^k\left[C_{\Phi\Phi}^{(k)}(\tau;\Phi)E^{[2]} + 2C_{\Phi}^{(k)}(\tau;\Phi)E_{\Phi}^{[2]} + C^{(k)}(\tau;\Phi)E_{\Phi\Phi}^{[2]}\right]\right\},\\
+&R_{\Phi\Phi}^{[2]}(0,Y;\Phi)=0.
+\end{split}
+\end{equation}
+
+Calculating $C_{\Phi\Phi}^{(k)}(\tau;\Phi)$ in \eqref{eq:OrigMGFLogAndQVOrd2Rem2Coeffs} and taking into account boundary conditions \eqref{eq:mpr_bc2} at $\Phi=0$, we find that
+\begin{equation}\label{eq:mpr51}
+\left.C^{(k)}_{\Phi\Phi}(\tau; \Phi)\right|_{\Phi=0}=
+\begin{cases}
+-4\kappa_2 \left. A^{(4)}_{\Phi}(\tau; \Phi)\right|_{\Phi=0}, & k=5,\\
+0, & k\ge 6\vspace*{-0.5\baselineskip}
+\end{cases}
+\end{equation}
+We note that following straightforward relationships are valid:
+\begin{equation}\label{eq:mpr52}
+\left.E^{[2]}(\tau;\Phi)\right|_{\Phi=0}=1,\quad 
+\left.E_{\Phi}^{[2]}(\tau;\Phi)\right|_{\Phi=0}=0.
+\end{equation}
+
+Combining conditions \eqref{eq:mpr51}, \eqref{eq:mpr31}, and \eqref{eq:mpr52}, we are able to simplify the problem \eqref{eq:mpr4} at $\Phi=0$ as follows
+\begin{equation}\label{eq:mpr6}
+-R_{\Phi\Phi,\tau}^{[2]}+\mathcal{L}^{(Y)}R_{\Phi\Phi}^{[2]}=4\kappa_2\left(Y^5 A_{\Phi\Phi}^{(4)}-2Y^6 A_{\Phi}^{(4)}\right),\quad 
+R_{\Phi\Phi}^{[2]}(0,Y;\Phi)=0.
+\end{equation}
+Thus, when $\kappa_2=0$, $R_{\Phi\Phi}^{[2]}(\tau,Y;\Phi=0)\equiv 0$, so that $E^{[2]}(\tau,Y; \Phi)$ is consistent with the variance of $X_t$. 
+
+
+
+
+\subsection{Proof of Theorem \ref{thm:contin_solutions}}\label{app:contin_solutions}  
+We consider following system of $d$ nonlinear ODEs
+\begin{equation}\label{eq:ODE_syst}
+\partial_{\tau} A_i(\tau; \Gamma)=A(\tau; \Gamma)^\top M_iA(\tau; \Gamma)+L_i^\top A(\tau; \Gamma)+H_i,\quad A_i(0,u)=A_{i,0},
+\end{equation}
+for $i=1,\ldots,d$. We assume that $\Gamma\in \mathbb{C}^3$ and each matrix $M_i$ is symmetric real-valued, and vectors $L_i$ and $H_i$ can be complex-valued. Hence solutions $A_i(\tau; \Gamma)$, $i=1,\ldots, d$ are complex-valued functions. It is well-known that complex-valued solution $A(\tau; \Gamma)$ is defined on maximal interval of existence $[0,\tau_+(\Gamma; A))$ such that either $\tau_+(\Gamma; A)=+\infty$ or $\tau_+(\Gamma; A)<+\infty$ and $\|A(\tau; \Gamma)\|\to +\infty$ as $\tau\uparrow \tau_+(\Gamma; A)$. 
+
+We combine $d$ non-linear ODEs in \eqref{eq:ODE_syst} into single (non-linear) vector ODE:
+\begin{equation}\label{eq:ODE_comb}
+\partial_{\tau} A(\tau; \Gamma)=M(A(\tau; \Gamma))+LA(\tau; \Gamma)+H,\quad A(0,u)=A_0,
+\end{equation}
+where $M:\mathbb{R}^d\to\mathbb{R}^d$ is a vector-valued function of argument $A\in\mathbb{R}^d$. For convenience, we denote the right-hand side of \eqref{eq:ODE_comb} as follows
+\begin{equation}
+R(A):=M(A)+LA+H.
+\end{equation} 
+
+
+\begin{lemma}\label{lemm:bound2}
+There exists finite and non-negative function $g$ such that
+\begin{equation}
+\|A(\tau; \Gamma)\|^2\le \|A_0\|^2+\|A_0\|^2 \int_0^t h(s)e^{\int_0^s h(r)dr}ds,\quad h(s)=g(\Re(A(\tau; \Gamma))
+\end{equation}
+\end{lemma}
+\begin{proof}
+The proof is essentially contained in \cite{Mayerhofer2015} and based on the application of Gronwall's inequality. 
+\end{proof}
+
+
+
+\begin{lemma}\label{lemm:real_sol}
+Assume that following conditions are satisfied:
+\begin{enumerate}%[label=(\roman*)]
+\item\label{assump:zero_im_freeterm} $H_I=H_I(u)=(0,\ldots,0)^\top \in \mathbb{R}^d$ when $\Gamma$ is a real vector;
+\item\label{assump:zero_im_linterm} $L_I=L_I(u)$ is zero $d\times d$ matrix when $\Gamma$ is a real vector;
+\item\label{assump:zero_init_cond} zero initial condition $A(0,\Gamma)=(0,\ldots,0)^\top \in \mathbb{R}^d$.
+\end{enumerate}
+Then solution $A(\tau; \Gamma)$ of the system \eqref{eq:ODE_comb} remain real for real $\Gamma\in\mathbb{R}^d$. 
+\end{lemma}
+\begin{proof}
+The proof is available upon request.
+\end{proof}
+
+
+We now consider the problem of continuity of solutions of quadratic differential systems arising in option valuation problem. It is important to highlight that linear $L(p)$ and free terms $H(p)$ satisfy assumptions of the Lemma \eqref{lemm:real_sol} when we set $p=1$ and restrict $\Re \Phi=-1/2$, $\Phi=\Psi=0$ for pricing vanilla options under MMA measure. We use same argument  for the inverse options when we set $p=-1$ and restrict $\Re \Phi=1/2$, $\Phi=\Psi=0$. We omit straightforward calculations. 
+
+We use $\tau_+(\Phi;A)$ and $\tau_+(\Re\Phi;A_R)$ to denote blow-up times $\tau_+(\Gamma;A)$ and $\tau_+(\Re\Gamma;A_R)$ when $\Gamma=(\Phi, \Psi=0, \Theta=0)$ and $\Re\Gamma=(\Re\Phi, \Psi=0, \Theta=0)$. 
+
+
+
+\begin{proof}[Theorem \ref{thm:contin_solutions}]
+We assume first that $\Phi\in \mathbb{R}$. We denote
+\begin{equation*}
+D(\tau):=\left\{\Phi\in \mathbb{R} : \tau < \tau_+(\Phi;A)\right\},\quad 
+M(\tau):=\left\{\Phi\in \mathbb{R} : G(\tau; X,I,Y; \Phi)<\infty\right\}.
+\end{equation*}
+We argue by contradiction. We assume that solution $A(\tau;\Phi)$ blows up before $\tau_0$:
+\begin{equation}\label{eq:contin_contrad}
+\tau_+(\Gamma; A)<\tau_0
+\end{equation}
+
+We set $\alpha^*:=\sup\{\alpha\ge 0: \alpha\Gamma\in D(\tau)\}$. Then assumption \eqref{eq:contin_contrad} implies that $\alpha^*<1$. On the one hand:
+\begin{equation}\label{eq:contin_contrad2}
+\begin{split}
+&G(\tau;X,I,Y; \alpha\Phi,\Psi=0,\Theta=0)\le G(\tau;X,I,Y; \alpha\Phi,\Psi=0,\Theta=0)^\alpha <\infty
+\end{split}
+\end{equation}
+for all $\alpha<\alpha^*<1$ due to Jensen inequality. On the other hand, we have
+\begin{equation*}
+\begin{split}
+G(\tau;X,I,Y; \alpha\Phi,\Psi=0,\Theta=0)=&\exp\left\{-\alpha\Phi X+\sum_{k=0}^{2n} A_k(\tau;\alpha\Phi,\Psi=0,\Theta=0)Y^k\right\}\\
++ &\exp\left\{-\alpha\Phi X\right\}R^{[2]}(\tau;X,I,Y;\alpha\Phi,\Psi=0,\Theta=0)
+\end{split}
+\end{equation*}
+
+Thus, we obtain
+\begin{equation}\label{eq:contin_contrad3}
+\begin{split}
+&\lim_{\alpha\uparrow\alpha^*}G(\tau;X,I,Y; \alpha\Phi,\Psi=0,\Theta=0)=+\infty
+\end{split}
+\end{equation}
+under assumptions \ref{assump:zero_im_linterm} and \ref{assump:zero_init_cond}. Comparing \eqref{eq:contin_contrad2} and \eqref{eq:contin_contrad3} we get contradiction, so
+\begin{equation}\label{eq:contin_contrad4}
+\tau_+(\Phi;A)\ge \tau_0\vspace*{-0.5\baselineskip}
+\end{equation}
+
+
+Now, we let $\Phi\in \mathbb{C}$ be complex. Due to assumption \ref{assump:blow_up_uppbound} and Lemma \ref{lemm:bound2}, we have 
+$
+\tau_+(\Phi;A)\ge \tau_+(\Phi; A_R)\ge \tau(\Re\Phi;A). 
+$
+Repeating the first part of the proof for $\Re\Phi$, leads to \eqref{eq:contin_contrad4}, so that 
+$
+\tau_+(\Re\Phi;A)\ge \tau_0. 
+$
+Hence, solution $A(\tau;\Phi,\Psi=0,\Theta=0)$ must remain continuous on $[0,\tau_0)$. 
+\end{proof}
+
+
+
+
+\section*{Acknowledgment}
+
+The authors are thankful to Vladimir Lucic for valuable insights and comments. We thank Alan Lewis, Johannes Muhle-Karbe, Blanka Horvath, Kalev P\"arna and participants at Imperial College Finance and Stochastics Seminar, TU Munich Oberseminar, ETH Seminar, EAJ Conference 2022 in Tartu for useful discussion and comments. We are grateful for anonymous referees for helpful comments. 
+
+
+
+\begin{thebibliography}{}
+
+\bibitem[\protect\citeauthoryear{Abramowitz and Stegun}{1972}]{AbramSteg}
+Abramowitz, M. and Stegun, I.~A.  \harvardyearleft
+  1972\harvardyearright , {\em Handbook of mathematical functions with
+  formulas, graphs, and mathematical tables}, {\em Applied
+  Mathematics Series}, National Bureau of Standards.
+
+\bibitem[\protect\citeauthoryear{Ackerer and Filipovi{\'c}}{2020}]{Filip19}
+Ackerer, D. and Filipovi{\'c}, D.  \harvardyearleft
+  2020\harvardyearright , `Option pricing with orthogonal polyolynomial
+  expansions', {\em Mathematical Finance} {\bf 30}(1),~47--84.
+
+\bibitem[\protect\citeauthoryear{Alexander \textit{et al}}{2023}]{Alexander2022}
+Alexander, C., Chen, D., Imeraj, A. \harvardyearleft 2023\harvardyearright , `Crypto quanto and inverse options', {\em Mathematical Finance} {\bf 33}(4),~1005--1043.
+
+\bibitem[\protect\citeauthoryear{Al\`os \textit{et al}}{2020}]{Alos2020}
+Al\`os, E., Gatheral, J., Radoicic, R. \harvardyearleft 2020\harvardyearright , `Exponentiation of conditional expectations under
+stochastic volatility', {\em Quantitative Finance} {\bf 20},~13--27.
+	
+	
+\bibitem[\protect\citeauthoryear{Alfonsi}{2013}]{Alfonsi2}
+Alfonsi, A.  \harvardyearleft 2013\harvardyearright , `Strong order one
+  convergence of a drift implicit euler scheme: Application to the cir
+  process', {\em Statistics \& Probability Letters} {\bf 83}(2),~602--607.
+
+\bibitem[\protect\citeauthoryear{Bakshi and Kapadia}{2003}]{BaskshiKapadia2003}
+Bakshi, G. and Kapadia, N. (2003). Delta-hedged gains and the negative market volatility risk premium. The Review of Financial Studies, 16(2), 527--566.
+
+
+\bibitem[\protect\citeauthoryear{Baris \textit{et al}}{2008}]{Baris2008}
+Baris, J., Baris, P. and Ruchlewicz, B.  \harvardyearleft
+  2008\harvardyearright , `Blow-up solutions of quadratic differential
+  systems', {\em Journal of Mathematical Sciences} {\bf 149}(4),~1369--1375.
+
+\bibitem[\protect\citeauthoryear{Barndorff-Nielsen and
+  Shiryaev}{2015}]{BarndorffNielsen2005} Barndorff-Nielsen, O.~E. and Shiryaev, A.~N.  \harvardyearleft 2015\harvardyearright , {\em Change of time and change of measure}, Vol.~21,
+  World Scientific Publishing Company.
+
+\bibitem[\protect\citeauthoryear{Bakshi \textit{et al}}{2006}]{Bakshi2006}
+Bakshi, G., Ju, J. and Ou-Yang, H.  \harvardyearleft 2006\harvardyearright , `Estimation of continuous-time models with an application to equity volatility dynamics', {\em Journal of Financial Economics} {\bf 82}(1),~227--249.
+
+\bibitem[\protect\citeauthoryear{Bergomi}{2015}]{bergomi2005}
+Bergomi, L.  \harvardyearleft 2015\harvardyearright , `Stochastic Volatility Modeling', {\em
+  CRC Press}.
+
+\bibitem[\protect\citeauthoryear{Bergomi and Guyon}{2012}]{bergomi2012}
+Bergomi, L. and Guyon, J.  \harvardyearleft 2012\harvardyearright , `Stochastic volatility orderly smiles', {\em Risk Magazine}  {\bf 25}(5), May 2012:~60--66. 
+
+\bibitem[\protect\citeauthoryear{Black and Scholes}{1973}]{BS73}
+Black, F. and Scholes, M.  \harvardyearleft 1973\harvardyearright ,
+  The pricing of options and corporate liabilities, {\em The Journal of Political Economy}, {\bf
+  81} 637-659.
+
+\bibitem[\protect\citeauthoryear{Borodin}{2017}]{Bor}
+Borodin, A.~N.  \harvardyearleft 2017\harvardyearright , {\em Stochastic
+  processes}, Springer.
+
+
+\bibitem[\protect\citeauthoryear{B{\"u}hler}{2006}]{buhler2006}
+B{\"u}hler, H.  \harvardyearleft 2006\harvardyearright , Volatility markets:
+  Consistent modeling, hedging and practical implementation, PhD thesis, TU
+  Berlin.
+
+
+\bibitem[\protect\citeauthoryear{Carr and Willems}{2019}]{CarrWill}
+Carr, P. and Willems, S.  \harvardyearleft 2019\harvardyearright , `A
+  lognormal type stochastic volatility model with quadratic drift', {\em arXiv
+  preprint arXiv:1908.07417} .
+
+\bibitem[\protect\citeauthoryear{Carr and Wu}{2017}]{CarrWu}
+Carr, P. and Wu, L.  \harvardyearleft 2017\harvardyearright ,
+  `Leverage effect, volatility feedback, and self-exciting market disruptions',
+  {\em Journal of Financial and Quantitative Analysis} {\bf 52}(5),~2119--2156.
+
+\bibitem[\protect\citeauthoryear{Chassagneux \textit{et al}}{2016}]{Chassagneux}
+Chassagneux, J-F., Jacquier, A. \harvardand\ Mihaylov, I.  \harvardyearleft 2016\harvardyearright ,
+  `An explicit Euler scheme with strong rate of convergence for financial SDEs with non-Lipschitz coefficients',
+  {\em SIAM Journal on Financial Mathematics} {\bf 7}(1),~993--1021.
+
+\bibitem[\protect\citeauthoryear{Christoffersen \textit{et al}}{2010}]{Christof2010}
+Christoffersen, P., Jacobs, K. and Mimouni, K.  \harvardyearleft
+  2010\harvardyearright , `Models for s\&p 500 dynamics: Evidence from realized
+  volatility, daily returns and options prices', {\em The Review of Financial
+  Studies} {\bf 23}(9),~3141--3189.
+
+\bibitem[\protect\citeauthoryear{Coppel}{1966}]{Coppel1966}
+Coppel, W.  \harvardyearleft 1966\harvardyearright , `A survey of quadratic
+  systems', {\em Journal of Differential Equations} {\bf 2}(3),~293--304.
+
+
+\bibitem[\protect\citeauthoryear{Cuchiero \textit{et al}}{2012}]{CuchKellRessTeich12}
+Cuchiero, C., Keller-Ressel, M. and Teichmann, J.  \harvardyearleft
+  2012\harvardyearright , `Polynomial processes and their applications to
+  mathematical finance', {\em Finance and Stochastics} {\bf 16}(4),~711--740.
+
+
+\bibitem[\protect\citeauthoryear{Detemple and Osakwe}{2000}]{Detemple2000}
+Detemple, J. and Osakwe, C.  \harvardyearleft 2000\harvardyearright ,
+  `The valuation of volatility options', {\em Review of Finance} {\bf
+  4}(1),~21--50.
+
+\bibitem[\protect\citeauthoryear{Dickson and Perko}{1970}]{Perko1970}
+Dickson, R. and Perko, L.  \harvardyearleft 1970\harvardyearright ,
+  `Bounded quadratic systems in the plane', {\em Journal of Differential
+  Equations} {\bf 7}(2),~251--273.
+
+\bibitem[\protect\citeauthoryear{Drimus}{2012}]{drimus2012a}
+Drimus, G.~G.  \harvardyearleft 2012\harvardyearright, `Options on Realized Variance by Transform Methods: A Non-Affine Stochastic Volatility Model',
+{\em Quantitative Finance} {\bf 12}(11),~1679--1694.
+
+\bibitem[\protect\citeauthoryear{Duffie \textit{et al}}{2003}]{DuffieFilipSchacer03}
+Duffie, D., Filipovi{\'c}, D. and Schachermayer, W.  \harvardyearleft
+  2003\harvardyearright , `Affine processes and applications in finance', {\em
+  The Annals of Applied Probability} {\bf 13}(3),~984--1053.
+
+
+\bibitem[\protect\citeauthoryear{Filipovi{\'c} and Larsson}{2016}]{Filip16}
+Filipovi{\'c}, D. and Larsson, M.  \harvardyearleft
+  2016\harvardyearright , `Polynomial diffusions and applications in finance',
+  {\em Finance and Stochastics} {\bf 20}(4),~931--972.
+
+\bibitem[\protect\citeauthoryear{Filipovi{\'c} and Mayerhofer}{2009}]{FilipMayer09}
+Filipovi{\'c}, D. and Mayerhofer, E.  \harvardyearleft
+  2009\harvardyearright , `Affine diffusion processes: theory and
+  applications', {\em Advanced Financial Modelling} {\bf 8},~1--40.
+
+\bibitem[\protect\citeauthoryear{Fouque \textit{et al}}{2000}]{Fouque2000}
+Fouque, J.-P., Papanicolaou, G. and Sircar, K.~R.  \harvardyearleft
+  2000\harvardyearright , `Mean-reverting stochastic volatility', {\em
+  International Journal of theoretical and applied finance} {\bf
+  3}(01),~101--142.
+
+\bibitem[\protect\citeauthoryear{Friedman}{1975}]{Friedman75}
+Friedman, A.  \harvardyearleft 1975\harvardyearright , {\em Stochastic
+  Differential Equations and Applications}, Vol.~1, Academic Press.
+
+\bibitem[\protect\citeauthoryear{Gatheral \textit{et al}}{2018}]{Gatheral}
+Gatheral J., Jaisson, T. and Rosenbaum, M. \harvardyearleft
+  2018\harvardyearright , `Volatility is rough', {\em Quantitative Finance} {\bf 18}(6),~933--949.
+
+\bibitem[\protect\citeauthoryear{Guyon and Lekeufack}{2023}]{Guyon2023}
+Guyon J. and Lekeufack, J. \harvardyearleft
+  2023\harvardyearright , `Volatility is (mostly) path-dependent', {\em Quantitative Finance} {\bf 23}(9),~1221--1258.
+
+\bibitem[\protect\citeauthoryear{Gy{\"o}ngy and Krylov}{1980}]{GyonKryl}
+Gy{\"o}ngy, I. and Krylov, N.~V.  \harvardyearleft
+  1980\harvardyearright , `On stochastic equations with respect to
+  semimartingales I.', {\em Stochastics: An International Journal of
+  Probability and Stochastic Processes} {\bf 4}(1),~1--21.
+
+\bibitem[\protect\citeauthoryear{Hagan \textit{et al}}{2002}]{Hagan2002}
+Hagan, P.~S., Kumar, D., Lesniewski, A.~S. and Woodward, D.~E.
+  \harvardyearleft 2002\harvardyearright , `Managing smile risk', {\em The Best
+  of Wilmott} {\bf 1},~249--296.
+333
+\bibitem[\protect\citeauthoryear{Heath and Schweizer}{2000}]{Heath2000}
+Heath, D. and Schweizer, M.  \harvardyearleft 2000\harvardyearright ,
+  `Martingales versus pdes in finance: an equivalence result with examples',
+  {\em Journal of Applied Probability} {\bf 37}(4),~947--957.
+
+\bibitem[\protect\citeauthoryear{Henry-Labord{\`e}re}{2009}]{labord2009}
+Henry-Labord{\`e}re, P.  \harvardyearleft 2009\harvardyearright , `Calibration of local stochastic volatility models to market smiles', {\em Risk Magazine} {\bf 22}(9), Sep 2009:~112--117.
+
+\bibitem[\protect\citeauthoryear{Herdegen and Schweizer}{2018}]{HerdegenSchweizer2018}  
+Herdegen, M., \& Schweizer, M. (2018). Semi‐efficient valuations and put‐call parity. Mathematical Finance, 28(4), 1061--1106.
+
+\bibitem[\protect\citeauthoryear{Heston}{1993}]{Heston1993}
+Heston, S.~L.  \harvardyearleft 1993\harvardyearright , `A closed-form solution
+  for options with stochastic volatility with applications to bond and currency
+  options', {\em The Review of Financial Studies} {\bf 6}(2),~327--343.
+
+
+\bibitem[\protect\citeauthoryear{Jacobson}{1977}]{Jacobson1977}
+Jacobson, D.~H.  \harvardyearleft 1974\harvardyearright , `Extensions of Linear-Quadratic Control; Optimalization and Matrix Theory', {\em Academic Press, London}
+
+
+\bibitem[\protect\citeauthoryear{J{\o}rgensen}{1982}]{Jorgensen1982}
+J{\o}rgensen, B.  \harvardyearleft 1982\harvardyearright , `Statistical Properties of the Generalized Inverse Gaussian Distribution', {\em Springer Science \& Business Media}
+	
+\bibitem[\protect\citeauthoryear{Karasinski and Sepp}{2012}]{Sepp2012}
+Karasinski, P., and Sepp, A.  \harvardyearleft 2012\harvardyearright, `Beta stochastic volatility model', {\em Risk Magazine} {\bf 22}(9), Oct 2012:~66--71.
+	
+\bibitem[\protect\citeauthoryear{Karatzas and Shreve}{1991}]{KaratzShre}
+Karatzas, I. and Shreve, S.~E.  \harvardyearleft 1991\harvardyearright
+  , {\em Brownian motion and stochastic calculus}, Graduate Texts in
+  Mathematics, Springer-Verlag, New York.
+
+\bibitem[\protect\citeauthoryear{Keller-Ressel and Mayerhofer}{2015}]{Mayerhofer2015}
+Keller-Ressel, M. and Mayerhofer, E.  \harvardyearleft
+  2015\harvardyearright , `Exponential moments of affine processes', {\em The
+  Annals of Applied Probability} {\bf 25}(2),~714--752.
+
+\bibitem[\protect\citeauthoryear{Jarrow and Larsson}{2012}]{JarrowLarsson2012}  
+Jarrow, R. A., \& Larsson, M. (2012). The meaning of market efficiency. Mathematical Finance: An International Journal of Mathematics, Statistics and Financial Economics, 22(1), 1--30.
+
+\bibitem[\protect\citeauthoryear{Lewis}{2000}]{Lewis2000}
+Lewis, A.~L.  \harvardyearleft 2000\harvardyearright , {\em Option Valuation
+  under Stochastic Volatility}, Finance Press.
+
+
+\bibitem[\protect\citeauthoryear{Lewis}{2018}]{Lewis2019}
+Lewis, A.~L.  \harvardyearleft 2018\harvardyearright , `Exact solutions for a
+  gbm-type stochastic volatility model having a stationary distribution', {\em
+  arXiv preprint arXiv:1809.08635}.
+
+\bibitem[\protect\citeauthoryear{Lions and Musiela}{2007}]{Lions2007}
+Lions, P.-L. and Musiela, M.  \harvardyearleft 2007\harvardyearright ,
+  `Correlations and bounds for stochastic volatility models', {\bf
+  24}(1),~1--16.
+
+\bibitem[\protect\citeauthoryear{Lipton}{2001}]{Lipton2001}
+Lipton, A.  \harvardyearleft 2001\harvardyearright , {\em Mathematical methods
+  for foreign exchange: A financial engineer's approach}, World Scientific.
+
+\bibitem[\protect\citeauthoryear{Lipton}{2002}]{Lipton2002}
+Lipton, A.  \harvardyearleft 2002\harvardyearright , `The vol smile problem', {\em Risk magazine} {\bf 15}(2), Feb 2002:~61--65.
+
+
+\bibitem[\protect\citeauthoryear{Lipton and Reghai}{2023}]{Lipton2023}
+Lipton, A. and Reghai A.  \harvardyearleft 2023\harvardyearright , `SPX, VIX and Scale-Invariant LSV Local Stochastic Volatility',
+  {\em Wilmott Magazine}, February ~78--84.
+	
+\bibitem[\protect\citeauthoryear{Lucic}{2021}]{Lucic2022}
+Lucic, V.  \harvardyearleft 2021\harvardyearright , `BTC inverse call and the
+  standard fx framework', {\em SSRN}, \url{https://ssrn.com/abstract=4113726}.
+
+\bibitem[\protect\citeauthoryear{Lucic and Sepp}{2023}]{LucicSepp2023}
+Lucic, V. and Sepp, A. \harvardyearleft 2023\harvardyearright , `Valuation and Hedging of Cryptocurrency Inverse Options: With Backtest Simulations using Deribit Options Data', {\em SSRN}, \url{https://ssrn.com/abstract=4606748}.
+	
+\bibitem[\protect\citeauthoryear{Masoliver and Perell{\'o}}{2006}]{Masoliver2006}
+Masoliver, J. and Perell{\'o}, J.  \harvardyearleft
+  2006\harvardyearright , `Multiple time scales and the exponential
+  ornstein--uhlenbeck stochastic volatility model', {\em Quantitative Finance}
+  {\bf 6}(5),~423--433.
+
+\bibitem[\protect\citeauthoryear{Merton}{1973}]{Merton73}
+Merton, R.~C.  \harvardyearleft 1973\harvardyearright , `Theory of rational option pricing', {\em The Bell Journal of economics and management science} {\bf 4}(1),~141--183.
+
+\bibitem[\protect\citeauthoryear{Musiela and Rutkowski}{2009}]{Musiela2009}
+Musiela, M. and Rutkowski, M.  \harvardyearleft 2009\harvardyearright
+  , {\em Martingale Methods in Financial Modelling}, Vol.~36, Springer Science
+  \& Business Media.
+  
+\bibitem[\protect\citeauthoryear{Muhle-Karbe \textit{et al}}{2022}]{MuhleKarbe2012}
+Muhle-Karbe, J., Pfaffel, O., and Stelzer, R. \harvardyearleft 2012\harvardyearright , `Option Pricing in Multivariate Stochastic Volatility Models of OU Type', {\em SIAM Journal on Financial Mathematics} {\bf 3}(1),~66--94.
+  
+\bibitem[\protect\citeauthoryear{Neuenkirch and Szpruch}{2014}]{NeuenSzp2014}
+Neuenkirch, A. and Szpruch, L.  \harvardyearleft 2014\harvardyearright
+  , `First order strong approximations of scalar SDEs defined in a domain',
+  {\em Numerische Mathematik} {\bf 128}(1),~103--136.
+  
+
+\bibitem[\protect\citeauthoryear{Perell{\'o} \textit{et al}}{2008}]{perello2008}
+Perell{\'o}, J., Sircar, R. and Masoliver, J.  \harvardyearleft
+  2008\harvardyearright , `Option pricing under stochastic volatility: the
+  exponential Ornstein--Uhlenbeck model', {\em Journal of Statistical
+  Mechanics} {\bf 2008}(06),~P06010.
+	
+\bibitem[\protect\citeauthoryear{Ren \textit{et al}}{2007}]{RenMadan2007}
+Ren, Y., Madan, D. and Qian, M.~Q.  \harvardyearleft  2007\harvardyearright , `Calibrating and pricing with embedded local volatility models', {\em Risk Magazine} {\bf 20}(9), Sep 2007:~138--143.
+  
+\bibitem[\protect\citeauthoryear{Ruf}{2015}]{Ruf2015}
+Ruf, J.  \harvardyearleft 2015\harvardyearright , `The martingale property in the context of stochastic differential equations', {\em Electron. Commun. Probab} {\bf 20},~1--10.
+
+\bibitem[\protect\citeauthoryear{Sepp}{2007}]{Sepp2007}
+Sepp, A.  \harvardyearleft 2007\harvardyearright , `Variance swaps under no conditions', {\em Risk Magazine} {\bf 20}(1), March 2007:~82--87.
+
+\bibitem[\protect\citeauthoryear{Sepp}{2008}]{Sepp2008}
+Sepp, A.  \harvardyearleft 2008\harvardyearright , `Pricing options on realized
+  variance in the Heston model with jumps in returns and volatility', {\em
+  Journal of Computational Finance} {\bf 11}(4),~33--70.
+
+
+\bibitem[\protect\citeauthoryear{Sepp}{2012}]{Sepp2012a}
+Sepp, A.  \harvardyearleft 2012\harvardyearright , `
+Pricing Options on Realized Variance in the Heston Model with Jumps in Returns and Volatility -- Part II: An Approximate Distribution of Discrete Variance', {\em
+  Journal of Computational Finance} {\bf 16}(22),~3--32.
+	
+	
+\bibitem[\protect\citeauthoryear{Sepp and Rakhmonov}{2023a}]{SeppRakhmonov2023a} Sepp, A. and Rakhmonov, P. \harvardyearleft 2023\harvardyearright, 'A robust stochastic volatility model for interest rates', {\em Risk Magazine}, Sep 2023:~1--6.
+
+\bibitem[\protect\citeauthoryear{Sepp and Rakhmonov}{2023}]{SeppRakhmonov2023} Sepp, A. and Rakhmonov, P. \harvardyearleft 2023\harvardyearright, `What is a robust stochastic volatility model', {\em SSRN}, \url{https://ssrn.com/abstract=4647027}
+	
+	
+\bibitem[\protect\citeauthoryear{Shephard}{2005}]{Shephard2005}
+Shephard, N.  \harvardyearleft 2005\harvardyearright , {\em Stochastic
+  volatility: Selected Readings}, Oxford University Press.
+
+\bibitem[\protect\citeauthoryear{Sin}{1998}]{Sin1998}
+Sin, C.~A.  \harvardyearleft 1998\harvardyearright , `Complications with
+  stochastic volatility models', {\em Advances in Applied Probability} {\bf
+  30}(1),~256--268.
+ 
+
+\bibitem[\protect\citeauthoryear{Tegn\'{e}r and Poulsen}{2018}]{Tegner2018}
+Tegner, M. \harvardand\ Poulsen, R. \harvardyearleft 2018\harvardyearright, `Volatility is Log-Normal--But Not for the Reason You Think',  {\em Risks} {\bf 6}(2),~1--16.
+
+
+\end{thebibliography}
+
+
+
+\end{document}

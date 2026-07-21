@@ -1,0 +1,11 @@
+# Copy to settings.yaml and edit. settings.yaml is gitignored.
+#
+# Both keys are optional. Omit one and it falls back to a directory under the
+# repository root: docs/figures for OUTPUT_PATH, resources for RESOURCE_PATH.
+# Both defaults are gitignored, so a fresh clone runs without this file.
+
+OUTPUT_PATH:
+  "C:\\Users\\me\\analytics\\outputs"
+
+RESOURCE_PATH:
+  "C:\\Users\\me\\analytics\\resources"

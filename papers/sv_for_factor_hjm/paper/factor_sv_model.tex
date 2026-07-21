@@ -1,0 +1,2559 @@
+\documentclass[pdftex,11pt,a4paper] {article}
+\usepackage{amsmath,amsfonts,amsthm,amssymb,amscd}
+\usepackage{latexsym}
+\usepackage[pdftex]{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{multirow}
+\usepackage{enumitem}   
+\usepackage{bbm}
+\usepackage{accents}
+\usepackage{subfig}
+\usepackage{natbib} 
+%\bibliographystyle{agsm}
+\usepackage{titling}
+
+\usepackage{enotez}
+\let\footnote=\endnote
+
+\usepackage{geometry}
+ \geometry{
+ a4paper,
+ total={165mm,245mm},
+ left=25mm,
+ top=25mm,
+ }
+\graphicspath{{../../draft/figures/}}
+
+\captionsetup[figure]{font=small}
+
+\newcommand{\ubar}[1]{\underaccent{\bar}{#1}}
+\DeclareMathOperator{\arctanh}{arctanh}
+\DeclareMathOperator\erf{erf}
+\DeclareMathOperator\erfc{erfc}
+
+\newtheorem{corollary}{Corollary}[section]
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{definition}{Definition}[section]
+\newtheorem{notations}{Notations}[section]
+\newtheorem{notation}{Notation}[section]
+\newtheorem{assumption}{Assumption}[section]
+\newtheorem*{remark}{Remark}%[section]
+
+\usepackage[nodayofweek]{datetime}
+\newdate{date}{28}{02}{2024}
+\date{\displaydate{date}}
+
+\usepackage{hyperref}  %added
+\hypersetup{colorlinks=true,
+    linktoc=all,
+    linkcolor=blue,
+		citecolor=blue,
+		urlcolor=cyan,
+		bookmarksopen=true
+		}
+
+\setlength{\droptitle}{-5em}   % This is your set screw
+
+
+\begin{document}
+
+\title{Stochastic Volatility for Factor Heath-Jarrow-Morton Framework}
+
+
+\author{Artur Sepp\thanks{Clearstar Labs AG, Z\"{u}rich, Switzerland, artursepp@gmail.com} \and Parviz Rakhmonov\thanks{Marex, London, United Kingdom, parviz.msu@gmail.com}}
+
+
+\maketitle
+
+
+ 
+\begin{abstract}
+We introduce an extension of Factor Heath-Jarrow-Morton (FHJM) framework augmented with a stochastic volatility (SV) driver correlated with factors dynamics. Our model fits the initial yield curve by construction and it is able to produce positive implied volatility skews as observed in market prices of interest rate derivatives. We develop a general framework for analytical valuation of swaptions, interest rate (SOFR) futures, and options on rate futures using moment generating function (MGF) corresponding to the FHJM model with the SV driver. We implement our results to the FHJM model with, first, the CIR SV driver, for which we find the exact solution for model MGF, and, second, for the log-normal SV driver, for which we derive a closed-form approximation of model MGF. As a base case, we apply the widespread Nelson-Siegel term structure model for the basis in the FHJM model. We show that Nelson-Siegel model with log-normal SV driver is able to fit accurately market implied volatilities of swaptions across different tenors and expiries and implied volatilities of options on rates futures. Our framework allows for valuation, risk-management and scenario generation for fixed income derivatives including SOFR futures, swaptions, options on rate futures across several tenors and expiries in an arbitrage-free and consistent way.
+
+\end{abstract}
+
+
+
+
+\section{Introduction}
+\cite{Lyashenko2023} introduce Factor Heath-Jarrow-Morton (termed as FHJM) framework for modeling the term structure of bond yields by representing it using small number of factors, spanned by selected  functional basis (such as \cite{NS1987}) under statistical $\mathbb{P}$-measure. They augment this representation with locally-deterministic auxiliary factors to ensure the arbitrage-free evolution of the yield curve under the pricing measure $\mathbb{Q}$. The FHJM model has solid advantages, such as intuitiveness of yield curve dynamics, computational efficiency, and no-arbitrage condition, while being consistent with the initial term structure by construction. 
+
+Yet, an important question for pricing fixed income derivatives is how to model the dependence between curve factors and their volatilities to make the model consistent with implied volatility skews observed in the market. \cite{SeppRakhmonov2023a} extend single-factor Cheyette model (which can be viewed as a single-factor FHJM model) to augment the dynamics of the yield curve factor with log-normal SV driver, which is correlated with the factor dynamics. They show that this model can reproduce positive implied volatility skews observed in fixed-income market, which is in contrast to SV models conventionally featuring local volatility and zero correlation with factor dynamics. In this paper, we extend the FHJM model by incorporating SV dynamics for modeling implied volatilities of swaptions and options on rate futures. 
+
+\subsection{Contributions}
+
+We contribute to the literature by introducing stochastic volatility (SV) dynamics for the FHJM model which we term as the FHJM-SV model. We present an analytic approach for valuation of swaptions under the FHJM-SV model using the moment generating function (MGF) associated with this FHJM-SV model. We apply these results for the affine CIR SV model and for log-normal SV model. We show that the CIR SV dynamics may require a strong mean-reversion under the annuity measure. We then focus on the log-normal beta SV model of \cite{Sepp2012} and show that the proposed model is able to fit implied volatilities of swaptions along cross-section of tenors and expiries. Further, we show that the FHJM-SV model accurately fits implied volatilities of options on SOFR futures. We also derive a closed-form solution for the futures convexity adjustment within the FHJM-SV framework. Our solution is based on approximate and accurate affine expansion approach to obtain a closed-form solution to MGF, as developed in \cite{Sepp2024} for valuation of vanilla and inverse options. 
+
+For practical applications, we incorporate Nelson-Siegel term-structure model (\cite{NS1987}), which is a particular specification of the FHJM model and which is very popular among market practitioners as well as central banks (for an example, see \cite{ChristensenDiebold2009}, \cite{ChristensenDiebold2011}). We derive the dynamics of swap rate and rate futures under this model and present extensive tests demonstrating its robustness for pricing applications. 
+
+We also propose analytic solution for the SOFR and Eurodollar futures convexity adjustments in the FHJM-SV model which takes into account skew and smile parameters. To our knowledge, this is the first result that incorporates both skew and smile effects within quasi-Gaussian family of models, to which  the FHJM model belongs. We derive the exact solution for the convexity adjustment under CIR SV model and an approximate solution under log-normal SV model. In related research, \cite{Piterbarg2006} study the futures convexity adjustment in context of LIBOR Market Model (LMM) with stochastic variance, whereas \cite{Jackel2005} consider the displaced lognormal LMM. \cite{Mercurio2017} examines the impact of cap smile in context of displaced log-normal LMM within multi-curve framework. 
+
+We further study the problem of explosion of futures prices in the FHJM-SV model with log-normal SV driver. We present sufficient condition under which futures price dynamics are not explosive. This is an old problem (see \cite{HoganWeintraub93} and \cite{Morton89}) because Eurodollar futures are known to be explosive in models where short rates are driven by log-normal dynamics. Nevertheless, we are not aware of any sufficient conditions of practical applicability which ensure non-explosive SOFR futures dynamics within SV models. We address  this gap within FHJM-SV model with log-normal SV driver by providing lower bound on quadratic drift which ensures non-explosive solution for approximate futures rate. 
+
+The paper is organised as follows. In Section \ref{sec::model_dynamics}, we present the FHJM-SV model along with practically important example of Nelson-Siegel basis and of pure exponential (PE) basis. In Section \ref{sec::market_instrum}, we derive the dynamics of the swap rate and of the rate futures under the FHJM-SV model.  We further derive analytic solutions for the futures convexity adjustment for the FHJM model with CIR and log-normal SV drivers. We also study the problem of explosive futures prices in the FHJM-SV model with the log-normal SV driver. In Section \ref{sec::valution_market_instum}, we present closed-form expression for swaption and options on rate futures  assuming analytic solution for the MGF of the market variable is known. In Section \ref{sec::affine_expansion}, we derive affine expansion for the MGF in the FHJM model with log-normal SV driver. In Section \ref{sec::implementation_details}, we calibrate the FHJM-SV model using Nelson-Siegel basis and log-normal SV driver to market data of swaptions and options on rate futures. We show that the model fits market data very well. Technical proofs are provided in Appendices.
+
+
+Throughout the text, $f$ denotes a scalar, $X$ and $\vec{\beta}$ denote a vector, $\mathbf{D}$ denotes a matrix; $f_{t}$ denote a stochastic variable, $f(t)$ denotes a time-dependent variable, with the same convention for vector and matrix variables. Further, $\top$ denotes the transpose, $\langle\cdot,\cdot\rangle$ denotes scalar product, $\|\cdot \|$ is Euclidian norm.
+
+
+
+\section{Model Dynamics}\label{sec::model_dynamics}
+
+
+We consider Heath-Jarrow-Morton, see \cite{HJM1992}, (HJM) framework which provides a generic approach for modeling of the term structure of instantaneous forward rates (as an alternative approach to the HJM framework for instantaneous forward rates, \cite{Filipovic2023} proposes arbitrage-free dynamic discount model). 
+\cite{Lyashenko2023} adapt HJM framework for factor-based modeling of the entire forward curve using a small number of Markovian factors. The FHJM model starts with the dynamics of $d$-dimensional vector $X_{t}$ of yield curve factors which is specified under the statistical $\mathbb{P}$-measure as follows
+\begin{equation}\label{eq:fhjm1}
+\begin{split}
+&   dX_{t} = \mathbf{D} X_{t}dt  + \mathbf{\Sigma}_{t}dW^{(0)}_{t},
+\end{split}
+\end{equation}
+where $\mathbf{D}$ is $d\times d$ generator matrix, $W^{(0)}_{t}$ is $d$-dimensional vector of independent Brownian motions and $\mathbf{\Sigma}_{t}$ is $d\times d$ volatility matrix.
+
+
+
+The instantaneous forward rate $f_{t}(\tau)$ under the $\mathbb{P}$-measure is modeled using a basis for $X_{t}$ as follows
+\begin{equation}\label{eq:fhjm2}
+\begin{split}
+&   f_{t}(\tau) = B(\tau) X_{t} + \hat{f}_{t}(\tau),
+\end{split}
+\end{equation}
+where $B(\tau)$ is $d$-dimensional vector of basis functions and $\hat{f}_{t}(\tau)$ is initial forward curve. \cite{Lyashenko2023} consider the exponential polynomial (EP) basis defined by
+\begin{equation}\label{eq:fhjm3}
+\begin{split}
+&   B(\tau)=B_0e^{\mathbf{D}\tau},
+\end{split}
+\end{equation}
+where $\mathbf{D}$ is the generator matrix of the main basis as in Eq \eqref{eq:fhjm1} and $B_0$ constant vector. For an example, the model by \cite{NS1987} is a popular $\mathbb{P}$-model of this type. We assume that all eigenvalues $\kappa$ of $\mathbf{D}$ are such that $\kappa \leq 0$ so that $e^{\mathbf{D}\tau}$ is real-valued and finite.
+
+
+
+
+
+
+Under risk-neutral $\mathbb{Q}$-measure in the FHJM framework, $X(t)$ factor dynamics are augmented with $m$-dimensional auxiliary process $Y_{t}$ with basis $\tilde{B}(\tau)$ so that the instantaneous forward curve under measure $\mathbb{Q}$ is specified by
+\begin{equation}\label{eq:eq1}
+\begin{split}
+&   f_{t}(\tau) = B(\tau) X_{t} + \tilde{B}(\tau) Y_{t}  +  \hat{f}_{t}(\tau),
+\end{split}
+\end{equation}
+where $\hat{f}_{t}(\tau)$ is initial forward curve to reproduce the observed term structure of forward rates.
+
+
+The augmented factors dynamics under $\mathbb{Q}$-measure are given by
+\begin{equation}\label{eq:FHJM}
+\begin{split}
+&   dX_{t} = \mathbf{D} X_{t}dt  + \mathbf{\Sigma}_{t}dW^{(0)}_{t}\\
+& dY_{t} = \tilde{\mathbf{D}}Y_{t}dt +  \Omega_{t}dt,
+\end{split}
+\end{equation}
+where $\tilde{\mathbf{D}}$ is $m\times m$ generator matrix of the auxiliary basis, and $\Omega_t$ is a vector process defined as a solution of the equation
+\begin{equation}\label{eq:FHJM_Omega}
+\tilde B(\tau)\Omega_t=B(\tau)\mathbf{\Sigma}_t\mathbf{\Sigma}_t^\top \left(\int_0^\tau B(u)\,du\right)^\top.
+\end{equation}
+
+\cite{Lyashenko2023} show that the generating matrix $\tilde{\mathbf{D}}$ of the auxiliary basis $\tilde{B}(\tau)$ can be chosen having spectrum $\tilde{\Lambda}$, where
+\begin{equation}\label{eq:gen_matrix_aux_basis}
+\tilde\Lambda=\Lambda\cup \{\Lambda+\Lambda\},\quad \Lambda+\Lambda:=\{\lambda_i+\lambda_j\,|\,\lambda_i,\lambda_j\in\Lambda\},
+\end{equation}
+where $\Lambda$ is the spectrum of the matrix $D$. Thus, FHJM framework allows to judiciously specify generator matrix $\tilde{\mathbf{D}}$ and extended basis $\tilde{B}(\tau)$ for the auxiliary process $Y_t$ when using the exponential basis in Eq \eqref{eq:fhjm3}.
+
+We emphasize that the FHJM framework relies on Musiela parametrization of the Heath-Jarrow-Morton dynamics introduced in \cite{Musiela1993}. Thus, the FHJM model is formulated in terms of time to maturity or tenor variable $\tau$, $\tau=T-t$, where $t$ is current time and $T$ is time of maturity, rather than in terms of $T$. Both parametrizations are in fact equivalent and can be related using, e.g. It\^{o}--Wentzell formula\footnote{We wish to thank Vladimir Lucic for a helpful suggestion.}. However, working with tenor $\tau$ dimension simplifies our derivations and enforces time-homogeneity in the model.  
+
+
+\subsection{Stochastic Volatility}
+
+The key purpose of adding the SV dynamics is to model interest rate volatility skews observed in the market data. We account that using $d$-factor volatility for each of factors $X_{t}$ may not be well-identifiable because factors are not observable, unlike the forward rates. In Appendix \ref{sec:vol_parametrization} we discuss the specification of the volatility matrix $\mathbf{\Sigma}_{t}$ in dynamics \eqref{eq:FHJM} for arbitrary basis $\mathbf{B}(\tau)$. We show that $\mathbf{\Sigma}_{t}$ must be independent from $X_{t}$ to avoid explosions so that, conditional on $\mathbf{\Sigma}_{t}$, the factor dynamics are Gaussian. We present a statistical method to estimate $\mathbf{\Sigma}_{t}$ using the correlation between benchmark yields and their instantaneous volatilities.
+
+Thus, we consider the following scalar-based structure for the volatility matrix
+\begin{equation}\label{eq:eq3}
+\begin{split}
+&   \mathbf{\Sigma}_{t} = \sigma_t \mathbf{C},
+\end{split}
+\end{equation}
+where $\mathbf{C}$ is $d\times d$ matrix which specifies the instantaneous volatility of factors, and $\sigma_t$ is one-dimensional SV process. Without loss of generality we assume that $\sigma_{0}=1$ so that $\sigma_t$ incorporates stochastic fluctuations around unity.
+
+We consider a general model using the following dynamics of the SV driver:
+\begin{equation}\label{eq:mdsv}
+\begin{split}
+&d\sigma_t=  \nu(\sigma_{t})dt +  \epsilon(\sigma_t)\left(\vec{\beta}(t)^\top\,dW^{(0)}_t + \beta_{0}(t)dw^{(1)}_t\right),\quad \sigma_0=\sigma,
+\end{split}
+\end{equation}
+where $\nu(\sigma_{t})$ is the volatility drift and $\epsilon(\sigma_t)$ is the volatility of volatility; $\vec{\beta}(t)$ is $d$-dimensional vector beta coefficient which defines factors loadings for the volatility dynamics projected by stochastic changes in factor dynamics given by $W^{(0)}_t$, $w^{(1)}_t$ is independent one-dimensional Brownian motion with volatility-of-volatility $\beta_{0}(t)$. Factor loadings $\vec{\beta}(t)$ can be identified statistically through multi-variate projection of $dX_t$ into $d\sigma_t$. In summary, we propose the following dynamics of the FHJM model with SV factor.
+
+
+\begin{assumption} [Dynamics of the FHJM-SV model] The joint dynamics of factors in the FHJM-SV model under the risk-neutral measure $\mathbb{Q}$ are given by 
+\begin{equation}\label{eq:FHJM_SV}
+\begin{split}
+&   dX_{t} = \mathbf{D} X_{t}dt  + \sigma_t\mathbf{C}dW^{(0)}_{t},\quad X_0=X_0\\
+& dY_{t} = \tilde{\mathbf{D}}Y_{t}dt +  \sigma_t^2\tilde \Omega_{t}dt,\quad  Y_0=0\\
+&d\sigma_t=  \nu(\sigma_{t})dt +  \epsilon(\sigma_t)\left(\vec{\beta}(t)^\top\,dW^{(0)}_t + \beta_{0}(t)dw^{(1)}_t\right),\quad \sigma_0=\sigma,
+\end{split}
+\end{equation}
+where vector $\tilde \Omega_{t}$ is defined by
+\begin{equation}\label{eq:FHJM_Omega_SV}
+\tilde B(\tau)\tilde\Omega_t=B(\tau)\mathbf{C}\mathbf{C}^\top \left(\int_0^\tau B(u)\,du\right)^\top.
+\end{equation}
+\end{assumption}
+
+
+
+As practical specifications of SV drivers for model dynamics \eqref{eq:FHJM_SV}, we consider the following SV models. First, we introduce the CIR dynamics for $\sigma_{t}=\sqrt{V_{t}}$, with stochastic variance $V_{t}$ driven by
+\begin{equation}\label{eq:mdh}
+\begin{split}
+&dV_{t}=\kappa\left(\theta-V_{t}\right)dt + \sqrt{V_{t}} \left(\vec{\beta}(t)^\top\,dW^{(0)}_t+\beta_{0}(t)\,dw^{(1)}_t\right),\quad V_0=V,
+\end{split}
+\end{equation}
+where $\kappa>0$ is the mean-reversion speed and $\theta>0$ is the long-run variance.
+
+Second, we consider the log-normal SV beta model with quadratic drift introduced by \cite{Sepp2024}
+\begin{equation}\label{eq:md}
+\begin{split}
+&d\sigma_t=\left(\kappa_{1}+\kappa_{2}\sigma_t\right)(\theta-\sigma_t)dt + \sigma_t \left( \vec{\beta}(t)^\top\,dW^{(0)}_t+\beta_{0}(t)dw^{(1)}_t \right),\quad \sigma_0=\sigma,
+\end{split}
+\end{equation}
+where $\kappa_{1}$ and $\kappa_{2}$ are linear and quadratic mean-reversion speeds, respectively; $\theta$ is the long-run level of volatility. 
+We make the following assumption about the parameters of process $\sigma_t$. 
+
+\begin{assumption}
+Model parameters $\kappa_1$, $\kappa_2$, $\theta$ in Eq \eqref{eq:md} satisfy the following conditions
+\begin{equation}\label{eq:param_constraint_logsv}
+\kappa_1\ge 0,\quad \kappa_2\ge 0,\quad \theta>0.
+\end{equation}
+\end{assumption}
+
+
+\begin{theorem}\label{thm:zcb}
+We assume an FHJM model with basis $B(\tau)$ and with the dynamics of model factors $\{X_t, Y_t\}$ under $\mathbb{Q}$ given in Eq \eqref{eq:FHJM_SV}. 
+Instantaneous forward rates $f_t(\tau)$ are then given by
+\begin{equation}\label{eq:FHJM_fwd}
+f_{t}(\tau) = B(\tau) X_{t} + \tilde{B}(\tau) Y_{t}  +  \hat f_t(\tau),\quad \hat f_t(\tau)=f_{0}(t+\tau).
+\end{equation}
+Prices of zero-coupon bonds are given by
+\begin{equation}\label{eq:FHJM_zcb}
+P(t,t+\tau) \equiv P(t,t+\tau; X_t, Y_t) = \frac{P(0,t+\tau)}{P(0,t)}\exp\left(-B_P(\tau) X_{t} - \tilde{B}_P(\tau) Y_{t}\right),
+\end{equation}
+where 
+\begin{equation}\label{eq:FHJM_zcb_coeffs}
+B_P(\tau):=\int_0^\tau B(u)\,du,\quad \tilde B_P(\tau):=\int_0^\tau \tilde B(u)\,du.
+\end{equation}
+\end{theorem}
+\begin{proof}
+We only need to prove Eq \eqref{eq:FHJM_zcb}. Indeed, by integrating Eq \eqref{eq:FHJM_fwd}, we obtain
+\begin{equation*}
+\begin{split}
+P(t,t+\tau)&=\exp\left(-\int_0^\tau f_t(u)\,du\right)=
+\exp\left(-\int_0^\tau \left(f_0(t+u)+B(u)X_t+\tilde B(u)Y_t\right)\,du\right)=\\
+%&=\exp\left(-\int_0^\tau f_0(t+u)\,du\right)\times
+%\exp\left(-\int_0^\tau B(u)\,du\,X_t-\int_0^\tau\tilde B(u)\,du\,Y_t\right)=\\
+&=\frac{P(0,t+\tau)}{P(0,t)}\exp\left(-\int_0^\tau B(u)\,du\,X_t-\int_0^\tau\tilde B(u)\,du\,Y_t\right).
+\end{split}
+\end{equation*}
+
+\end{proof}
+
+We note that model associated with FHJM-SV dynamics \eqref{eq:FHJM_SV} and bond formula \eqref{eq:FHJM_zcb} exhibits the so-called unspanned stochastic volatility, see \cite{CollinDufresne2002}.
+
+
+
+\subsection{Single-Factor Exponential Basis}\label{sec:one_factor_PE}
+
+As an introduction, we consider a single factor FHJM model with the one-dimensional basis defined by
+\begin{equation}\label{eq:1f_basis}
+B(\tau)=\left(e^{-\lambda\tau}\right), 
+\end{equation}
+where $\lambda$, $\lambda>0$, is the mean-reversion rate. By applying Theorem \ref{thm:zcb} we obtain the following result.
+\begin{corollary}\label{coroll:one_factor_PE}
+Consider FHJM model with basis given by \eqref{eq:1f_basis}, where the dynamics of model factors $X_t$, $Y_t$ are given in Eq \eqref{eq:FHJM_SV}. Then, generating matrix of the main basis $B(\tau)$, auxiliary basis $\tilde{B}(\tau)$ and vector $\tilde{\Omega}_t$ are given by
+\footnote{To preserve consistency with our notations, since volatility matrix $\mathbf{C}(t)$ is $1\times 1$ matrix, we denote it by $c(t)$.}
+\begin{equation}\label{eq:one_factor_PE}
+\mathbf{D}=(-\lambda),\quad \tilde{\mathbf{D}}=
+\begin{pmatrix}
+-\lambda & 0 \\
+ 0 & -2\lambda  
+\end{pmatrix},\quad
+\tilde B(\tau)=\left(e^{-\lambda\tau}, e^{-2\lambda\tau}\right),\quad 
+\tilde\Omega_t=\frac{1}{\lambda}\left(c(t)^2,-c(t)^2\right).
+\end{equation}
+where $c(t)$ is the deterministic volatility (or a leverage factor relative to the stochastic volatility driver $\sigma_{t}$).
+
+The term structure of instantaneous forward rates $f_t(\tau)$ are given by
+\begin{equation*}
+f_{t}(\tau) = B(\tau) X_{t} + \tilde{B}(\tau) Y_{t}  +  \hat f_t(\tau),\quad \hat f_t(\tau)=f_{0}(t+\tau).
+\end{equation*}
+
+Prices of zero-coupon bonds is given by
+\begin{equation}\label{eq:one_factor_PE_zcb1}
+P(t,t+\tau) = P(t,t+\tau; X_t, Y_t) = \frac{P(0,t+\tau)}{P(0,t)}\exp\left(-B_P(\tau) X_{t} - \tilde{B}_P(\tau) Y_{t}\right),
+\end{equation}
+where 
+\begin{equation*}
+B_P(\tau)=\frac{1-e^{-\lambda\tau}}{\lambda},\quad 
+\tilde{B}_P(\tau)=\left(\frac{1-e^{-\lambda\tau}}{\lambda},\frac{1-e^{-2\lambda\tau}}{2\lambda}\right)^\top.
+\end{equation*}
+\end{corollary}
+Straightforward calculations show that when $\lambda=0$, main basis $B(\tau)$, auxiliary basis $\tilde{B}(\tau)$ and vector $\tilde{\Omega}_t$ degenerate into
+\begin{equation}\label{eq:one_factor_PE_Ho_Lee}
+\mathbf{D}=(0),\quad \tilde{\mathbf{D}}=
+\begin{pmatrix}
+0 & 1 \\
+ 0 & 0  
+\end{pmatrix},
+\quad B(\tau)=1,\quad \tilde B(\tau)=\left(1, \tau\right),\quad 
+\tilde\Omega_t=\left(0,c(t)^2\right)^\top.
+\end{equation}
+
+{\it Remark.} As seen, when factor dynamics are Gaussian, i.e. $\sigma_t\equiv 1$, this model corresponds to continuous time Hull-White and Ho-Lee short rate models when $\lambda>0$ and $\lambda=0$, respectively. 
+
+
+Let us  we draw the distinction between the FHJM and Cheyette models. Although both the FHJM and Cheyette model belong to the quasi-Gaussian family of term-structure models, para\-met\-ri\-za\-tion of state variables are different in these models. Under the FHJM model, the dynamics of main driver $X$ and locally deterministic variable $Y$ are formally independent, while in conventional Cheyette model the auxiliary variable $Y$ is present in the drift of $X$. However, in both models the solution to the instantaneous forward rate must be unique, see \cite{Lyashenko2023} for details. 
+
+
+
+
+\subsection{Nelson-Siegel Basis}\label{sec:NS_basis}
+
+While we develop generic solution for the FHJM-SV dynamics \eqref{eq:FHJM_SV}, we apply Nelson-Siegel basis, see \cite{NS1987}, as a viable application, which is widely used in practice (see \cite{Filipovic1999}, \cite{DieboldLi2006}, \cite{ChristensenDiebold2009,ChristensenDiebold2011}, among others).
+
+
+Nelson-Siegel basis is specified by
+\begin{equation}\label{eq:NS_basis}
+B(\tau)=\left(1,e^{-\lambda\tau}, \tau e^{-\lambda\tau}\right),
+\end{equation}
+where $\lambda$ is interpreted as a mean reversion rate. As highlighted in \cite{DieboldLi2006}, $\lambda$ controls the tenor at which the curvature factor achieves its maximum. 
+
+
+For Nelson-Siegel basis, the generating matrix representing Exponential-Polynomial (EP) basis (see \cite{Filipovic2000}) in Eq \eqref{eq:fhjm3} is specified by
+\begin{equation}\label{eq:NS_matrix_D_X}
+\mathbf{D}=
+\begin{pmatrix}
+0 & 0 & 0 \\
+0 & -\lambda & 1 \\
+0 & 0 & -\lambda    
+\end{pmatrix}.
+\end{equation}
+
+
+
+Furthermore, the auxiliary basis can also be represented through the EP family
+\begin{equation}\label{eq:NS_basis1}
+\tilde B(\tau)=\left(1,\tau; e^{-\lambda\tau}, \tau e^{-\lambda\tau}, \frac{\tau^2}{2} e^{-\lambda\tau}; e^{-2\lambda\tau}, \tau e^{-2\lambda\tau}, \frac{\tau^2}{2} e^{-2\lambda\tau} \right),
+\end{equation}
+where
+\begin{equation}\label{eq:NS_matrix_D_Y}
+\tilde{\mathbf{D}}=
+\begin{pmatrix}
+0  & 1  &          &          &          &           &           &           \\
+   & 0  &          &          &          &           &           &           \\
+   &    & -\lambda & 1        &          &           &           &           \\
+   &    &          & -\lambda & 1        &           &           &           \\
+   &    &          &          & -\lambda &           &           &           \\
+   &    &          &          &          & -2\lambda & 1         &           \\
+   &    &          &          &          &           & -2\lambda & 1         \\
+   &    &          &          &          &           &           & -2\lambda \\
+\end{pmatrix}.
+\end{equation}
+
+
+
+The vector $\tilde\Omega_t$ in Eq \eqref{eq:FHJM_Omega_SV} is found from the relationship:
+\begin{equation*}
+%\begin{split}
+\tilde B(\tau)\tilde\Omega_t=B(\tau)\mathbf{C}\mathbf{C}^\top \left(\int_0^\tau B(u)\,du\right)^\top,\\
+%&\tilde B(\tau)\tilde\Omega_t=\left(1,e^{-\lambda\tau}, \tau e^{-\lambda\tau}\right)\mathbf{C}%\mathbf{C}^\top
+%\left(\tau, \frac{1-e^{-\lambda\tau}}{\lambda},\frac{1-e^{-\lambda\tau}(1+\lambda\tau)}{\lambda^2}\right)^\top
+%\end{split}
+\end{equation*}
+If we denote
+\begin{equation*}
+\tilde\Omega_t:=\left(\tilde\Omega_t^1,\tilde\Omega_t^2,\ldots, \tilde\Omega_t^8\right)^\top,\quad 
+\mathbf{M}:=\mathbf{C}\mathbf{C}^\top, \quad \mathbf{M}=\{m_{kj}\}_{k,j=1,2,3}, 
+\end{equation*}
+then by rearranging the terms we find that 
+\begin{equation}\label{eq:NS_Omega}
+\begin{alignedat}{2}
+&\tilde\Omega_t^1=\frac{m_{12}}{\lambda}+\frac{m_{13}}{\lambda^2}, \qquad
+&\tilde\Omega_t^2&=m_{11}, \\
+&\tilde\Omega_t^3=-\frac{m_{12}}{\lambda}-\frac{m_{13}}{\lambda^2}+\frac{m_{22}}{\lambda}+\frac{m_{23}}{\lambda^2}, \qquad 
+&\tilde\Omega_t^4&=m_{12}-\frac{m_{13}}{\lambda}+\frac{m_{23}}{\lambda}+\frac{m_{33}}{\lambda^2},\\
+&\tilde\Omega_t^5=2m_{13},\qquad 
+&\tilde\Omega_t^6&=-\frac{m_{22}}{\lambda}-\frac{m_{23}}{\lambda^2},\\
+&\tilde\Omega_t^7=-\frac{2m_{23}}{\lambda}-\frac{m_{33}}{\lambda^2},\qquad
+&\tilde\Omega_t^8&=-\frac{2m_{33}}{\lambda}.
+\end{alignedat}
+\end{equation}
+
+\begin{corollary}\label{thm:Nelson_Siegel}
+We consider Nelson-Siegel term-structure model, which is an FHJM model with basis $B(\tau)$ given by \eqref{eq:NS_basis}. Then the dynamics of model factors $\{X_t, Y_t\}$ are given by \eqref{eq:FHJM_SV}, where generating matrix of the main basis $B(\tau)$, auxiliary basis $\tilde B(\tau)$ and vector $\tilde\Omega_t$ are given by Eqs. \eqref{eq:NS_matrix_D_X}, \eqref{eq:NS_matrix_D_Y} and \eqref{eq:NS_Omega}, respectively. 
+
+The term structure of the instantaneous forward rates $f_t(\tau)$ are then given by
+\begin{equation*}
+f_{t}(\tau) = B(\tau) X_{t} + \tilde{B}(\tau) Y_{t}  +  \hat f_t(\tau),\quad \hat f_t(\tau)=f_{0}(t+\tau).
+\end{equation*}
+Prices of zero-coupon bonds are given by
+\begin{equation}\label{eq:NS_zcb1}
+P(t,t+\tau) = P(t,t+\tau; X_t, Y_t) = \frac{P(0,t+\tau)}{P(0,t)}\exp\left(-B_P(\tau) X_{t} - \tilde{B}_P(\tau) Y_{t}\right),
+\end{equation}
+where 
+\begin{equation*}
+\begin{split}
+B_P(\tau)=&\left(\tau,\frac{1-e^{-\lambda\tau}}{\lambda},\frac{1-e^{-\lambda\tau}(1+\lambda\tau)}{\lambda^2}\right),\\
+\tilde{B}_P(\tau)=&\left(
+%first block
+\tau,\frac{\tau^2}{2}; 
+% second block
+\frac{1-e^{-\lambda\tau}}{\lambda},\frac{1-e^{-\lambda\tau}(1+\lambda\tau)}{\lambda^2},
+\frac{1-e^{-\lambda\tau}(1+\lambda\tau+\frac 12\lambda^2\tau^2)}{\lambda^3};\right. \\
+% third block
+&\qquad\quad\left.\frac{1-e^{-2\lambda\tau}}{2\lambda},\frac{1-e^{-2\lambda\tau}(1+2\lambda\tau)}{4\lambda^2},
+\frac{1-e^{-2\lambda\tau}(1+2\lambda\tau+2\lambda^2\tau^2)}{8\lambda^3}\right).
+\end{split}
+\end{equation*}
+\end{corollary}
+\begin{proof} Follows from Theorem \ref{thm:zcb}.
+\end{proof}
+
+We further consider multi-dimensional exponential basis in Appendix \ref{sec:expon_basis} as an alternative to Nelson-Siegel basis.
+
+
+
+\section{Dynamics of Market Instruments}\label{sec::market_instrum}
+
+In this section, we derive the dynamics of swap rates and the dynamics of rate futures under the FHJM-SV model \eqref{eq:FHJM_SV}. We extend the setup developed for the single-factor model in \cite{SeppRakhmonov2023a} to the FHJM-SV framework.
+
+We introduce the tenor structure $0\le T_0<T_1<\ldots<T_N$ and define annuity factor $A$ by
+\begin{equation}\label{eq:annuity}
+A(t)\equiv A(t; X_t, Y_t)  =\sum_{n=0}^{N-1}\tau_n P(t,T_{n+1}; X_t, Y_t),\quad \tau_n=T_{n+1}-T_n,\\
+\end{equation}
+with $A(0)$ determined by the term structure of interest rates observed currently. We specify the forward swap rate $S(t)$ by
+\begin{equation}\label{eq:swap_rate}
+\begin{split}
+& S(t) \equiv S(t; X_t, Y_t) = \frac{P(t,T_0; X_t, Y_t)-P(t,T_N; X_t, Y_t)}{A(t; X_t, Y_t)},\quad t\le T_0.
+\end{split}
+\end{equation}
+For future developments, we introduce:
+\begin{equation}\label{eq:log_annuity}
+L(t)=\ln A(t),\quad L_X(t) \equiv \nabla_X L(t)=\frac{1}{A(t)}\nabla_X A(t),
+\end{equation}
+where $\nabla_X=\left(\partial_{x_1},\ldots,\partial_{x_d}\right)$ denotes gradient operator.
+
+We compute closed-form expressions for $L_X(t,X,Y)$ and $\nabla_X S(t,X,Y)$ using bond-reconstruction formula \eqref{eq:FHJM_zcb} as follows, using shorthand $P(t,T)=P(t,T; X_t, Y_t)$:
+\begin{equation}\label{eq:nambla_x}
+\begin{split}
+L_X(t; X_{t},Y_{t})& = -\frac{1}{A(t)}\sum_{n=0}^{N-1}P(t,T_{n+1})B_P(T_{n+1}-t)^\top,\\
+\nabla_X S(t;X_{t},Y_{t})&=\frac{1}{A(t)}\left(-P(t,T_0)B_P(T_{0}-t)^\top+P(t,T_N)B_P(T_{N}-t)^\top\right)+\\
+&\quad +\frac{P(t,T_0)-P(t,T_N)}{A(t)^2}\left[\sum_{n=0}^{N-1}P(t,T_{n+1})B_P(T_{n+1}-t)^\top\right].
+\end{split}
+\end{equation}
+
+
+\subsection{State Dynamics under Annuity Measure}
+
+We consider annuity measure $\mathbb{Q}^A$ by choosing annuity $A(t)$ as numeraire. 
+
+\begin{theorem}
+The dynamics of state variables $\{X_t, Y_t, \sigma_t\}$ under the annuity measure $\mathbb{Q}^A$
+for model dynamics \eqref{eq:FHJM_SV} are given by
+\begin{equation}\label{eq:md_ann}
+\begin{split}
+&   dX_{t} = \mathbf{D} X_{t}dt  + \sigma_{t}^2 \mathbf{C}\mathbf{C}^\top L_X(t)dt+\sigma_{t}\mathbf{C}\,dW^{A,(0)}_{t} \quad X_0=X_0, \\
+& dY_{t} = \tilde{\mathbf{D}}Y_{t}dt + \sigma_t^2\tilde\Omega_{t}dt,\quad Y_0=0 \\
+&d\sigma_t=\left[\nu(\sigma_t)+\sigma_t\epsilon(\sigma_t)\vec\beta(t)\mathbf{C}^\top L_X(t)\right]dt+\epsilon(\sigma_t)\left(\vec{\beta}(t)^\top\,dW^{A,(0)}_t + \beta_{0}(t)dw^{A,(1)}_t\right),
+\end{split}
+\end{equation}
+where $L_X(t)$ is defined in Eq \eqref{eq:log_annuity}.
+
+\end{theorem}
+
+
+\begin{proof}
+We change the measure from risk-neutral $\mathbb{Q}$ to annuity measure $\mathbb{Q}^A$.  The corresponding Radon-Nikodym derivative is given by (see \cite{Lucic2016})
+\begin{equation}\label{eq:radon_nikod_deriv}
+\left.\frac{d\mathbb{Q}^A}{d\mathbb{Q}}\right|_{\mathcal{F}_t}=\frac{A(t)/A(0)}{N(t)},
+\end{equation}
+where $N(t)=\exp\left(\int_0^t r_{u}du\right)$ is a money market account using short rate $r_{t}$. We find the $\mathbb{Q}$-dynamics of $A$ as follows
+\begin{equation}\label{eq:sde_annuity}
+\begin{split}
+dA(t)&=\frac{\partial A(t)}{\partial t}dt + \left(\nabla_X A(t)\right)^\top\,dX_t+\left(\nabla_Y A(t)\right)^\top\,dY_t+\sigma_t^2\frac{1}{2}Tr\left\{\mathbf{C}^\top\nabla_X^2 S(t) \mathbf{C}\right\}dt.
+\end{split}
+\end{equation} 
+
+
+Then, the dynamics of annuity $A$ in \eqref{eq:sde_annuity} can be rewritten as
+\begin{equation*}%\label{eq:sde_annuity2}
+dA(t)=A(t)\left[(\ldots)dt + \sigma_t\frac{1}{A(t)}\left(\nabla_X A(t)\right)^\top\mathbf{C}\, dW^{(0)}_t\right]=
+A(t)\left[(\ldots)dt + \sigma_t L_X(t)^\top\mathbf{C}\, dW^{(0)}_t\right].
+\end{equation*} 
+Thus, the dynamics of Radon-Nikodym derivative in Eq \eqref{eq:radon_nikod_deriv} is 
+%\begin{equation*}
+%d\left[\frac{A(t)/A(0)}{N(t)}\right]=\frac{A(t)/A(0)}{N(t)}\sigma_tL_X(t)^\top\mathbf{C}\, dW^{(0)}_t.
+%\end{equation*}
+%Hence 
+\begin{equation*}
+\left.\frac{d\mathbb{Q}^A}{d\mathbb{Q}}\right|_{\mathcal{F}_t}=\mathcal{E}\left(\int_0^t \sigma_u L_X(u)^\top\mathbf{C}\, dW^{(0)}_u\right),
+\end{equation*}
+where $\mathcal{E}(\cdot)$ denotes It\^{o} exponential.
+Therefore, by Girsanov theorem, the process 
+\begin{equation*}
+W^{A,(0)}_t:=W^{(0)}_t-\int_0^t\sigma_u\mathbf{C}^\top L_X(u)\, du
+\end{equation*}
+is a Brownian Motion under $\mathbb{Q}^A$. Substituting it into Eq \eqref{eq:md}, we derive the dynamics of factors $\{X_t, Y_t\}$ as in Eq \eqref{eq:md_ann}. Finally, we the $\mathbb{Q}^A$-dynamics of the SV in \eqref{eq:FHJM_SV} becomes
+\begin{equation*}
+\begin{split}
+d\sigma_t&=\nu(\sigma_t)dt+\epsilon(\sigma_t)\left(\vec{\beta}(t)^\top\,\left[dW^{A,(0)}_t+\sigma_t\mathbf{C}^\top L_X(t)dt\right] + \beta_{0}(t)dw^{A,(1)}_t\right)\\
+&=\left[\nu(\sigma_t)+\sigma_t\epsilon(\sigma_t)\vec\beta(t)\mathbf{C}^\top L_X(t)\right]dt+\epsilon(\sigma_t)\vec{\beta}(t)^\top\,dW^{A,(0)}_t + \beta_{0}(t)\epsilon(\sigma_t)dw^{A,(1)}_t.
+\end{split}
+\end{equation*}
+\end{proof}
+
+
+\begin{corollary}[The FHJM-SV model with CIR driver] Using dynamics CIR SV dynamics in Eq (\ref{eq:mdh}), we obtain
+\begin{equation}\label{eq:cir_ann}
+\begin{split}
+&   dX_{t} = \mathbf{D} X_{t}dt  +  V_t\mathbf{C}\mathbf{C}^\top L_X(t)dt+\sqrt{V_t}\mathbf{C}dW^{A,(0)}_{t},\quad X_0=X_0 \\
+& dY_{t} = \tilde{\mathbf{D}}Y_{t}dt + V_t\tilde\Omega_{t}dt,\quad Y_0=0 \\
+&dV_{t}=\left[\kappa\theta-\left(\kappa-\vec\beta(t)\mathbf{C}^\top L_X(t)\right)V_{t}\right]dt + \sqrt{V_{t}} \left(\vec{\beta}(t)^\top\,dW^{A,(0)}_t+\beta_{0}(t)\,dw^{A,(1)}_t\right).
+\end{split}
+\end{equation}
+\end{corollary}
+Consequently, under $\mathbb{Q}^A$ the variance process in \eqref{eq:md_ann} might become mean repelling. To avoid such situations, one must impose a restriction that 
+$\kappa>\vec{\beta}(t)^\top \mathbf{C}^\top L_X(t)$ to ensure that variance is mean reverting in model \eqref{eq:cir_ann}. 
+
+\begin{corollary}[Dynamics of the FHJM model with log-normal beta SV] Using dynamics in Eq \eqref{eq:md}, we obtain
+\begin{equation}\label{eq:md_ann_logsv}
+\begin{split}
+&   dX_{t} = \mathbf{D} X_{t}dt  +  \sigma_t^2\mathbf{C}\mathbf{C}^\top L_X(t)dt+\sigma_t\mathbf{C}dW^{A,(0)}_{t},\quad X_0=X_0 \\
+& dY_{t} = \tilde{\mathbf{D}}Y_{t}dt + \sigma_t^2\tilde\Omega_{t}dt,\quad Y_0=0 \\
+&d\sigma_t=\left[\kappa_1\theta-(\kappa_1-\kappa_2\theta)\sigma_t-\left(\kappa_2-\vec{\beta}(t)^\top \mathbf{C}^\top L_X(t)\right)\sigma_t^2\right]\,dt + \sigma_t \vec{\beta}(t)^\top\,dW^{A,(0)}_t+\beta_0(t)\sigma_t\,dw^{A,(1)}_t.
+\end{split}
+\end{equation}
+\end{corollary}
+The term with the quadratic speed of mean-reversion accounts naturally for the correction of the measure change. We must impose the condition 
+\begin{equation}\label{eq:kappa2_cond_QA}
+\kappa_{2}>\vec{\beta}(t)^\top \mathbf{C}^\top L_X(t),
+\end{equation} 
+so that the volatility process $\sigma_t$ in \eqref{eq:md_ann_logsv} admits strong solution (see \cite{Sepp2024} for details). 
+
+%{\bf TODO}: derive max bound for $\mathbf{C}^\top L_X(t)$
+
+%\textcolor{red}{\emph{Here we need to discuss why SQR model may not be well defined because of the negative mean-reversion}}
+
+
+As element-wise $B_P(\tau)>0$ for $\tau>0$, each element of the vector $L_X(t)$ is positive. Nevertheless, elements of  $\mathbf{C}^\top L_X(t)$ can be of any sign, hence $\vec{\beta}(t)^\top \mathbf{C}^\top L_X(t)$ can be of any sign as well. %Let us present the boundary classification of square root process with negative mean reversion in Proposition \ref{prop:heston_negative_mrv}.
+%\begin{proposition}\label{prop:heston_negative_mrv}
+%Consider square root process 
+%\begin{equation}\label{eq:square_root_sde}
+%dV_t=\kappa(\theta-V_t)\,dt+\vartheta\sqrt{V_t}\,dW_t,
+%\end{equation}
+%where $\kappa\in \mathbb{R}$, $\theta>0$, $V_0>0$. Then boundary point $+\infty$ is 
+%\begin{enumerate}
+%\item attractive for $\kappa<0$ 
+%\item unattainable for $\kappa>0$.
+%\end{enumerate}
+%\textcolor{red}{TODO: Add proofs. }
+%\end{proposition}
+
+
+
+
+
+\subsection{Dynamics of Swap Rate}
+
+
+We consider the model swap rate $S(t)\equiv S(t; X_t, Y_t)$ defined in \eqref{eq:swap_rate}. Since $S(t)$ has zero drift under $\mathbb{Q}^A$, we have
+\begin{equation}\label{eq:sde_annuity3}
+\begin{split}
+dS(t)&=\frac{\partial S(t)}{\partial t}dt+\left(\nabla_X S(t)\right)^\top\,dX_t+\left(\nabla_Y S(t)\right)^\top\,dY_t+\frac{1}{2}Tr\left\{\mathbf{\Sigma}_{t}^\top\nabla_X^2 S(t) \mathbf{\Sigma}_{t}\right\}dt=\\
+&=\left(\nabla_X S(t)\right)^\top\mathbf{\Sigma}_{t}\, dW^{A,(0)}_t.
+\end{split}
+\end{equation} 
+where $\nabla_X S(t)$ is defined in Eq \eqref{eq:nambla_x} and $\mathbf{\Sigma}_{t}$ is defined in Eq \eqref{eq:eq3}. Accordingly, we obtain the following result.
+
+\begin{proposition}
+The dynamics of forward swap rate $S(t)$ under annuity measure $\mathbb{Q}^A$ are
+\begin{equation}\label{eq:md_ann_s}
+\begin{split}
+&dS(t,X_t,Y_t)=\sigma_t\left(\nabla_X S(t)\right)^\top\mathbf{C}\, dW^{A,(0)}_t,
+\end{split}
+\end{equation}
+where dynamics of state variables $\{X_t, Y_t, \sigma_t\}$ are given in Eq \eqref{eq:md_ann}.
+\end{proposition}
+
+Gradients $\nabla_X \ln A(t)$ and $\nabla_X S(t)$ are analytical functions of state drivers $\{X_t, Y_t\}$, yet they are non-linear, which hinders analytical tractability for model calibration. 
+For analytical tractability, we replace path trajectories $\{X_t, Y_t\}$ in function $A(t)$ by the path of their deterministic expected values under the annuity measure
+\begin{equation}\label{eq:mean_states}
+X_t \rightarrow \bar X_t=\mathbb{E}^A(X_t),\quad Y_t \rightarrow  \bar Y_t=\mathbb{E}^A(Y_t),
+\end{equation}
+which are computed by applying expected value operator to both sides of Eq \eqref{eq:md_ann}. This technique is also known as 'freezing the drift' (\cite{BrigoMercurio2007}) which is applied for deriving analytically tractable LIBOR market models.
+
+As a result, we obtain following system of ODEs for the expected values $\{\bar X_t, \bar Y_t\}$ under the dynamics \eqref{eq:md_ann}:
+\begin{equation}\label{eq:md_ann2}
+\begin{split}
+&   d\bar X_{t} = \mathbf{D} \bar X_{t}dt  + \mathbf{C}\mathbf{C}^\top \mathbb{E}^A\left[\sigma_{t}^2L_X(t)\right]dt, \\
+& d\bar Y_{t} = \tilde{\mathbf{D}}\bar Y_{t}dt + \tilde\Omega_{t}\mathbb{E}^A[\bar\sigma_t^2]dt.
+\end{split}
+\end{equation}
+
+Finally, we propose the following dynamics of the approximate swap rate.
+\begin{proposition} [State-independent swap rate $s_t$ under FHJM-SV dynamics \eqref{eq:FHJM_SV}] Dynamics of state-independent swap rate $s_t$ are given by
+\begin{equation}\label{eq:swap_ann2}
+\begin{split}
+&ds_t=\sigma_t\times a(t)^\top\, dW^{A,(0)}_t\\
+&d\sigma_t=\left[\nu(\sigma_t)+\sigma_t\epsilon(\sigma_t)\beta_2(t)\right]dt+\epsilon(\sigma_t)\vec{\beta}(t)^\top\,dW^{A,(0)}_t + \beta_{0}(t)\epsilon(\sigma_t)dw^{A,(1)}_t,
+\end{split}
+\end{equation}
+where we introduce the time-dependent level of the volatility $a(t)$ and volatility beta $\beta_2(t)$ below
+\begin{equation}\label{eq:def1}
+\begin{split}
+a(t)=\mathbf{C}(t)^\top \nabla_X S(t,\bar X_t, \bar Y_t),\ \beta_2(t)=\vec{\beta}(t)^\top \mathbf{C}(t)^\top L_X(t,\bar X_t, \bar Y_t).
+\end{split}
+\end{equation}
+with $\bar X_t$, $\bar Y_t$ being solutions to Eq. (\ref{eq:md_ann2}).
+
+\end{proposition}
+
+
+
+
+
+
+
+\begin{corollary} The dynamics of $s_t$ with CIR SV dynamics \eqref{eq:mdh} are given by
+\begin{equation}\label{eq:swap_ann2_cir}
+\begin{split}
+&ds_t=\sqrt{V_t}\times a(t)^\top\, dW^{A,(0)}_t\\
+&dV_{t}=\left[\kappa\theta-\left(\kappa-\beta_2(t)\right)V_{t}\right]dt + \sqrt{V_{t}} \left(\vec{\beta}(t)^\top\,dW^{A,(0)}_t+\beta_{0}(t)\,dw^{A,(1)}_t\right).
+\end{split}
+\end{equation}
+
+Hereby $\bar X_{t}$ and $\bar Y_{t}$ are computed as follows
+\begin{equation}\label{eq:md_ann_expect_cirsv}
+\begin{split}
+&   d\bar X_{t} = \mathbf{D} \bar X_{t}dt  +  \bar V_t\mathbf{C}\mathbf{C}^\top L_X(t,\bar X_t, \bar Y_t)\,dt,\\
+& d\bar Y_{t} = \tilde{\mathbf{D}}\bar Y_{t}dt + \bar V_t\tilde\Omega_t\,dt,\\
+&d\bar V_{t}=\left[\kappa\theta-\left(\kappa-\vec\beta(t)\mathbf{C}^\top L_X(t,\bar X_t,\bar Y_t)\right)\bar V_{t}\right]dt .
+\end{split}
+\end{equation}
+
+\end{corollary}
+
+
+
+\begin{corollary} The dynamics of $s_t$ with log-normal SV dynamics \eqref{eq:md} are given by
+\begin{equation}\label{eq:swap_ann2_logsv}
+\begin{split}
+&ds_t=\sigma_t\times a(t)^\top\, dW^{A,(0)}_t,\\
+&d\sigma_t=\left[\kappa_{1}\theta-(\kappa_1-\kappa_{2}\theta)\sigma_t-(\kappa_2-\beta_2(t))\sigma_t^2\right]dt +\sigma_t\vec{\beta}(t)^\top\,dW^{A,(0)}_t+\sigma_t\beta_0(t)\,dw^{A,(1)}_t.
+\end{split}
+\end{equation}
+
+Hereby, expected values $\{\bar X_t,\bar Y_t\}$ are computed using log-normal SV dynamics \eqref{eq:FHJM_SV}. Taking expected values in \eqref{eq:md_ann}, we obtain that expected values $\{\bar X_t,\bar Y_t\}$ satisfy the system of ODEs
+\begin{equation}\label{eq:md_ann_expect_logsv}
+\begin{split}
+&   d\bar X_{t} = \mathbf{D} \bar X_{t}dt  +  \mathbf{C}\mathbf{C}^\top \times \mathbb{E}^A\left[\sigma_t^2L_X(t)\right]dt,\\
+& d\bar Y_{t} = \tilde{\mathbf{D}}\bar Y_{t}dt + \tilde\Omega_t\times \mathbb{E}^A\left[\sigma_t^2\right]\,dt,\\
+&d\bar \sigma_t=\left(\kappa_{1}\theta-(\kappa_1-\kappa_{2}\theta)\bar \sigma_t-
+\kappa_2\mathbb{E}^A[\sigma_t^2]\right)\,dt+\vec{\beta}(t)^\top \mathbf{C}^\top \mathbb{E}^A\left[\sigma_t^2L_X(t)\right]dt.
+\end{split}
+\end{equation}
+
+Following similar approximation proposed in \cite{SeppRakhmonov2023a} for the single-factor model, we expand the expressions inside the expectations by ignoring higher order terms as follows:
+\begin{equation}\label{eq:md_ann_expect_logsv2}
+\begin{split}
+&\mathbb{E}^A\left[\sigma_t^2L_X(t)\right]\approx \bar \sigma_t^2L_X(t,\bar X_t, \bar Y_t),\\
+&\mathbb{E}^A\left[\sigma_t^2\right]\approx \bar \sigma_t^2.
+\end{split}
+\end{equation}
+\end{corollary}
+
+While $\mathbb{E}^A\left[\sigma_t^2\right]$ can be computed using a higher order discretization scheme, we have found no advantages in using such a scheme. Coupled system in Eq \eqref{eq:md_ann_expect_logsv}-\eqref{eq:md_ann_expect_logsv2} or in Eq \eqref{eq:md_ann_expect_cirsv} is solved numerically using standard ODE solvers.
+
+
+\subsection{Forward and Futures Rates}
+
+We first introduce some notation for overnight-based futures following \cite{Lyashenko2019}, among others. We let $T_S$, $T_E$ denote start and end date, $T_S<T_E$ and $\{t_n\}_{n=1}^N$ be the collection of business days over $[T_S,T_E]$. Going forward, we consider on SOFR futures, although our results are valid for futures linked to any overnight rate (ON). By definition, SOFR futures settlement at time $T_E$ is based on daily SOFR, compounded over $[T_S,T_E]$ as follows
+\begin{equation}
+\hat{F}^{\mathrm{ON}}(T_S,T_E) = \frac{1}{\Delta}\left[\prod_{n=1}^{N}\left(1+\Delta_nR_n\right)-1\right]
+\end{equation}
+where $\Delta$ denotes year fraction for $[T_S,T_E]$, $R_n$ is SOFR rate over $[t_{n-1},t_n]$ and $\Delta_n$ is the associated day-count fraction. Following standard market practice, we approximate discrete compounding by continuous one and consider
+\begin{equation}\label{eq:futures_settlement_ON}
+F^{\mathrm{ON}}(T_S,T_E):=\frac{1}{\Delta}\left(e^{\int_{T_S}^{T_E}r(t)\,dt}-1\right),
+\end{equation}
+where $r(t)$ is the instantaneous risk-free rate, linked to SOFR rate. This approximation offers significant computational and notational advantage. In practice, the difference between continuous and discrete daily compounding is extremely small, thus neglected. 
+
+We first consider futures rate $F^{\mathrm{ON}}_t:=F^{\mathrm{ON}}(t;T_S,T_E)$ with settlement value $F^{\mathrm{ON}}(T_S,T_E)$ given in Eq \eqref{eq:futures_settlement_ON}, $t\le T_E$, $\Delta=T_E-T_S$. It is well-known, see \cite{HuntKennedy2004}, that futures value $F^{\mathrm{ON}}_t$ is computed as follows
+\begin{equation}\label{eq:marting_futures_ON}
+F^{\mathrm{ON}}(t;T_S,T_E):=\mathbb{E}^{\mathbb{Q}}\left[\left.F^{\mathrm{ON}}(T_S,T_E)\right|\mathcal{F}_t\right]=
+\frac{1}{\Delta}\left(\mathbb{E}^{\mathbb{Q}}\left[\left.e^{\int_{T_S}^{T_E}r(t)\,dt}\right|\mathcal{F}_t\right]-1\right),
+\end{equation}
+where expectation is taken under risk-neutral measure $\mathbb{Q}$.
+
+In addition to settlement value in Eq. \eqref{eq:futures_settlement_ON}, based on compounded SOFR rate, let us consider Eurodollar futures that settles at time $T_S$ into value
+\begin{equation}\label{eq:futures_settlement_ED}
+F^{\mathrm{ED}}(T_S,T_E)=\frac{1}{\Delta}\left(P(T_S,T_E)^{-1}-1\right).
+\end{equation}
+
+Thus, futures rate at time $t\le T_S$ with settlement value $F^{\mathrm{ED}}(T_S,T_E)$ in Eq \eqref{eq:futures_settlement_ED}, equals to
+\begin{equation}\label{eq:marting_futures_ED}
+F^{\mathrm{ED}}(t;T_S,T_E):=\mathbb{E}^{\mathbb{Q}}\left[\left.F^{\mathrm{ED}}(T_S,T_E)\right|\mathcal{F}_t\right]=
+\frac{1}{\Delta}\left(\mathbb{E}^{\mathbb{Q}}\left[\left.P(T_S,T_E)^{-1}\right|\mathcal{F}_t\right]-1\right).
+\end{equation}
+As the value of futures rate is model-dependent, we present the explicit formula for $F^{\mathrm{ON}}_t$ and $F^{\mathrm{ED}}_t$ in FHJM model in Theorem \ref{prop:futures_convexity} to derive the convexity adjustment formula for FHJM-SV model \eqref{eq:FHJM_SV}. We note that since SOFR futures are backward looking, it is more convenient to work with concept of extended zero-coupon bond as in \cite{Lyashenko2019}. 
+
+
+
+\begin{theorem}\label{prop:futures_convexity}
+We consider general dynamics of FHJM-SV model \eqref{eq:FHJM_SV} and let $0\le t\le T_E$. Time $t$ value of SOFR futures $F^{\mathrm{ON}}(t;T_S,T_E)$ is given by
+\begin{equation}\label{eq:fut_rate_ON}
+\begin{split}
+F^{\mathrm{ON}}(t;T_S,T_E)&=\frac{1}{\Delta}\left(\frac{P(t,T_S)}{P(t,T_E)}c^{\mathrm{ON}}(t)-1\right),\\
+c^{\mathrm{ON}}(t)&=\mathbb{E}^{\mathbb{Q}}\left\{\left.e^{B(0)\int_{T_S\wedge t}^{T_E}X_u\,du+\tilde{B}(0)\int_{T_S\wedge t}^{T_E}Y_u\,du} \right|\mathcal{F}_t\right\} \times \\
+&\times e^{-\left(B_P(T_E-T_E\vee t)-B_P(T_S-T_S\vee t)\right)X_t-\left(\tilde B_P(T_E-T_E\vee t)-\tilde B_P(T_S-T_S\vee t)\right)Y_t}.
+\end{split}
+\end{equation}
+Let $0\le t\le T_S$. Time $t$ value of Eurodollar futures $F^{\mathrm{ED}}(t;T_S,T_E)$ is given by
+\begin{equation}\label{eq:fut_rate_ED}
+\begin{split}
+&F^{\mathrm{ED}}(t;T_S,T_E)=\frac{1}{\Delta}\left(\frac{P(t,T_S)}{P(t,T_E)}c^{\mathrm{ED}}(t)-1\right),\\
+&c^{\mathrm{ED}}(t)=\mathbb{E}^{\mathbb{Q}}\left\{\left.e^{B_P(\Delta)X_{T_S}+\tilde{B}_P(\Delta)Y_{T_S}}\right|\mathcal{F}_t\right\} e^{-\left(B_P(T_E-t)-B_P(T_S-t)\right)X_t-\left(\tilde{B}_P(T_E-t)-\tilde{B}_P(T_S-t)\right)Y_t}.
+\end{split}
+\end{equation}
+\end{theorem}
+
+
+\begin{proof}
+Let us prove \eqref{eq:fut_rate_ED} first. We use the following relationship:
+\begin{equation}\label{eq:futures_conv_1}
+\int_0^{\Delta}f_{T_S}(\tau)\,d\tau=\int_0^{\Delta}\hat f_{T_S}(\tau)\,d\tau+B_P(\Delta) X_{T_S}+\tilde B_P(\Delta) Y_{T_S},
+\end{equation}
+where $B_P(\Delta)$, $\tilde B_P(\Delta)$ are defined in \eqref{eq:FHJM_zcb_coeffs}. 
+For $t\le T_S$ we have, on the other hand
+\begin{equation}\label{eq:futures_conv_2}
+\int_{T_S-t}^{T_E-t}f_{t}(\tau)d\tau=\int_{T_S-t}^{T_E-t}\hat f_{t}(\tau)d\tau+\left(B_P(T_E-t)-B_P(T_S-t)\right) X_{t}+\left(B_P(T_E-t)-B_P(T_S-t)\right) Y_{t}.
+\end{equation}
+
+Since $\int_{0}^{\Delta}\hat{f}_{T_S}(\tau)\,du=\int_{T_S-t}^{T_E-t}\hat f_{t}(\tau)d\tau$, 
+subtracting \eqref{eq:futures_conv_2} from \eqref{eq:futures_conv_1}, we have 
+\begin{equation*}
+P(T_S,T_E)^{-1}=\frac{P(t,T_S)}{P(t,T_E)}e^{B_P(\Delta) X_{T_S}-\left(B_P(T_E-t)-B_P(T_S-t)\right) X_{t}+
+\tilde B_P(\Delta) Y_{T_S}-\left(B_P(T_E-t)-B_P(T_S-t)\right) Y_{t}}.
+\end{equation*}
+Conditioning it on $\mathcal{F}_t$, proves Eq \eqref{eq:fut_rate_ED}. 
+
+To prove \eqref{eq:fut_rate_ON}, we consider first the case $t\le T_S$. Now we use the relationship
+\begin{equation}\label{eq:futures_conv_3}
+\int_{T_S}^{T_E}r(u)\,du=\int_{T_S}^{T_E}f_u(0)\,du=\int_{T_S}^{T_E}\hat{f}_u(0)\,du+B(0)\int_{T_S}^{T_E}X_u\,du+\tilde B(0)\int_{T_S}^{T_E}Y_u\,du.
+\end{equation}
+
+
+Similarly, subtracting \eqref{eq:futures_conv_2} from \eqref{eq:futures_conv_3}, we have
+\begin{equation}\label{eq:futures_conv_4}
+e^{\int_{T_S}^{T_E}r(u)\,du}=\frac{P(t,T_S)}{P(t,T_E)}e^{B(0)\int_{T_S}^{T_E}X_u\,du+\tilde B(0)\int_{T_S}^{T_E}Y_u\,du-\left(B_P(T_E-t)-B_P(T_S-t)\right) X_{t}-\left(\tilde B_P(T_E-t)-\tilde B_P(T_S-t)\right) Y_{t}}.
+\end{equation}
+For $T_S<t\le T_E$, using \eqref{eq:futures_conv_4} applied to $[t,T_E]$, we have
+\begin{equation}\label{eq:futures_conv_5}
+e^{\int_{T_S}^{T_E}r(u)\,du}=\frac{e^{\int_{T_S}^t r(u)\,du}}{P(t,T_E)}e^{B(0)\int_{t}^{T_E}X_u\,du+\tilde B(0)\int_{t}^{T_E}Y_u\,du-\left(B_P(T_E-t)-B_P(0)\right) X_{t}-\left(\tilde B_P(T_E-t)-\tilde B_P(0)\right) Y_{t}}.
+\end{equation}
+
+
+We can combine \eqref{eq:futures_conv_4} and \eqref{eq:futures_conv_5} into single expression
+\begin{equation}\label{eq:futures_conv_5a}
+\begin{split}
+e^{\int_{T_S}^{T_E}r(u)\,du}=&\frac{P(t,T_S)}{P(t,T_E)}e^{B(0)\int_{T_S\wedge t}^{T_E}X_u\,du+\tilde B(0)\int_{T_S\wedge t}^{T_E}Y_u\,du}\times\\
+&\times e^{-\left(B_P(T_E-T_E\vee t)-B_P(T_S-T_S\vee t)\right) X_{t}-\left(\tilde B_P(T_E-T_E\vee t)-\tilde B_P(T_S-T_S\vee t)\right) Y_{t}},
+\end{split}
+\end{equation}
+which is valid for all $t\le T_E$, where $P(\cdot,\cdot)$ denotes extended zero-coupon bond. Conditioning Eq \eqref{eq:futures_conv_5} on $\mathcal{F}_t$, completes the proof. 
+
+\end{proof}
+
+%\subsection{Futures rate dynamics}\label{sec:futures_dynam}
+
+%We note that the function $c^{\mathrm{ON}}(t)$ is defined for $t\in[T_S,T_E]$ too due to backward-looking nature of $F^{\mathrm{ON}}$, see  Eq. \eqref{eq:futures_settlement_ON}, which accrues over $[T_S,T_E]$ and settles at time $T_E$. 
+
+
+
+\subsection{Gaussian Model}
+
+First, we consider analytically tractable case of dynamics \eqref{eq:FHJM_SV} with deterministic  volatility $\sigma_t\equiv 1$ so that the covariance of factors is deterministic and fully specified by $\mathbf{C}(t)$. \cite{KirikosNovak1992} and \cite{Henrard2005} study convexity adjustment for Eurodollar futures using Hull-White and single-factor Gaussian HJM model, respectively, \cite{Jacquier2023} consider Gaussian Volterra process and \cite{Skov2021} apply arbitrage-free Nelson-Siegel model for rates dynamics. In Theorem \ref{thm:futures_conv_Gauss} we give analytic representation of futures convexity adjustment within Gaussian subclass of Factor HJM model for arbitrary basis $B(\tau)$. This result is a unification of results in the aforementioned works. 
+
+\begin{theorem}[Convexity adjustment in Gaussian FHJM model]\label{thm:futures_conv_Gauss}
+Assume that $\sigma_t$ in \eqref{eq:FHJM_SV} is deterministic. Then convexity adjustments $c^{\mathrm{ED}}(t)$, $c^{\mathrm{ON}}(t)$ in Eq \eqref{eq:fut_rate_ED} and \eqref{eq:fut_rate_ON} for $t\in [0,T_S]$  are given, respectively, by
+\begin{equation}\label{eq:futures_conv_Gauss}
+\begin{split}
+c^{\mathrm{ED}}(t)&=e^{\int_{t}^{T_S}B_P(T_E-s)^\top\left(B_P(T_E-s)-B_P(T_S-s)\right)\mathbf{C}(s)^\top\mathbf{C}(s)\,ds},\\
+c^{\mathrm{ON}}(t)&=e^{\int_{T_S}^{T_E}B_P(T_E-s)^\top B_P(T_E-t)\mathbf{C}(t)^\top\mathbf{C}(t)\,dt}\times c^{\mathrm{ED}}(t).
+\end{split}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+See Appendix \ref{app:futures_conv_Gauss}.
+\end{proof}
+
+We highlight that expression \eqref{eq:futures_conv_Gauss} can be integrated analytically, if volatility matrix $\mathbf{C}(\cdot)$ is constant. In general, when $\mathbf{C}(\cdot)$ is time-dependent, formula \eqref{eq:futures_conv_Gauss} can be calculated by numerical integration. Therefore, evaluation of futures convexity adjustment in Gaussian FHJM is analytic.  
+
+
+
+\subsection{CIR SV Driver}
+
+%For the purposes of deriving analytical solution for the futures convexity adjustment in FHJM-SV, we note that the term $\varepsilon(T_S,T_E)$ in \eqref{eq:fut_rate_ON} is difficult to handle analytically, unless $\sigma_t$ is deterministic, in which case the dynamics of factor $X_t$ in FHJM becomes Gaussian. To circumvent it and solve the problem of computing both convexity adjustments using same technique, we make following assumption. 
+%\begin{assumption}\label{assump:determ_eps}
+%The function $\varepsilon(T_S,T_E)$  in \eqref{eq:fut_rate_ON} is deterministic. 
+%\end{assumption}
+%Under assumption \ref{assump:determ_eps}, adjustments $c^{\mathrm{ON}}(t)$ and $c^{\mathrm{ED}}(t)$ differ only by a factor $\varepsilon(T_S,T_E)$, which is deterministic. 
+%As we see later, as long as $\varepsilon(T_S,T_E)$ is deterministic, the concrete form of $\varepsilon(T_S,T_E)$ is not important in construction of dynamic model for the SOFR futures rate. 
+%To simplify the analysis we consider only $c^{\mathrm{ON}}(t)$ for practical considerations  since in USD market SOFR futures have successfully replaced Eurodollar futures. 
+Let us present analytical solution for $c^{\mathrm{ON}}(t)$ and $c^{\mathrm{ED}}(t)$ in FHJM-SV model with CIR SV driver. Although their settlement value are different, with first based on continuously compounded SOFR rate and second on simple forward rate), we show that both convexity adjustments can be solved using same approach
+\footnote{At the same time,  convexity adjustment for SOFR futures has broader practical applications since in USD market SOFR futures have successfully replaced Eurodollar futures.}.
+
+\begin{theorem}[Convexity adjustment for SOFR futures in FHJM-SV model with CIR volatility]\label{thm:futures_conv_cir}
+The function $c^{\mathrm{ON}}(t)$ in \eqref{eq:fut_rate_ON} under CIR SV dynamics \eqref{eq:mdh} for $t\in[0, T_E]$ is given by
+\begin{equation}\label{eq:convexity_ae_ord1_lead_cir}
+c^{\mathrm{ON}}(t)=c^{\mathrm{ON}}(t;V)=\exp\left[h_0(t)+h_1(t)V\right],
+\end{equation}
+where $h_0$, $h_1$ satisfy the following quadratic differential system as a function of $\tau=T_E-t$:
+\begin{equation}\label{eq:MF_conv_adj_ODE_cir}
+\begin{split}
+\frac{d}{d\tau}B_1&=B_1^\top \mathbf{D}+\mathbbm{1}_{\tau\le \Delta}B(0),\\
+\frac{d}{d\tau}B_2&=B_2^\top \tilde{\mathbf{D}}+\mathbbm{1}_{\tau\le \Delta}\tilde B(0),\\
+\frac{d}{d\tau}h_0&=\kappa\theta h_1,\\
+\frac{d}{d\tau}h_1&=\frac{1}{2}B_1^\top\mathbf{M}B_1+h_1B_1^\top\mathbf{C}\beta+B_2^\top\tilde{\Omega}-\kappa h_1+\frac{1}{2}\vartheta^2 (h_1)^2,
+\end{split}
+\end{equation}
+with the initial condition $B_1(0)=B_2(0)=0$, $h_0(0)=h_1(0)=0$.
+
+Here $\vartheta(t)$ is the total volatility of variance defined by
+\begin{equation*}
+\vartheta(t)=\sqrt{\|\vec{\beta}(t)\|^2+(\beta_0(t))^2}.
+\end{equation*}
+\end{theorem}
+\begin{proof}
+See Appendix \ref{app:futures_conv_cir}.
+\end{proof}
+
+\begin{corollary}[Convexity adjustment for Eurodollar futures in FHJM-SV model with CIR volatility]\label{cor:futures_conv_cir}
+The function $c^{\mathrm{ED}}(t)$ in \eqref{eq:fut_rate_ED} under CIR SV dynamics \eqref{eq:mdh} $t\in[0, T_S]$ is given by
+\begin{equation}\label{eq:convexity_ae_ord1_lead_cir2}
+c^{\mathrm{ED}}(t)=c^{\mathrm{ED}}(t;V)=\exp\left[h_0(t)+h_1(t)V\right],
+\end{equation}
+where $h_0$, $h_1$ satisfy the following quadratic differential system as a function of $\tau=T_S-t$:
+\begin{equation}\label{eq:MF_conv_adj_ODE_cir2}
+\begin{split}
+\frac{d}{d\tau}B_1&=B_1^\top \mathbf{D},\\
+\frac{d}{d\tau}B_2&=B_2^\top \tilde{\mathbf{D}},\\
+\frac{d}{d\tau}h_0&=\kappa\theta h_1,\\
+\frac{d}{d\tau}h_1&=\frac{1}{2}B_1^\top\mathbf{M}B_1+h_1B_1^\top\mathbf{C}\beta+B_2^\top\tilde{\Omega}-\kappa h_1+\frac{1}{2}\vartheta^2 (h_1)^2,
+\end{split}
+\end{equation}
+with the initial condition $B_1(0)=B_P(\Delta)$, $B_2(0)=\tilde B_P(\Delta)$, $h_0(0)=h_1(0)=0$. 
+\end{corollary}
+We emphasize that solutions for SOFR and Eurodollar futures convexities in  \eqref{eq:convexity_ae_ord1_lead_cir} and \eqref{eq:convexity_ae_ord1_lead_cir2} are {\it exact}, not approximate. 
+Next, for valuation of options on rate futures we need the underlying dynamics under forward measure $\mathbb{Q}^{T_E}$, where $T_E$ is option payment date. 
+
+\begin{corollary}[SOFR futures $\mathbb{Q}^{T_E}$-dynamics in FHJM-SV model with CIR volatility]\label{thm:futures_dynamics_cir_fwd_meas}
+Let $t\in[0, T_S]$. The dynamics of $ F^{\mathrm{ON}}_t$ in model \eqref{eq:FHJM_SV} under $T_E$-forward measure $\mathbb{Q}^{T_E}$ is 
+\begin{equation}\label{eq:futures_fwd_cir}
+\begin{split}
+d F^{\mathrm{ON}}_t&=\left( F^{\mathrm{ON}}_t+\Delta^{-1}\right)\left[-V_ta_0(t)^\top\eta(t)\,dt + \sqrt{V_t} a_0(t)^\top\,dW^{T, (0)}_t+ a_1(t)\sqrt{V_t}\,dw^{T, (1)}_t\right], \\
+dV_{t}&=\left[\kappa\theta-\left(\kappa+\beta(t)^\top \eta(t)\right)V_t\right]dt + \sqrt{V_{t}} \left(\vec{\beta}(t)^\top\,dW^{(0)}_t+\beta_{0}(t)\,dw^{(1)}_t\right),
+\end{split}
+\end{equation}
+where 
+\begin{equation}\label{eq:futures_coeffs_a2}
+\begin{split}
+&\eta(t):=\mathbf{C}(t)^\top B_P(T_E-t)^\top,\\
+&a_0(t):=(B_P(T_E-t)-B_P(T_S-t))\mathbf{C}(t)+h_1(t)\vec{\beta}(t)^\top,\\
+&a_1(t):=\beta_0(t)h_1(t),
+\end{split}
+\end{equation}
+and $h_0$, $h_1$ solve Eq \eqref{eq:MF_conv_adj_ODE_cir}.
+
+\end{corollary}
+As its proof is similar to that of Theorem \ref{thm:futures_dynamics_logsv_fwd_meas}, we omit it. We also skip the result concerning its $\mathbb{Q}$-dynamics for sake of brevity. 
+
+
+
+\subsection{Log-normal SV Driver}
+
+Next, we derive analytic solution for the convexity adjustment function $c^{\mathrm{ON}}(t)$ in Eq. \eqref{eq:fut_rate_ON} for the log-normal SV driver. We present the exact details in Appendix \ref{app:convexity_adj}, while here we apply the main result that, under log-normal SV driver, the function $c^{\mathrm{ON}}(t)$ can be decomposed into leading term $E^{[0]}$ and reminder term $R^{[0]}$, where $E^{[0]}$ is exponential-affine function of mean-adjusted volatility $\sigma_t-\theta$.
+
+\begin{theorem}[Convexity adjustment for SOFR futures in FHJM-SV model with log-normal volatility]\label{thm:futures_conv_logsv}
+Assuming the solution for the convexity adjustment function using leading term $E^{[0]}$ in Eq \eqref{eq:convexity_logsv_ae1}, we consider futures rate $F^{\mathrm{ON}}_t$, $t\in[0,T_E]$  defined by
+\begin{equation}\label{eq:fut_rate_approx}
+\begin{split}
+& F^{\mathrm{ON}}_t= F^{\mathrm{ON}}(t;T_S,T_E):=\frac{1}{\Delta}\left(\frac{P(t,T_S)}{P(t,T_E)} c^{\mathrm{ON}}(t)-1\right),\\
+& c^{\mathrm{ON}}(t)=c^{\mathrm{ON}}(t;\sigma)=\exp\left[h_0(t)+h_1(t)(\sigma-\theta) \right],
+\end{split}
+\end{equation}
+where $h_0$, $h_1$ satisfy the following quadratic differential system as a function of $\tau=T_E-t$:
+\begin{equation}\label{eq:MF_conv_adj_ODE_logsv}
+\begin{split}
+\frac{d}{d\tau}B_1&=B_1^\top \mathbf{D}+\mathbbm{1}_{\tau\le \Delta}B(0),\\
+\frac{d}{d\tau}B_2&=B_2^\top \tilde{\mathbf{D}}+\mathbbm{1}_{\tau\le \Delta}\tilde B(0),\\
+\frac{d}{d\tau}h_0&=\theta^2\left(\frac{1}{2}B_1^\top\mathbf{M}B_1 +B_2^\top\tilde{\Omega}\right)+\kappa_0h_1+\frac{1}{2}\vartheta^2\theta^2h_1^2+\theta^2h_1\cdot B_1^\top\mathbf{C}\beta,\\
+\frac{d}{d\tau}h_1&=2\theta\left(\frac{1}{2}B_1^\top\mathbf{M}B_1 +B_2^\top\tilde{\Omega}\right)-\kappa_1h_1+ \vartheta^2\theta h_1^2+2\theta h_1\cdot B_1^\top\mathbf{C}\beta,
+\end{split}
+\end{equation}
+with the initial condition $B_1(0)=B_2(0)=0$, $h_0(0)=h_1(0)=0$.
+
+Here $\vartheta(t)$ is the total volatility of volatility defined by
+\begin{equation}\label{eq:vartheta_logsv}
+\vartheta(t)=\sqrt{\|\vec{\beta}(t)\|^2+(\beta_0(t))^2}.
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+See Appendix \ref{app:futures_conv_logsv}.
+\end{proof}
+
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.70\textwidth, angle=0] {figures/fhjm/convexity_adj_basis_NS_2y.pdf}
+\end{center}
+\caption{Futures convexity adjustment computed using Eq \eqref{eq:fut_rate_approx} for the expiries up to $2y$.  
+Monte-Carlo simulations are performed using model dynamics \eqref{eq:FHJM_SV} with log-normal SV driver \eqref{eq:md}.
+Dashed lines labeled by $MC-0.95ci$ and $MC+0.95ci$ are MC 95\% confidence intervals computed using MC simulations. Solid blue line represents convexity-adjustment calculated using affine expansion in Theorem \ref{thm:futures_conv_logsv}.
+Model parameters are calibrated to SOFR options slice with $103\mathrm{d}$ expiry. Market data is the same as in Section \ref{sec:calib_SOFR}
+%We use following model parameters: $\mathbf{C}=\mathrm{diag}\{0.01,0.01,0.01\}$, $\beta\equiv 0.2$, $\varepsilon\equiv 0.5$, $\kappa_1=\kappa_2=0.2$
+}
+\label{fig:futures_conv_NS}
+\end{figure} 
+In Figure \ref{fig:futures_conv_NS}, we display the magnitude of futures convexity adjustment in the FHJM-SV model, calculated using solution of the zeroth-order affine expansion \eqref{eq:convexity_logsv_ae1} and exact solution, estimated using MC simulations in model dynamics \eqref{eq:FHJM_SV} using Nelson-Siegel basis. We use 200,000 trials and daily time steps. 
+
+We mention that to estimate only the futures convexity adjustment more accurately, then the extension of affine expansion to first- and second-order is possible. 
+
+%The reason convexity adjustment function in \eqref{eq:convexity_ae_ord1_lead} does not include quadratic term  is because presence of higher-order terms hampers the construction of analytically tractable model for rate futures. We furthermore observe that higher order terms usually provide insignificant contribution for wide range of model parameters as they are very small compared to first two terms. 
+
+
+
+
+\begin{corollary}[Convexity adjustment for Eurodollar futures in FHJM-SV model with log-normal volatility]\label{cor:futures_conv_logsv}
+The function $c^{\mathrm{ED}}(t)$ in \eqref{eq:fut_rate_ED} under CIR SV dynamics \eqref{eq:mdh} for $t\in [0,T_S]$ is given by
+\begin{equation}\label{eq:convexity_ae_ord1_lead_logsv2}
+c^{\mathrm{ED}}(t)=c^{\mathrm{ED}}(t;\sigma)=\exp\left[h_0(t)+h_1(t)(\sigma-\theta)\right],
+\end{equation}
+where $h_0$, $h_1$ 
+satisfy the following quadratic differential system as a function of $\tau=T_S-t$:
+\begin{equation}\label{eq:MF_conv_adj_ODE_logsv2}
+\begin{split}
+\frac{d}{d\tau}B_1&=B_1^\top \mathbf{D},\\
+\frac{d}{d\tau}B_2&=B_2^\top \tilde{\mathbf{D}},\\
+\frac{d}{d\tau}h_0&=\theta^2\left(\frac{1}{2}B_1^\top\mathbf{M}B_1 +B_2^\top\tilde{\Omega}\right)+\kappa_0h_1+\frac{1}{2}\vartheta^2\theta^2h_1^2+\theta^2h_1\cdot B_1^\top\mathbf{C}\beta,\\
+\frac{d}{d\tau}h_1&=2\theta\left(\frac{1}{2}B_1^\top\mathbf{M}B_1 +B_2^\top\tilde{\Omega}\right)-\kappa_1h_1+ \vartheta^2\theta h_1^2+2\theta h_1\cdot B_1^\top\mathbf{C}\beta,
+\end{split}
+\end{equation}
+ with the initial condition $B_1(0)=B_P(\Delta)$, $B_2(0)=\tilde B_P(\Delta)$, $h_0(0)=h_1(0)=0$. 
+\end{corollary}
+
+Convexity adjustment function in \eqref{eq:fut_rate_approx} and \eqref{eq:convexity_ae_ord1_lead_logsv2} does not include quadratic term  because the presence of higher-order terms hampers the construction of analytically tractable model for rate futures. In practice, we observe that higher order terms usually provide insignificant contribution across the wide range of model parameters as they are very small compared to first two terms. With the linear exp-affine function for $c^{\mathrm{ON}}(t)$, we obtain analytically tractable dynamics of SOFR futures. 
+
+\begin{corollary}[SOFR futures $\mathbb{Q}$-dynamics in FHJM-SV model with log-normal SV]\label{thm:futures_dynamics_Q}
+Let $t\le T_S$. In model \eqref{eq:FHJM_SV}, the risk-neutral dynamics of $ F^{\mathrm{ON}}_t$,  defined by \eqref{eq:fut_rate_approx}, is given by 
+\begin{equation}\label{eq:futures_Q}
+\begin{split}
+d F^{\mathrm{ON}}_t&=\left( F^{\mathrm{ON}}_t+\Delta^{-1}\right)\sigma_t\left(a_0(t)\,dW_t^{(0)}+a_1(t)\,dw_t^{(1)}\right), \quad  F_0=F\\
+d\sigma_t&=\left(\kappa_{1}+\kappa_{2}\sigma_t\right)(\theta-\sigma_t)dt + \sigma_t\vec{\beta}(t)^\top dW^{(0)}_t+\beta_0(t)\sigma_tdw^{(1)}_t,\quad \sigma_0=\sigma
+\end{split}
+\end{equation}
+where $\tau_S=T_S-t$, $\tau_E=T_E-t$ and $a_0(t)$, $a_1(t)$ are defined by
+\begin{equation}\label{eq:futures_coeffs_a}
+\begin{split}
+&a_0(t):=(B_P(\tau_E)-B_P(\tau_S))\mathbf{C}(t)+h_1(t)\vec{\beta}(t)^\top,\\
+&a_1(t):=\beta_0(t)h_1(t),
+\end{split}
+\end{equation}
+and $h_0$, $h_1$ solve Eq \eqref{eq:MF_conv_adj_ODE_logsv}.
+\end{corollary}
+
+
+
+\begin{proof}
+Due to bond-reconstruction formula in FHJM-SV model, we have
+\begin{equation*}
+\begin{split}
+\frac{P(t,T_S)}{P(t,T_E)}&=\frac{P(0,T_S)}{P(0,t)}\exp\left(-B_P(\tau_S)X_t-\tilde B_P(\tau_S)Y_t\right) \left[ \frac{P(0,T_E)}{P(0,t)}\exp\left(-B_P(\tau_E)X_t-\tilde B_P(\tau_E)Y_t\right)\right]^{-1}=\\
+&=\frac{P(0,T_S)}{P(0,T_E)}\exp\left[(B_P(\tau_E)-B_P(\tau_S))X_t+(\tilde B_P(\tau_E)-\tilde B_P(\tau_S))Y_t\right].
+\end{split}
+\end{equation*}
+Thus, we obtain
+\begin{equation*}
+\begin{split}
+d\left[\frac{P(t,T_S)}{P(t,T_E)}\right]&=\frac{P(t,T_S)}{P(t,T_E)}\left[(B_P(\tau_E)-B_P(\tau_S))\,dX_t+(\ldots)\,dt\right]\\
+&=\frac{P(t,T_S)}{P(t,T_E)}\left[\sigma_t(B_P(\tau_E)-B_P(\tau_S))\mathbf{C}(t)\,dW^{(0)}_t+(\ldots)\,dt\right].
+\end{split}
+\end{equation*}
+Next, as 
+\begin{equation*}
+d c^{\mathrm{ON}}(t)=\sigma_t  c^{\mathrm{ON}}(t)\left[h_1(t)\left(\vec{\beta}(t)^\top\,dW_t^{(0)}+\beta_0(t)\,dw_t^{(1)}\right)+(\ldots)dt\right]
+\end{equation*}
+it follows from definition \eqref{eq:fut_rate_approx} that
+\begin{equation*}
+\begin{split}
+d F^{\mathrm{ON}}_t&=\frac{1}{\Delta}d\left[\frac{P(t,T_S)}{P(t,T_E)}c^{\mathrm{ON}}(t)\right]=\left( F^{\mathrm{ON}}_t+\Delta^{-1}\right)\sigma_t\left[(B_P(\tau_E)-B_P(\tau_S))\mathbf{C}(t)\,dW_t^{(0)}+\right.\\
+&\left.+h_1(t)\left(\vec{\beta}(t)^\top\,dW_t^{(0)}+\beta_0(t)\,dw_t^{(1)}\right)+(...)dt\right].
+\end{split}
+\end{equation*}
+By noting that futures rate has zero-drift under $\mathbb{Q}$, see Eq \eqref{eq:marting_futures_ON}, we complete the proof. 
+\end{proof}
+
+
+\noindent {\it Remark.} From Theorem \ref{thm:futures_dynamics_Q} we see that futures rate follows displaced log-normal dynamics in model \eqref{eq:FHJM_SV}. 
+
+In Section \ref{sec::valution_market_instum} we develop the framework for analytical valuation of options on rate futures. Hence, we need the underlying dynamics in $T_E$-forward measure $\mathbb{Q}^{T_E}$.  
+\begin{corollary}[SOFR futures $\mathbb{Q}^{T_E}$-dynamics in FHJM-SV model with log-normal SV]\label{thm:futures_dynamics_logsv_fwd_meas}
+Let $t\le T_S$. The dynamics of $F^{\mathrm{ON}}_t$ in model \eqref{eq:FHJM_SV} under $T_E$-forward measure $\mathbb{Q}^{T_E}$ is 
+\begin{equation}\label{eq:futures_fwd_logsv}
+\begin{split}
+d F^{\mathrm{ON}}_t&=\left( F^{\mathrm{ON}}_t+\Delta^{-1}\right)\left[-\sigma_t^2a_0(t)^\top\eta(t)\,dt + \sigma_t a_0(t)^\top\,dW^{T, (0)}_t+ a_1(t)\sigma_t\,dw^{T, (1)}_t\right], \\
+d\sigma_t&=[\kappa_1\theta-(\kappa_1-\kappa_2\theta)\sigma_t-(\kappa_2+\vec{\beta}(t)^\top\eta(t))\sigma_t^2]\,dt + \sigma_t\vec{\beta}(t)^\top\,dW^{T, (0)}_t+\beta_0(t)\sigma_tdw^{T, (1)}_t.
+\end{split}
+\end{equation}
+where 
+\begin{equation}\label{eq:futures_coeffs_eta}
+\eta(t):=\mathbf{C}(t)^\top B_P(T_E-t)^\top.
+\end{equation}
+
+\end{corollary}
+
+
+\begin{proof}
+If we change the measure from risk-neutral $\mathbb{Q}$ to $T_E$-forward measure $\mathbb{Q}^{T_E}$, the Radon-Nikodym derivative for the measure change equals 
+\begin{equation}\label{eq:radon_nikod_deriv_fwd}
+\left.\frac{d\mathbb{Q}^{T_E}}{d\mathbb{Q}}\right|_{\mathcal{F}_t}
+=\frac{P(t,T_E)/P(0,T_E)}{N(t)}
+=\mathcal{E}\left(-\int_0^t \sigma_s\eta(s)^\top\,dW^{(0)}_s\right),
+\end{equation}
+where $\eta(\cdot)$ is defined in \eqref{eq:futures_coeffs_eta} and $\mathcal{E}(\cdot)$ denotes It\^{o} exponential. Expression \eqref{eq:radon_nikod_deriv_fwd} for the Radon-Nikodym derivative can be easily deduced from the expression for the volatility of the instantaneous forward rate in model \eqref{eq:FHJM_SV}. Therefore, by Girsanov theorem, the process 
+$W^{T_E,(0)}_t:=W_t^{(0)}+\int_0^t\sigma_s\eta(s)\,ds$ 
+is a Brownian motion under $\mathbb{Q}^{T_E}$. Substituting into Eq. \eqref{eq:futures_Q} we derive the dynamics of futures rate in \eqref{eq:futures_fwd_logsv}. Finally, the $\mathbb{Q}^{T_E}$-dynamics of the volatility process becomes as follows
+\begin{equation*}
+\begin{split}
+d\sigma_t&=\left(\kappa_{1}+\kappa_{2}\sigma_t\right)(\theta-\sigma_t)dt + \sigma_t\vec{\beta}(t)^\top (dW^{T_E,(0)}_t-\sigma_t\eta(t)dt)+\beta_0(t)\sigma_t\,dw^{T_E,(1)}_t=\\
+&=[\kappa_1\theta-(\kappa_1-\kappa_2\theta)\sigma_t-(\kappa_2+\vec{\beta}(t)^\top\eta(t))\sigma_t^2]\,dt +\sigma_t\vec{\beta}(t)^\top\,dW^{T_E, (0)}_t+\beta_0(t)\sigma_t\,dw^{T_E,(1)}_t
+\end{split}
+\end{equation*}
+\end{proof}
+Here we must impose the condition 
+\begin{equation}\label{eq:kappa2_cond_QT}
+\kappa_{2}>\vec{\beta}(t)^\top \mathbf{C}^\top(t) B_P(T_E-t).
+\end{equation} 
+so that the volatility process $\sigma_t$ in Eq \eqref{eq:futures_fwd_logsv} admits strong solution (see Theorem 3.3 in \cite{Sepp2024} for details). 
+
+
+
+\subsection{Explosions of Futures Dynamics}\label{sec:futures_explosion}
+ 
+%We recall that singular behavior is also observed for certain derivatives prices in short rate lognormal interest rates models [2, 3]. It was observed by Hogan and Weintraub [18] that Eurodollar futures prices are infinite in the Dothan and Black-Karasinski models. A milder singularity is also present in finite tenor log-normal models, such as the Black-Derman-Toy model, manifested as a rapid increase of the Eurodollar futures convexity adjustment as the volatility increases above a threshold value [29]. 
+
+%It is well-known that futures prices in lognormal interest rate models might be infinite, \cite{AndersenPiterbarg2010} and references therein.
+ 
+Finally, we study the problem of explosion in futures prices using measure-change argument and utilize the idea that futures price $ F_t$ in approximate dynamics \eqref{eq:futures_Q} is a true martingale if auxiliary volatility process, as defined in \eqref{eq:fut_expl3}, does not explode. This idea has been successfully applied in \cite{Sin1998}, \cite{Lewis2000}, \cite{Lucic2004}, \cite{Lions2007}, among others, although in a different contexts. We find conditions under which there is no explosion in futures price $F^{\mathrm{ON}}_t$ over a given time horizon $t\in [0,T^*]$, thus ensuring that model for futures rate is well-specified. 
+
+\begin{theorem}\label{thm:futures_explosion}
+Consider approximate futures dynamics $ F^{\mathrm{ON}}_t$ given by \eqref{eq:futures_Q} over time horizon $t\in [0,T^*]$. Assume that $\kappa_1\ge 0$, $\theta>0$. Then, the futures price process is a true martingale for $t\in [0,T^*]$ if
+\begin{equation}\label{eq:fut_expl0}
+\kappa_2>\max_{t\in [0,T^*]}\left(0,\vec{\beta}(t)^\top a_0(t)+\beta_0(t)a_1(t)\right),
+\end{equation}
+where $a_0(t)$, $a_1(t)$ are defined in Eq. \eqref{eq:futures_coeffs_a}. 
+\end{theorem}
+Proof is given in Appendix \ref{app:futures_explosion}. \\\\
+\noindent {\it Remark.}  Using exactly same approach, we can derive same conditions under which Eurodollar futures price  $ F^{\mathrm{ED}}_t$ does not explode over some finite horizon. We skip its proof for sake of brevity.  
+
+
+\section{Valuation of Rates Derivatives using MGF}\label{sec::valution_market_instum}
+
+In this section, we derive analytic formulas for valuation of swaptions and options of rate futures under generic FHJM-SV framework using moment generating function (MGF) corresponding to a specific FHJM-SV model. We emphasize that these valuation formulas can be applied to any concrete FHJM-SV model with analytic MGF. In the next section, we derive solutions for MGFs in the FHJM-SV model with CIR and log-normal SV driver. 
+
+
+\subsection{Swaptions}
+
+We consider vanilla call and put payoffs, denoted by $u^{call}(s_T)$ and $u^{put}(s_T)$ respectively, on underlying swap rate $s_T$ settled at time $T$
+\begin{equation*}
+\begin{split}
+&u^{call}(s_T)=A(T)\max(s_T-K,0),\\
+&u^{put}(s_T)=A(T)\max(K-s_T,0)=A(T)\left[\max(s_T-K,0)-(s_T-K)\right],
+\end{split}
+\end{equation*}
+where $A(T)$ is the annuity.
+By risk-neutral approach, the value function of the option with payoff $u(s_T)$, denoted by $U(\tau, T; s, v)$, is valued, using the annuity as the numeraire, as follows 
+\begin{equation}\label{eq::call_swap}
+U(\tau, T; s, v)=A(t)\mathbb{E}^A\left[\left.u(s_T)\right|s_t=s,v_t=v\right],
+\end{equation}
+where $v_t$ stands for ether the volatility or variance variable. Assuming that MFG is available analytically, we then adapt Lewis-Lipton approach for valuation of vanilla options using Fourier transform, see \cite{Lewis2000}, \cite{Lipton2001}. 
+
+
+\begin{definition}[Moment Generating Function] Under the annuity measure, the MGF of the swap rate $s_T$ in dynamics \eqref{eq:swap_ann2} is defined by
+
+\begin{equation}\label{eq:s_mgf}
+G(\tau,T,s,v; \phi)=\mathbb{E}^A\left[\left.e^{-\phi s_T}\right|s_t=s,v_t=v\right].
+\end{equation}
+
+\end{definition}
+
+We assume that $G$ exists. The existence must be analyzed case-by-case for specific choices of FHJM-SV models. The analysis for the FHJM-SV model with the log-normal volatility follows Theorem 4.2 in \cite{Sepp2024} and relies on $\frac{A(t)/A(0)}{N(t)}$ defined in \eqref{eq:radon_nikod_deriv} being a true martingale under the annuity measure $\mathbb{Q}^A$. To ensure it, we gave sufficient condition in Eq \eqref{eq:kappa2_cond_QA}. We skip details for brevity.
+
+
+\begin{corollary}[PDF] The probability density function (PDF) of $s_{T}$, denoted by $p(\tau,T,s, v;s')$ can be computed by the Fourier inversion:
+\begin{equation}\label{eq:fourier_inv1}
+\begin{split}
+p(\tau,T,s, v;s') & = \frac{1}{\pi}\Re\left[ \int^{\infty}_{0}\exp \left\{ \phi s' \right\} G(\tau,T,s, v; \phi)\,d\phi\right],
+\end{split} 
+\end{equation}
+where $\phi=\phi_{r}+ip$,  $i=\sqrt{-1}$, and $d\phi \equiv dp$.
+
+\end{corollary} 
+
+
+
+
+\begin{proposition}\label{prop:capped_pay_swap} We assume that MGF $G(\tau, T, s, v; \phi)$ is the MGF of the swap rate $s_T$ with transform variable $\phi$ defined in \eqref{eq:s_mgf}. The value of call option in \eqref{eq::call_swap} is given by
+\begin{equation} \label{eq:capped_pay}
+\begin{split}
+  U(\tau, T; s, v) = \frac{1}{\pi} A(t)\Re\left[\int^{\infty}_{0}\frac{e^{\left(-\frac{1}{2}+ip\right) K}}{\left(-\frac{1}{2}+ip\right)^2}G(\tau,T, s, v;\phi=-\frac{1}{2}+ip)dp\right],
+\end{split} 
+\end{equation}
+where $p\in\mathbb{R}$.  
+\end{proposition}
+
+\begin{proof}
+Using Eq \eqref{eq::call_swap} along with Eq \eqref{eq:fourier_inv1}, we obtain
+\begin{equation} \label{eq:fourier_inv2}
+U(\tau, T; s, v) = A(t)\Re\left[ \int^{\infty}_{-\infty}\max\left\{s'-K,0\right\} \left[\frac{1}{\pi} \int^{\infty}_{0}e^{\phi s'} G(\tau,T, s, v;\phi)d\phi\right]ds'\right].
+\end{equation}
+
+Assuming that the inner integrals are finite, we exchange the integration order and the valuation formula becomes
+\begin{equation} \label{eq:fourier_inv3}
+U(\tau, T; s, v) = \frac{1}{\pi} A(t)\Re\left[\int^{\infty}_{0}\widehat{u}(\phi)G(\tau,T,s,v;\phi)d\phi\right],
+\end{equation}
+where $\widehat{u}(\phi)$ is the transformed payoff function:
+\begin{equation} \label{eq:fourier_inv4}
+\begin{split}
+\widehat{u}(\phi) & =  \int^{\infty}_{-\infty}e^{\phi s'} \max\left\{s'-K,0\right\}  ds' = \int_{K}^{\infty}e^{\phi s'} (s'-K) ds'\\
+& = \frac{1}{\phi}\int_{K}^{\infty} (s'-K) e^{\phi s'}ds'=\frac{e^{\phi K}}{\phi}\int_{K}^{\infty} (s'-K) e^{\phi (s'-K)}ds'\\
+	&=\frac{e^{\phi K}}{\phi}\int_{0}^{\infty} e^{\phi u}du=
+		\frac{e^{\phi K}}{\phi^2},
+\end{split} 
+\end{equation}
+provided $\Re[\phi]<0$. Setting $\phi=-\frac{1}{2}+ip$, we obtain valuation formula \eqref{eq:capped_pay}.
+
+\end{proof}
+
+\begin{corollary}[Swaption valuation]\label{cl:swaptions}
+The values of call option (payer swaption) and put option (receiver swaption) on swap rates are computed by
+\begin{equation}\label{eq:swaptions}
+\begin{split}
+&U^{call}(\tau, T, s)=U(\tau, T; s, v),\\
+&U^{put}(\tau, T, s)=U(\tau, T; s, v)-A(t)(s-K),
+\end{split}
+\end{equation}
+with $U(\tau, T; s, v)$ defined in Eq \eqref{eq:capped_pay}.
+
+\end{corollary}
+
+ 
+
+\subsection{Options on Rates Futures}
+
+We consider the futures rate and introduce log-shifted futures rate $\zeta_t$ defined as
+\begin{equation}\label{eq:log_shifted_futures}
+\zeta_t=\ln\left(F_t+\Delta^{-1}\right), \quad t\ge 0.
+\end{equation}
+We now assume that $G(\tau,T,\zeta,v;\phi)$ is the MGF corresponding to $\zeta_T$ defined by analogy to Eq \eqref{eq:s_mgf}. We consider call and put option on the futures rate with payoff functions settled at option expiry $T$ as follows
+\begin{equation}\label{eq:payoff_futures}
+\begin{split}
+c(F_T,K)&=\max(F_T-K,0)=F_T-\min(F_T,K)=F_T-\min(e^{\zeta_T}-\Delta^{-1},K)\\
+&=F_T+\Delta^{-1}-\min(e^{\zeta_T},K+\Delta^{-1}),\\
+p(F_T,K)&=\max(K-F_T,0)=K-\min(F_T,K)=K-\min(e^{\zeta_T}-\Delta^{-1},K)\\
+&=K+\Delta^{-1}-\min(e^{\zeta_T},K+\Delta^{-1}).
+\end{split}
+\end{equation}
+
+
+We note that options on futures rate (for instance, SOFR futures options traded on CME) are usually American-style and do not have futures-style margining. 
+We treat them as European and ignore their early exercise premium, which is usually insignificant.  
+
+For notational simplicity, we denote option payment date by $T$, i.e. $T:=T_E$. Thus, we consider the valuation of capped payoff under $T$-forward measure $\mathbb{Q}^{T}$:
+\begin{equation}
+U(\tau, T; \zeta,v)=P(t,T)\mathbb{E}^{\mathbb{Q}^{T}}\left[\left.\min(e^{\zeta_{T}},K+\Delta^{-1})\right|\zeta_t=\zeta,v_t=v\right].
+\end{equation}
+We similarly apply Lewis-Lipton approach for valuation of vanilla options using Fourier transform.
+
+\begin{proposition}\label{sc:capped}
+The valuation formula for the capped payoff is given by
+\begin{equation} \label{eq:capped_pay1}
+\begin{split}
+  U(\tau, T; \zeta,v)&  = P(t,T)\frac{K+\Delta^{-1}}{\pi} \Re\left[\int^{\infty}_{0} e^{(-\frac{1}{2}+ip) \zeta^{*}}  \frac{1}{p^{2}+1/4} G(\tau,T,\zeta,v; \phi=-\frac{1}{2}+ip)dp\right],
+  \end{split} 
+\end{equation}
+where $\zeta^{*}=\ln\left(\frac{K+\Delta^{-1}}{F+\Delta^{-1}}\right)$. 
+\end{proposition}
+\begin{proof}
+
+Using the MGF, the density of $\zeta_{\tau}$ is computed by the Fourier inversion
+\begin{equation}\label{eq:v3}
+ p(\tau,T,\zeta, v; \zeta') = \frac{1}{\pi}\Re\left[ \int^{\infty}_{0}\exp \left\{ \phi \zeta' \right\} G(\tau,T, \zeta,v; \phi)\,d\phi\right].
+\end{equation}
+We have
+\begin{equation*}
+\begin{split}
+    U(\tau, T; \zeta,v) = &P(t,T)\Re\left[ \int^{\infty}_{-\infty}\min\left\{e^{\zeta'},K+\Delta^{-1}\right\} \left[\frac{1}{\pi} \int^{\infty}_{0}e^{\phi \zeta'} G(\tau,T, \phi)d\phi\right]d\zeta'\right].
+\end{split} 
+\end{equation*}
+Assuming that the inner integrals are finite, we exchange the integration order to obtain
+\begin{equation} \label {eq:v5}
+\begin{split}
+  & U(\tau, T, \zeta) = \frac{1}{\pi} P(t,T) \Re\left[\int^{\infty}_{0}\widehat{u}(\phi)G(\tau,T, \phi)d\phi\right].
+\end{split} 
+\end{equation}
+
+
+Here $\widehat{u}(\phi)$ is the transformed payoff function
+\begin{equation} \label {eq:v6}
+\begin{split}
+   \widehat{u}(\phi) & =  \int^{\infty}_{-\infty}e^{\phi \zeta'} \min\left\{e^{\zeta'},K+\Delta^{-1}\right\}  d\zeta'  = \frac{e^{(\phi+1) k^{*}}}{\phi+1} - e^{k^{*}}\frac{1}{\phi}e^{\phi \zeta^{*}} = -  e^{(\phi+1) \zeta^{*}} \frac{1}{(\phi+1)\phi}=\\
+		& =- e^{\zeta^{*}}e^{\phi \zeta^*}\frac{1}{(\phi+1)\phi} = -(K+\Delta^{-1}) e^{\phi \zeta^{*}} \frac{1}{(\phi+1)\phi},
+\end{split} 
+\end{equation}
+where $\zeta^{*}=\ln\left(\frac{K+\Delta^{-1}}{F+\Delta^{-1}}\right)$, $k^{*}=\ln(K+\Delta^{-1})$ with the first integral being finite for $\Re[\phi]>-1$ and the second integral being finite for $\Re[\phi]<0$. Thus, integral \eqref{eq:v6} is finite for $-1<\Re[\phi]<0$. Setting $\phi=-1/2+ip$, we derive Eq \eqref{eq:capped_pay1}.
+
+\end{proof}
+
+
+\begin{corollary}[Valuation of options on rate futures]\label{cl:sofr}
+The value of call and put option on rate future is computed, respectively, as
+\begin{equation}\label{eq:sofr_options}
+\begin{split}
+&U^{call}(\tau, T, \zeta)= P(t,T)(R_t+\Delta^{-1})-U(\tau, T, \zeta),\\
+&U^{put}(\tau, T, \zeta)= P(t,T)(K+\Delta^{-1})-U(\tau, T, \zeta),
+\end{split}
+\end{equation}
+with $U(\tau, T, \zeta)$ defined in \eqref{eq:capped_pay1} and $R_t=\frac{1}{\Delta}\left(\frac{P(t,T_S)}{P(t,T_E)}-1\right)$
+\end{corollary}
+
+As we ignored early exercise feature of options of future, the formula for call option in \eqref{eq:sofr_options} can be deduced from put-call parity: 
+\begin{equation}\label{eq:sofr_options2}
+U^{call}(\tau, T, \zeta)-U^{put}(\tau, T, \zeta)=P(t,T)\left(\mathbb{E}^T\left[\left.F_T\right|\mathcal{F}_t\right]-K\right)=P(t,T)\left(R_t-K\right),
+\end{equation}
+where we used the fact that (see \cite{Lyashenko2019})
+\begin{equation*}
+\mathbb{E}^{T}\left[\left.F_{T}\right|\mathcal{F}_t\right]\equiv\mathbb{E}^{T}\left[\left.F^{\mathrm{ON}}(T_S,T_E)\right|\mathcal{F}_t\right]=\frac{1}{\Delta}\left(\frac{P(t,T_S)}{P(t,T_E)}-1\right).
+\end{equation*}
+
+%However, for options expiring on futures fixing date (in particular, quarterly options), calculation of $\mathbb{E}^T(F_T)$ is identical to that of Libor-in-arrears. We can use standard methods to estimate Libor-in-arrears convexity adjustment and value call option using \eqref{eq:sofr_options2}. 
+%Interestingly, if options on SOFR futures had futures-style margining, such problem would not arise.
+
+
+
+
+
+
+\section{Solution to MGF for FHJM-SV Model with CIR SV}
+
+We first derive the analytic solution for the MGF of the state variable $z_t$ in FHJM model with CIR SV dynamics. To keep notations consistent, we introduce mean-adjusted process $v_t$ defined by
+\begin{equation}
+v_t=V_t-\theta,
+\end{equation}
+where $V_t$ is the CIR SV process with the dynamic in Eq \eqref{eq:mdh}.
+
+
+We further introduce generic state variable process $z_t$ which represents either the swap rate $s_t$ in Eq \eqref{eq:swap_ann2_cir} or the log-shifted futures price $\zeta_t$ in Eq \eqref{eq:log_shifted_futures} with futures dynamics given by Eq \eqref{eq:futures_fwd_cir}. Similarly, under pricing measure $\mathbb{\hat Q}$ the dynamics of state variables $\{z_t, v_t\}$ are given by
+\begin{equation}\label{eq:price_process_cir}
+\begin{split}
+dz_t=&-\hat b(t)(v_t+\theta)\,dt+\sqrt{v_t+\theta}\left[\hat a_0(t)^\top\,d\hat W^{(0)}_t+\hat a_1(t)\,d\hat w^{(1)}_t\right],\\
+dv_t=&(\hat\kappa_0(t)-\hat\kappa_1(t) v_t)dt+\sqrt{v_t+\theta}\left[\vec{\beta}(t)^\top \,d\hat W^{(0)}_t+\beta_0(t)\,d\hat w^{(1)}_t\right],
+\end{split}
+\end{equation}
+where $\hat a_0(t)$ and $\hat a_1(t)$ are deterministic vector and scalar functions, respectively. 
+
+\begin{theorem}\label{thm:mgf_cir_gen} We consider moment-generating function (MGF) for the variable $z_{T}$, denoted by $G(\tau, T, z,v; \phi)$, using transform variable $\phi\in \mathbb{C}$. Then $G(\tau, T, z,v; \phi)$ is given by the exponential-affine form: 
+\begin{equation}\label{eq:mgf_cir_gen}
+\begin{split}
+& G(\tau, T, z,v; \phi)= \exp \left\{-\phi z+  \sum^{1}_{k=0}A^{(k)}(\tau,T;\phi)v^{k}  \right\},
+\end{split}
+\end{equation}
+where vector function $\mathbf{A}(\tau)=\left\{A^{(k)}(\tau,T;\phi)\right\}$, $k=0,1$, solves the following quadratic differential system as a function of $\tau$:
+\begin{equation}\label{eq:mgf_cir_gen_ode}
+\begin{split}
+A^{(k)}_\tau&=\mathbf{A}^\top M^{(k)}\mathbf{A} + \left(L^{(k)}\right)^\top \mathbf{A} + H^{(k)},\\
+M^{(k)}&=\left\{
+\begin{pmatrix} % first matrix
+0 & 0  \\
+0 & \frac{\theta\vartheta^2}{2} 
+\end{pmatrix}, 
+\begin{pmatrix} % second matrix
+0 & 0 \\
+0 & \frac{\vartheta^2}{2} \\
+\end{pmatrix} 
+\right\},\\
+L^{(k)}&=\left\{\begin{pmatrix} % linear terms 
+0 \\ \hat\kappa_0-\theta(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi 
+\end{pmatrix},
+\begin{pmatrix} % linear terms 
+0 \\ -\hat\kappa_1-(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi 
+\end{pmatrix}
+\right\},\\
+H^{(k)}&=\left\{
+\frac{1}{2}\theta (\|\hat a_0\|^2+\hat a_1^2)\phi^2+\theta\phi \hat b, \
+\frac{1}{2}  (\|\hat a_0\|^2+\hat a_1^2)\phi^2 + \phi \hat b \right\},
+\end{split}
+\end{equation}
+with the initial condition $\mathbf{A}(0)=( 0, 0)^\top$, where we omit argument $T-\tau$ in functions $\hat\kappa_i, \hat a_i, \hat b, \vec\beta, \beta_0, \vartheta$. 
+\end{theorem}
+
+We emphasize that although solution \eqref{eq:mgf_cir_gen} is exact, parameters of the SDE \eqref{eq:price_process_cir} are inherently time-dependent, even when parameters of the variance process $V_{t}$ in Eq \eqref{eq:mdh} are constant in time. Thus, we always need to resort to numerical solution of the  quadratic ODEs \eqref{eq:mgf_cir_gen_ode}. 
+
+\begin{proof}
+The MGF $G$ in Eq \eqref{eq:mgf_cir_gen} solves the problem
+\begin{equation}\label{eq:pde_cir}
+-\frac{\partial G}{\partial \tau}+\mathcal{L}G=0,\qquad G(0,T;z,v; \phi)=e^{-\phi z},
+\end{equation}
+where operator $\mathcal{L}$ is defined by $\mathcal{L}=\mathcal{L}^{(z)}+\mathcal{L}^{(v)}$ with
+\begin{equation}\label{eq:pde_cir_generator}
+\begin{split}
+\mathcal{L}^{(z)}&=-\hat b(T-\tau)(v+\theta)\frac{\partial }{\partial z}+\frac{1}{2}\left(\|\hat a_0(T-\tau)\|^2+\hat a_1(T-\tau)^2\right)(v+\theta)\frac{\partial^2 }{\partial z^2}+\\
+&+(v+\theta)\left[\langle \hat a_0(T-\tau), \vec\beta(T-\tau)\rangle +\hat a_1(T-\tau)\beta_0(T-\tau)\right]\frac{\partial^2 }{\partial z\partial v},\\
+\mathcal{L}^{(v)}&=\left[\hat\kappa_0(T-\tau)-\hat\kappa_1(T-\tau) v\right]\frac{\partial }{\partial v}+\frac{1}{2}\vartheta(T-\tau)^2(v+\theta)\frac{\partial^2 }{\partial v^2}.
+\end{split}
+\end{equation}
+
+Since the problem \eqref{eq:pde_cir} is affine in $v$, we take as an ansatz the exponential-affine function in Eq \eqref{eq:mgf_cir_gen}. To obtain the ODEs \eqref{eq:mgf_cir_gen_ode}  for
+$A(k)$, we match the terms with $v^k$, $k=0,1$. Initial conditions
+for ODEs \eqref{eq:mgf_cir_gen_ode} are set to reproduce initial conditions of the problem \eqref{eq:pde_cir}. 
+\end{proof}
+
+
+
+\begin{corollary}[Affine solution for swap rate] Moment generating function in Eq \eqref{eq:mgf_cir_gen} for the state-independent swap rate $s_T$ in Eq \eqref{eq:swap_ann2} defined by
+\begin{equation}\label{eq:s_heston}
+G(\tau,T,s,v;\phi)=\mathbb{E}^A\left[\left.e^{-\phi s_T}\right|s_t=s,v_t=v\right]
+\end{equation}
+can be found as a solution of the problem \eqref{eq:mgf_cir_gen_ode} by setting
+\begin{equation*}
+\begin{split}
+&\hat a_0(t)=a(t),\quad \hat a_1(t)\equiv 0,\quad \hat b(t)\equiv 0,\\
+&\hat\kappa_0(t):=\beta_2(t)\theta, \quad \hat\kappa_1(t):=\kappa_1-\beta_2(t)
+\end{split}
+\end{equation*}
+everywhere in Theorem \ref{thm:mgf_cir_gen}, where $a(t)$ and $\beta_2(t)$ are defined in Eq \eqref{eq:def1}. 
+\end{corollary}
+
+
+\begin{corollary}[Affine solution for log-shifted futures price] The moment generating function for the log-shifted futures price $\zeta_T$  in Eq \eqref{eq:mgf_cir_gen} 
+\begin{equation} \label{eq:f_heston}
+G(\tau,T,\zeta,v;\phi)=\mathbb{E}^{\mathbb{Q}^{T}}\left[\left.e^{-\phi \zeta_T}\right|\zeta_t=\zeta,v_t=v\right]
+\end{equation}
+can be found as a solution of the problem \eqref{eq:mgf_cir_gen_ode} by setting
+\begin{equation*}
+\begin{split}
+&\hat a_0(t)=a_0(t),\quad \hat a_1(t)=a_1(t),\\
+&\hat b(t)=a_0(t)^\top\eta(t)+\frac{1}{2}\left(\|a_0(t)\|^2+a_1(t)^2\right),\\
+&\hat\kappa_0(t):=\beta_2(t)\theta, \quad \hat\kappa_1(t):=\kappa_1-\beta_2(t)
+\end{split}
+\end{equation*}
+everywhere in Theorem \ref{thm:mgf_cir_gen}, where $a_0(t)$, $a_1(t)$, $\eta(t)$ are defined in Eq \eqref{eq:futures_coeffs_a2}.
+\end{corollary}
+
+
+
+\section{Solution to MGF for FHJM-SV model with Log-normal SV Driver}\label{sec::affine_expansion}
+
+We now derive an analytic approximation for the MGF in the FHJM model with log-normal SV dynamics in Eq \eqref{eq:md}. We first introduce mean-adjusted volatility process $v_t$ defined by
+\begin{equation*}
+v_t=\sigma_t-\theta.
+\end{equation*}
+
+We then introduce generic state variable process $z_t$ which stands for either the swap rate $s_t$ in Eq \eqref{eq:swap_ann2_logsv} or the log-shifted futures price $\zeta_t$ in Eq \eqref{eq:log_shifted_futures} with futures rate $F_t$ defined in Eq \eqref{eq:futures_fwd_logsv}. We assume that under pricing measure $\mathbb{\hat Q}$ the dynamics of state variables $\{z_t, v_t\}$ are given by
+\begin{equation}\label{eq:price_process_logsv}
+\begin{split}
+dz_t=&-\hat b(t)(v_t+\theta)^2\,dt+(v_t+\theta)\left[\hat a_0(t)^\top\,d\hat W^{(0)}_t+\hat a_1(t)\,d\hat w^{(1)}_t\right],\\
+dv_t=&(\hat\kappa_0(t)-\hat\kappa_1(t) v_t-\hat\kappa_2(t)v_t^2)dt+(v_t+\theta)\left[\vec{\beta}(t)^\top \,d\hat W^{(0)}_t+\beta_0(t)\,d\hat w^{(1)}_t\right],
+\end{split}
+\end{equation}
+where $\hat W^{(0)}$ is $d$-dimensional vector of independent Brownian motions and $\hat w^{(1)}$ is one-dimensional Brownian motion under $\mathbb{\hat Q}$. We keep the notations generic so that pricing measure $\mathbb{\hat Q}$ will be identified later because it depends on the choice of the instrument. Here $\hat a_0(t)$ and $\hat a_1(t)$ are vector and scalar leverage functions, respectively, which are deterministic functions of time. 
+
+
+
+
+\subsection{Affine expansion of Moment Generating Function}
+
+We consider the following valuation problem 
+\begin{equation}\label{eq:val_gen}
+U(\tau,T;z,v)=\mathbb{\hat E}\left[\left.u(z_T)\right|z_t=z,v_t=v\right]=
+\mathbb{\hat E}\left[\left.u(z_T)\right|\mathcal{F}_t\right],
+\end{equation}
+where $\tau=T-t$. Using Theorem 4.1 in \cite{Sepp2024}, we can show that function $U$ solves the problem (we emphasize that the classic Feynman-Kac formula does not apply directly because of the non-linear drift of the volatility)
+\begin{equation}\label{eq:pde1}
+\begin{split}
+&-\frac{\partial U}{\partial \tau}+\mathcal{L}U=0,\\
+&U(0,T;z,v)=u(z),
+\end{split}
+\end{equation}
+where operator $\mathcal{L}$ is defined by $\mathcal{L}=\mathcal{L}^{(z)}+\mathcal{L}^{(v)}$ with
+\begin{equation}\label{eq:pde1_generator}
+\begin{split}
+\mathcal{L}^{(z)}&=-\hat b(T-\tau)(v+\theta)^2\frac{\partial }{\partial z}+\frac{1}{2}\left(\|\hat a_0(T-\tau)\|^2+\hat a_1(T-\tau)^2\right)(v+\theta)^2\frac{\partial^2 }{\partial z^2}+\\
+&+(v+\theta)^2\left[\langle \hat a_0(T-\tau), \vec\beta(T-\tau)\rangle +\hat a_1(T-\tau)\beta_0(T-\tau)\right]\frac{\partial^2 }{\partial z\partial v},\\
+\mathcal{L}^{(v)}&=\left[\hat\kappa_0(T-\tau)-\hat\kappa_1(T-\tau) v-\hat\kappa_2(T-\tau)v^2\right]\frac{\partial }{\partial v}+\frac{1}{2}\vartheta(T-\tau)^2(v+\theta)^2\frac{\partial^2 }{\partial v^2}.
+\end{split}
+\end{equation}
+Here $\vartheta$ is defined in Eq \eqref{eq:vartheta_logsv}. 
+
+We introduce the moment-generating function (MGF) for the variable $z(T)$ denoted by $G(\tau, T;z,v)$ using transform variable $\phi\in \mathbb{C}$ as follows
+\begin{equation}\label{eq:mgf}
+G(\tau,T;z,v)=\mathbb{\hat E}\left[\left.e^{-\phi z_T}\right|z_t=z,v_t=v\right]=
+\mathbb{\hat E}\left[\left.e^{-\phi z_T}\right|\mathcal{F}_t\right].
+\end{equation}
+
+
+
+\subsection{First-order Affine Expansion}
+\begin{theorem}\label{thm:affine_expansion_ord1} [First-order affine expansion] The MGF function defined in Eq \eqref{eq:mgf} can be decomposed as follows:
+\begin{equation}\label{eq:aff_expan_ord0}
+\begin{split}
+& G(\tau,T, z,v; \phi)= \exp \left\{-\phi z \right\} \left[ E^{[1]}(\tau,T, v; \phi) + R^{[1]}(\tau,T,v; \phi)\right],
+\end{split}
+\end{equation}
+where $E^{[1]}$ is the leading term and $R^{[1]}$ is the remainder term.
+
+
+The leading term $E^{[1]}(\tau,T;z,v)$ is given by the exponential-affine form: 
+\begin{equation}\label{eq:aff_expan_ord1_lead}
+\begin{split}
+& E^{[1]}(\tau,T,v; \phi)= \exp \left\{\sum^{2}_{k=0}A^{(k)}(\tau,T;\phi)v^{k}  \right\},
+\end{split}
+\end{equation}
+where vector function $\mathbf{A}(\tau)=\left\{A^{(k)}(\tau,T;\phi)\right\}$, $k=0,1,2$, solves the following quadratic differential system as a function of $\tau$:
+\begin{equation}\label{eq:OrigMGFLogAndQVFirsOrder}
+\begin{split}
+A^{(k)}_\tau&=\mathbf{A}^\top M^{(k)}\mathbf{A} + \left(L^{(k)}\right)^\top \mathbf{A} + H^{(k)},\\
+M^{(k)}&=\left\{
+\begin{pmatrix} % first matrix
+0 & 0 & 0 \\
+0 & \frac{\theta^2\vartheta^2}{2} & 0 \\ 
+0 & 0 & 0 \\
+\end{pmatrix}, 
+\begin{pmatrix} % second matrix
+0 & 0 & 0 \\
+0 & \theta\vartheta^2 & \theta^2\vartheta^2 \\
+0 & \theta^2\vartheta^2 & 0 \\
+\end{pmatrix}, 
+\begin{pmatrix} % third matrix
+0 & 0 & 0 \\
+0 & \frac{\vartheta^2}{2} & 2\theta\vartheta^2 \\
+0 &  2\theta\vartheta^2  & 2\theta^2\vartheta^2 \\
+\end{pmatrix}
+\right\},\\
+L^{(k)}&=\left\{\begin{pmatrix} % linear terms 
+0 \\ \hat\kappa_0-\theta^2(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi \\ \theta^2\vartheta^2 \\
+\end{pmatrix},
+\begin{pmatrix} % linear terms 
+0 \\ -\hat\kappa_1-2\theta(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi \\ 2(\hat\kappa_0+\theta\vartheta^2-\theta^2(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi)\\
+\end{pmatrix},\right. \\
+&\left.\qquad
+\begin{pmatrix} % linear terms 
+0 \\  -(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi-\hat\kappa_2\\ \vartheta^2-2\hat\kappa_1-4\theta(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi
+\end{pmatrix}
+\right\},\\
+H^{(k)}&=\left\{
+\frac{1}{2}\theta^2 (\|\hat a_0\|^2+\hat a_1^2)\phi^2+\theta^2\phi \hat b, \
+\theta  (\|\hat a_0\|^2+\hat a_1^2)\phi^2 + 2\theta\phi \hat b, \
+\frac{1}{2}  (\|\hat a_0\|^2+\hat a_1^2)\phi^2 +2\phi \hat b \right\},
+\end{split}
+\end{equation}
+with the initial condition $\mathbf{A}(0)=( 0, 0, 0 )^\top$, where we omit argument $T-\tau$ in functions $\hat\kappa_i, \hat a_i, \hat b, \vec\beta, \beta_0, \vartheta$. 
+
+%{\bf [End of matrix form for ODEs]}\\
+The remainder term $R^{[1]}(\tau,T,v;\phi)$ solves the following problem (we omit arguments for brevity): 
+\begin{equation}\label{eq:OrigMGFLogAndQVOrd1Rem1}
+\begin{split}
+ -&R^{[1]}_\tau +   \mathcal{L}^{(v)} R^{[1]}=-F^{[1]}(v,A^{(1)},A^{(2)}) E^{[1]}(\tau,T,v; \phi)\\
+&R^{[1]}(0,T,v; \phi)=0,
+\end{split}
+\end{equation}
+with operator $\mathcal{L}^{(v)}$ defined in Eq \eqref{eq:pde1_generator} and residual function $F^{[1]}$ given by
+\begin{equation}\label{eq:OrigMGFLogAndQVOrd1Rem2Coeffs}
+\begin{split}
+& F^{[1]}(v,A^{(1)},A^{(2)})=\sum^{4}_{n=3}C^{(n)}(\tau; A^{(1)}, A^{(2)}) v^n,\\
+& C^{(3)}(\tau)  = 2 A^{(2)} \left(\vartheta^2 \left(2 \theta A^{(2)}+A^{(1)}\right)-(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi -\hat\kappa_2\right),\\
+& C^{(4)}(\tau)  = 2 \vartheta ^2 (A^{(2)})^2.
+\end{split}
+\end{equation}
+\end{theorem}
+
+ 
+\begin{proof} It follows by direct substitution of \eqref{eq:aff_expan_ord0} into Eq \eqref{eq:mgf} and collecting the terms.
+
+\end{proof}
+
+
+\begin{corollary} \label {pr:ar1} [Estimate of the first-order remainder term]. We obtain the following estimate for the remainder term $R^{[1]}$ in Eq (\ref{eq:OrigMGFLogAndQVOrd1Rem1})
+\begin{equation} \label {eq:rem1}
+\begin{split}
+\left| R^{[1]}(\tau,T,v;\phi) \right|  & \leq  \sum^{4}_{n=3}C^{(4)}(\tau^{*})\times M^{(n)}_{\sigma}(\tau^{*}),
+\end{split}
+\end{equation}
+where $M^{(n)}_{\sigma}(\tau)$ is the $n$-th central moment of the volatility process defined by:
+\begin{equation}\label{eq:central_mom_vol}
+M^{(n)}_{\sigma}(\tau) \equiv \hat{\mathbb{E}}\left[(\sigma(\tau)-\theta)^n\right] = \mathbb{E}\left[v^n(\tau)\right].
+\end{equation}
+\end{corollary}
+
+\begin{proof}
+By analogy to the proof of Corollary 4.3. in \cite{Sepp2024}.
+\end{proof}
+
+
+
+\begin{corollary}[First-order solution for MGF]
+Dropping the residual function $R^{[1]}$ in Eq \eqref{eq:aff_expan_ord0}, we obtain the first-order solution to the MGF of variable $z$ as follows
+\begin{equation}\label{eq:aff_expan_ord1}
+\begin{split}
+& G(\tau,T,z,v;\phi)= \exp\left\{ -z\phi \right\}   E^{[1]}(\tau,T,v;\phi).
+\end{split}
+\end{equation}
+\end{corollary}
+
+
+\begin{proposition} The MGF in \eqref{eq:aff_expan_ord1} satisfies the condition 
+\begin{equation*}
+\left.G(\tau,T,z,v;\phi)\right|_{\phi=0}=e^{-z\phi}
+\end{equation*}
+and reproduces the expected value of $z_{T}$ exactly when $\kappa_2=0$.
+\end{proposition}
+
+\begin{proof}
+By analogy to Propositions 4.3 and 4.5 in \cite{Sepp2024}.
+\end{proof}
+
+In Appendix \ref{app:second_order_ae}, we also provide the solution for $G(\tau,T,z,v;\phi)$ using the second order expansion with leading term $E^{[2]}(\tau,T,z;\phi)$. The second order expansion reproduces the variance of $z$ exactly when $\kappa_2=0$. For practical purposes, we have found that the first-order solution for the MGF works fine under various market conditions, so we recommend using the first-order solution. In Figures \ref{fig:prob_density_swap} and \ref{fig:prob_density_futures} we demonstrate the application of the first order solution in Eq \eqref{eq:aff_expan_ord1} for computing the PDFs of the swap rate and the futures rate, respectively.
+
+
+\begin{corollary}[First-order expansion for the MGF of the swap rate] MGF in Eq \eqref{eq:aff_expan_ord1} for the {\rm state-independent} swap rate $s_T$ in Eq \eqref{eq:swap_ann2} is obtained by
+\begin{equation*}
+G(\tau,T,s,v;\phi)=\mathbb{E}^A\left[\left.e^{-\phi s_T}\right|s_t=s,v_t=v\right]
+\end{equation*}
+can be decomposed as 
+\begin{equation}\label{eq:aff_expan_ord1_swap0}
+\begin{split}
+& G(\tau,T,s,v;\phi)= \exp\left\{ -s\phi \right\} \left[ E^{[1]}(\tau,T,v;\phi) + R^{[1]}(\tau,T,v;\phi)\right].
+\end{split}
+\end{equation}
+
+The leading term $E^{[1]}$ and the remainder term $R^{[1]}$ can be identified by setting
+\begin{equation*}
+\begin{split}
+&\hat a_0(t)=a(t),\quad \hat a_1(t)\equiv 0,\quad \hat b(t)\equiv 0,\\
+&\hat\kappa_0(t):=\beta_2(t)\theta^2, \quad \hat\kappa_1(t):=\kappa_1-\kappa_2\theta+2(\kappa_2-\beta_2(t))\theta, \quad \hat\kappa_2(t):=\kappa_2-\beta_2(t)
+\end{split}
+\end{equation*}
+everywhere in Theorem \ref{thm:affine_expansion_ord1}, where $a(t)$ and $\beta_2(t)$ are defined in Eq. \eqref{eq:def1}. 
+\end{corollary}
+
+
+\begin{corollary}[First-order solution for MGF of the swap rate]
+Dropping the residual function $R^{[1]}$ in Eq \eqref{eq:aff_expan_ord1_swap0}, we obtain the first-order solution to the MGF of variable $s$ as follows
+\begin{equation}\label{eq:aff_expan_ord1_swap}
+\begin{split}
+& G(\tau,T,s,v;\phi)= \exp\left\{ -s\phi \right\}   E^{[1]}(\tau,T,v;\phi).
+\end{split}
+\end{equation}
+\end{corollary}
+
+
+
+
+
+In Figure \ref{fig:prob_density_swap}, we show the probability density function (PDF) computed using the inversion of the first order solution $E^{[1]}$ in Eq \eqref{eq:aff_expan_ord1_swap} for the $2y$, $5y$, $10y$ swap rate $s_T$ observed at $T=5$ in the dynamics \eqref{eq:swap_ann2}. 
+For comparison, the blue histogram shows realizations using MC simulations of the Nelson-Siegel model with log-normal SV \eqref{eq:md} without the drift-freezing assumption in Eq \eqref{eq:mean_states}. We see that the first-order expansion consistently fits the histograms produced by the MC simulations. 
+
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.95\textwidth, angle=0] {figures/fhjm/pdf_swaprate_fhjm_5y.pdf}
+\end{center}
+\caption{PDFs computed using the inversion of the first order solution $E^{[1]}$ in Eq \eqref{eq:aff_expan_ord1_lead} for the state variable $s_T$ at $T=5$. 
+The blue histogram is computed using realizations from MC simulations in model dynamics \eqref{eq:FHJM_SV}. We use the model parameters reported in Table \ref{tab:calibparams}.}
+\label{fig:prob_density_swap}
+\end{figure} 
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%% FUTURES AFFINE EXPANSION 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{corollary}[Affine expansion for log-shifted futures price] Let $\zeta_t$ denote log-shifted futures price defined by
+\begin{equation}\label{eq:tr2}
+\zeta_t=\ln\left(F_t+\Delta^{-1}\right).
+\end{equation}
+
+The moment generating function for $\zeta_T$  in \eqref{eq:aff_expan_ord1} 
+\begin{equation*}
+G(\tau,T,\zeta,v;\phi)=\mathbb{E}^{\mathbb{Q}^{T}}\left[\left.e^{-\phi \zeta_T}\right|\zeta_t=\zeta,v_t=v\right]
+\end{equation*}
+can be decomposed as 
+\begin{equation}\label{eq:aff_expan_ord1a0}
+\begin{split}
+& G(\tau,T,\zeta,v,\phi)=  e^{-\zeta\phi} \left[ E^{[1]}(\tau,T,v;\phi) + R^{[1]}(\tau,T,v;\phi) \right].
+\end{split}
+\end{equation}
+
+The leading term $E^{[1]}$ and the remainder term $R^{[1]}$ can be identified by setting
+\begin{equation*}
+\begin{split}
+&\hat a_0(t)=a_0(t),\quad \hat a_1(t)=a_1(t),\\
+&\hat b(t)=a_0(t)^\top\eta(t)+\frac{1}{2}\left(\|a_0(t)\|^2+a_1(t)^2\right),\\
+&\hat\kappa_0(t):=\beta_2(t)\theta^2, \quad \hat\kappa_1(t):=\kappa_1-\kappa_2\theta+2(\kappa_2-\beta_2(t))\theta, \quad \hat\kappa_2(t):=\kappa_2-\beta_2(t),
+\end{split}
+\end{equation*}
+everywhere in Theorem \ref{thm:affine_expansion_ord1}, where $a_0(t)$, $a_1(t)$, $\eta(t)$ are defined in \eqref{eq:futures_coeffs_a}, \eqref{eq:futures_coeffs_eta}. 
+\end{corollary}
+
+\begin{proof}
+Applying It\^{o}'s lemma to Eq. \eqref{eq:futures_fwd_logsv}, we can find the dynamics of $\zeta_t, v_t$:
+\begin{equation}\label{eq:log_fut_and_vol_shift}
+\begin{split}
+d\zeta_t&=\left[-a_0(t)^\top\eta(t)-\frac{1}{2}\left(\|a_0(t)\|^2+a_1(t)^2\right)\right](v_t+\theta)^2\,dt+(v_t+\theta)\left[a_0(t)^\top\,dW^{T, (0)}_t+a_1(t)\,dw^{T, (1)}_t\right],\\
+dv_t&=(\hat\kappa_0(t)-\hat\kappa_1(t) v_t-\hat\kappa_2(t)v_t^2)dt+(v_t+\theta)\vec{\beta}(t)^\top\,dW^{T,(0)}_t+\beta_0(t)(v_t+\theta)dw^{T,(1)}_t,\\
+\end{split}
+\end{equation}
+where $a_0(t)$, $a_1(t)$, $\eta(t)$ are defined in \eqref{eq:futures_coeffs_a}, \eqref{eq:futures_coeffs_eta}. Comparing the dynamics of $\zeta_t$ under $T$-forward measure in Eq. \eqref{eq:log_fut_and_vol_shift}  to the dynamics in Eq. \eqref{eq:price_process_logsv}, we complete the proof. 
+\end{proof}
+
+\begin{corollary}[First-order solution for MGF of the futures rate]
+Dropping the residual function $R^{[1]}$ in Eq \eqref{eq:aff_expan_ord1a0}, we obtain the first-order solution to the MGF of variable $\zeta$ as follows
+\begin{equation}\label{eq:aff_expan_ord1a}
+\begin{split}
+& G(\tau,T,\zeta,v;\phi)= \exp\left\{ -\zeta\phi \right\}   E^{[1]}(\tau,T, v;\phi).
+\end{split}
+\end{equation}
+\end{corollary}
+
+
+
+In Figure \ref{fig:prob_density_futures}, we show the probability density function (PDF) computed using the inversion of the first order solution $E^{[1]}$ in Eq \eqref{eq:aff_expan_ord1a} for the futures rate $F_T$, settling in $84d$ (Subplot A) and $175d$ (Subplot B) in the dynamics \eqref{eq:futures_fwd_logsv}. 
+For comparison, the blue histogram shows realizations based on MC simulations of factors $X$, $Y$ in Nelson-Siegel model with log-normal SV \eqref{eq:md}. We see that the first-order expansion consistently fits the histograms produced by the MC simulations.
+
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.80\textwidth, angle=0] {figures/fhjm/pdf_futrate_fhjm_3m.pdf}
+\end{center}
+\caption{PDFs computed using the inversion of the first order solution $E^{[1]}$ in Eq \eqref{eq:aff_expan_ord1_lead} for the three-month SOFR futures rate $F_T$.  
+The blue histogram is computed using realizations from MC simulations in model dynamics \eqref{eq:swap_ann2}.  We use the model parameters reported in Table \ref{tab:calibparams_futures}.}
+\label{fig:prob_density_futures}
+\end{figure} 
+
+ 
+
+
+
+\section{Implementation Details}\label{sec::implementation_details}
+
+
+\subsection{Valuation Formulas}
+
+Our framework allows for generic implementation of any FHJM-SV specification using model specific MGF (assuming it is analytic). In particular:
+\begin{itemize}
+\item  swaptions are valued using formula \eqref{eq:swaptions} along with \eqref{eq:capped_pay};
+	
+\item options on rate futures are values using formula \eqref{eq:sofr_options} along with \eqref{eq:capped_pay1}.
+\end{itemize}
+
+When we use an FHJM-SV with a generic basis and log-normal SV driver in \eqref{eq:md}:
+\begin{itemize}
+
+\item swaptions are valued using formula \eqref{eq:swaptions}, assuming MGF in Eq \eqref{eq:capped_pay} is computed using first-order term $E^{[1]}$ of Eq \eqref{eq:aff_expan_ord1_swap}; 
+
+\item options on rate futures are valued using valuation formula \eqref{eq:sofr_options}, assuming MGF in Eq \eqref{eq:capped_pay1} is computed using first-order expansion term $E^{[1]}$ in Eq \eqref{eq:aff_expan_ord1a}. 
+\end{itemize}
+
+Under CIR SV model, we value swaptions and options on rate futures using Eqs \eqref{eq:s_heston} and \eqref{eq:f_heston}, respectively. 
+
+Our valuation formulas are valid for any choice of factor basis $B(\tau)$. In particular, we consider the implementation of FHJM-SV model \eqref{eq:md} with Nelson-Siegel basis $B(\tau)$ specified in Eq \eqref{eq:NS_basis}. Both implementation of log-normal SV and CIR SV model require solving the sytem of ODEs numerically because both dynamics have time-dependent parameters. On the ground of model implementation using MC simulation we believe that log-normal SV model is the most robust for applications. Thus, as an  example of implementation, we only consider FHJM-SV model with log-normal SV driver.
+
+
+\subsection{Numerical Integration}
+
+Numerical evaluation of Fourier integrals in Eqs \eqref{eq:capped_pay} and \eqref{eq:capped_pay1} requires methods that work well for slowly decaying integrands and short expiries, that are typical for valuation of options on rate futures, though similar challenges may arise for valuation of swaptions as well.  
+To improve the convergence of those integrals, we employ double exponential quadrature rule which is remarkably accurate for such kind of problems, see \cite{Andersen2018}, \cite{Michalski2016}. 
+
+We consider the integral
+\begin{equation}\label{eq:de0}
+I=\int_0^\infty g(p)dp,
+\end{equation}
+where 
+\begin{equation*}
+g(p)=\frac{1}{\pi} A(t)\Re\left[\frac{e^{\left(-\frac{1}{2}+ip\right) K}}{\left(-\frac{1}{2}+ip\right)^2}G(\tau,T, s, v;\phi=-\frac{1}{2}+ip)\right]
+\end{equation*}
+as in Eq \eqref{eq:capped_pay} for the swap rate or 
+\begin{equation*}
+g(p)=P(t,T)\frac{K+\Delta^{-1}}{\pi} \Re\left[ e^{(-\frac{1}{2}+ip) k^{*}}  \frac{1}{p^{2}+1/4} G(\tau,T, s,v ; \phi=-\frac{1}{2}+ip)\right]
+\end{equation*}
+as in Eq \eqref{eq:capped_pay1} for the futures rate.
+We apply exp-sinh transformation $p=k(t)=\exp\left(\frac{\pi}{2}\sinh t\right)$ and use  trapezoidal rule for Eq \eqref{eq:de0} to evaluate resulting integral as follows
+\begin{equation}\label{eq:de1}
+I=\int_{-\infty}^{+\infty} g(k(t))k'(t)dt\approx h\sum_{n=-\infty}^{\infty}g(nh)k'(nh)
+\end{equation}
+where $h$ is the step size. Assuming we truncate the sum \eqref{eq:de1} over $n\in[-N_1,N_2]$, $N_1>0$, $N_2>0$, then DE rule looks as follows
+\begin{equation}\label{eq:de3}
+\begin{split}
+&I\approx h\sum_{n=-N_1}^{n=N_2}w_ng(p_n),\\
+&p_n=k(nh)=\exp\left(\frac{\pi}{2}\sinh(nh)\right), \\
+&w_n=k'(nh)=\frac{\pi}{2}\cosh(nh)\exp\left(\frac{\pi}{2}\sinh(nh)\right),
+\end{split}
+\end{equation}
+where $p_n$ and $w_n$ are abscissas and weights of the quadrature rule, respectively.
+
+
+Given a grid of maturities $\{T_{m}\}$, $m=1,..,M$, we pre-calculate MGF $G$ on a specified grid of $\phi$ up to $T_{M}$.  Given computed $G$ on the grid of $\phi$ at expiry $T_{m}$, we apply Eq \eqref{eq:de0} to compute option values for all options observed at time $T_{m}$ in succession.
+
+
+
+\subsection{Monte-Carlo Simulation}
+For benchmarking of option prices computed using numerical integration of analytic Fourier transform, we apply Monte Carlo (MC) simulation of FHJM-SV model with log-normal SV driver in Eq \eqref{eq:md}. Applying It\^{o}'s formula to the logarithm of SV driver $\xi_t=\ln\sigma_t$, we obtain the following dynamics of $\xi_t:=\ln\sigma_t$ 
+\begin{equation*}
+\begin{split}
+&d\xi_t=\mu(\xi_t)\,dt+\vec{\beta}(t)^\top\,dW^{(0)}_t+\beta_{0}(t)dw^{(1)}_t,\quad \xi_0=\ln \sigma_0,\\
+&\mu(\xi):=\left(-\kappa_1+\kappa_2\theta-\frac{1}{2}\vartheta(t)^2\right)+\kappa_1\theta e^{-\xi}-\kappa_2e^{\xi},
+\end{split}
+\end{equation*}
+where $\vartheta(t)$ is defined in Eq \eqref{eq:vartheta_logsv}. 
+
+We consider time grid $\{t_k\}$, $t_{k+1}-t_k=\Delta_k$, $k\ge 0$. For MC simulation of log-driver $\xi_t$, we app backward Euler-Maruyama scheme defined as follows
+\begin{equation}\label{eq:BEM_Euler}
+\xi_{t_{k+1}}=\xi_{t_{k}}+\mu\left(\xi_{t_{k+1}}\right)\left(t_{k+1}-t_k\right)+\vec\beta(t_k)^\top \left(W^{(0)}_{t_{k+1}}-W^{(0)}_{t_{k}}\right)+\beta_0(t_k)\left(w^{(1)}_{t_{k+1}}-w^{(1)}_{t_{k}}\right).
+\end{equation}
+where we assume that the time-dependent coefficients of model dynamics are constant over $t\in [t_k,t_{k+1}]$. \cite{Sepp2024} show that the Backward Euler-Maruyama scheme in \eqref{eq:BEM_Euler}has a strong convergence rate of 1. Importantly, the scheme \eqref{eq:BEM_Euler} for the log-driver $\xi_t$ does not require any special treatment of the boundary points since $\xi_t$ is defined on $(-\infty,+\infty)$. In contrast, MC simulation of affine CIR driver in Eq \eqref{eq:mdh} requires treatment of the boundary point at zero.
+
+
+We summarize the discretization of the model factors in FHJM model \eqref{eq:FHJM_SV} with log-normal SV \eqref{eq:md} under risk-neutral measure as follows
+\begin{equation*}
+\begin{split}
+&X_{t_{k+1}}=e^{\mathbf{D}\Delta_t}X_{t_k}+\sigma_{t_k}e^{\mathbf{D}\Delta_t}\mathbf{C}(t_k)\left(W^{(0)}_{t_{k+1}}-W^{(0)}_{t_k}\right),\\
+&Y_{t_{k+1}}=e^{\tilde{\mathbf{D}}\Delta_t}Y_{t_k}+\left(\sigma_{t_k}\right)^2 e^{\tilde{\mathbf{D}}\Delta_t}\tilde\Omega_{t_k}\Delta_t,\\
+&\xi_{t_{k+1}}=\xi_{t_{k}}+\mu\left(\xi_{t_{k+1}}\right)\left(t_{k+1}-t_k\right)+\vec\beta(t_k)^\top \left(W^{(0)}_{t_{k+1}}-W^{(0)}_{t_{k}}\right)+\beta_0(t_k)\left(w^{(1)}_{t_{k+1}}-w^{(1)}_{t_{k}}\right),\\
+&\sigma_{t_{k+1}}=e^{\xi_{t_{k+1}}}
+\end{split}
+\end{equation*}
+where $X_{t_0}=X_0$, $Y_{t_0}=0$, $\xi_{t_0}=\ln \sigma_0$, $W^{(0)}$ and $w^{(1)}$ are independent $d$-dimensional and one-dimensional Brownian motions, respectively. We note that for uniform time steps $\Delta_t\equiv\Delta$, matrix exponentials $e^{\mathbf{D}\Delta}$ and $e^{\tilde{\mathbf{D}}\Delta}$ needs to be computed only once.
+
+
+
+
+
+\subsection{Estimation of Nelson-Siegel Basis}
+
+For estimation of factors in Nelson-Siegel model in Section \ref{sec:NS_basis}, we use U.S. Treasury yields data for fixed tenors of 3, 6, 12, 24, 36, 60, 84 and 120 months and estimate factors $X=(x_1,x_2,x_3)^\top$ using ordinary least squares regression following \cite{DieboldLi2006} from January 2007 to December 2023. In Figure \ref{fig:nelson_siegel_fit} we plot the time series of fitted as well empirical factors in Nelson-Siegel model. We define the empirical factor $(x_1, x_2, x_3)$ as the $10y$ yield, the difference between the $10y$ and $3m$ yields and twice the $2y$ yield minus the sum of the $3m$ and $10y$ yields, respectively. As seen, factors $(x_1,x_2,x_3)$ can be interpreted as 'level', 'slope' and 'curvature'.  
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.9\textwidth, angle=0] {figures//fhjm//ns_factors_ts.pdf}
+\end{center}
+\vspace*{-1.0\baselineskip}
+\caption{Time series of factors $(x_1,x_2,x_3)$ estimated by fitting the USD yield curve to Nelson-Siegel model. 
+}
+\label{fig:nelson_siegel_fit}
+\end{figure} 
+
+
+\subsection{Model Calibration to Swaptions}
+
+We fix $\{2y, 5y, 10y\}$ as benchmark tenors. For a given day we use estimates $\hat X_{t}$ obtained as in previous section. As we note in Section \ref{sec:vol_parametrization}, it is natural to parametrize volatility matrix $\mathbf{C}(t)$ through correlation of benchmark yields $\mathbf{R}$ and their volatilities $\mathbf{A}(t)$. We estimate the correlation between benchmark yields historically and set it to 
+\begin{equation*}
+\mathbf{R}=
+\begin{pmatrix}
+1 & 0.99 & 0.97 \\
+0.99 & 1 & 0.98 \\
+0.97 & 0.98 & 1 
+\end{pmatrix}.
+\end{equation*}
+We also set mean reversion to $\lambda=0.55$. This value is within empirically observed range  $\lambda\in[0.5, 1]$ for the USD market data, see \cite{ChristensenDiebold2009}. We have observed that using higher values of $\lambda$ requires excessively time-inhomogeneous correlation matrix $\mathbf{R}$ to fit observed swaption implied volatilities across expiries. To keep our presentation as parsimonious as possible, we thus choose $\lambda=0.55$. We can calibrate the correlation matrix $\mathbf{R}$ to market data of spread options, if this is available. 
+
+
+Once correlation matrix $\mathbf{R}$ is fixed, we reduce the calibration of term-structure volatility matrix $\mathbf{C}(\cdot)$ to fitting volatilities $\vec{a}(\cdot)=(a_1(\cdot), a_2(\cdot), a_3(\cdot))^\top$ of benchmark yields, following parametrization in Eq \eqref{eq:vol_parametr}. Thus, we fit term-structure of parameters $\vec{a}(\cdot)$, $\vec{\beta}(\cdot)$, $\beta_0(\cdot)$ to market prices of swaptions. We fix expiries of traded swaptions by $T_1^*<T_2^*<\ldots<T_n^*$. We perform the calibration by bootstrapping, by assuming that model parameters $\vec{a}(t)$, $\vec{\beta}(t)$, $\beta_0(t)$ are flat over $t\in (T_{k-1}^*,T_k^*]$, $k=1,\ldots,n$, $T_0^{*}=0$.
+
+We fit the set of parameters at time $T_k^*$ to available instruments expiring at $T_k^*$. For each expiry $T$, we minimize the squared difference between model and market implied volatilities as follows
+\begin{equation} \label{eq:mf1}
+\begin{split}
+& WMSE = \sum_{n} w_{n}(T,K)\left( \sigma^{model}_{n}(T,K) - \sigma^{implied}_{n}(T,K)  \right) ^{2},
+\end{split}
+\end{equation}
+weighted by corresponding vega, $w_{n}(T,K)=\mathcal{V}_{n}(T,K)$, which are computed using Bachelier model. During the calibration we enforce the restriction in Eq \eqref{eq:kappa2_cond_QA} on $\kappa_2$. 
+
+
+In Table \ref{tab:calibparams} we show calibrated model parameters for USD swaptions using market data as of mid-August 2023. We use four swaption slices $T_k^*\in\{1y, 2y, 3y, 5y\}$ per tenor, where each swaption slice consist of five options with equally spaced strikes, centered on at-the-money forward swap rate. We set $\kappa_1=\kappa_2=0.25$, the choice that ensures that volatility of volatility remains relatively stable across expiries. We note that achieving such stability becomes non-trivial in multi-factor case as volatility beta inherently depends on choice of factor correlation $\mathbf{R}$.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|c|c|c|c|c|c|c|} \hline
+Expiry, $T^*$ & $a_1(t)$ & $a_2(t)$ & $a_3(t)$ & $\beta_1(t)$ & $\beta_2(t)$ & $\beta_3(t)$ & $\beta_0(t)$ \\ \hline
+1y    & 0.0146 & 0.0130 & 0.0113 & 0.0152 & 0.1063 & 0.6667 & 0.0973 \\ \hline
+2y    & 0.0135 & 0.0129 & 0.0113 & 0.4837 & 0.0175 & -0.2832 & 0.1071 \\ \hline
+3y    & 0.0116 & 0.0122 & 0.0108 & 0.0651 & -0.0819 & -0.0001 & 0.0745 \\ \hline
+5y    & 0.0071 & 0.0098 & 0.0087 & 0.4077 & -0.0730 & -0.4005 & 0.0300 \\ \hline
+\end{tabular}
+\caption{Parameters of Nelson-Siegel term-structure model with log-normal  SV driver \eqref{eq:md} calibrated to USD swaption market data. Expiry is shown in the first column and underlying swap tenors are $\{2y, 5y, 10y\}$ }
+\label{tab:calibparams}
+\end{table}
+
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.9\textwidth, angle=0] {figures//fhjm//calibration_FHJM_swaptions.pdf}
+\end{center}
+\vspace*{-1.0\baselineskip}
+\caption{Accuracy of model calibration to USD swaptions for $\{2y, 5y, 10y\}$ tenors, reported in Table \ref{tab:calibparams} using four slices per tenor. Solid lines represent model implied normal volatilities computed using first-order affine expansion in Eq \eqref{eq:aff_expan_ord1_lead}. Dots display market implied volatilities}
+\label{fig:fit_swaptions}
+\end{figure} 
+
+\begin{figure}[H]
+ \begin{center}
+\includegraphics[width=0.9\textwidth, angle=0] {figures//fhjm//swaption_mc_comp_USD_aug_23.pdf}
+ \end{center}
+ \vspace*{-1.0\baselineskip}
+\caption{Implied normal volatilities of USD swaptions for $\{2y, 5y, 10y\}$ tenors with $5y$ expiry and uniform range of strikes computed using first-order affine expansion \eqref{eq:aff_expan_ord1_lead} and MC simulations using calibrated parameters to USD swaptions data reported in Table \ref{tab:calibparams}. Dashed lines labeled by $MC-0.95ci$ and $MC+0.95ci$ are MC 95\% confidence intervals computed using MC simulations.}
+\label{fig:model_vs_mc_logsv}
+\end{figure}
+
+In Figure \ref{fig:model_vs_mc_logsv}, we compare the model implied normal volatilities for swaption with 10y expiry, computed using the first-order affine expansion of Eq \eqref{eq:aff_expan_ord1_swap}. As a benchmark, we use Nelson-Siegel term structure model where model factors \eqref{eq:FHJM_SV} are simulated under risk-neutral measure with 200,000 trials and daily time steps in MC simulation. We show the 95\% confidence interval of MC estimates as "bid-ask" bars and use the model parameters for options in USD market reported in Table \ref{tab:calibparams}. As seen, option values computed using the first-order affine expansion are consistent with MC simulations.
+
+
+\subsection{Model Calibration to SOFR Options}\label{sec:calib_SOFR}
+
+Now we demonstrate the quality of calibration to 3M SOFR options, which are most liquidly traded short-term interest rate options in the USD market. Similar to swaptions, we use Nelson-Siegel term structure model. We further use scalar structure for the volatility beta $\vec{\beta}=\left(\beta,-\frac{\beta}{2}, 0\right)^\top$ to avoid over-parametrization. This structure of $\vec{\beta}$ is based using historical analysis of covariance matrix between Nelson-Siegel factors and short-term rates volatilities. Similarly, we impose the condition that calibrated parameters satisfy Eq \eqref{eq:kappa2_cond_QT} for $\kappa_2$.
+
+
+For illustration, we use market data as of October 2023 and calibrate the model to the two most liquid  3M SOFR options with expiries $T_k^*\in\{84\mathrm{d}, 175\mathrm{d}\}$. For each slice, we take five strikes, centered on settlement value of underlying futures  for the previous day. In Table \ref{tab:calibparams_futures} we show calibrated model parameters  and in Figure \ref{fig:fit_futures} we show the quality of calibration. Here, option strikes are reported in normal delta space, where we include puts and calls with deltas in the range  $[-0.25, -0.5)$ and $[0.5, 0.25]$, respectively. In addition to market implied volatilities, we display volatilities for one tick change in option price as a proxy for "bid-ask" bars.
+
+We see that implied volatilities of SOFR options exhibit extremely high convexity, as well as skew. For that reason, we set $\kappa_1=0.5$, $\kappa_2=1.0$ to account for speed of convexity decay and make sure that volatility of volatility remains relatively stable across different slices\footnote{Furthermore, high values of $\kappa_1$, $\kappa_2$ are necessary to satisfy the regularity conditions on moments of the volatility process. In our case, we check that low-dimensional truncation of infinite-dimensional matrix $\Lambda^{(0,\infty)}$ for the solution of moments of the volatility process is stable, i.e. its eigenvalues have negative real parts, see \cite{Sepp2024} for further details.}.
+
+ \begin{table}[H]
+ \centering
+ \begin{tabular}{|l|c|c|c|c|c|c|c|} \hline
+ Expiry, $T^*$ & $a_1(t)$ & $a_2(t)$ & $a_3(t)$ & $\beta_1(t)$ & $\beta_2(t)$ & $\beta_3(t)$ & $\beta_0(t)$ \\ \hline
+ 75d    & 0.0049 & 0.0024 & 0.0005 & -1.995 & 0.99 & 0.0 & 1.449 \\ \hline
+ 103d    & 0.0041 & 0.0017 & 0.0039 & -1.005 & 0.502 & 0.0 & 0.213 \\ \hline
+ \end{tabular}
+ \caption{Parameters of Nelson-Siegel term-structure model with log-normal SV driver \eqref{eq:md} calibrated to 3M SOFR options market data. Expiry is shown in the first column. }
+ \label{tab:calibparams_futures}
+ \end{table}
+ 
+ 
+ 
+ \begin{figure}[H]
+ \begin{center}
+ \includegraphics[width=0.9\textwidth, angle=0] {figures//fhjm//calibration_FHJM_futures.pdf}
+ \end{center}
+ \vspace*{-1.0\baselineskip}
+ \caption{Accuracy of model calibration to 3M SOFR options, reported in Table \ref{tab:calibparams_futures} using two slices, having $75$ and $103$ days to expiry. Solid lines represent model implied normal volatilities computed using first-order affine expansion in Eq \eqref{eq:aff_expan_ord1_lead}. Orange dots display market implied volatilities}
+ \label{fig:fit_futures}
+ \end{figure} 
+ 
+
+
+\begin{figure}[H]
+ \begin{center}
+\includegraphics[width=0.9\textwidth, angle=0] {figures//fhjm//futures_mc_vs_ae1.pdf}
+ \end{center}
+ \vspace*{-1.0\baselineskip}
+\caption{Implied normal volatilities of SOFR options with $75\mathrm{d}$ and $103\mathrm{d}$ to expiry and uniform range of strikes computed using first-order affine expansion \eqref{eq:aff_expan_ord1_lead} and MC simulations using calibrated parameters to SOFR options reported in Table \ref{tab:calibparams_futures}. Dashed lines labeled by $MC-0.95ci$ and $MC+0.95ci$ are MC 95\% confidence intervals computed using MC simulations.}
+\label{fig:model_vs_mc_logsv_futures}
+\end{figure}
+
+In Figure \ref{fig:model_vs_mc_logsv_futures}, we compare the model implied normal volatilities for 3M SOFR options with $75$ and $103$ days to expiry, computed using the first-order affine expansion of Eq \eqref{eq:aff_expan_ord1a}. As a benchmark, we use Nelson-Siegel term structure model where model factors \eqref{eq:FHJM_SV} are simulated under risk-neutral measure with 200,000 trials and daily time steps in MC simulation. We show the 95\% confidence interval of MC estimates as "bid-ask" bars and use the model parameters for options in USD market reported in Table \ref{tab:calibparams_futures}. 
+%As seen, option values computed using the first-order affine expansion are consistent with MC simulations.
+
+
+
+\section{Conclusions}
+
+We have have extended the Factor HJM (FHJM) model to include the stochastic volatility (SV) driver correlated with factors dynamics. As applications, we have implemented two SV drivers including the affine CIR driver and the log-normal driver. As an example for selecting the factor basis, we have applied Nelson-Siegel term-structure model (\cite{NS1987}) which is widely use by central banks for modeling the term structure under statistical measure $\mathbb{P}$. We have applied the augmentation methods of \cite{Lyashenko2023} to derive the dynamics of the auxiliary state vector so that the augmented FHJM is arbitrage-free under pricing measure $\mathbb{Q}$. We have also considered more general exponential basis for factors dynamics, which allows for flexible modeling of the yield curve under $\mathbb{P}$ using multi-factor dynamics.
+
+We have derived the dynamics of the swap rate and the dynamics of the futures rate under the general FHJM-SV model. We have obtained the convexity adjustment of the futures rate for generic Gaussian FHJM model and for the FHJM-SV model with both CIR and log-normal volatility drivers. For both SV drivers,we have developed analytical approach for valuation of swaptions and options on rate futures under the FHJM-SV model. We have derived the analytic solution to the moment generating function (MGF) for the FHJM-SV model with CIR driver and an accurate approximate solution to the MGF for the FHJM-SV model with log-normal driver. We have applied the MGF approach to obtain the solution for the valuation of options on the swap rate (swaptions) and options on futures rate, which is analytic up to the inversion of Fourier transform. To our knowledge, our model is the first in the interest rates literature that allows for joint valuation of swaptions at several tenors and options on SOFR rates.
+
+
+For illustrations, we have applied Nelson-Siegel term structure model for the basis and log-normal SV driver in the FHJM-SV model. We have calibrated this model specification, first, to market data of swaptions with the three tenors (2Y, 5Y, and 10Y) and, second, to market data of SOFR options. We have shown that the model can fit each market accurately using the term structure of three model parameters (the level, the skew, and the convexity for controlling model implied volatilities). We have shown that our solution methods provide accurate values of swaptions and SOFR options compared to Monte-Carlo simulations.
+
+Given the popularity of Nelson-Siegel term structure model, our model can provide a valuable toolkit for building scenarios for the shape of both the yield curve and the implied volatilities and for risk-management of fixed-income derivatives. As a future extension, we shall consider a multi-factor SV driver for FHJM-SV model which can incorporate the dynamics of the interest rate skew and convexity.
+
+\printendnotes
+
+
+\begin{thebibliography}{10} % refs
+
+\bibitem[\protect\citeauthoryear{Andersen and Lake}{2019}]{Andersen2018} Andersen, L.B. and Lake, M. (2019) Robust High-Precision Option Pricing by Fourier Transforms: Contour Deformations and Double-Exponential Quadrature. Wilmott Magazine, July (102), pp. 22--41.
+
+\bibitem[\protect\citeauthoryear{Andersen and Piterbarg}{2010}]{AndersenPiterbarg2010}Andersen, L.B. \& Piterbarg, V.V. (2010). Interest Rate Modeling. Atlantic Financial Press
+
+\bibitem[\protect\citeauthoryear{Brigo and Mercurio}{2007}]{BrigoMercurio2007}
+Brigo, M. \& Mercurio, F. (2007). Interest-Rate Models -- Theory and Practice. Springer Science \& Business Media. 
+
+\bibitem[\protect\citeauthoryear{Christensen, Diebold and Rudebusch}{2009}]{ChristensenDiebold2009}
+Christensen, J. H., Diebold, F. X., \& Rudebusch, G. D. (2009). An arbitrage-free generalized Nelson–Siegel term structure model. Econometrics Journal, 12, C33--C64
+
+\bibitem[\protect\citeauthoryear{Christensen, Diebold and Rudebusch}{2011}]{ChristensenDiebold2011}
+Christensen, J. H., Diebold, F. X., \& Rudebusch, G. D. (2011). The affine arbitrage-free class of Nelson–Siegel term structure models. Journal of Econometrics, 164(1), 4--20.
+
+\bibitem[\protect\citeauthoryear{Collin-Dufresne and Goldstein}{2002}]{CollinDufresne2002}
+Collin-Dufresne, P., \& Goldstein, R. S. (2002). Do bonds span the fixed income markets? Theory and evidence for unspanned stochastic volatility. The Journal of Finance, 57(4), 1685--1730.
+
+\bibitem[\protect\citeauthoryear{Cheyette}{1992}]{Cheyette1992}
+Cheyette, O. (1992) Markov Representation of the Heath-Jarrow-Morton Model.
+Working paper, BARRA.
+
+\bibitem[\protect\citeauthoryear{Diebold and Li}{2006}]{DieboldLi2006}
+Diebold, F. X., \& Li, C. (2006). Forecasting the term structure of government bond yields. Journal of econometrics, 130(2), 337--364.
+
+\bibitem[\protect\citeauthoryear{Filipovi\'{c}}{1999}]{Filipovic1999}
+Filipovi\'{c} D. (1999). A Note on the Nelson-Siegel Family. Mathematical Finance,
+9(4), 349--359. 
+
+\bibitem[\protect\citeauthoryear{Filipovi\'{c}}{2000}]{Filipovic2000}
+Filipovi\'{c} D. (2000). Exponential-polynomial families and the term structure of interest rates. Bernoulli, 1081--1107.
+
+\bibitem[\protect\citeauthoryear{Filipovi\'{c}}{2023}]{Filipovic2023}
+Filipovi\'{c} D. (2023).  Discount models. Finance and Stochastics 27(4), 933--946.
+
+
+\bibitem[\protect\citeauthoryear{Heath et al.}{1992}]{HJM1992} Heath, D., Jarrow, R., \& Morton, A. (1992). Bond pricing and the term structure of interest rates: A new methodology for contingent claims valuation. Econometrica: Journal of the Econometric Society, 77--105.
+
+\bibitem[\protect\citeauthoryear{Hogan and Weintraub}{1993}]{HoganWeintraub93}
+Hogan, M., \& Weintraub, K. (1993). The lognormal interest rate model and eurodollar futures. Citibank, New York.
+
+\bibitem[\protect\citeauthoryear{J\"{a}ckel and Kawai}{2005}]{Jackel2005}
+J\"{a}ckel, P., \& Kawai, A. (2005). The Future is Convex. Wilmott February, 2--13.
+
+\bibitem[\protect\citeauthoryear{Jacquier and Oumgari}{2023}]{Jacquier2023}
+Jacquier, A., \& Oumgari, M. (2023). Interest Rate Convexity in a Gaussian Framework. Working paper.
+
+
+\bibitem[\protect\citeauthoryear{Karasinski and Sepp}{2012}]{Sepp2012}
+Karasinski, P., and Sepp, A.  \harvardyearleft 2012\harvardyearright ,
+  `Beta stochastic volatility model', {\em Risk Magazine} ~66--71.
+
+\bibitem[\protect\citeauthoryear{Kirikos and Novak}{1992}]{KirikosNovak1992} Kirikos, G., \& Novak, D. (1997). Convexity Conundrums. Risk, 60--61.
+
+\bibitem[\protect\citeauthoryear{Henrard}{2005}]{Henrard2005}
+Henrard, M. (2005). Eurodollar futures and options: Convexity adjustment in HJM one-factor model. Available at SSRN 682343.
+
+\bibitem[\protect\citeauthoryear{Hunt and Kennedy}{2004}]{HuntKennedy2004}
+Hunt, P., \& Kennedy, J. (2004). Financial derivatives in theory and practice, vol. 556. John Wiley and Sons.
+
+
+\bibitem[\protect\citeauthoryear{Lewis}{2000}]{Lewis2000}
+Lewis, A.~L.  (2000), {\em Option Valuation  under Stochastic Volatility}, Finance Press.
+
+\bibitem[\protect\citeauthoryear{Lions and Musiela}{2007}]{Lions2007}
+Lions, P. L. and Musiela, M.  (2007), Correlations and bounds for stochastic volatility models,  {\em In Annales de l'Institut Henri Poincar\'{e} C, Analyse non lin\'{e}aire}, {\bf 24}(1), 1--16.
+
+\bibitem[\protect\citeauthoryear{Lipton}{2001}]{Lipton2001} Lipton, A. (2001). Mathematical methods for foreign exchange: A financial engineer's approach. World Scientific.
+
+\bibitem[\protect\citeauthoryear{Lucic}{2004}]{Lucic2004} Lucic, V. (2004). Forward-start options in stochastic volatility models. The best of Wilmott, 1, 413--420.
+
+\bibitem[\protect\citeauthoryear{Lucic}{2016}]{Lucic2016} Lucic, V. (2016) Non-Parametric Local Volatility Swaption Formula Revisited. Available at SSRN:  https://ssrn.com/abstract=2808470
+
+\bibitem[\protect\citeauthoryear{Lyashenko and Goncharov}{2023}]{Lyashenko2023} Lyashenko, A. and Goncharov, Y. (2023) Introducing the Factor HJM Term Structure Modeling Framework. To appear in Risk. 
+
+\bibitem[\protect\citeauthoryear{Lyashenko and Mercurio}{2019}]{Lyashenko2019} Lyashenko, A. and Mercurio, F. (2019) Looking Forward to Backward-Looking Rates: A Modeling Framework for Term Rates Replacing LIBOR. Available at SSRN: https://ssrn.com/abstract=2987832
+
+\bibitem[\protect\citeauthoryear{Mercurio}{2017}]{Mercurio2017} Mercurio, F. (2017) The Present of Futures: Valuing Eurodollar-Futures Convexity Adjustments in a Multi-Curve World. Available at SSRN:  https://ssrn.com/abstract=2987832
+
+\bibitem[\protect\citeauthoryear{Michalski and Mosig}{2016}]{Michalski2016} Michalski, K. A. \& Mosig, J. R. (2016). Efficient computation of Sommerfeld integral tails–methods and algorithms. Journal of Electromagnetic Waves and Applications, 30(3), 281--317.
+
+\bibitem[\protect\citeauthoryear{Morton}{1989}]{Morton89}
+Morton, A. J. (1989). Arbitrage and martingales. Working paper. Cornell University.
+
+\bibitem[\protect\citeauthoryear{Musiela}{1993}]{Musiela1993}
+Musiela, M. (1993) Stochastic PDE's and Term Structure Models. Preprint, University of New South Wales.
+
+\bibitem[\protect\citeauthoryear{Nelson-Siegel}{1987}]{NS1987} Nelson C., Siegel A. (1987) Parsimonious modeling of yield curves. {\em Journal of Business,} {\bf 60},~473--489.
+
+
+\bibitem[\protect\citeauthoryear{Piterbarg and Renedo}{2006}]{Piterbarg2006}
+Piterbarg, V. and Renedo M. (2006) Eurodollar Futures Convexity Adjustments in Stochastic Volatility Models, {\em Journal of Computational Finance}, {\bf   9},~71--94.
+
+\bibitem[\protect\citeauthoryear{Sepp and Rakhmonov}{2024}]{Sepp2024} Sepp, A. \& Rakhmonov, P. (2024) Log-normal Stochastic Volatility Model with Quadratic Drift. {\em International Journal of Theoretical and Applied Finance}, forthcoming.
+
+\bibitem[\protect\citeauthoryear{Sepp and Rakhmonov}{2023}]{SeppRakhmonov2023a} Sepp, A. and Rakhmonov, P. \harvardyearleft 2023\harvardyearright, 'A robust stochastic volatility model for interest rates', {\em Risk Magazine}, Sep 2023:~1--6.
+
+\bibitem[\protect\citeauthoryear{Sin}{1998}]{Sin1998}
+Sin, C.~A.  (1998), `Complications with  stochastic volatility models', {\em Advances in Applied Probability}, {\bf   30}(1),~256--268.
+
+
+\bibitem[\protect\citeauthoryear{Skov and Skovmand}{2021}]{Skov2021} 
+Skov, J. B. \& Skovmand, D. (2021). Dynamic term structure models for SOFR futures. Journal of Futures Markets, 41(10), 1520--1544.
+
+\end{thebibliography}
+
+
+\appendix
+
+
+
+
+
+\section{Volatility Parametrization}\label{sec:vol_parametrization}
+We now discuss parametrization of the volatility matrix $\mathbf{\Sigma}_t$ in \eqref{eq:FHJM} for arbitrary basis $B(\tau)$. We consider the approach outlined in \cite{Lyashenko2023} and \cite{AndersenPiterbarg2010}. We set the number of factors to $d$, choose $d$ key term points $\tau_1<\ldots<\tau_d$ and introduce $d$-dimensional vector of continuously compounded benchmark yields
+\begin{equation*}
+y_t=\left(y_t(\tau_1),\ldots, y_t(\tau_d)\right)^\top,
+\end{equation*}
+where 
+\begin{equation*}
+y_t(\tau_k)=\frac{1}{\tau_k}\int_0^{\tau_k} f_t(\tau)\,d\tau, \quad k=1,\ldots, d.
+\end{equation*}
+We begin with the most generic setting, when individual yields are assumed to have following dynamics
+\begin{equation}\label{eq:key_fwd_dynam0}
+dy_t(\tau_k)=(\ldots)\,dt + \sigma_t^{(k)}\left(a_k(t)+b_k(t)y_t(\tau_k)\right)\,dZ^{(k)}_t,\quad k=1,\ldots, d,
+\end{equation}
+where $a_k(t)$ defines instantaneous volatility, $\sigma_t^{(k)}$ is SV driver for $y_t(\tau_k)$ and $Z_t=\left(Z^{(1)}_t,\ldots, Z^{(d)}_t\right)^\top$ is a $d$-dimensional Brownian motion with correlation matrix $\mathbf{R}$.  The matrix $\mathbf{R}$ is an input and can be estimated, e.g. using econometric analysis. As seen, individual yields have displaced diffusion SV dynamics in \eqref{eq:key_fwd_dynam0}. Using vector notation, we can conveniently rewrite \eqref{eq:key_fwd_dynam0} as
+\begin{equation}\label{eq:key_fwd_dynam2}
+dy_t=(\ldots)\,dt + \hat{\mathbf{\Sigma}}_t \mathbf{A}(t)\,dZ_t,
+\end{equation}
+where for future reference we introduced
+\begin{equation*}
+\begin{split}
+&\hat{\mathbf{\Sigma}}_t:=\mathrm{diag}\left(\sigma_t^{(1)},\ldots,\sigma_t^{(d)}\right),\\
+&\mathbf{A}(t):=\mathrm{diag}\left(a_1(t)+b_1(t)y_t(\tau_1),\ldots,a_d(t)+b_d(t)y_t(\tau_d)\right)
+\end{split}
+\end{equation*}
+
+
+Using the dynamics of benchmark yields $y_t$ in \eqref{eq:key_fwd_dynam2}, we determine the appropriate parametrization for matrix $\mathbf{\Sigma}_t$ by setting 
+\begin{equation*}
+\mathbf{\Sigma}_t=\hat{\mathbf{\Sigma}}_t \mathbf{C}(t;X_t,Y_t).
+\end{equation*}
+
+
+Thus when factors dynamics are given by \eqref{eq:FHJM}, the dynamics of $y_t(\tau_k)$ in \eqref{eq:FHJM} become
+\begin{equation*}
+dy_t(\tau_k)=(\ldots)\,dt + \sigma_t^{(k)}\left[\frac{1}{\tau_k}\int_0^{\tau_k}B(\tau)\,d\tau\right]\mathbf{C}(t;X_t,Y_t)\,dW_t.
+\end{equation*}
+
+
+The above equations can be rewritten as
+\begin{equation}\label{eq:key_fwd_dynam3}
+dy_t=(\ldots)\,dt + \hat{\mathbf{\Sigma}}_t\mathbf{B_Y}\mathbf{C}(t;X_t,Y_t)\,dW_t.
+\end{equation}
+where matrix $\mathbf{B_Y}$ is formed by stacking vectors $\frac{1}{\tau_k}\int_0^{\tau_k}B(\tau)\,d\tau$ for key term points $\tau_k$ row-by-row. By comparing Eqs \eqref{eq:key_fwd_dynam2} and \eqref{eq:key_fwd_dynam3}, we see that volatility matrix $\mathbf{C}(t;X_t,Y_t)$ should be chosen as 
+\begin{equation}\label{eq:vol_parametr0}
+\mathbf{C}(t;X_t,Y_t)=\mathbf{B_Y}^{-1}\mathbf{A}(t)\mathbf{R_C},
+\end{equation}
+where $\mathbf{R_C}$ is a lower-triangular $d\times d$ matrix found by Cholesky decomposition of the correlation matrix $\mathbf{R}$. We note that $\mathbf{C}(t;X_t,Y_t)$ is linear in $\{X_t,Y_t\}$ as 
+\begin{equation*}
+\begin{split}
+&a_k(t)+b_k(t)y_t(\tau_k)=a_k(t)-b_k(t)\tau_k^{-1}\ln P\left(t,t+\tau_k;X_t,Y_t\right)=\\
+=&a_k-b_k\tau_k^{-1}\ln\left(\frac{P(0,t+\tau_k)}{P(0,t)}\right)+b_k\tau_k^{-1}B_P(\tau_k)X_t+b_k\tau_k^{-1}\tilde{B}_P(\tau_k)Y_t.
+\end{split}
+\end{equation*}
+
+Consequently, auxiliary vector $\Omega_t$ becomes quadratic in $X_t$ and $Y_t$, see \eqref{eq:FHJM_Omega}, which implies that the drift of vector $dY_t$ must contain terms quadratic in $Y_t$. Regardless of the dynamics of $d$-factor volatility $\mathbf{\Sigma}_t$ and its correlation to curve factor $X_t$, such specification is prone to explosions, therefore we argue that modeling interest skews in the FHJM model is only possible when $b_k(t)\equiv 0$, i.e. curve driver $X_{t}$, conditional on the SV driver, is normal. Such assumption makes matrix $\mathbf{C}(t)$ deterministic, henceforth we set
+\begin{equation}\label{eq:vol_parametr}
+\mathbf{C}(t)=\mathbf{B_Y}^{-1}\mathbf{A}(t)\mathbf{R_C},
+\end{equation}
+where $\mathbf{A}(t):=\mathrm{diag}\left(a_1(t),\ldots,a_d(t)\right)$. Parametrization \eqref{eq:vol_parametr} allows to conveniently express volatility matrix in terms of correlation between benchmark yields and their instantaneous volatilities, which is important for the purposes of model calibration.  
+
+
+
+\section{Pure Exponential Basis}\label{sec:expon_basis}
+
+We note that, in general, the dimension of the auxiliary vector $Y_{t}$ grows quadratically with  $d$, where $d$ is the dimension of factor $X_{t}$. As an alternative which results in a linear growth of dimension of $Y_{t}$, we consider pure exponential (PE) basis with spectral set $\Lambda=\{\lambda_1,\ldots, \lambda_d\}$ specified as follows:
+\begin{equation}\label{eq:PE_basis}
+B(\tau)=\left(e^{-\lambda_1\tau},\ldots, e^{-\lambda_d\tau}\right),\quad
+\lambda_k=\lambda_{\min}+\frac{k-1}{d-1}\left(\lambda_{\max}-\lambda_{\min}\right),\quad k=1,\ldots, d,
+\end{equation}
+where $0<\lambda_{\min}<\lambda_{\max}$. In this case, the generating matrix $\mathbf{D}$ of the main basis $B(\tau)$ is diagonal
+\begin{equation}\label{eq:PE_matrix_D_X}
+\mathbf{D}=\text{diag}\left(-\Lambda\right)=
+\begin{pmatrix}
+    -\lambda_{1} & & \\
+    & \ddots & \\
+    & & -\lambda_{d}
+  \end{pmatrix}	
+\end{equation}
+and auxiliary basis $\tilde B(\tau)$ is set as pure exponential with spectral set $\tilde\Lambda$ and generating matrix $\tilde{\mathbf{D}}$ as follows
+\begin{equation}\label{eq:PE_matrix_D_Y}
+\begin{split}
+&\tilde\Lambda=\Lambda\cup \{\Lambda+\Lambda\},\quad \Lambda=\{\lambda_1,\ldots, \lambda_d\},
+\quad \Lambda+\Lambda=\{\lambda_i+\lambda_j\,|\,i,j=1,\ldots, d\}, \\
+&\mathbf{\tilde D}=\text{diag}\left(-\tilde\Lambda\right),
+\end{split}
+\end{equation}
+see \cite{Lyashenko2023}. Thus, vector $\tilde\Omega_t$ in \eqref{eq:FHJM_Omega_SV} can be found by rearranging the terms:
+\begin{equation}\label{eq:PE_Omega0}
+\begin{split}
+&\tilde B(\tau)\tilde \Omega_t=B(\tau)\mathbf{C}\mathbf{C}^\top \left(\int_0^\tau B(u)\,du\right)^\top=\left(e^{-\lambda_1\tau},\ldots, e^{-\lambda_d\tau}\right)\mathbf{C}\mathbf{C}^\top
+\left(\frac{1-e^{-\lambda_1\tau}}{\lambda_1},\ldots, \frac{1-e^{-\lambda_d\tau}}{\lambda_d}\right)^\top.
+\end{split}
+\end{equation}
+As shown in \cite{Lyashenko2023}, the dimensionality of spectral set $\tilde \Lambda$ is usually $n=3d-1$. As a small refinement, we calculate the dimensionality of the auxiliary basis for any possible values of $\lambda_{\min}$, $\lambda_{\max}$. We omit its proof as it involves direct calculations. 
+
+
+\begin{proposition}
+We let $\bar\Delta:=\frac{1}{d-1}\left(\lambda_{\max}-\lambda_{\min}\right)$.
+If $\lambda_{\min}\not\in\{\bar\Delta,2\bar\Delta,\ldots, (d-1)\bar\Delta\}$, then the dimensionality of auxiliary spectral set is $n=3d-1$. 
+If $\lambda_{\min}=k\bar\Delta$ for some $k=1,\ldots, d-1$, then $n=k+2d-1$.
+\end{proposition}
+Thus, without loss of generality, we choose $\lambda_{\min}$ and $\lambda_{\max}$ such that $n=3d-1$. 
+In this case, it is guaranteed that $\Lambda\cap\{\Lambda+\Lambda\}=\varnothing$. 
+Therefore, to calculate the vector process in \eqref{eq:PE_Omega0}, we resolve $\tilde\Omega_t$ from the equation
+\begin{equation*}
+\tilde B(\tau)\tilde\Omega_t=\left(e^{-\lambda_1\tau}, \ldots, e^{-\lambda_d\tau}\right)\mathbf{C}\mathbf{C}^\top
+\left(\frac{1-e^{-\lambda_1\tau}}{\lambda_1}, \ldots, \frac{1-e^{-\lambda_d\tau}}{\lambda_d}\right)^\top.
+\end{equation*}
+
+If we denote
+\begin{equation*}
+\tilde\Omega_t:=\left(\tilde\Omega_t^1,\tilde\Omega_t^2,\ldots, \tilde\Omega_t^m\right)^\top,\quad 
+\mathbf{M}:=\mathbf{C}\mathbf{C}^\top, \quad \mathbf{M}=\{m_{kj}\}_{k,j=1,\ldots,d}, 
+\end{equation*}
+by rearranging the terms we can find that 
+\begin{equation}\label{eq:PE_Omega}
+\tilde\Omega_t^k=
+\begin{cases}
+\sum_{j=1}^d\frac{m_{kj}}{\lambda_j}, & \lambda_k\in\Lambda,\\
+-\sum_{\substack{i,j=1:\\i+j=k}}^d\frac{m_{ij}}{\lambda_j}, & \lambda_k\in\Lambda+\Lambda.\\
+\end{cases}
+\end{equation}
+
+\begin{corollary}\label{thm:Nelson_Siegel2}
+We consider an FHJM model with PE basis $B(\tau)$ given by \eqref{eq:PE_basis}. Then  dynamics of model factors $\{X_t, Y_t\}$ is given by \eqref{eq:FHJM_SV}, where generating matrix of the main basis $B(\tau)$, auxiliary basis $\tilde B(\tau)$ and vector $\tilde\Omega_t$ are given by \eqref{eq:PE_matrix_D_X}, \eqref{eq:PE_matrix_D_Y} and \eqref{eq:PE_Omega}, respectively. 
+Instantaneous forward rates $f_t(\tau)$ are then given by
+\begin{equation*}
+f_{t}(\tau) = B(\tau) X_{t} + \tilde{B}(\tau) Y_{t}  +  \hat f_t(\tau),\quad \hat f_t(\tau)=f_{0}(t+\tau).
+\end{equation*}
+Prices of zero-coupon bonds are given by
+\begin{equation}\label{eq:NS_zcb}
+P(t,t+\tau) = P(t,t+\tau; X_t, Y_t) = \frac{P(0,t+\tau)}{P(0,t)}\exp\left(-B_P(\tau) X_{t} - \tilde{B}_P(\tau) Y_{t}\right),
+\end{equation}
+where 
+\begin{equation*}
+B_P(\tau)=\left(e^{-\lambda_1\tau}, \ldots, e^{-\lambda_d\tau}\right),\quad 
+\tilde{B}_P(\tau)=\left(\frac{1-e^{-\lambda_1\tau}}{\lambda_1}, \ldots, \frac{1-e^{-\lambda_d\tau}}{\lambda_d}\right).
+\end{equation*}
+\end{corollary}
+
+\begin{proof} Follows from Theorem \ref{thm:zcb}.
+\end{proof}
+
+
+
+\section{Futures Convexity Adjustment}\label{app:convexity_adj}
+
+\subsection{Proof to Theorem \ref{thm:futures_conv_Gauss}}\label{app:futures_conv_Gauss}
+
+For Guassian FHJM model it is easier to devise a direct proof that utilizes the deterministic nature of rates volatilities. We use following two relationships, that can be found in \cite{Henrard2005} in context of one-factor HJM model. Its extension into multi-dimensional setting is straightforward and we skip its proof: 
+\begin{equation}\label{eq:futures_conv_Gauss1}
+\begin{split}
+e^{\int_{T_S}^{T_E}r(u)\,du}=P(T_S,T_E)^{-1}e^{\frac{1}{2}\int_{T_S}^{T_E}\|\sigma_P(t,T_E)\|^2\,dt+\int_{T_S}^{T_E}\sigma_P(t,T_E)\,dW_t},\\
+P(T_S,T_E)=\frac{P(t,T_E)}{P(t,T_S)}e^{-\frac{1}{2}\int_{t}^{T_S}\|\sigma_P(s,T_E)\|^2-\|\sigma_P(s,T_S)\|^2\,dt+\int_{T_S}^{T_E}\left(\sigma_P(s,T_E)-\sigma_P(s,T_S)\right)^\top\,dW_s},
+\end{split}
+\end{equation}
+where $\sigma_P(t,T):=\int_t^T\sigma_f(t,u)\,du$ and $\sigma_f(t,T)$ denote instantaneous volatility of $P(t,T)$ and $f(t,T)$, respectively. 
+\begin{proof}
+Since $\sigma_P(t,T)$ is a deterministic function in Guassian HJM, we have
+\begin{equation*}
+\begin{split}
+\mathbb{E}\left[\left.P(T_S,T_E)^{-1}\right|\mathcal{F}_t\right]&=
+\frac{P(t,T_S)}{P(t,T_E)}\mathbb{E}\left[e^{\frac{1}{2}\int_{t}^{T_S}\|\sigma_P(s,T_E)\|^2-\|\sigma_P(s,T_S)\|^2\,dt-\int_{T_S}^{T_E}\left(\sigma_P(s,T_E)-\sigma_P(s,T_S)\right)^\top\,dW_s}\right]=\\
+&=\frac{P(t,T_S)}{P(t,T_E)}e^{\frac{1}{2}\int_{t}^{T_S}\|\sigma_P(s,T_E)\|^2-\|\sigma_P(s,T_S)\|^2\,dt+\frac{1}{2}\int_{T_S}^{T_E}\|\sigma_P(s,T_E)-\sigma_P(s,T_S)\|^2\,ds}=\\
+&=\frac{P(t,T_S)}{P(t,T_E)}e^{\int_{t}^{T_S}\langle \sigma_P(s,T_E), \sigma_P(s,T_E)-\sigma_P(s,T_S)\rangle\,ds}.
+\end{split}
+\end{equation*}
+
+From bond reconstruction formula in \eqref{eq:FHJM_zcb}, we see that in Gaussian FHJM model the volatility of $P(t,T)$ is $\sigma_P(t,T)=B_P(T-t)\mathbf{C}(t)$. Therefore,
+\begin{equation}\label{eq:futures_conv_Gauss2}
+\mathbb{E}\left[\left.P(T_S,T_E)^{-1}\right|\mathcal{F}_t\right]=
+\frac{P(t,T_S)}{P(t,T_E)}e^{\int_{t}^{T_S}B_P(T_E-s)^\top\left(B_P(T_E-s)-B_P(T_S-s)\right)\mathbf{C}(s)^\top\mathbf{C}(s)\,ds}.
+\end{equation}
+
+Next, again using the fact that $\sigma_P(t,T)$ is a deterministic function, we have
+\begin{equation}\label{eq:futures_conv_Gauss3}
+\begin{split}
+&\mathbb{E}\left[\left.e^{\int_{T_S}^{T_E}r(u)\,du}\right|\mathcal{F}_{T_S}\right]=
+P(T_S,T_E)^{-1}\mathbb{E}\left[e^{\frac{1}{2}\int_{T_S}^{T_E}\|\sigma_P(t,T_E)\|^2\,dt+\int_{T_S}^{T_E}\sigma_P(t,T_E)\,dW_t}\right]=\\
+&=P(T_S,T_E)^{-1}e^{\int_{T_S}^{T_E}\|\sigma_P(t,T_E)\|^2\,dt}=
+P(T_S,T_E)^{-1}e^{\int_{T_S}^{T_E}B_P(T_E-s)^\top B_P(T_E-t)\mathbf{C}(t)^\top\mathbf{C}(t)\,dt}.
+\end{split}
+\end{equation}
+The expression for $c^{\mathrm{ED}}(t)$ follows immediately from \eqref{eq:futures_conv_Gauss2}. Next, combining \eqref{eq:futures_conv_Gauss3} and \eqref{eq:futures_conv_Gauss2} and using tower property of conditional expectation, yields the expression for $c^{\mathrm{ON}}(t)$. 
+
+\end{proof}
+
+
+\subsection{Proof of Theorem \ref{thm:futures_conv_cir}}\label{app:futures_conv_cir}
+Although the proof of Theorem \ref{thm:futures_conv_cir} is very similar to that of Theorem \ref{thm:futures_conv_logsv}, we provide it for completeness. Using \cite{Sepp2024} we can show that function $U$, defined by
+\begin{equation*}
+U(t)=U(t;X,Y,V)=c^{\mathrm{ON}}(\tau)e^{-\left(B_P(T_E-T_E\vee t)-B_P(T_S-T_S\vee t)\right)X-\left(\tilde B_P(T_E-T_E\vee t)-\tilde B_P(T_S-T_S\vee t)\right)Y},
+\end{equation*}
+where $c^{\mathrm{ON}}(t)$ defined, in turn, in \eqref{eq:fut_rate_ON}, solves the problem as a functon of $\tau=T_E-t$
+\begin{equation}\label{eq:pde1f_cir}
+-\partial_\tau U+\mathcal{L}U+\mathbbm{1}_{\tau\le \Delta}\left(B(0)+\tilde B(0)\right)U=0, \qquad U(0;X,Y,V)=1, 
+\end{equation}
+where operator $\mathcal{L}$ is defined as follows:
+\begin{equation*}%\label{eq:pde1_generatorf}
+\begin{split}
+&\mathcal{L}=\mathcal{L}^{(X)}+\mathcal{L}^{(Y)}+\mathcal{L}^{(V)}\\
+&\mathcal{L}^{(X)}=\sum_{i=1}^d(\mathbf{D}X)^{(i)}\partial_{x_i}+
+\frac{V}{2}\sum_{i,j=1}^d\mathbf{M}_{ij}(T-\tau)\partial_{x_ix_j}
++V\sum_{i=1}^d(\mathbf{C}(T-\tau)\beta)^{(i)}\partial_{vx_i},\\
+&\mathcal{L}^{(Y)}=\sum_{i=1}^m(\tilde{\mathbf{D}}Y)^{(i)}\partial_{y_i}+V\sum_{i=1}^m\tilde{\Omega}_{T-\tau}^{(i)}\partial_{y_i},\\
+&\mathcal{L}^{(v)}=\left[\kappa\theta-\kappa V\right]\partial_v+\frac{1}{2}\vartheta(T-\tau)^2V\partial^2_{vv}.
+\end{split}
+\end{equation*}
+
+
+We assume the solution $U$ is of the form 
+\begin{equation}\label{eq:U_aff_exp_cir}
+U(\tau)=\exp\left[B_1(\tau)^\top X+B_2(\tau)^\top Y+h_0(\tau)+h_1(\tau)v \right]
+\end{equation}
+and substitute it into the PDE \eqref{eq:pde1f_cir}. 
+To obtain the ODEs \eqref{eq:MF_conv_adj_ODE_cir} for $B_i$ and $h_j$, we collect the terms proportional to $X$, $Y$ and $V$, respectively. Then initial conditions for ODEs \eqref{eq:MF_conv_adj_ODE_cir} are set to reproduce conditions of the problem \eqref{eq:pde1f_cir}. 
+Note that $c(t)$ does not directly depend on $X$ and $Y$. To demonstrate it, consider first $\tau\le \Delta$. After matching terms with $X$ and $Y$, we see that $B_1(\tau)$, $B_2(\tau)$ solve the ODE
+\begin{equation*}
+\begin{split}
+\frac{d}{d\tau}B_1&=B_1^\top \mathbf{D}+B(0),\quad B_1(0)=0\\
+\frac{d}{d\tau}B_2&=B_2^\top \tilde{\mathbf{D}}+\tilde B(0),\quad B_2(0)=0,
+\end{split}
+\end{equation*}
+which has solution
+\begin{equation*}
+B_1(\tau)=B(0)\int_0^\tau e^{\mathbf{D}u}\,du,\quad B_2(\tau)=\tilde B(0)\int_0^\tau e^{\tilde{\mathbf{D}}u}\,du.
+\end{equation*}
+
+Hence the coefficients of $X$, $Y$ in $c(t)$ equal, respectively
+\begin{equation*}
+B(0)\int_{{T_E}-t}^{T_E}e^{\mathbf{D}u}\,du-B_P(T_E-t),\quad 
+\tilde B(0)\int_{{T_E}-t}^{T_E}e^{\mathbf{\tilde D}u}\,du-\tilde B_P(T_E-t).
+\end{equation*}
+
+
+As the solutions of $B_P(\tau)$, $\tilde B_P(\tau)$ for the EP basis is given by $B_P(\tau)=B(0)\int_0^\tau e^{\mathbf{D}u}\,du$, $\tilde B_P(\tau)=\tilde B(0)\int_0^\tau e^{\tilde {\mathbf{D}}u}\,du$, those coefficients must vanish.
+
+Next, when $\Delta<\tau\le T_E$ matching similarly the terms with $X$ and $Y$, we see that $B_1(\tau)$, $B_2(\tau)$ solve the ODE
+\begin{equation*}
+\begin{split}
+\frac{d}{d\tau}B_1&=B_1^\top \mathbf{D},\quad B_1(0)=B_P(\Delta),\\
+\frac{d}{d\tau}B_2&=B_2^\top \tilde{\mathbf{D}},\quad B_2(0)=B_P(\Delta).
+\end{split}
+\end{equation*}
+Now, the coefficients of $X$, $Y$ in $c(t)$ equal, respectively
+\begin{equation*}
+B_P(\Delta)e^{\mathbf{D}(T_S-t)}-\left(B_P(T_E-t)-B_P(T_S-t)\right),\quad
+\tilde B_P(\Delta)e^{\tilde {\mathbf{D}}(T_S-t)}-\left(\tilde B_P(T_E-t)-\tilde B_P(T_S-t)\right).
+\end{equation*}
+We observe that those coefficients also vanish, hence $c^{\mathrm{ON}}(t)$ does not depend on $X$, $Y$. 
+
+\subsection{Proof of Theorem \ref{thm:futures_conv_logsv}}\label{app:futures_conv_logsv}
+
+
+Based on affine expansion framework for the moment-generating function, developed in \cite{Sepp2024} and applied in context of interest rate models in \cite{SeppRakhmonov2023a}, we propose the following affine expansion for the convexity adjustment function in the log-normal SV dynamics \eqref{eq:md}.
+
+\begin{proposition}\label{thm:convexity_ae1}[Zeroth-order affine expansion with log-normal SV \eqref{eq:md}]
+The function $c(\tau,T;X,Y,v)$ in \eqref{eq:fut_rate_ON} can be decomposed as follows
+\begin{equation}\label{eq:convexity_logsv_ae1}
+c^{\mathrm{ON}}(\tau;X,Y,v)=E^{[0]}(\tau;X,Y,v)+R^{[0]}(\tau;X,Y,v),
+\end{equation}
+where $E^{[0]}(\tau;X,Y,v)$ is the leading term and $E^{[0]}(\tau;X,Y,v)$ is the remainder term.
+The leading term $E^{[0]}(\tau;X,Y,v)$ is given by the exponential-affine form: 
+\begin{equation}\label{eq:convexity_ae_ord1_lead_logsv}
+E^{[0]}(\tau;v)=\exp\left[h_0(\tau)+h_1(\tau)v \right],
+\end{equation}
+where $h_0$, $h_1$ satisfy the quadratic differential system \eqref{eq:MF_conv_adj_ODE_logsv} as a function of $\tau$ with the initial condition $B_1(0)=B_2(0)=0$, $h_0(0)=h_1(0)=0$.
+
+The remainder term $R^{[0]}(\tau,T;X,Y,v)$ solves the following problem (we omit arguments for brevity):  
+\begin{equation}\label{eq:MF_conv_adj_Rem1}
+\begin{split}
+-&R^{[0]}_\tau + \mathcal{L}R^{[0]}=-F^{[0]}(v,h_1,h_2) E^{[0]}\\
+&R^{[0]}(0,T;X,Y,v)=0,
+\end{split}
+\end{equation}
+with operator $\mathcal{L}$ defined in Eq \eqref{eq:pde1_generator} and residual function $F^{[0]}$
+\begin{equation}\label{eq:MF_conv_adj_Rem2}
+\begin{split}
+& F^{[0]}(v,h_1,h_2)=C^{(3)}(\tau; h_1,h_2) v^2,\\
+& C^{(3)}(\tau) = \frac{1}{2}B_1^\top\mathbf{M}B_1 + h_1B_1^\top\mathbf{C}\beta + B_2^\top\tilde\Omega - \kappa_2h_1 + \frac{1}{2}\vartheta^2h_1^2.
+\end{split}
+\end{equation}
+
+%\textbf{TODO: check the power $v^2$ or $v^3$}
+
+\end{proposition}
+
+
+\begin{proof}[Proof of Theorem \ref{thm:futures_conv_logsv}]
+
+We consider FHJM-SV dynamics \eqref{eq:FHJM_SV}. Using \cite{Sepp2024} we can show that function $U$, defined by
+\begin{equation*}
+U(\tau)=U(\tau;X,Y,v)=c^{\mathrm{ON}}(\tau)e^{-\left(B_P(T_E-T_E\vee t)-B_P(T_S-T_S\vee t)\right)X-\left(\tilde B_P(T_E-T_E\vee t)-\tilde B_P(T_S-T_S\vee t)\right)Y},
+\end{equation*}
+where $c^{\mathrm{ON}}(\cdot)$ is defined in \eqref{eq:fut_rate_ON}, solves the problem as a functon of $\tau=T_S-t$
+\begin{equation}\label{eq:pde1f_logsv}
+\begin{split}
+&-\partial_\tau U+\mathcal{L}U+\mathbbm{1}_{\tau\le \Delta}\left(B(0)+\tilde B(0)\right)U=0,\\
+&U(0;X,Y,v)=1, 
+\end{split}
+\end{equation}
+where operator $\mathcal{L}$ is defined as follows:
+\begin{equation*}%\label{eq:pde1_generatorf}
+\begin{split}
+&\mathcal{L}=\mathcal{L}^{(X)}+\mathcal{L}^{(Y)}+\mathcal{L}^{(v)}\\
+&\mathcal{L}^{(X)}=\sum_{i=1}^d(\mathbf{D}X)^{(i)}\partial_{x_i}+
+\frac{(v+\theta)^2}{2}\sum_{i,j=1}^d\mathbf{M}_{ij}(T-\tau)\partial_{x_ix_j}
++(v+\theta)^2\sum_{i=1}^d(\mathbf{C}(T-\tau)\beta)^{(i)}\partial_{vx_i},\\
+&\mathcal{L}^{(Y)}=\sum_{i=1}^m(\tilde{\mathbf{D}}Y)^{(i)}\partial_{y_i}+(v+\theta)^2\sum_{i=1}^m\tilde{\Omega}_{T-\tau}^{(i)}\partial_{y_i},\\
+&\mathcal{L}^{(v)}=\left[\hat\kappa_0(T-\tau)-\hat\kappa_1(T-\tau) v-\hat\kappa_2(T-\tau)v^2\right]\partial_v+\frac{1}{2}\vartheta(T-\tau)^2(v+\theta)^2\partial^2_{vv},
+\end{split}
+\end{equation*}
+where we adopt the notation that $Z^{(i)}$ is the $i$-th component of vector $Z$. 
+Note that we introduced $\hat\kappa_0(t)=0$, $\hat\kappa_1(t)=\kappa_1+\kappa_2\theta$, $\hat\kappa_2(t)=\kappa_2$ to keep notations consistent. 
+
+
+We assume the solution $U$ has the form 
+\begin{equation}\label{eq:U_aff_exp_logsv}
+U(\tau)=\exp\left[B_1(\tau)^\top X+B_2(\tau)^\top Y+h_0(\tau)+h_1(\tau)v \right]
+\end{equation}
+and substitute it into the PDE \eqref{eq:pde1f_logsv}. 
+To obtain the ODEs \eqref{eq:MF_conv_adj_ODE_logsv} for $B_i$ and $h_j$, we match terms with $X$, $Y$ and $v^k$, $k=0,1$, respectively. Then initial conditions for ODEs \eqref{eq:MF_conv_adj_ODE_logsv} are set to reproduce conditions of the problem \eqref{eq:pde1f_logsv}. 
+Using same arguments as in the proof of Theorem \ref{thm:futures_conv_cir}, we can show that $c^{\mathrm{ON}}(t)$ is independent of $X$ and $Y$. 
+\end{proof}
+
+
+
+
+%\begin{figure}[H]
+%\begin{center}
+%\includegraphics[width=0.70\textwidth, angle=0] {figures//fhjm//convexity_adj_gauss_hjm_ttm60m.pdf}
+%\end{center}
+%\caption{Convexity adjustment in Gaussian factor HJM model using affine expansion  \eqref{eq:convexity_logsv_ae1} and numerical integration \eqref{eq:futures_conv_Gauss}. 
+%%We set expiry to $T=2y$ and factor volatility to $\mathbf{C}=\mathrm{diag}\{0.01,0.01,0.01\}$
+%}
+%\label{fig:futures_conv_Gauss}
+%\end{figure}
+%
+%In Figure \ref{fig:futures_conv_Gauss}, we display the magnitude of futures convexity adjustment in Gaussian factor HJM model, calculated using solution of the zeroth-order affine expansion \eqref{eq:convexity_logsv_ae1} and exact solution, calculated by numerical integration of \eqref{eq:futures_conv_Gauss} using trapezoidal rule. We further display the absolute error in the same plot. As seen both methods are consistent: the error there is due to discretization of the quadrature rule and numerical integration of the ODEs \eqref{eq:MF_conv_adj_ODE_logsv}. 
+% 
+
+
+
+%\section{Bumping Methodology}\label{app:bump}
+%
+%We consider a discrete bump of factors dynamics $dX_{t} = \delta X$
+%Using equation (\ref{eq:FHJM_SV}) we infer $ \delta W^{(0)}_{t}$ by:
+%\begin{equation}\label{eq:bump1}
+%\begin{split}
+%&  \delta W^{(0)}_{t} = \frac{1}{ \sigma_t} \mathbf{C}^{-1} \delta X_{t} 
+%\end{split}
+%\end{equation}
+%we project this (tenor-dependent) bump into the bump for $\sigma_t$ using equation (\ref{eq:FHJM_SV})
+%\begin{equation}\label{eq:bump2}
+%\begin{split}
+%& \delta \sigma_t=  \sigma_t \vec{\beta}(t)^\top\,\delta W^{(0)}_{t} 
+%\end{split}
+%\end{equation}
+%
+%To avoid negative bumps we consider log-changes:
+%\begin{equation}\label{eq:bump3}
+%\begin{split}
+%& \delta \ln\sigma_t= \vec{\beta}(t)^\top\,\delta W^{(0)}_{t}  = \frac{1}{ \sigma_t}\vec{\beta}(t)^\top\ \mathbf{C}^{-1} \delta X_{t} 
+%\end{split}
+%\end{equation}
+%
+%Now because $\sigma_t$ is a level volatility with $\sigma_0=1$, we instead bump the parameters $a$:
+%\begin{equation}\label{eq:bump4}
+%\begin{split}
+%& \delta \ln a = \vec{\beta}(t)^\top\ \mathbf{C}^{-1} \delta X_{t} \\
+%\end{split}
+%\end{equation}
+%
+%Thus we obtain:
+%\begin{equation}\label{eq:bump5}
+%\begin{split}
+%& a_{1} = a_{0} \exp\left\{ \vec{\beta}(t)^\top\ \mathbf{C}^{-1} \delta X_{t} \right\}
+%\end{split}
+%\end{equation}
+%where $a_{0}$ is the current value. We bump each parameter $a$ per tenor and expiry using corresponding values of $\beta$.
+%
+
+
+
+\subsection{Proof of Theorem \ref{thm:futures_explosion}}\label{app:futures_explosion}
+\begin{proof}
+For convenience, we consider shifted price process $\bar F_t:=F_t+\Delta^{-1}$ that solves following SDE under risk-neutral measure $\mathbb{Q}$:
+\begin{equation*}
+\begin{split}
+d\bar F_t&=\bar F_t\sigma_t\left(a_0(t)\,dW_t^{(0)}+a_1(t)\,dW_t^{(1)}\right), \quad \bar F_0=F+\Delta^{-1}\\
+d\sigma_t&=\left(\kappa_{1}+\kappa_{2}\sigma_t\right)(\theta-\sigma_t)dt + \sigma_t\vec{\beta}(t)^\top dW^{(0)}_t+\beta_0(t)\sigma_tdW^{(1)}_t,\quad \sigma_0=\sigma,
+\end{split}
+\end{equation*}
+where $a_0(t)$, $a_1(t)$ are defined by \eqref{eq:futures_coeffs_a}.
+To derive conditions that ensure non-explosive dynamics for $F_t$, we use localization argument and introduce sequence of stopping times and corresponding stopped price processes 
+\begin{equation*}
+\begin{split}
+&\tau_n=\inf\{t\ge 0: \sigma_t>n\},\\
+&\bar F_t^{(n)}=\bar F_{t\wedge\tau_n}=\bar F_0\exp\left[\int_0^t\mathbbm{1}_{s<\tau_n}\sigma_s\left(a_0(s)\,dW_s^{(0)}+a_1(s)\,dW_s^{(1)}\right)-\frac{1}{2}\int_0^t\mathbbm{1}_{s<\tau_n}\sigma_s^2\left(\|a_0(s)\|^2+a_1(s)^2\right)\,ds\right].
+\end{split}
+\end{equation*}
+To show that $\bar F_t$ is a  true martingale, the key step is to show that $\sup_n\mathbb{E}\left[\bar F_t^{(n)}\log \bar F_t^{(n)}\right]<\infty$. Denoting $M_t:=\int_0^t\mathbbm{1}_{s<\tau_n}\sigma_s\left(a_0(s)\,dW_s^{(0)}+a_1(s)\,dW_s^{(1)}\right)$, we have
+\begin{equation}\label{eq:fut_expl1}
+\begin{split}
+\mathbb{E}\left[\bar F_t^{(n)}\log \bar F_t^{(n)}\right]&=
+\bar F_0\mathbb{E}\left\{\exp\left[M_t-\frac{1}{2}\langle M,M\rangle_t\right]\left[\log \bar F_0+M_t-\frac{1}{2}\langle M,M\rangle_t\right]\right\}=\\
+&=\bar F_0\log \bar F_0 + \bar F_0\mathbb{\hat E}\left\{M_t-\frac{1}{2}\langle M,M\rangle_t\right\}.
+\end{split}
+\end{equation}
+We highlight that in last equality we changed the measure from $\mathbb{Q}$ to $\mathbb{\hat Q}$, where
+\begin{equation*}
+\left.\frac{d\mathbb{\hat Q}}{d\mathbb{Q}}\right|_{\mathcal{F}_t}=
+\mathcal{E}\left\{\exp\left[\int_0^t\mathbbm{1}_{s<\tau_n}\sigma_s\left(a_0(s)\,dW_s^{(0)}+a_1(s)\,dW_s^{(1)}\right)-\frac{1}{2}\int_0^t\mathbbm{1}_{s<\tau_n}\sigma_s^2\left(\|a_0(s)\|^2+a_1(s)^2\right)\,ds\right]\right\}.
+\end{equation*}
+
+Hence, by Girsanov theorem, the pair 
+\begin{equation*}
+\hat W_t^{(0)}:=W_t^{(0)}-\int_0^t\sigma_u a_0(u)\mathbbm{1}_{u<\tau_n}\,du,\qquad 
+\hat W_t^{(1)}:=W_t^{(1)}-\int_0^t\sigma_u a_1(u)\mathbbm{1}_{u<\tau_n}\,du
+\end{equation*}
+defines two-dimensional Brownian motions under $\mathbb{\hat Q}$. Thus, the right-hand side of \eqref{eq:fut_expl1} equals
+\begin{equation}\label{eq:fut_expl2}
+\bar F_0\log \bar F_0 + \bar F_0\mathbb{\hat E}\left\{\int_0^t\mathbbm{1}_{s<\tau_n}\sigma_s\left(a_0(s)\,d\hat W_s^{(0)}+a_1(s)\,d\hat W_s^{(1)}\right)+\frac{1}{2}\int_0^t\mathbbm{1}_{s<\tau_n}\sigma_s^2\left(\|a_0(s)\|^2+a_1(s)^2\right)\,ds\right\}.
+\end{equation}
+
+As seen, the right-hand side of Eq \eqref{eq:fut_expl2} is uniformly bounded, if $\mathbb{E}\sigma_t^2<\infty$ for $t\le T^*$ and process $\sigma_t$ does not blow up in $\mathbb{\hat Q}$. 
+The first condition is satisfied if $\kappa_2>0$ and $\kappa_1$, $\theta$ satisfy conditions in  \eqref{eq:param_constraint_logsv}, see \cite{Sepp2024}. 
+To check the second condition, we see that under $\mathbb{\hat Q}$ the volatility process $\sigma_t$ solves, up to time $\tau_n$, the SDE
+\begin{equation}\label{eq:fut_expl3}
+\begin{split}
+&d\sigma_t=\left(\kappa_{1}+\kappa_{2}\sigma_t\right)(\theta-\sigma_t)dt + \sigma_t\vec{\beta}(t)^\top d\hat W^{(0)}_t+\beta_0(t)\sigma_td\hat W^{(1)}_t+\sigma_t^2\left[\beta(t)^\top a_0(t)+\beta_0(t)a_1(t)\right]\,dt=\\
+&=\left[\kappa_1\theta-(\kappa_1-\kappa_2\theta)\sigma_t-\left(\kappa_2-\vec{\beta}(t)^\top a_0(t)-\beta_0(t)a_1(t)\right)\sigma_t^2\right]\,dt+\sigma_t\vec{\beta}(t)^\top d\hat W^{(0)}_t+\beta_0(t)\sigma_td\hat W^{(1)}_t.
+\end{split}
+\end{equation}
+
+Its solution $\sigma_t$ does not explode in $\hat{\mathbb{Q}}$ if quadratic term in the drift remains positive. 
+Combining both, we see that if \eqref{eq:fut_expl0} is satisfied, then $\sup_n\mathbb{E}\left[\bar F_t^{(n)}\log \bar F_t^{(n)}\right]<\infty$ as  $\tau_n\uparrow +\infty$, $n\to +\infty$. 
+Using  de la Vall\'{e}e--Poussin criterion for uniform integrability, we conclude that family $\left\{\bar F_t^{(n)}\right\}_{n=1}^{\infty}$ is uniformly integrable, hence
+\begin{equation}
+\mathbb{E}[\left.\bar F_t\right|\mathcal{F}_s]=\bar F_s,\quad 0\le s\le t\le T^*.
+\end{equation}
+\end{proof}
+
+
+\section{Second-order Affine Expansion}\label{app:second_order_ae}
+
+\begin{theorem}\label{thm:affine_expansion_ord2} [Second-order affine expansion] The MGF function defined in Eq \eqref{eq:mgf} can be decomposed as follows:
+\begin{equation}\label{eq:aff_expan_ord2}
+\begin{split}
+& G(\tau,T, z,v; \phi)= \exp \left\{-\phi z \right\} \left[ E^{[2]}(\tau,T, v; \phi) + R^{[2]}(\tau,T,v; \phi)\right],
+\end{split}
+\end{equation}
+where $E^{[2]}$ is the leading term and $R^{[2]}$ is the remainder term.
+
+
+The leading term $E^{[2]}(\tau,T;z,v)$ is given by the exponential-affine form: 
+\begin{equation}\label{eq:aff_expan_ord2_lead}
+\begin{split}
+& E^{[2]}(\tau,T,v; \phi)= \exp \left\{\sum^{4}_{k=0}A^{(k)}(\tau,T;\phi)v^{k}  \right\},
+\end{split}
+\end{equation}
+where vector function $\mathbf{A}(\tau)=\left\{A^{(k)}(\tau,T;\phi)\right\}$, $k=0,1,\ldots,4$, solves the following quadratic differential system as a function of $\tau$:
+\begin{equation}\label{eq:OrigMGFLogAndQVSecondOrder}
+\begin{split}
+A^{(k)}_\tau&=\mathbf{A}^\top M^{(k)}\mathbf{A} + \left(L^{(k)}\right)^\top \mathbf{A} + H^{(k)},\\
+M^{(k)}&=\left\{
+\begin{pmatrix} % first matrix
+0 & 0 & 0 & 0 & 0 \\
+0 & \frac{\theta^2\vartheta^2}{2} & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 \\
+\end{pmatrix}, 
+\begin{pmatrix} % second matrix
+0 & 0 & 0 & 0 & 0 \\
+0 & \theta\vartheta^2 & \theta^2\vartheta^2 & 0 & 0 \\
+0 & \theta^2\vartheta^2 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 \\
+\end{pmatrix}, 
+\begin{pmatrix} % third matrix
+0 & 0 & 0 & 0 & 0 \\
+0 & \frac{\vartheta^2}{2}& 2\theta\vartheta^2 & \frac{3}{2}\theta^2\vartheta^2 & 0 \\
+0 &  2\theta\vartheta^2  & 2\theta^2\vartheta^2 & 0 & 0 \\
+0 & \frac{3}{2}\theta^2\vartheta^2 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 \\
+\end{pmatrix},\right.\vspace*{-1\baselineskip}
+\end{split}
+\end{equation}
+\begin{equation*}
+\begin{split}
+&
+\left.
+\begin{pmatrix} % fourth matrix
+0 & 0 & 0 & 0 & 0 \\
+0 & 0 & \vartheta^2 & 3\theta\vartheta^2 & 2\theta^2\vartheta^2 \\
+0 & \vartheta^2 & 4\theta\vartheta^2 & 3\theta^2\vartheta^2 & 0 \\
+0 & 3\theta\vartheta^2 & 3\theta^2\vartheta^2 & 0 & 0 \\
+0 & 2\theta^2\vartheta^2 & 0 & 0 & 0\\
+\end{pmatrix},
+\begin{pmatrix} % fifth matrix
+0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & \frac{3}{2}\vartheta^2 & 4\theta\vartheta^2 \\
+0 & 0 & 2\vartheta^2 & 6\theta\vartheta^2 & 4\theta^2\vartheta^2 \\
+0 & \frac{3}{2}\vartheta^2 & 6\theta\vartheta^2 & \frac{9}{2}\theta^2\vartheta^2 & 0 \\
+0 & 4\theta\vartheta^2 & 4\theta^2\vartheta^2 & 0 & 0\\
+\end{pmatrix}\right\},\\
+L^{(k)}&=\left\{\begin{pmatrix} % linear terms 
+0 \\ \hat\kappa_0-\theta^2(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi \\ \theta^2\vartheta^2 \\ 0 \\ 0
+\end{pmatrix},
+\begin{pmatrix} % linear terms 
+0 \\ -\hat\kappa_1-2\theta(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi \\ 2(\hat\kappa_0+\theta\vartheta^2-\theta^2(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi)\\ 3\theta^2\vartheta^2 \\ 0
+\end{pmatrix},\right. \\
+&\left.\qquad
+\begin{pmatrix} % linear terms 
+0 \\  -(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi-\hat\kappa_2\\ \vartheta^2-2\hat\kappa_1-4\theta(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi \\
+3(\hat\kappa_0+2\theta\vartheta^2-\theta^2(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi) \\
+6\theta^2\vartheta^2 
+\end{pmatrix},
+\begin{pmatrix} % linear terms 
+0 \\ 0 \\ -2\hat\kappa_2-2(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi \\
+3(-\hat\kappa_1+\vartheta^2-2\theta(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi) \\
+4(\hat\kappa_0+3\theta\vartheta^2-\theta^2(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi)
+\end{pmatrix} ,\right. \\
+&\left.\qquad 
+\begin{pmatrix} % linear terms 
+0 \\ 0 \\ 0 \\
+-3(\hat\kappa_2+(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi) \\
+2(-2\hat\kappa_1+3\vartheta^2-4\theta(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1) \phi)
+\end{pmatrix}
+\right\},\\
+H^{(k)}&=\left\{
+\frac{1}{2}\theta^2 (\|\hat a_0\|^2+\hat a_1^2)\phi^2+\theta^2\phi \hat b, \
+\theta  (\|\hat a_0\|^2+\hat a_1^2)\phi^2 + 2\theta\phi \hat b, \
+\frac{1}{2}  (\|\hat a_0\|^2+\hat a_1^2)\phi^2 +2\phi \hat b, 0, 0 \right\},
+\end{split}
+\end{equation*}
+with the initial condition $\mathbf{A}(0)=( 0, 0, 0, 0, 0 )^\top$, where we omit argument $T-\tau$ in functions $\hat\kappa_i, \hat a_i, \hat b, \vec\beta, \beta_0, \vartheta$.
+% and introduce $\vec{a}\cdot \vec{\beta}:=\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1$ for notational simplicity. 
+The remainder term $R^{[2]}(\tau,T,v;\phi)$ solves the following problem: 
+\begin{equation}\label{eq:OrigMGFLogAndQVOrd1Rem2}
+\begin{split}
+ -&R^{[2]}_\tau +   \mathcal{L}^{(v)} R^{[2]}=-F^{[2]}(v,A^{(1)},A^{(2)}) E^{[2]}(\tau,T,v; \phi)\\
+&R^{[2]}(0,T,v; \phi)=0,
+\end{split}
+\end{equation}
+with operator $\mathcal{L}^{(v)}$ defined in Eq \eqref{eq:pde1_generator} and residual function $F^{[2]}$ given by
+\begin{equation}\label{eq:OrigMGFLogAndQVOrd2Rem2Coeffs}
+\begin{split}
+& F^{[2]}(v,A^{(1)},A^{(2)}, A^{(3)}, A^{(4)})=\sum^{8}_{n=5}C^{(n)}(\tau; A^{(1)}, A^{(2)}, A^{(3)}, A^{(4)}) v^n,\\
+& C^{(5)}(\tau)  = \left(6A^{(2)}A^{(3)} + 9 q(A^{(3)})^2 + 4A^{(1)}A^{(4)} + 4q(4A^{(2)} + 3qA^{(3)})A^{(4)}\right)\vartheta^2 - \\
+&-4A^{(4)}(\langle \hat a_0, \beta\rangle+\beta_0 \hat a_1)\phi - 4 A^{(4)} \kappa_2,\\
+& C^{(6)}(\tau)  = \left(\frac{9}{2}(A^{(3)})^2 + 24qA^{(3)}A^{(4)} + 8A^{(4)} (A^{(2)} + q^2 A^{(4)})\right)\vartheta^2, \\
+& C^{(7)}(\tau)  = \left(4 A^{(4)} (3 A^{(3)} + 4 q A^{(4)}) \right)\vartheta^2,\\
+& C^{(8)}(\tau)  = 8(A^{(4)})^2\vartheta^2.
+\end{split}
+\end{equation}
+\end{theorem}
+
+\end{document}
