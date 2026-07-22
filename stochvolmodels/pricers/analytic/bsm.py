@@ -373,9 +373,9 @@ def compute_bsm_vanilla_theta(ttm: float,
         d1 = np.log(forward / strike) / s_t + 0.5 * s_t
         d2 = d1 - s_t
         if optiontype == 'C' or optiontype == 'IC':
-            theta = -forward * npdf(d1)*vol/(0.5*np.sqrt(ttm)) - discount_rate*discfactor*strike*ncdf(d2)
+            theta = -discfactor*forward * npdf(d1)*vol/(2.0*np.sqrt(ttm)) - discount_rate*discfactor*strike*ncdf(d2)
         elif optiontype == 'P' or optiontype == 'IP':
-            theta = -forward * npdf(d1)*vol/(0.5*np.sqrt(ttm)) + discount_rate*discfactor*strike*ncdf(-d2)
+            theta = -discfactor*forward * npdf(d1)*vol/(2.0*np.sqrt(ttm)) + discount_rate*discfactor*strike*ncdf(-d2)
         else:
             raise NotImplementedError(f"optiontype")
     return theta
