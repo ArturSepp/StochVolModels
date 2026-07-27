@@ -299,8 +299,9 @@ SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4887298
 stochvolmodels/papers/il_hedging
 ```
 
-5) "Stochastic Volatility for Factor Heath-Jarrow-Morton Framework" by Artur Sepp and Parviz Rakhmonov, SSRN:
-https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4646925
+5) "Stochastic Volatility for Factor Heath-Jarrow-Morton Framework" by Artur Sepp and Parviz Rakhmonov,
+Review of Derivatives Research, 2025, 28(3), article 12: https://doi.org/10.1007/s11147-025-09217-4
+(preprint: http://ssrn.com/abstract=4646925)
 ```python 
 stochvolmodels/papers/sv_for_factor_hjm
 ```
@@ -406,13 +407,16 @@ year={2024},
 url={https://www.tandfonline.com/doi/full/10.1080/14697688.2024.2364804}
 }
 
-@article{sepprakhmonov2024,
+@article{sepprakhmonov2025,
 title={Stochastic volatility for factor Heath-Jarrow-Morton framework},
 author={Sepp, Artur and Rakhmonov, Parviz},
+volume={28},
+number={3},
+pages={12},
 year={2025},
 journal={Review of Derivatives Research},
-note={Accepted},
-url={http://ssrn.com/abstract=4646925}
+doi={10.1007/s11147-025-09217-4},
+note={Preprint: http://ssrn.com/abstract=4646925}
 }
 ```
 
