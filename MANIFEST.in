@@ -6,7 +6,6 @@ include README.md
 include CHANGELOG.md
 include LICENSE.txt
 include pyproject.toml
-include requirements*.txt
 
 # Include all Python source files
 recursive-include src/stochvolmodels *.py

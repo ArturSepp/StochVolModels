@@ -1,9 +1,0 @@
-# Compatibility mirror for environments that consume requirements files.
-# pyproject.toml is the authoritative dependency source; keep this core list identical.
-
-numba>=0.60.0
-numpy>=2.0
-scipy>=1.12.0
-pandas>=2.2.0
-matplotlib>=3.8.0
-seaborn>=0.13.0

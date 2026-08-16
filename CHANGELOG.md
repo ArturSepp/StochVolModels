@@ -8,6 +8,10 @@ Entries start at 1.2.0. For earlier releases see the git log.
 - An output-free Google Colab quickstart that installs the released wheel and runs the
   version-matched Karasinski-Sepp log-normal stochastic-volatility example.
 
+### Removed
+- The legacy root `requirements.txt` compatibility mirror; `pyproject.toml` remains the sole
+  dependency authority for runtime requirements and optional extras.
+
 ## [1.3.0] - 2026-08-16
 
 ### Added
