@@ -9,7 +9,8 @@ Install the project first:
 python -m pip install -e ".[dev]"
 ```
 
-All current examples use packaged or generated sample data and make no network request. Most open
+The core examples use packaged or generated sample data and make no network request. The
+`options_time_series_data/` lane reads an explicitly installed local OCA cache. Most examples open
 Matplotlib windows; use a non-interactive backend in automation. Runtime depends on the selected
 `LocalTests` enum case and includes Numba compilation on first use.
 
@@ -18,13 +19,16 @@ Matplotlib windows; use a non-interactive backend in automation. Runtime depends
 | Directory | Purpose | Typical runtime | CI status |
 |---|---|---:|---|
 | `getting_started/` | Small legacy LogSV demonstration; superseded by the A04 quickstart when added | seconds to a few minutes | import-smoke only |
+| `options_time_series_data/` | ATM-volatility and skew experiments using local OCA-normalized CBOE data | seconds to minutes | local-data only |
 | `pricing/` | BSM-transform and Heston pricing/parameter demonstrations | seconds to a few minutes | import-smoke only |
 | `calibration/` | Full LogSV pricing and calibration cases | minutes for optimization cases | non-gating |
 | `monte_carlo/` | Quadratic-variation analytic/Monte Carlo workflows | minutes for simulation cases | non-gating |
 | `advanced/` | Hawkes and rough-kernel research/contributor workflows | case-dependent | non-gating |
 
-The core project dependencies cover the imports in these scripts. The optional `research` extra is
-needed for paper-replication code under `papers/`, not for the example files listed here.
+The core project dependencies cover the model examples. The CBOE time-series lane additionally
+needs `option-chain-analytics[cboe]>=3.0.0` and local normalized SPX/VIX caches; its directory
+README gives the setup. The optional `research` extra is also used by paper-replication code under
+`papers/`.
 
 ## Conventions
 

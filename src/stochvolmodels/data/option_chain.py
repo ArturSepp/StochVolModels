@@ -291,11 +291,28 @@ class OptionChain:
         """
         skews = np.zeros(len(self.ttms))
         deltas_ttms = self.get_chain_deltas()
-        for idx, (deltas, vols) in enumerate(zip(deltas_ttms, self.get_mid_vols())):
-            dput = np.interp(x=-delta, xp=deltas, fp=vols)
-            d50 = np.interp(x=0.5, xp=deltas, fp=vols)
-            dcall= np.interp(x=delta, xp=deltas, fp=vols)
-            skews[idx] = (dput - dcall)/d50
+        atm_vols = self.get_chain_atm_vols()
+        for idx, (deltas, vols, optiontypes) in enumerate(
+            zip(deltas_ttms, self.get_mid_vols(), self.optiontypes_ttms)
+        ):
+            put_mask = optiontypes == "P"
+            call_mask = optiontypes == "C"
+            if not np.any(put_mask) or not np.any(call_mask):
+                raise ValueError("skew interpolation requires both put and call quotes")
+
+            put_order = np.argsort(deltas[put_mask])
+            call_order = np.argsort(deltas[call_mask])
+            put_vol = np.interp(
+                x=-delta,
+                xp=deltas[put_mask][put_order],
+                fp=vols[put_mask][put_order],
+            )
+            call_vol = np.interp(
+                x=delta,
+                xp=deltas[call_mask][call_order],
+                fp=vols[call_mask][call_order],
+            )
+            skews[idx] = (put_vol - call_vol) / atm_vols[idx]
         return skews
 
     def get_chain_data_as_xy(self) -> Tuple[List[np.ndarray], np.ndarray]:

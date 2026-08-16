@@ -7,6 +7,18 @@ Entries start at 1.2.0. For earlier releases see the git log.
 ### Added
 - An output-free Google Colab quickstart that installs the released wheel and runs the
   version-matched Karasinski-Sepp log-normal stochastic-volatility example.
+- Optional `load_cboe_options_data` and `load_cboe_option_chain` experiment adapters, which read
+  bounded SPX/VIX windows from OCA's local normalized caches without copying data into SVM.
+- Repository-only SPX/VIX ATM-volatility and 25-delta-skew plots using those bounded OCA panels.
+
+### Fixed
+- The CBOE volatility time-series example resolves normalized caches independently of the IDE or
+  shell working directory instead of inheriting OCA's installed-wheel `Path.cwd()` fallback.
+- `OptionChain.get_chain_skews` now interpolates sorted put and call delta wings separately before
+  computing put-minus-call skew; the previous combined delta vector violated `numpy.interp`'s
+  monotonic-grid requirement.
+- `stochvolmodels.data.fetch_option_chain.load_option_chain` uses OCA's explicit no-look-ahead
+  `previous` observation policy for schedule times that do not exactly match feed timestamps.
 
 ### Removed
 - The legacy root `requirements.txt` compatibility mirror; `pyproject.toml` remains the sole

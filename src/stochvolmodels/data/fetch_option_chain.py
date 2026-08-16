@@ -7,25 +7,81 @@ that are not core dependencies, ``qis`` (the [research] extra) and
 see https://pypi.org/project/option-chain-analytics
 """
 
-# packages
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from typing import Dict, Tuple, Optional, Literal
-from numba.typed import List
 from enum import Enum
+from typing import Dict, Literal, Optional, Tuple
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from numba.typed import List
 
 try:
     import qis as qis
-    from qis import TimePeriod
     from option_chain_analytics import OptionsDataDFs, create_chain_from_from_options_dfs
     from option_chain_analytics.option_chain import SliceColumn, SlicesChain
+    from option_chain_analytics.ts_loaders import load_local_cboe_options_data
+    from qis import TimePeriod
 except ImportError as error:
-    raise ImportError("stochvolmodels.data.fetch_option_chain needs qis and option-chain-analytics: "
-                      "pip install stochvolmodels[research] option-chain-analytics") from error
+    raise ImportError(
+        "stochvolmodels.data.fetch_option_chain needs qis and option-chain-analytics: "
+        'pip install "stochvolmodels[research]" "option-chain-analytics[cboe]>=3.0.0"'
+    ) from error
 
 # stochvolmodels
 from stochvolmodels.data.option_chain import OptionChain
+
+
+def load_cboe_options_data(ticker: Literal['SPX', 'VIX'],
+                           start: pd.Timestamp,
+                           end: pd.Timestamp,
+                           local_path: Optional[str] = None
+                           ) -> OptionsDataDFs:
+    """Load an OCA-normalized CBOE option panel for SVM experiments.
+
+    OCA automatically uses the ignored per-underlying Parquet cache when it is
+    available. SVM receives only its existing calibration inputs; no provider
+    metadata or source data is copied into this package.
+    """
+    loader_kwargs = dict(ticker=ticker, start=start, end=end)
+    if local_path is not None:
+        loader_kwargs['local_path'] = local_path
+    return OptionsDataDFs(**load_local_cboe_options_data(**loader_kwargs))
+
+
+def load_cboe_option_chain(ticker: Literal['SPX', 'VIX'],
+                           value_time: pd.Timestamp,
+                           lookback_days: int = 7,
+                           days_map: Optional[Dict[str, int]] = None,
+                           delta_bounds: Tuple[Optional[float], Optional[float]] = (-0.1, 0.1),
+                           is_filtered: bool = True,
+                           local_path: Optional[str] = None
+                           ) -> Optional[OptionChain]:
+    """Load one cached CBOE observation and map it to an SVM ``OptionChain``.
+
+    The bounded lookback includes the most recent prior trading observation
+    without loading the complete SPX/VIX history. ``value_time`` must be
+    timezone-aware so OCA's no-look-ahead selection is unambiguous.
+    """
+    value_time = pd.Timestamp(value_time)
+    if value_time.tzinfo is None:
+        raise ValueError("value_time must be timezone-aware")
+    if lookback_days <= 0:
+        raise ValueError("lookback_days must be positive")
+    if days_map is None:
+        days_map = {'1w': 7, '1m': 21}
+    options_data_dfs = load_cboe_options_data(
+        ticker=ticker,
+        start=value_time - pd.Timedelta(days=lookback_days),
+        end=value_time,
+        local_path=local_path,
+    )
+    return load_option_chain(
+        options_data_dfs=options_data_dfs,
+        value_time=value_time,
+        days_map=days_map,
+        delta_bounds=delta_bounds,
+        is_filtered=is_filtered,
+    )
 
 
 def generate_vol_chain_np(chain: SlicesChain,
@@ -80,12 +136,16 @@ def load_option_chain(options_data_dfs: OptionsDataDFs,
                       is_filtered: bool = True
                       ) -> Optional[OptionChain]:
     """
-    build an OptionChain from an option-chain-analytics slice at a given date.
+    Build an OptionChain from the latest OCA observation at or before a schedule time.
     """
-    chain = create_chain_from_from_options_dfs(options_data_dfs=options_data_dfs, value_time=value_time)
+    chain = create_chain_from_from_options_dfs(
+        options_data_dfs=options_data_dfs,
+        value_time=value_time,
+        time_selection='previous',
+    )
     if chain is not None:
         option_chain = generate_vol_chain_np(chain=chain,
-                                             value_time=value_time,
+                                             value_time=chain.value_time,
                                              days_map=days_map,
                                              delta_bounds=delta_bounds,
                                              is_filtered=is_filtered)

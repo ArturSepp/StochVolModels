@@ -177,6 +177,33 @@ Basic features are implemented in
 examples/calibration/run_lognormal_sv_pricer.py
 ```
 
+### Loading cached SPX/VIX chains for experiments
+
+Empirical CBOE chains remain owned and normalized by OptionChainAnalytics. Install the optional
+packages separately, set `OCA_DATA_PATH` to the ignored OCA data directory containing
+`cboe_options/`, and request only the observation window needed by the experiment:
+
+```bash
+pip install "stochvolmodels[research]" "option-chain-analytics[cboe]>=3.0.0"
+```
+
+```python
+import pandas as pd
+
+from stochvolmodels.data.fetch_option_chain import load_cboe_option_chain
+
+option_chain = load_cboe_option_chain(
+    ticker='SPX',
+    value_time=pd.Timestamp('2023-11-08 22:00:00+00:00'),
+    days_map={'1w': 7, '1m': 21, '3m': 63},
+    delta_bounds=(None, None),
+)
+```
+
+The adapter reads OCA's ignored per-underlying Parquet cache and returns SVM's existing lightweight
+`OptionChain`; it does not copy the dataset or add provider metadata to the calibration object. See
+`examples/calibration/load_cboe_option_chain.py` for SPX and VIX cases.
+
 Imports:
 ```python
 import numpy as np 

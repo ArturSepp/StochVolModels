@@ -58,6 +58,37 @@ def test_option_chain_dimensions_mid_vols_and_atm_interpolation() -> None:
     np.testing.assert_allclose(chain.get_chain_atm_vols(), np.array([0.3, 0.3]), atol=1.0e-14)
 
 
+def test_option_chain_skew_interpolates_put_and_call_wings_separately() -> None:
+    chain = OptionChain(
+        ttms=np.array([0.25]),
+        forwards=np.array([100.0]),
+        strikes_ttms=List([np.array([80.0, 90.0, 100.0, 110.0, 120.0])]),
+        optiontypes_ttms=List([np.array(["P", "P", "C", "C", "C"])]),
+        ids=np.array(["3m"]),
+        bid_ivs=List([np.array([0.34, 0.29, 0.24, 0.21, 0.19])]),
+        ask_ivs=List([np.array([0.36, 0.31, 0.26, 0.23, 0.21])]),
+    )
+    deltas = chain.get_chain_deltas()[0]
+    mid_vols = chain.get_mid_vols()[0]
+    put_mask = chain.optiontypes_ttms[0] == "P"
+    call_mask = chain.optiontypes_ttms[0] == "C"
+    put_order = np.argsort(deltas[put_mask])
+    call_order = np.argsort(deltas[call_mask])
+    put_vol = np.interp(
+        -0.25,
+        deltas[put_mask][put_order],
+        mid_vols[put_mask][put_order],
+    )
+    call_vol = np.interp(
+        0.25,
+        deltas[call_mask][call_order],
+        mid_vols[call_mask][call_order],
+    )
+    expected = (put_vol - call_vol) / chain.get_chain_atm_vols()[0]
+
+    np.testing.assert_allclose(chain.get_chain_skews(delta=0.25), [expected], atol=1.0e-14)
+
+
 def test_option_chain_get_slice_preserves_aligned_data() -> None:
     chain = _two_slice_chain()
     option_slice = chain.get_slice("1y")
