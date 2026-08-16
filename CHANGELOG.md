@@ -2,6 +2,33 @@
 
 Entries start at 1.2.0. For earlier releases see the git log.
 
+## [Unreleased]
+
+## [1.3.0] - 2026-08-16
+
+### Added
+- A characterized source and installed-wheel test suite for stable pricing, calibration, option
+  chains, advanced numerical boundaries, and the public API.
+- Sphinx/Furo documentation, a deterministic offline quickstart, and task-oriented pricing,
+  calibration, validation, performance, and research guides.
+- Clean-wheel content verification and installed-wheel CI across Linux Python 3.10-3.13, with a
+  Windows numerical-regression lane.
+
+### Changed
+- Adopted a `src/stochvolmodels/` package layout and repository-root task-organized examples while
+  preserving the distribution name, import paths, public signatures, and numerical baselines.
+- Made package-root imports lazy and documented a 26-name stable high-level API while retaining
+  historical exports for compatibility.
+- Decomposed LogSV calibration orchestration into tested parameter, objective, weight, and
+  constraint components without changing optimizer semantics.
+- Made `pyproject.toml` the dependency authority and aligned the compatibility
+  `requirements.txt` mirror.
+
+### Fixed
+- Invalid option-chain states, unsupported payoff codes, optimizer failures, and incomplete
+  experimental rough-kernel branches now fail with precise exceptions.
+- Monte Carlo random-number generation no longer mutates NumPy's global RNG state.
+
 ## [1.2.2] - 2026-07-22
 
 ### Fixed

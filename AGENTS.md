@@ -43,37 +43,37 @@ sibling package, say so rather than reimplementing it here.
 ## Repository layout
 
 ```
-stochvolmodels/
+src/stochvolmodels/
   pricers/           log-normal SV, Heston, Hawkes jump-diffusion, Gaussian mixture,
                      Student-t; subpackages analytic/, logsv/, factor_hjm/, rough_logsv/
   data/              option chain containers and market data
   utils/             numerical utilities (Fourier transforms, quadrature, plotting)
-  examples/          runnable examples
   tests/             test modules (test_*.py) — inside the package
+examples/            repository-only runnable examples, grouped by task
 papers/              replication code, 8 directories
   <paper>/paper/     article PDF and LaTeX source, where available
-docs/                two figures used by README.md
+docs/                Sphinx/Furo user guide, API reference, and adoption documentation
 CHANGELOG.md         every public change is recorded here
 ```
 
-There is no top-level `tests/` directory; tests live in `stochvolmodels/tests/`.
+There is no top-level `tests/` directory; tests live in `src/stochvolmodels/tests/`.
 
 ## Commands
 
 ```bash
 pip install -e ".[dev]"
-pytest                                 # testpaths points at stochvolmodels/tests
-pytest stochvolmodels/tests/ -v        # what CI runs
-ruff check stochvolmodels/             # lint
+pytest                                     # testpaths points at src/stochvolmodels/tests
+pytest src/stochvolmodels/tests/ -v        # what CI runs
+ruff check src/stochvolmodels/             # lint
 ```
 
 Optional extras: `research` (pulls in `qis`), `visualization`, `numerical`, `jupyter`,
-`dev` (includes `pytest-regressions`), `all`. Supported Python is >= 3.10; CI runs
-3.10 - 3.12.
+`docs`, `dev` (includes `pytest-regressions`), `all`. Supported Python is >= 3.10; CI runs
+Linux 3.10 - 3.13 plus a Windows 3.12 numerical-regression lane.
 
 ## Conventions
 
-- Test files are named `test_*.py` and live in `stochvolmodels/tests/`. Nothing named
+- Test files are named `test_*.py` and live in `src/stochvolmodels/tests/`. Nothing named
   `test_*.py` sits anywhere else in the package.
 - Line length 100 (`ruff`, rules `E`, `F`, `W`, `I`).
 - Pricing kernels are `numba`-compiled (14 modules import numba): keep them array-based,
@@ -85,6 +85,8 @@ Optional extras: `research` (pulls in `qis`), `visualization`, `numerical`, `jup
 - Runnable examples sit behind an enum of cases plus a dispatcher called under
   `if __name__ == '__main__':`. The package uses `LocalTests` / `run_local_test`;
   `papers/` uses `UnitTests` / `run_unit_test`.
+- Runnable examples live under root `examples/`, are repository-only, and are excluded from the
+  wheel. Stable user examples use the public API; advanced examples may use internals when labelled.
 - Regression tests use `pytest-regressions`; when output legitimately changes, update
   the stored regression files deliberately and say so.
 - Docstrings are NumPy-style. Where a function implements a published result, the
@@ -132,6 +134,12 @@ LaTeX source.
 - Do not commit calibration output or figures.
 - Do not add a dependency without asking. PyYAML is imported lazily in
   `papers/local_path.py` precisely to avoid becoming one.
+
+## Repository-specific agent artifacts
+
+By maintainer direction, all StochVolModels roadmaps, execution plans, audits, and reports live in
+the ignored `agents/` directory. This repository-specific rule overrides the generic roadmap
+location inside the generated shared-agent block below; do not edit that generated block directly.
 
 <!-- ===== SHARED AGENT CORE (standalone variant) — begin =====
      Generated from SHARED_AGENT_CORE.md in the maintainer's project knowledge. Do not hand-edit
@@ -210,9 +218,7 @@ verified against these before being proposed.
 2. an entry in `CHANGELOG.md`: version, date, and the change classified as
    added / changed / fixed / removed, naming the public symbol that changed
 3. the software BibTeX entry in `README.md` (if it pins a version)
-
-[TODO: `CITATION.cff` is referenced by some tooling conventions but does not exist in
-this repository. Either add one and include it in this list, or leave it out.]
+4. `CITATION.cff` version, release date, and preferred-citation metadata
 
 Then: commit, tag `v<version>`, build and publish to PyPI, and cut a GitHub Release
 with the same tag. Do not bump versions as part of an unrelated change, and do not
@@ -220,14 +226,11 @@ publish without the maintainer explicitly asking for a release.
 
 ## Known issues
 
-- `stochvolmodels/pricers/logsv/logsv_params.py` imports from the package root
-  (`from stochvolmodels import ...`), the one remaining module-level import cycle.
-- `pricers/rough_logsv/` is work in progress and is deliberately less documented than
-  the rest of the package. Leave it alone unless asked.
-- `utils/mc_payoffs.py:compute_mc_vars_payoff` returns a zero payoff for an unrecognised
-  option type code rather than raising.
-- `utils/mgf_pricer.py:compute_integration_weights` applies Simpson's rule without
-  checking that the grid has an odd number of points.
+- `src/stochvolmodels/pricers/rough_logsv/` and `pricers/factor_hjm/` are experimental public
+  module paths. Preserve compatibility, and do not refactor their numerical kernels unless asked.
+- The legacy rough Gaussian quadrature compatibility function deliberately raises `ImportError`;
+  `orthopy` and `quadpy` are not supported dependencies.
+- Current Fourier pricers preserve their historical even-grid integration weights behind a private
+  compatibility helper. Changing that numerical path requires separate baseline approval.
 - The `rtol=1e-7` regression tolerance has roughly 7x headroom over the observed
   Linux-versus-Windows deviation.
-- `pyproject.toml` classifiers claim Python 3.13 but the CI matrix stops at 3.12.

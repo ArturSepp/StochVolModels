@@ -13,7 +13,7 @@ framework, *Review of Derivatives Research* **28**:12.
 
 ## Equation numbering
 
-Docstrings in `stochvolmodels/pricers/factor_hjm/` cite the **PDF**: (9) for the
+Docstrings in `src/stochvolmodels/pricers/factor_hjm/` cite the **PDF**: (9) for the
 FHJM-SV dynamics, (37) for the drift freezing, (108) for the first-order affine
 expansion, (124) for the Monte Carlo scheme.
 

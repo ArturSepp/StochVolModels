@@ -47,7 +47,7 @@ PDF: for both papers the source numbers equations differently, and each `paper/R
 
 One further paper is referenced from the library rather than from here, because it has no
 reproduction code in this repository: the Hawkes jump-diffusion pricer in
-`stochvolmodels/pricers/hawkes_jd_pricer.py` implements the bivariate self- and cross-exciting
+`src/stochvolmodels/pricers/hawkes_jd_pricer.py` implements the bivariate self- and cross-exciting
 specification of Liu, Packham and Sepp (2025), Jump risk premia in the presence of clustered jumps,
 [arXiv:2510.21297](https://arxiv.org/abs/2510.21297).
 
@@ -62,7 +62,7 @@ python -m papers.volatility_models.article_figures
 
 21 of the 27 modules use an `UnitTests` enum with a `run_unit_test(unit_test)` dispatcher under
 `if __name__ == '__main__':`. Select the figure by editing the enum member passed at the bottom of
-the file. Note that `stochvolmodels/` uses `LocalTests` and `run_local_test` for the same pattern.
+the file. Note that root `examples/` uses `LocalTests` and `run_local_test` for the same pattern.
 
 ## Paths
 

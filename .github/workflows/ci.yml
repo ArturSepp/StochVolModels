@@ -10,41 +10,85 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  test:
+  linux-wheel:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[dev]"
+      - name: Install build tools
+        run: python -m pip install --upgrade pip build twine
 
-    - name: Verify core imports
-      run: |
-        python -c "
-        from stochvolmodels import (
-            LogSVPricer, LogSvParams,
-            HestonPricer, HestonParams,
-            OptionType, OptionChain,
-            get_btc_test_chain_data,
-        )
-        print('All imports OK')
-        "
+      - name: Gate critical lint errors
+        run: |
+          python -m pip install ruff
+          ruff check --select E9,F63,F7,F82,F811 src
 
-    - name: Run tests (no external data, no plots)
-      run: |
-        python stochvolmodels/data/sample_option_chains.py
+      - name: Build and inspect artifacts
+        run: |
+          python -m build
+          python -m twine check dist/*
+          python scripts/check_wheel_contents.py dist/*.whl
 
-    - name: Run regression test
-      run: pytest stochvolmodels/tests/ -v
+      - name: Install the built wheel and test tools
+        run: python -m pip install pytest pytest-cov pytest-regressions dist/*.whl
+
+      - name: Verify installed imports
+        working-directory: ${{ runner.temp }}
+        run: |
+          python -c "from pathlib import Path; import stochvolmodels; origin=Path(stochvolmodels.__file__).resolve().as_posix(); assert '/site-packages/' in origin, origin; from stochvolmodels import LogSVPricer, LogSvParams, HestonPricer, HestonParams, OptionType, OptionChain; print(origin)"
+
+      - name: Run installed-wheel fast tests
+        if: matrix.python-version != '3.12'
+        working-directory: ${{ runner.temp }}
+        run: python -m pytest --pyargs stochvolmodels.tests -m "not slow" -v
+
+      - name: Run installed-wheel fast tests with coverage ratchet
+        if: matrix.python-version == '3.12'
+        working-directory: ${{ runner.temp }}
+        run: python -m pytest --pyargs stochvolmodels.tests -m "not slow" --cov=stochvolmodels --cov-report=term --cov-fail-under=20
+
+      - name: Run offline root example
+        if: matrix.python-version == '3.12'
+        run: python examples/getting_started/quickstart.py
+
+      - name: Build documentation with warnings as errors
+        if: matrix.python-version == '3.12'
+        run: |
+          python -m pip install ".[docs]"
+          python -m sphinx -W --keep-going -b html docs docs/_build/html
+
+  windows-numerical-regression:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build and install wheel
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip build pytest pytest-regressions
+          python -m build --wheel
+          $wheel = (Get-ChildItem -Path dist -Filter *.whl).FullName
+          python -m pip install $wheel
+
+      - name: Run installed-wheel numerical regressions
+        working-directory: ${{ runner.temp }}
+        run: python -m pytest --pyargs stochvolmodels.tests -m slow -v
+
+      - name: Run offline root example
+        run: python examples/getting_started/quickstart.py

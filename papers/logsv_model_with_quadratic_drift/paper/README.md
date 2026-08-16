@@ -13,7 +13,8 @@ Quadratic Drift, *International Journal of Theoretical and Applied Finance* **26
 
 ## Equation numbering
 
-Docstrings in `stochvolmodels/pricers/logsv/` and `stochvolmodels/pricers/logsv_pricer.py`
+Docstrings in `src/stochvolmodels/pricers/logsv/` and
+`src/stochvolmodels/pricers/logsv_pricer.py`
 cite the **PDF**, which numbers equations by section: (3.12) for the model dynamics,
 (3.53) for the expected quadratic variance, (4.24) for the second-order affine
 expansion, (5.4) and (5.13) for the valuation formulas.

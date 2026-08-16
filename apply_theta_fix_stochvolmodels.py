@@ -1,13 +1,13 @@
 """
 apply the bsm theta fix to StochVolModels: run from the repository root
-patches stochvolmodels/pricers/analytic/bsm.py, bumps pyproject.toml 1.2.1 -> 1.2.2,
+patches src/stochvolmodels/pricers/analytic/bsm.py, bumps pyproject.toml 1.2.1 -> 1.2.2,
 and inserts the CHANGELOG entry. every replacement is exact-match and asserted,
 so the script aborts without writing anything if the working copy differs from HEAD.
 """
 # packages
 from pathlib import Path
 
-BSM = Path('stochvolmodels/pricers/analytic/bsm.py')
+BSM = Path('src/stochvolmodels/pricers/analytic/bsm.py')
 PYPROJECT = Path('pyproject.toml')
 CHANGELOG = Path('CHANGELOG.md')
 

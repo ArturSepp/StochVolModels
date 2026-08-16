@@ -9,12 +9,14 @@ include pyproject.toml
 include requirements*.txt
 
 # Include all Python source files
-recursive-include stochvolmodels *.py
+recursive-include src/stochvolmodels *.py
 
 # Include regression baselines and other data files that the package needs
-recursive-include stochvolmodels *.npz *.yml *.yaml *.json *.txt *.md
+recursive-include src/stochvolmodels *.npz *.yml *.yaml *.json *.txt *.md
 
-# Explicitly exclude figures, notebooks, and image files
+# Explicitly exclude repository-only examples, papers, figures, notebooks, and image files
+recursive-exclude examples *
+recursive-exclude papers *
 recursive-exclude docs *
 recursive-exclude resources *
 recursive-exclude volatility_book *
