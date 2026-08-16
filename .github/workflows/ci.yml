@@ -61,6 +61,19 @@ jobs:
         if: matrix.python-version == '3.12'
         run: python examples/getting_started/quickstart.py
 
+      - name: Validate output-free LogSV Colab notebook
+        if: matrix.python-version == '3.12'
+        run: >-
+          python -c "import json; from pathlib import Path;
+          notebook=json.loads(Path('examples/getting_started/quickstart_colab.ipynb').read_text(encoding='utf-8'));
+          code=[cell for cell in notebook['cells'] if cell['cell_type']=='code'];
+          source=''.join(''.join(cell['source']) for cell in notebook['cells']);
+          assert notebook['nbformat']==4;
+          assert all(cell['execution_count'] is None and not cell['outputs'] for cell in code);
+          assert 'LogSvParams' in source and 'LogSVPricer' in source and 'Heston' not in source;
+          assert 'f\"v{release}/examples/getting_started/quickstart.py\"' in source;
+          assert '%run quickstart.py' in source"
+
       - name: Build documentation with warnings as errors
         if: matrix.python-version == '3.12'
         run: |

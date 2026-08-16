@@ -35,9 +35,9 @@ The source is included here mechanically, so the documentation and CI execute th
 :language: python
 ```
 
-On the reference Windows/Python 3.12 run, version 1.2.2 produced vanilla price `0.197331`, vanilla
+On the reference Windows/Python 3.12 run, version 1.3.0 produced vanilla price `0.197331`, vanilla
 implied volatility `0.999577`, and six-month at-the-money price/volatility `0.275202`/`0.995757` in
-13.71 seconds. Values are deterministic; elapsed time is machine-dependent. The first process pays
+13.28 seconds. Values are deterministic; elapsed time is machine-dependent. The first process pays
 Numba compilation cost, so later calls are usually faster.
 
 Change `sigma0` and `theta` first to move the current and long-run volatility levels. Then change
@@ -55,15 +55,12 @@ guide](calibration.md) before fitting market data.
 
 ## Optional Colab trial
 
-A maintained notebook would duplicate the same source without improving this offline workflow, so
-the project links to the script directly. In a blank Colab notebook, install the released wheel,
-download the authoritative script, and run it:
+Use the
+[LogSV quickstart notebook](https://colab.research.google.com/github/ArturSepp/StochVolModels/blob/main/examples/getting_started/quickstart_colab.ipynb)
+for a one-click hosted trial. The output-free notebook installs the latest PyPI wheel, reads its
+version, downloads `quickstart.py` from the matching release tag, displays that source, and runs it.
+This keeps the notebook on the same tested `LogSvParams` and `LogSVPricer` implementation as the
+offline example rather than maintaining a second pricing workflow.
 
-```bash
-!python -m pip install stochvolmodels
-!curl -sSLO https://raw.githubusercontent.com/ArturSepp/StochVolModels/main/examples/getting_started/quickstart.py
-!python quickstart.py
-```
-
-Colab needs network access for installation and download; the script itself performs no network or
-credentialed operation.
+Colab needs network access for installation and the version-matched source download; the LogSV
+pricing calculation itself performs no network or credentialed operation.

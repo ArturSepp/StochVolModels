@@ -13,11 +13,13 @@ Karasinski-Sepp log-normal stochastic-volatility model.
 [![CI](https://github.com/ArturSepp/StochVolModels/actions/workflows/ci.yml/badge.svg)](https://github.com/ArturSepp/StochVolModels/actions)
 [![Downloads](https://static.pepy.tech/badge/stochvolmodels)](https://pepy.tech/project/stochvolmodels)
 [![Monthly](https://static.pepy.tech/badge/stochvolmodels/month)](https://pepy.tech/project/stochvolmodels)
+[![Open LogSV quickstart in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ArturSepp/StochVolModels/blob/main/examples/getting_started/quickstart_colab.ipynb)
 
 **Paper:** Sepp, A. and Rakhmonov, P. (2023), *Log-normal stochastic volatility model with quadratic drift*, [International Journal of Theoretical and Applied Finance, 26(8)](https://www.worldscientific.com/doi/10.1142/S0219024924500031). See [Citation](#citation) for the full BibTeX list.
 
 **Documentation:** [stochvolmodels.readthedocs.io](https://stochvolmodels.readthedocs.io/en/latest/) ·
-[offline quickstart](examples/getting_started/quickstart.py)
+[offline quickstart](examples/getting_started/quickstart.py) ·
+[LogSV quickstart in Colab](https://colab.research.google.com/github/ArturSepp/StochVolModels/blob/main/examples/getting_started/quickstart_colab.ipynb)
 
 ---
 
