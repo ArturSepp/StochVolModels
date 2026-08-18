@@ -1,6 +1,5 @@
 # Byte-compiled / optimized / DLL files
 docs/figures/
-my_projects/
 
 __pycache__/
 *.py[cod]

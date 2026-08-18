@@ -6,6 +6,14 @@ by Artur Sepp and Parviz Rakhmonov published in International Journal of Theoret
 
 See the description of data and analysis in the paper.
 
+## Historical development script
+
+`legacy_btc_chain_calibration.py` records BTC option-chain calibration experiments that preceded
+the current public data interface. It is preserved as development provenance rather than an exact
+paper-replication entry point. The pricing calls remain useful, but its `sigma_strats` data-loader
+imports require the historical private research environment or deliberate migration to the current
+`option-chain-analytics` schema.
+
 Figures in the paper are generated using unittests in
 ```python 
 article_figures.py

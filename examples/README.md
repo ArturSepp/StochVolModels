@@ -20,7 +20,7 @@ Matplotlib windows; use a non-interactive backend in automation. Runtime depends
 |---|---|---:|---|
 | `getting_started/` | Small legacy LogSV demonstration; superseded by the A04 quickstart when added | seconds to a few minutes | import-smoke only |
 | `options_time_series_data/` | ATM-volatility and skew experiments using local OCA-normalized CBOE data | seconds to minutes | local-data only |
-| `pricing/` | BSM-transform and Heston pricing/parameter demonstrations | seconds to a few minutes | import-smoke only |
+| `pricing/` | BSM, zero-DTE theta, transform, and Heston pricing demonstrations | seconds to a few minutes | import-smoke only |
 | `calibration/` | Full LogSV pricing and calibration cases | minutes for optimization cases | non-gating |
 | `monte_carlo/` | Quadratic-variation analytic/Monte Carlo workflows | minutes for simulation cases | non-gating |
 | `advanced/` | Hawkes and rough-kernel research/contributor workflows | case-dependent | non-gating |

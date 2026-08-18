@@ -26,6 +26,7 @@ reproduce every table or figure in the current paper draft.
 | `chain_data.py` | Adapt local option-chain time-series data to `stochvolmodels.OptionChain`. |
 | `fit_funding_rate.py` | Explore OU and Hawkes specifications for cryptocurrency funding rates. |
 | `assets_estimation.py` | Compare Hawkes estimates across assets using live Yahoo Finance data. |
+| `legacy_analysis/` | Archived exploratory crypto volatility, funding, delta, and futures analyses. |
 
 ## Environment and data
 
@@ -51,3 +52,5 @@ python -m papers.jump_risk_premia_clustered_jumps.risk_premia_mc
 These are development entry points selected through each module's `LocalTests` enum. Several paths
 still exercise historical `option-chain-analytics` data APIs and may require adaptation to the
 locally installed data schema. They are not part of the package wheel or the CI replication gate.
+The scripts under `legacy_analysis/` additionally retain historical `sigma_strats` data-loader
+imports; see that directory's README for scope and migration notes.

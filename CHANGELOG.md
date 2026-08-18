@@ -7,8 +7,12 @@ Entries start at 1.2.0. For earlier releases see the git log.
 ### Added
 - An output-free Google Colab quickstart that installs the released wheel and runs the
   version-matched Karasinski-Sepp log-normal stochastic-volatility example.
+- A repository example comparing zero-DTE Black--Scholes premium decay under flat and
+  time-varying volatility skews.
 - `papers/jump_risk_premia_clustered_jumps/`, clearly labelled development code associated with
   Liu, Packham, and Sepp's paper rather than an exact replication package.
+- Historical BTC calibration and crypto-market analysis scripts in their relevant paper projects,
+  with legacy data dependencies and development status documented explicitly.
 - Optional `load_cboe_options_data` and `load_cboe_option_chain` experiment adapters, which read
   bounded SPX/VIX windows from OCA's local normalized caches without copying data into SVM.
 - Repository-only SPX/VIX ATM-volatility and 25-delta-skew plots using those bounded OCA panels.
@@ -27,6 +31,8 @@ Entries start at 1.2.0. For earlier releases see the git log.
   dependency authority for runtime requirements and optional extras.
 - The stale duplicated `papers/my_papers/` tree; paper replication projects now live only in
   their canonical directories directly under `papers/`.
+- The ignored `my_projects/` staging tree after its substantive analyses were classified and moved
+  into root examples or their associated paper-development projects.
 
 ## [1.3.0] - 2026-08-16
 
