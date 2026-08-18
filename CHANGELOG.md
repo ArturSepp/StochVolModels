@@ -7,6 +7,8 @@ Entries start at 1.2.0. For earlier releases see the git log.
 ### Added
 - An output-free Google Colab quickstart that installs the released wheel and runs the
   version-matched Karasinski-Sepp log-normal stochastic-volatility example.
+- `papers/jump_risk_premia_clustered_jumps/`, clearly labelled development code associated with
+  Liu, Packham, and Sepp's paper rather than an exact replication package.
 - Optional `load_cboe_options_data` and `load_cboe_option_chain` experiment adapters, which read
   bounded SPX/VIX windows from OCA's local normalized caches without copying data into SVM.
 - Repository-only SPX/VIX ATM-volatility and 25-delta-skew plots using those bounded OCA panels.

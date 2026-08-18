@@ -23,6 +23,12 @@ Additional directories cover inverse options, forward variance, impermanent-loss
 risk-premia mixtures, Student-t work, and volatility-model studies. These are research workflows,
 not a single stable command-line application.
 
+`papers/jump_risk_premia_clustered_jumps/` is deliberately classified as development code related
+to Liu, Packham, and Sepp's *Jump risk premia in the presence of clustered jumps*, not as an exact
+replication package. It records Hawkes estimation, option calibration, and Monte Carlo experiments
+that rely on local cryptocurrency data and historical research APIs; its README documents the
+scope and prerequisites.
+
 ## Reproducibility record
 
 Record the Git commit, package/dependency versions, script entry point, selected enum/test case,

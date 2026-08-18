@@ -1,9 +1,9 @@
 # papers
 
-Code that reproduces the figures and calibrations in the papers. Nothing here is imported by
-`stochvolmodels`: the dependency runs one way, `papers` uses the package.
-
-8 directories, 27 modules, 5,264 lines.
+Code accompanying the published papers. Eight directories contain figure and calibration
+replication workflows; `jump_risk_premia_clustered_jumps/` is explicitly retained as development
+code rather than an exact replication package. Nothing here is imported by `stochvolmodels`: the
+dependency runs one way, `papers` uses the package.
 
 ## Install
 
@@ -13,20 +13,18 @@ Code that reproduces the figures and calibrations in the papers. Nothing here is
 pip install stochvolmodels[research]
 ```
 
-16 of the 27 modules import `qis` directly, across 6 of the 8 directories. Only `il_hedging` and
-`sv_for_factor_hjm` run without it.
+The research workflows commonly import `qis`. Only `il_hedging` and `sv_for_factor_hjm` run
+without it.
 
 Two further packages are not covered by any extra. Install them for the directories that need them:
 
 ```python
-pip install yfinance                  # volatility_models
-pip install option-chain-analytics    # risk_premia_gmm, logsv_model_with_quadratic_drift
+pip install yfinance                  # volatility_models, jump-risk-premia development code
+pip install option-chain-analytics    # option-chain research and development workflows
 ```
 
-`volatility_models/load_data.py` is the only `yfinance` caller, and the other four modules in that
-directory import it. `option-chain-analytics` is needed by `risk_premia_gmm/gmm_slides.py`,
-`logsv_model_with_quadratic_drift/article_figures.py` and
-`logsv_model_with_quadratic_drift/model_fit_to_options_timeseries.py`.
+`option-chain-analytics` is needed by the option-chain workflows in `risk_premia_gmm/`,
+`logsv_model_with_quadratic_drift/`, and `jump_risk_premia_clustered_jumps/`.
 
 ## Papers
 
@@ -41,15 +39,13 @@ PDF: for both papers the source numbers equations differently, and each `paper/R
 | `volatility_models` | `article_figures.py` | What Is a Robust Stochastic Volatility Model — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027) |
 | `il_hedging` | `run_logsv_for_il_payoff.py` | Unified Approach for Hedging Impermanent Loss of Liquidity Provision — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4887298) |
 | `inverse_options` | `compare_net_delta.py` | Valuation and Hedging of Cryptocurrency Inverse Options — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4606748) |
+| `jump_risk_premia_clustered_jumps` | `hawkes_estimator.py`, `risk_premia_calibration.py` | **Development code (not exact replication):** Jump risk premia in the presence of clustered jumps — [SSRN](https://ssrn.com/abstract=4735365) · [arXiv](https://arxiv.org/abs/2510.21297) |
 | `risk_premia_gmm` | `gmm_slides.py` | [TODO: paper or presentation reference] |
 | `t_distribution` | `illustrations.py` | [TODO: paper reference] |
 | `forward_var` | `calibrate_forward_var.py` | [TODO: paper or presentation reference] |
 
-One further paper is referenced from the library rather than from here, because it has no
-reproduction code in this repository: the Hawkes jump-diffusion pricer in
-`src/stochvolmodels/pricers/hawkes_jd_pricer.py` implements the bivariate self- and cross-exciting
-specification of Liu, Packham and Sepp (2025), Jump risk premia in the presence of clustered jumps,
-[arXiv:2510.21297](https://arxiv.org/abs/2510.21297).
+The Hawkes jump-diffusion pricer in `src/stochvolmodels/pricers/hawkes_jd_pricer.py` implements the
+bivariate self- and cross-exciting specification used by the new development-code directory.
 
 ## Running
 
@@ -60,14 +56,15 @@ resolve as implicit namespace packages and only when the root is on `sys.path`:
 python -m papers.volatility_models.article_figures
 ```
 
-21 of the 27 modules use an `UnitTests` enum with a `run_unit_test(unit_test)` dispatcher under
+The original replication modules use a `UnitTests` enum with a `run_unit_test(unit_test)` dispatcher under
 `if __name__ == '__main__':`. Select the figure by editing the enum member passed at the bottom of
-the file. Note that root `examples/` uses `LocalTests` and `run_local_test` for the same pattern.
+the file. The jump-risk-premia development modules instead use `LocalTests` and `run_local_test`,
+the same pattern as root `examples/`.
 
 ## Paths
 
-Figures and fitted parameters are written through `qis.save_fig(..., local_path=...)`. All 23 call
-sites across 9 modules resolve their path through `papers/local_path.py` rather than hardcoding one:
+Figures, fitted parameters, and local research inputs resolve through `papers/local_path.py` rather
+than hardcoded machine paths:
 
 ```python
 from papers import local_path as lp

@@ -357,6 +357,13 @@ Review of Derivatives Research, 2025, 28(3), article 12: https://doi.org/10.1007
 papers/sv_for_factor_hjm
 ```
 
+6) "Jump risk premia in the presence of clustered jumps" by Francis Liu, Natalie Packham and
+Artur Sepp, SSRN: https://ssrn.com/abstract=4735365. The repository folder contains related
+development code and is not an exact replication package.
+```python
+papers/jump_risk_premia_clustered_jumps
+```
+
 ## Project Structure
 
 ```
@@ -373,7 +380,7 @@ StochVolModels/
 │   ├── calibration/
 │   ├── monte_carlo/
 │   └── advanced/
-├── papers/                       # published-paper replications
+├── papers/                       # paper replications and labelled development code
 ├── docs/                         # documentation sources and figures
 └── README.md
 ```
