@@ -134,3 +134,4 @@ dmypy.json
 /resources
 /volatility_book
 /agents/
+/src/stochvolmodels/pde_solvers/

@@ -4,6 +4,8 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-08-18
+
 ### Added
 - An output-free Google Colab quickstart that installs the released wheel and runs the
   version-matched Karasinski-Sepp log-normal stochastic-volatility example.

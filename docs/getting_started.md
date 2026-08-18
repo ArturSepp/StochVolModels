@@ -35,7 +35,7 @@ The source is included here mechanically, so the documentation and CI execute th
 :language: python
 ```
 
-On the reference Windows/Python 3.12 run, version 1.3.0 produced vanilla price `0.197331`, vanilla
+On the reference Windows/Python 3.12 run, version 1.4.0 produced vanilla price `0.197331`, vanilla
 implied volatility `0.999577`, and six-month at-the-money price/volatility `0.275202`/`0.995757` in
 13.28 seconds. Values are deterministic; elapsed time is machine-dependent. The first process pays
 Numba compilation cost, so later calls are usually faster.
