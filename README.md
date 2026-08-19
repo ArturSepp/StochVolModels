@@ -83,11 +83,11 @@ git clone https://github.com/ArturSepp/StochVolModels.git
 
 | Extra | Installs | Needed for |
 |---|---|---|
-| `research` | `qis >= 3.5.7` | scripts in `papers/` |
+| `research` | `qis >= 5.11.0`, `option-chain-analytics >= 4.0.0` | scripts in `papers/` and option-chain research |
 | `visualization` | `plotly >= 5.0.0` | interactive figures |
 | `numerical` | `scikit-learn >= 1.3.0`, `statsmodels >= 0.14.0` | statistical fits |
 | `jupyter` | `jupyter`, `notebook`, `jupyterlab`, `ipykernel`, `ipywidgets` | notebooks |
-| `dev` | `pytest`, `pytest-cov`, `pytest-regressions`, `ruff` | tests and linting |
+| `dev` | `build`, `pytest`, `pytest-cov`, `pytest-regressions`, `ruff` | builds, tests, and linting |
 
 Install an extra using
 ```python
@@ -184,7 +184,7 @@ packages separately, set `OCA_DATA_PATH` to the ignored OCA data directory conta
 `cboe_options/`, and request only the observation window needed by the experiment:
 
 ```bash
-pip install "stochvolmodels[research]" "option-chain-analytics[cboe]>=3.0.0"
+pip install "stochvolmodels[research]" "option-chain-analytics[cboe]>=4.0.0"
 ```
 
 ```python

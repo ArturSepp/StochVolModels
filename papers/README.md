@@ -7,24 +7,22 @@ dependency runs one way, `papers` uses the package.
 
 ## Install
 
-`qis` is required. It is not a core dependency of `stochvolmodels`, so install the extra:
+`qis` and `option-chain-analytics` are required by the research workflows. Neither is a core
+dependency of `stochvolmodels`, so install the extra:
 
 ```python
 pip install stochvolmodels[research]
 ```
 
-The research workflows commonly import `qis`. Only `il_hedging` and `sv_for_factor_hjm` run
-without it.
+The research workflows commonly import `qis`; the option-chain workflows in `risk_premia_gmm/`,
+`logsv_model_with_quadratic_drift/`, and `jump_risk_premia_clustered_jumps/` import
+`option-chain-analytics`. Only `il_hedging` and `sv_for_factor_hjm` run without either package.
 
-Two further packages are not covered by any extra. Install them for the directories that need them:
+`yfinance` is not covered by an extra. Install it for the directories that need it:
 
 ```python
-pip install yfinance                  # volatility_models, jump-risk-premia development code
-pip install option-chain-analytics    # option-chain research and development workflows
+pip install yfinance  # volatility_models, jump-risk-premia development code
 ```
-
-`option-chain-analytics` is needed by the option-chain workflows in `risk_premia_gmm/`,
-`logsv_model_with_quadratic_drift/`, and `jump_risk_premia_clustered_jumps/`.
 
 ## Papers
 

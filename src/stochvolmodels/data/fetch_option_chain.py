@@ -1,9 +1,9 @@
 """
 fetch OptionChain data with live options data
 
-this module is not imported by ``src/stochvolmodels/__init__.py``: it needs two packages
-that are not core dependencies, ``qis`` (the [research] extra) and
-``option-chain-analytics`` (not packaged as an extra, install it directly)
+this module is not imported by ``src/stochvolmodels/__init__.py``: its non-core dependencies,
+``qis`` and ``option-chain-analytics``, are installed by the [research] extra. CBOE cache loading
+also needs OptionChainAnalytics' [cboe] extra
 see https://pypi.org/project/option-chain-analytics
 """
 
@@ -24,7 +24,7 @@ try:
 except ImportError as error:
     raise ImportError(
         "stochvolmodels.data.fetch_option_chain needs qis and option-chain-analytics: "
-        'pip install "stochvolmodels[research]" "option-chain-analytics[cboe]>=3.0.0"'
+        'pip install "stochvolmodels[research]" "option-chain-analytics[cboe]>=4.0.0"'
     ) from error
 
 # stochvolmodels

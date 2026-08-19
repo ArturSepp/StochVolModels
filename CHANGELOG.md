@@ -4,6 +4,18 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-08-19
+
+### Changed
+- The `research` extra now installs `option-chain-analytics>=4.0.0` and `qis>=5.11.0`, providing
+  the supported option-chain research stack from one StochVolModels install while preserving the
+  core library's standalone dependency surface.
+- The `dev` extra now installs the `build` frontend used by the documented release command; the
+  isolated PEP 517 backend requirement is the sufficient `setuptools>=77.0` used by the verified
+  OptionChainAnalytics 4.0.0 build.
+- CBOE experiment setup now targets `option-chain-analytics[cboe]>=4.0.0`, whose normalized cache
+  contract and no-look-ahead selection policy are exercised by the optional integration test.
+
 ## [1.4.0] - 2026-08-18
 
 ### Added
