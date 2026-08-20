@@ -35,7 +35,8 @@ non-trivial, check whether it already exists in one of these:
 
 Actual package dependencies within the stack: `optimalportfolios` depends on `qis`
 and `factorlasso`; `trendfollowing` depends on `qis`; `stochvolmodels` has an
-optional `research` extra that pulls in `qis`. The others are independent.
+optional `research` extra that pulls in `qis` and `option-chain-analytics`. The others are
+independent.
 
 Do not vendor or copy code between these packages. If functionality belongs in a
 sibling package, say so rather than reimplementing it here.
@@ -67,9 +68,10 @@ pytest src/stochvolmodels/tests/ -v        # what CI runs
 ruff check src/stochvolmodels/             # lint
 ```
 
-Optional extras: `research` (pulls in `qis`), `visualization`, `numerical`, `jupyter`,
-`docs`, `dev` (includes `pytest-regressions`), `all`. Supported Python is >= 3.10; CI runs
-Linux 3.10 - 3.13 plus a Windows 3.12 numerical-regression lane.
+Optional extras: `research` (pulls in `qis` and `option-chain-analytics`), `visualization`,
+`numerical`, `jupyter`, `docs`, `dev` (includes `build` and `pytest-regressions`), `all`.
+Supported Python is >= 3.10; CI runs Linux 3.10 - 3.13 plus a Windows 3.12
+numerical-regression lane.
 
 ## Conventions
 
@@ -126,8 +128,9 @@ LaTeX source.
 
 - Do not change model parameterisations or the moment generating function without
   re-running `papers/` — published papers depend on this code.
-- Do not make `qis` a hard dependency: it is an optional `research` extra used by the
-  paper code, not by the pricing library. `yfinance` is likewise test and example only.
+- Do not make `qis` or `option-chain-analytics` a hard dependency: they are optional `research`
+  dependencies used by the paper and data-adapter code, not by the pricing library. `yfinance`
+  is likewise test and example only.
 - Do not add exotic or path-dependent payoffs; this package covers European vanillas
   under stochastic volatility by design.
 - Do not silently regenerate `pytest-regressions` baselines to make a failing test pass.

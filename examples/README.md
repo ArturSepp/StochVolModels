@@ -26,9 +26,9 @@ Matplotlib windows; use a non-interactive backend in automation. Runtime depends
 | `advanced/` | Hawkes and rough-kernel research/contributor workflows | case-dependent | non-gating |
 
 The core project dependencies cover the model examples. The CBOE time-series lane additionally
-needs `option-chain-analytics[cboe]>=3.0.0` and local normalized SPX/VIX caches; its directory
-README gives the setup. The optional `research` extra is also used by paper-replication code under
-`papers/`.
+needs the `cboe` extra from `option-chain-analytics>=4.0.0` and local normalized SPX/VIX caches;
+its directory README gives the setup. The optional `research` extra installs base OCA and is also
+used by paper-replication code under `papers/`.
 
 ## Conventions
 
