@@ -24,6 +24,9 @@ napoleon_numpy_docstring = True
 napoleon_google_docstring = True
 myst_enable_extensions = ["colon_fence", "dollarmath"]
 myst_heading_anchors = 3
+myst_html_meta = {
+    "google-site-verification": "WJen7v3RzYStpnJNMjZL5X35cuWl__U-MBvZtgN65-g",
+}
 
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
