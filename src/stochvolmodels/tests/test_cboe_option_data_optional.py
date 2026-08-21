@@ -4,6 +4,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.optional_integration
+
 pytest.importorskip('qis')
 pytest.importorskip('option_chain_analytics')
 

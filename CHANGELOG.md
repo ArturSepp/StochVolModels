@@ -4,6 +4,29 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+### Added
+- JOSS adoption now includes contributor/support guidance, an explicit statement of need,
+  reviewer verification commands, and a tracked baseline evidence record.
+- A draft JOSS manuscript, checked bibliography, evidence audit, manuscript contract tests, and
+  Open Journals PDF workflow provide a continuously verifiable submission artifact.
+- The deterministic quickstart now asserts its documented reference values, and CI adds a macOS
+  installed-wheel lane while raising the whole-package coverage floor from 20% to 25%.
+- Every repository example is classified as an offline, optional-integration, private-data, or
+  advanced workflow, with a contract preventing unclassified reviewer examples.
+- Tracked authorship, research-impact, and AI-use ledgers separate measured evidence from the
+  human consent, affiliation, funding, conflict, and disclosure decisions still required.
+- Pytest markers now distinguish core-fast, numerical-slow, optional-integration,
+  repository-only, and paper-replication lanes.
+
+### Fixed
+- Source-checkout coverage now excludes the ignored private `pde_solvers` worktree, matching the
+  public wheel contents and installed-wheel CI coverage scope.
+- `GmmPricer` and `TdistPricer` calibrations now reject failed or unusable optimizer results
+  through the package-wide `CalibrationError` contract.
+- Student-t calls and puts now apply the same market discount factor, and `TdistPricer` keeps the
+  risk-neutral terminal-distribution drift separate from the option chain's discount rate. Its
+  martingale equation now also includes the drift contribution conditional on survival.
+
 ## [2.1.0] - 2026-08-21
 
 ### Added

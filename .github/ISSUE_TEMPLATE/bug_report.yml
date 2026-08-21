@@ -13,7 +13,7 @@ body:
     attributes:
       label: "stochvolmodels version"
       description: "Output of `pip show stochvolmodels` (the Version line)"
-      placeholder: "e.g. 1.1.8"
+      placeholder: "e.g. 2.1.0"
     validations:
       required: true
 
@@ -23,6 +23,15 @@ body:
       label: Python version and OS
       description: "Output of `python --version`, plus your operating system"
       placeholder: "e.g. 3.12.4 on Windows 11"
+    validations:
+      required: true
+
+  - type: input
+    id: installation
+    attributes:
+      label: Install command and extras
+      description: "The exact command used to install, including extras such as research or numerical"
+      placeholder: "e.g. python -m pip install stochvolmodels[research]"
     validations:
       required: true
 

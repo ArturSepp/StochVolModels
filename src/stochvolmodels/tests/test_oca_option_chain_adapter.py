@@ -4,6 +4,8 @@ import pytest
 
 from stochvolmodels.data.sample_option_chains import get_oca_simulated_chain_data
 
+pytestmark = pytest.mark.optional_integration
+
 pytest.importorskip('qis')
 oca = pytest.importorskip('option_chain_analytics')
 fetch_option_chain = pytest.importorskip('stochvolmodels.data.fetch_option_chain')

@@ -10,7 +10,11 @@ from typing import Tuple
 # sv 
 import stochvolmodels.fitters.tdist as td
 from stochvolmodels.utils.funcs import to_flat_np_array, timer
-from stochvolmodels.pricers.model_pricer import ModelParams, ModelPricer
+from stochvolmodels.pricers.model_pricer import (
+    ModelParams,
+    ModelPricer,
+    validate_optimization_result,
+)
 from stochvolmodels.utils.config import VariableType
 
 # data
@@ -111,7 +115,9 @@ class TdistPricer(ModelPricer):
 
         options = {'disp': True, 'ftol': 1e-10, 'maxiter': 500}
         res = minimize(objective, p0, args=None, method='SLSQP', bounds=bounds, options=options)
-        fit_params = parse_model_params(pars=res.x)
+        fit_params = parse_model_params(
+            pars=validate_optimization_result(res, bounds)
+        )
 
         return fit_params
 
@@ -155,14 +161,15 @@ def tdist_vanilla_chain_pricer(vol: float,
     model_prices_ttms = List()
     for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm in zip(ttms, forwards, discfactors, strikes_ttms,
                                                                       optiontypes_ttms):
+        discount_rate = -np.log(discfactor) / ttm
         option_prices_ttm = td.compute_vanilla_price_tdist(spot=forward*discfactor,
                                                            strikes=strikes_ttm,
                                                            ttm=ttm,
                                                            vol=vol,
                                                            nu=nu,
                                                            optiontypes=optiontypes_ttm,
-                                                           rf_rate=drift,
-                                                           is_compute_risk_neutral_mu=False  # drift is already adjusted
+                                                           rf_rate=discount_rate,
+                                                           risk_neutral_mu=drift,
                                                            )
         model_prices_ttms.append(option_prices_ttm)
 

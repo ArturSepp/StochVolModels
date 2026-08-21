@@ -101,6 +101,9 @@ Homepage = "https://github.com/ArturSepp/StochVolModels"
 Documentation = "https://stochvolmodels.readthedocs.io/en/latest/"
 Repository = "https://github.com/ArturSepp/StochVolModels.git"
 Issues = "https://github.com/ArturSepp/StochVolModels/issues"
+Changelog = "https://github.com/ArturSepp/StochVolModels/blob/main/CHANGELOG.md"
+Contributing = "https://github.com/ArturSepp/StochVolModels/blob/main/CONTRIBUTING.md"
+"JOSS paper" = "https://github.com/ArturSepp/StochVolModels/blob/main/paper.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -122,6 +125,9 @@ pythonpath = ["src"]
 addopts = "-ra -q --tb=short"
 markers = [
     "slow: numerical regression or simulation tests excluded from the fast CI lane",
+    "optional_integration: provider or optional-extra contract that skips on a core install",
+    "repository_only: documentation, example, or paper contract absent from the wheel",
+    "paper_replication: long repository paper-reproduction gate run outside the core suite",
 ]
 
 [tool.ruff]
@@ -132,4 +138,4 @@ select = ["E", "F", "W", "I"]
 
 [tool.coverage.run]
 source = ["stochvolmodels"]
-omit = ["*/tests/*", "*/examples/*"]
+omit = ["*/tests/*", "*/examples/*", "*/pde_solvers/*"]

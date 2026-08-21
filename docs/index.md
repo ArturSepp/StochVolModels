@@ -27,6 +27,8 @@ dependencies.
 - [PyPI](https://pypi.org/project/stochvolmodels/)
 - [Source repository](https://github.com/ArturSepp/StochVolModels)
 - [Issue tracker](https://github.com/ArturSepp/StochVolModels/issues)
+- [Contributing and support](contributing.md)
+- [JOSS paper draft](https://github.com/ArturSepp/StochVolModels/blob/main/paper.md)
 - [Changelog](https://github.com/ArturSepp/StochVolModels/blob/main/CHANGELOG.md)
 - [Citation metadata](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff)
 
@@ -45,4 +47,5 @@ numerical_accuracy_and_performance
 reproducing_the_papers
 package_comparison
 api
+contributing
 ```

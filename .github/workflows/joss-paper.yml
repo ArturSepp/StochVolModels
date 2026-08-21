@@ -1,0 +1,55 @@
+name: JOSS paper
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - paper.md
+      - paper.bib
+      - docs/audit/joss_evidence.json
+      - docs/audit/joss_authorship.json
+      - docs/audit/ai_use.json
+      - docs/audit/research_impact.json
+      - scripts/joss_audit.py
+      - .github/workflows/joss-paper.yml
+  pull_request:
+    paths:
+      - paper.md
+      - paper.bib
+      - docs/audit/joss_evidence.json
+      - docs/audit/joss_authorship.json
+      - docs/audit/ai_use.json
+      - docs/audit/research_impact.json
+      - scripts/joss_audit.py
+      - .github/workflows/joss-paper.yml
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package and test tools
+        run: python -m pip install -e ".[dev]"
+      - name: Verify paper claims and stable API evidence
+        run: python -m pytest src/stochvolmodels/tests/test_joss_evidence.py -v
+
+  paper:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the JOSS draft PDF
+        uses: openjournals/openjournals-draft-action@master
+        with:
+          journal: joss
+          paper-path: paper.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paper
+          path: paper.pdf

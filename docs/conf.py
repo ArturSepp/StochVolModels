@@ -45,3 +45,24 @@ linkcheck_ignore = [
     r"https://doi.org/10.1142/.*",
     r"https://github.com/ArturSepp/StochVolModels/blob/.*",
 ]
+
+
+def _normalize_delegated_docstrings(app, what, name, obj, options, lines) -> None:
+    """Normalize two upstream docstrings for strict reStructuredText rendering."""
+    if name.endswith("compute_bsm_vanilla_price"):
+        for index, line in enumerate(lines):
+            if line.startswith("With s_ttm") and line.endswith(":"):
+                lines[index] = f"{line}:"
+                lines.insert(index + 1, "")
+                break
+        for index, line in enumerate(lines):
+            if line.startswith("Below the diffusion floor"):
+                lines.insert(index, "")
+                break
+    if name.endswith("compute_normal_delta_to_strike"):
+        lines[:] = [line.replace("|delta|", "abs(delta)") for line in lines]
+
+
+def setup(app) -> None:
+    """Register narrowly scoped rendering fixes for delegated vanilla-pricer docstrings."""
+    app.connect("autodoc-process-docstring", _normalize_delegated_docstrings)

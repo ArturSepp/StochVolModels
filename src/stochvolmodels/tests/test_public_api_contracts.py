@@ -1,8 +1,11 @@
 import hashlib
+import inspect
 import json
 import subprocess
 import sys
+from pathlib import Path
 
+import pytest
 import vanilla_option_pricers
 
 import stochvolmodels
@@ -58,6 +61,24 @@ def test_stable_public_api_is_explicit_and_resolvable() -> None:
     assert "get_btc_test_chain_data" not in stochvolmodels.__all__
     assert "save_fig" not in stochvolmodels.__all__
     assert "compute_logsv_a_mgf_grid" not in stochvolmodels.__all__
+
+
+def test_stable_public_api_has_docstrings_and_api_entries() -> None:
+    """Every stable symbol is described both in Python and in the rendered API source."""
+    undocumented = [
+        name
+        for name in STABLE_PUBLIC_API
+        if name != "__version__" and not inspect.getdoc(getattr(stochvolmodels, name))
+    ]
+    assert undocumented == []
+
+    repository_root = Path(__file__).resolve().parents[3]
+    api_path = repository_root / "docs" / "api.md"
+    if not api_path.is_file():
+        pytest.skip("repository-only rendered API source is absent from the installed wheel")
+    api_text = api_path.read_text(encoding="utf-8")
+    missing_entries = [name for name in STABLE_PUBLIC_API if name not in api_text]
+    assert missing_entries == []
 
 
 def test_vanilla_analytics_are_direct_dependency_reexports() -> None:

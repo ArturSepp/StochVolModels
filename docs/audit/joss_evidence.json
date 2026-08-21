@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-08-21",
+  "baseline": {
+    "tag": "v2.1.0",
+    "commit": "c109a6dde3eb3fb6ca34a8ebe577d682b92f8439",
+    "package_version": "2.1.0"
+  },
+  "repository_history": {
+    "first_commit_date": "2022-08-03",
+    "baseline_commit_date": "2026-08-21",
+    "commits": 106,
+    "active_calendar_months": 25,
+    "release_count": 7,
+    "github_contributor_count": 5,
+    "merged_external_pull_requests": [
+      3,
+      4
+    ]
+  },
+  "software_surface": {
+    "stable_root_exports": 34,
+    "legacy_root_names": 121,
+    "wheel_files": 80,
+    "fast_tests_at_baseline": 87,
+    "slow_tests_at_baseline": 2,
+    "installed_wheel_coverage_percent": 28.62
+  },
+  "provenance": {
+    "git_metrics": "local git history ending at baseline.commit",
+    "github_metrics": "GitHub REST API queried 2026-08-21",
+    "test_metrics": "commands recorded in agents/JOSS_S00_BASELINE_REPORT.md",
+    "moving_metrics_policy": "Regenerate at the submission commit; do not gate ordinary commits on moving GitHub counts."
+  },
+  "current": {
+    "measured_at_commit": "c109a6dde3eb3fb6ca34a8ebe577d682b92f8439",
+    "metrics": {
+      "package_version": {
+        "value": "2.1.0",
+        "how": "project.version in pyproject.toml",
+        "live": true,
+        "paper_phrase": null
+      },
+      "stable_root_exports": {
+        "value": 34,
+        "how": "len(stochvolmodels.__all__)",
+        "live": true,
+        "paper_phrase": "has 34 explicit exports"
+      },
+      "stable_exports_rendered_in_api": {
+        "value": 34,
+        "how": "stable __all__ names present in docs/api.md",
+        "live": true,
+        "paper_phrase": null
+      },
+      "paper_body_words": {
+        "value": 1065,
+        "how": "whitespace-separated paper.md body tokens after YAML front matter",
+        "live": true,
+        "paper_phrase": null
+      },
+      "collected_tests": {
+        "value": 100,
+        "how": "python -m pytest --collect-only -q",
+        "live": false,
+        "paper_phrase": null
+      },
+      "commits": {
+        "value": 106,
+        "how": "git rev-list --count HEAD",
+        "live": false,
+        "paper_phrase": null
+      },
+      "active_calendar_months": {
+        "value": 25,
+        "how": "distinct commit YYYY-MM values through measured_at_commit",
+        "live": false,
+        "paper_phrase": "activity in 25 distinct calendar months"
+      },
+      "first_commit_date": {
+        "value": "2022-08-03",
+        "how": "first local Git commit date",
+        "live": false,
+        "paper_phrase": null
+      },
+      "release_tags": {
+        "value": 7,
+        "how": "Git tags matching v* through measured_at_commit",
+        "live": false,
+        "paper_phrase": null
+      }
+    }
+  }
+}

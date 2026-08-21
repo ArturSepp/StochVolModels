@@ -55,7 +55,7 @@ jobs:
       - name: Run installed-wheel fast tests with coverage ratchet
         if: matrix.python-version == '3.12'
         working-directory: ${{ runner.temp }}
-        run: python -m pytest --pyargs stochvolmodels.tests -m "not slow" --cov=stochvolmodels --cov-report=term --cov-fail-under=20
+        run: python -m pytest --pyargs stochvolmodels.tests -m "not slow" --cov=stochvolmodels --cov-report=term --cov-fail-under=25
 
       - name: Run offline root example
         if: matrix.python-version == '3.12'
@@ -102,6 +102,30 @@ jobs:
       - name: Run installed-wheel numerical regressions
         working-directory: ${{ runner.temp }}
         run: python -m pytest --pyargs stochvolmodels.tests -m slow -v
+
+      - name: Run offline root example
+        run: python examples/getting_started/quickstart.py
+
+  macos-wheel-smoke:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build and install wheel
+        run: |
+          python -m pip install --upgrade pip build pytest pytest-regressions
+          python -m build --wheel
+          python -m pip install dist/*.whl
+
+      - name: Run installed-wheel core smoke suite
+        working-directory: ${{ runner.temp }}
+        run: python -m pytest --pyargs stochvolmodels.tests -m "not slow" -v
 
       - name: Run offline root example
         run: python examples/getting_started/quickstart.py

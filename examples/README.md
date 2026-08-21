@@ -17,14 +17,24 @@ enum case and includes Numba compilation on first use.
 
 ## Lanes
 
-| Directory | Purpose | Typical runtime | CI status |
-|---|---|---:|---|
-| `getting_started/` | Small legacy LogSV demonstration; superseded by the A04 quickstart when added | seconds to a few minutes | import-smoke only |
-| `options_time_series_data/` | ATM-volatility and skew experiments using local OCA-normalized CBOE data | seconds to minutes | local-data only |
-| `pricing/` | BSM, zero-DTE theta, transform, and Heston pricing demonstrations | seconds to a few minutes | import-smoke only |
-| `calibration/` | Full LogSV pricing and calibration cases | minutes for optimization cases | non-gating |
-| `monte_carlo/` | Quadratic-variation analytic/Monte Carlo workflows | minutes for simulation cases | non-gating |
-| `advanced/` | Hawkes and rough-kernel research/contributor workflows | case-dependent | non-gating |
+| Script | Lane | Data/dependencies | Automation |
+|---|---|---|---|
+| `getting_started/quickstart.py` | canonical offline reviewer path | core only, generated chain | Linux/Windows/macOS CI |
+| `getting_started/quickstart_colab.ipynb` | hosted offline calculation | network only to install/download matching release | structure/output-free contract in CI |
+| `getting_started/quick_run_lognormal_sv_pricer.py` | legacy plotted LogSV demonstration | core only, bundled chain | manual |
+| `calibration/run_lognormal_sv_pricer.py` | full analytic LogSV cases | core only, bundled chain | manual; optimization cases can take minutes |
+| `calibration/run_logsv_smile_fitter.py` | reproducible approximate smile fit | core only, bundled generated chain | manual |
+| `calibration/run_oca_logsv_calibration.py` | OCA integration with generated quotes | `research` extra; no credentials | manual optional integration |
+| `calibration/load_cboe_option_chain.py` | provider-cache integration | OCA CBOE extra and local cache | private/local-data only |
+| `calibration/run_spy_thetadata_month.py` | provider-cache smile/calibration | `research` extra and local ThetaData cache | private/local-data only |
+| `options_time_series_data/plot_cboe_vol_time_series.py` | provider-cache time-series analysis | OCA CBOE extra and local cache | private/local-data only |
+| `pricing/plot_bsm_zero_dte_theta.py` | offline vanilla visualization | core only | manual plotting |
+| `pricing/run_heston.py` | offline stable Heston demonstration | core only | manual plotting |
+| `pricing/run_heston_sv_pricer.py` | extended Heston research cases | core only, legacy/advanced exports | manual advanced |
+| `pricing/run_bsm_mgf_pricer.py` | transform contributor illustration | core only, internal transform API | manual advanced |
+| `pricing/run_hawkes_pricer.py` | Hawkes research illustration | core only, advanced root exports | manual advanced |
+| `pricing/run_pricing_options_on_qvar.py` | quadratic-variance pricing research | core only, internal/sample APIs | manual advanced |
+| `pricing/run_qvar_analytics.py` | analytic/MC quadratic-variance research | core only, internal APIs | manual advanced |
 
 The core project dependencies cover the model examples. The optional `research` extra installs
 base OCA 5 and supports the credential-free `calibration/run_oca_logsv_calibration.py` bridge. The
@@ -123,9 +133,9 @@ examples. They deliberately expose separate raw-hourly and exact-08:00-UTC EOD r
 - Files that import `stochvolmodels.pricers` or `stochvolmodels.utils` internals are advanced or
   contributor references, not public-API guarantees.
 - Do not commit generated figures, calibration output, caches, or local paths.
-- The canonical deterministic first-success command will be
-  `examples/getting_started/quickstart.py` after A04; README documentation will include that file
-  rather than duplicate it.
+- The canonical deterministic first-success command is
+  `examples/getting_started/quickstart.py`; the user guide includes that file mechanically rather
+  than maintaining a second implementation.
 
 Example:
 

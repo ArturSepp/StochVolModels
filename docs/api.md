@@ -4,6 +4,9 @@ Names listed by `stochvolmodels.__all__` are the stable high-level surface. Hist
 remain lazy and import-compatible but are not the recommended starting point. Factor HJM and rough
 LogSV deep-module paths are experimental research APIs.
 
+The installed release string is `stochvolmodels.__version__`. The API contract test resolves every
+name below and fails if `__all__`, the documented maturity boundary, or a stable docstring drifts.
+
 ## Data and model classes
 
 ```{eval-rst}
@@ -59,10 +62,42 @@ LogSV deep-module paths are experimental research APIs.
 .. autoexception:: stochvolmodels.CalibrationError
 ```
 
-Analytic Black-Scholes-Merton, absolute-normal Bachelier, implied-volatility, and
-quadratic-variance functions are also stable and listed in `stochvolmodels.__all__`. The Black and
-Bachelier functions are the same callable objects exported by `vanilla_option_pricers`; SVM does
-not maintain duplicate implementations. The removed
+## Black-Scholes-Merton analytics
+
+These are the same callable objects exported by `vanilla_option_pricers`; SVM does not maintain a
+duplicate implementation.
+
+```{eval-rst}
+.. autofunction:: stochvolmodels.compute_bsm_vanilla_price
+.. autofunction:: stochvolmodels.compute_bsm_vanilla_slice_prices
+.. autofunction:: stochvolmodels.compute_bsm_vanilla_delta
+.. autofunction:: stochvolmodels.compute_bsm_vanilla_vega
+.. autofunction:: stochvolmodels.compute_bsm_vanilla_gamma
+.. autofunction:: stochvolmodels.compute_bsm_vanilla_theta
+.. autofunction:: stochvolmodels.compute_bsm_strike_from_delta
+.. autofunction:: stochvolmodels.infer_bsm_implied_vol
+.. autofunction:: stochvolmodels.infer_bsm_ivols_from_slice_prices
+```
+
+## Absolute-normal Bachelier analytics
+
+```{eval-rst}
+.. autofunction:: stochvolmodels.compute_normal_price
+.. autofunction:: stochvolmodels.compute_normal_slice_prices
+.. autofunction:: stochvolmodels.compute_normal_delta
+.. autofunction:: stochvolmodels.compute_normal_delta_to_strike
+.. autofunction:: stochvolmodels.compute_normal_slice_vegas
+.. autofunction:: stochvolmodels.infer_normal_implied_vol
+.. autofunction:: stochvolmodels.infer_normal_ivols_from_slice_prices
+```
+
+## Quadratic-variance analytics
+
+```{eval-rst}
+.. autofunction:: stochvolmodels.compute_analytic_qvar
+```
+
+The removed
 `stochvolmodels.pricers.analytic.bsm` and `stochvolmodels.pricers.analytic.bachelier` paths are not
 compatibility facades in 2.0.
 

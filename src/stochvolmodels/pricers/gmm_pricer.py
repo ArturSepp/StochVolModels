@@ -10,7 +10,11 @@ from typing import Tuple
 # project
 import vanilla_option_pricers as bsm
 from stochvolmodels.utils.funcs import to_flat_np_array, timer, npdf
-from stochvolmodels.pricers.model_pricer import ModelParams, ModelPricer
+from stochvolmodels.pricers.model_pricer import (
+    ModelParams,
+    ModelPricer,
+    validate_optimization_result,
+)
 from stochvolmodels.utils.config import VariableType
 from stochvolmodels.data.option_chain import OptionChain
 
@@ -162,7 +166,9 @@ class GmmPricer(ModelPricer):
         options = {'disp': True, 'ftol': 1e-10, 'maxiter': 500}
 
         res = minimize(objective, p0, args=None, method='SLSQP', constraints=constraints, bounds=bounds, options=options)
-        fit_params = parse_model_params(pars=res.x)
+        fit_params = parse_model_params(
+            pars=validate_optimization_result(res, bounds)
+        )
         fit_params.sort_by_mus()
 
         return fit_params

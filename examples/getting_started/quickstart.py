@@ -40,6 +40,10 @@ def main() -> None:
     )
 
     assert all(np.all(np.isfinite(values)) for values in (*chain_prices, *chain_ivols))
+    np.testing.assert_allclose(vanilla_price, 0.197331, rtol=5.0e-6, atol=1.0e-8)
+    np.testing.assert_allclose(vanilla_ivol, 0.999577, rtol=5.0e-6, atol=1.0e-8)
+    np.testing.assert_allclose(chain_prices[1][2], 0.275202, rtol=5.0e-6, atol=1.0e-8)
+    np.testing.assert_allclose(chain_ivols[1][2], 0.995757, rtol=5.0e-6, atol=1.0e-8)
     print(f"stochvolmodels={svm.__version__}")
     print(f"maturities={chain.ttms.tolist()}")
     print(f"price_shapes={[values.shape for values in chain_prices]}")

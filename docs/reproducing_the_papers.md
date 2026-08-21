@@ -21,7 +21,8 @@ The two principal source bundles are:
 
 Additional directories cover inverse options, forward variance, impermanent-loss hedging,
 risk-premia mixtures, Student-t work, and volatility-model studies. These are research workflows,
-not a single stable command-line application.
+not a single stable command-line application. The forward-variance, Gaussian-mixture, and
+Student-t directories are explicitly exploratory analyses with no publication mapping asserted.
 
 `papers/jump_risk_premia_clustered_jumps/` is deliberately classified as development code related
 to Liu, Packham, and Sepp's *Jump risk premia in the presence of clustered jumps*, not as an exact
@@ -41,3 +42,16 @@ The repository CI performs import and characterized numerical smoke checks, not 
 calibration or figure. A full replication can take substantially longer and can depend on inputs
 that are not distributable. Reproducing a plot is not evidence that a model is appropriate for a
 new dataset; validate market conventions and residuals separately.
+
+## Reproduction classification
+
+| Directory | Classification | Inputs |
+|---|---|---|
+| `logsv_model_with_quadratic_drift` | principal published-paper implementation with article source/PDF | generated model grids plus documented local option data for calibration cases |
+| `sv_for_factor_hjm` | published-paper implementation of an experimental package surface | paper source/PDF and local calibration inputs |
+| `jump_risk_premia_clustered_jumps` | development code related to the cited draft, not exact replication | local cryptocurrency data and optional research dependencies |
+| `inverse_options`, `volatility_models`, `il_hedging` | supporting published/working-paper illustrations | mixture of generated and documented local/public inputs |
+| `risk_premia_gmm`, `t_distribution`, `forward_var` | exploratory, no publication mapping asserted | generated and local research inputs depending on the script |
+
+No JOSS acceptance claim depends on licensed data or a full paper rerun. The offline quickstart,
+synthetic option-chain examples, package tests, and built documentation are the reviewer gates.

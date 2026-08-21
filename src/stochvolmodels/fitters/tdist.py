@@ -73,7 +73,16 @@ def imply_drift_tdist(rf_rate: float = 0.0, vol: float = 0.2, nu: float = 3.0, t
     def func(mu: float) -> float:
         """root function passed to the solver."""
         x_star = -(1.0+ttm*mu)
-        return mu * ttm - cdf_tdist(x_star, mu=0.0, vol=vol, nu=nu, ttm=ttm) - cum_mean_tdist(x_star, mu=0.0, vol=vol, nu=nu, ttm=ttm) - rf_return
+        default_prob = cdf_tdist(x_star, mu=0.0, vol=vol, nu=nu, ttm=ttm)
+        truncated_mean = cum_mean_tdist(
+            x_star, mu=0.0, vol=vol, nu=nu, ttm=ttm
+        )
+        return (
+            mu * ttm * (1.0 - default_prob)
+            - default_prob
+            - truncated_mean
+            - rf_return
+        )
 
     mu = fsolve(func, x0=rf_rate, xtol=1e-10)
     return mu[0]
@@ -117,13 +126,16 @@ def compute_vanilla_price_tdist(spot: Union[float, np.ndarray],
                                 nu: float = 4.5,
                                 optiontypes: Union[str, np.ndarray] = 'C',
                                 rf_rate: float = 0.0,
-                                is_compute_risk_neutral_mu: bool = True
+                                is_compute_risk_neutral_mu: bool = True,
+                                risk_neutral_mu: float = None,
                                 ) -> Union[float, np.ndarray]:
     """
     option pricer for t-distribution
     """
     discfactor = np.exp(-rf_rate*ttm)
-    if is_compute_risk_neutral_mu:
+    if risk_neutral_mu is not None:
+        risk_neutral_mu = float(risk_neutral_mu)
+    elif is_compute_risk_neutral_mu:
         risk_neutral_mu = imply_drift_tdist(rf_rate=rf_rate, vol=vol, nu=nu, ttm=ttm)
     else:
         risk_neutral_mu = rf_rate
@@ -140,10 +152,10 @@ def compute_vanilla_price_tdist(spot: Union[float, np.ndarray],
         elif optiontype_ == 'P' or optiontype_ == 'IP':
             c_1 = cdf_tdist(x=x_lower_bound, mu=0.0, vol=vol, nu=nu, ttm=ttm)
             h_1 = cum_mean_tdist(x=x_lower_bound, mu=0.0, vol=vol, nu=nu, ttm=ttm)
-            price_ = discfactor * ((strike_ - spot_star) * (c_y - c_1) - spot * (h_y - h_1)+strike_*c_1)
+            price_ = ((strike_ - spot_star) * (c_y - c_1) - spot * (h_y - h_1)+strike_*c_1)
         else:
             raise NotImplementedError(f"optiontype")
-        return price_
+        return discfactor * price_
 
     if isinstance(optiontypes, str):
         price = compute(strikes, optiontypes)

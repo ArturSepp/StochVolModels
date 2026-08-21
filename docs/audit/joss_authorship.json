@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "status": "approved_by_maintainer",
+  "policy": "JOSS authorship is based on substantive software and manuscript contribution plus consent; paper co-authorship, commit identity count, or acknowledgement alone is insufficient.",
+  "proposed_authors": [
+    {
+      "name": "Artur Sepp",
+      "orcid": "0000-0002-7038-1748",
+      "affiliation": "LGT Bank",
+      "basis": "project originator, principal maintainer, model author, scientific and architectural decision-maker",
+      "consent": "approved 2026-08-21"
+    }
+  ],
+  "author_decisions_required": [
+    {
+      "name": "Parviz Rakhmonov",
+      "basis_to_review": "LogSV paper co-author, package maintainer metadata, and substantive commits in repository history",
+      "decision": "acknowledged; not a JOSS software-paper author"
+    }
+  ],
+  "acknowledgements": [
+    {
+      "name": "Rukhsora Rakhmonova",
+      "basis": "substantive repository-history contribution"
+    },
+    {
+      "name": "Florian Bourgey",
+      "basis": "external merged pull request #4"
+    },
+    {
+      "name": "Pavel (GitHub quant1729)",
+      "basis": "external merged pull request #3"
+    }
+  ],
+  "submission_statements": {
+    "funding": "No external funding was received for this work.",
+    "conflicts_of_interest": "The author declares no competing interests.",
+    "affiliations": "confirmed",
+    "all_author_consent": "confirmed"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-08-21",
+  "records": [
+    {
+      "title": "Log-normal stochastic volatility model with quadratic drift",
+      "status": "published",
+      "identifier": "https://doi.org/10.1142/S0219024924500031",
+      "repository_directory": "papers/logsv_model_with_quadratic_drift",
+      "software_surface": "stable LogSV pricer, transform, simulation, calibration, and parameters",
+      "reproduction_class": "principal published-paper implementation with article source/PDF",
+      "input_status": "generated model grids are public; some empirical calibration cases require documented local option data",
+      "joss_role": "primary research-impact evidence"
+    },
+    {
+      "title": "Stochastic volatility for factor Heath-Jarrow-Morton framework",
+      "status": "published",
+      "identifier": "https://doi.org/10.1007/s11147-025-09217-4",
+      "repository_directory": "papers/sv_for_factor_hjm",
+      "software_surface": "experimental factor-HJM deep modules",
+      "reproduction_class": "published-paper implementation with article source/PDF",
+      "input_status": "article materials are public; calibration workflows require documented local inputs",
+      "joss_role": "secondary research-impact evidence; not a stable-core claim"
+    },
+    {
+      "title": "Valuation and hedging of cryptocurrency inverse options",
+      "status": "published/supporting illustration",
+      "identifier": "https://doi.org/10.1080/14697688.2024.2364804",
+      "repository_directory": "papers/inverse_options",
+      "software_surface": "supporting option-pricing utilities",
+      "reproduction_class": "supporting illustration",
+      "input_status": "read the directory workflow for data provenance",
+      "joss_role": "supporting range evidence only"
+    },
+    {
+      "title": "Jump risk premia in the presence of clustered jumps",
+      "status": "working paper/development code",
+      "identifier": "https://ssrn.com/abstract=4735365",
+      "repository_directory": "papers/jump_risk_premia_clustered_jumps",
+      "software_surface": "advanced Hawkes jump-diffusion and research workflows",
+      "reproduction_class": "development code, explicitly not exact replication",
+      "input_status": "local cryptocurrency data and optional research dependencies",
+      "joss_role": "development context only; not a stable-core or exact-replication claim"
+    }
+  ],
+  "unmapped_exploratory_directories": [
+    "papers/risk_premia_gmm",
+    "papers/t_distribution",
+    "papers/forward_var"
+  ]
+}

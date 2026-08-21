@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "status": "approved_by_maintainer",
+  "approved_on": "2026-08-21",
+  "principle": "Human authors made the scientific and architectural decisions, reviewed assisted output, and remain responsible for accuracy, citations, licensing, and submission communication.",
+  "entries": [
+    {
+      "provider": "Anthropic",
+      "tool": "Claude through an agentic coding interface",
+      "model_or_version": "not established by retained repository evidence",
+      "period": "2026 OSS adoption work before the JOSS roadmap",
+      "assistance": [
+        "repository review and roadmap feedback",
+        "documentation and test-infrastructure assistance",
+        "code-refactoring assistance"
+      ],
+      "evidence": "maintainer-provided CLAUDE roadmap reference and repository agent reports; exact sessions/models require human confirmation"
+    },
+    {
+      "provider": "OpenAI",
+      "tool": "Codex through an agentic coding interface",
+      "model_or_version": "exact product model/version not retained in repository evidence",
+      "period": "2026-08-21 JOSS roadmap and implementation batch",
+      "assistance": [
+        "repository and public-history audit",
+        "test, documentation, CI, and evidence implementation",
+        "Student-t defect diagnosis and patch drafting from maintainer-approved scope",
+        "JOSS manuscript and bibliography drafting"
+      ],
+      "human_verification": [
+        "maintainer selected scope and maturity boundary",
+        "new numerical tests were demonstrated failing before the fix",
+        "Student-t martingale was checked through model forward and put-call parity",
+        "source and clean installed-wheel fast/slow suites passed",
+        "documentation, links, artifact contents, and manuscript evidence were checked"
+      ]
+    }
+  ],
+  "submission_communication_rule": "From submission onward, author/editor/reviewer conversation is written by the human author; generative AI is not used except where current JOSS policy explicitly permits translation."
+}

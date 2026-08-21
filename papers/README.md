@@ -40,9 +40,9 @@ PDF: for both papers the source numbers equations differently, and each `paper/R
 | `il_hedging` | `run_logsv_for_il_payoff.py` | Unified Approach for Hedging Impermanent Loss of Liquidity Provision — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4887298) |
 | `inverse_options` | `compare_net_delta.py` | Valuation and Hedging of Cryptocurrency Inverse Options — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4606748) |
 | `jump_risk_premia_clustered_jumps` | `hawkes_estimator.py`, `risk_premia_calibration.py` | **Development code (not exact replication):** Jump risk premia in the presence of clustered jumps — [SSRN](https://ssrn.com/abstract=4735365) · [arXiv](https://arxiv.org/abs/2510.21297) |
-| `risk_premia_gmm` | `gmm_slides.py` | [TODO: paper or presentation reference] |
-| `t_distribution` | `illustrations.py` | [TODO: paper reference] |
-| `forward_var` | `calibrate_forward_var.py` | [TODO: paper or presentation reference] |
+| `risk_premia_gmm` | `gmm_slides.py` | Exploratory Gaussian-mixture risk-premia analysis; no publication mapping is asserted |
+| `t_distribution` | `illustrations.py` | Exploratory Student-t distribution analysis; no publication mapping is asserted |
+| `forward_var` | `calibrate_forward_var.py` | Exploratory forward-variance calibration analysis; no publication mapping is asserted |
 
 The Hawkes jump-diffusion pricer in `src/stochvolmodels/pricers/hawkes_jd_pricer.py` implements the
 bivariate self- and cross-exciting specification used by the new development-code directory.
@@ -93,8 +93,9 @@ strings with a trailing separator, matching `qis`; compose provider folders dire
 
 ## Known issues
 
-- `risk_premia_gmm/{check_kernel,q_kernel,run_gmm_fit}.py` and
-  `t_distribution/mc_pricer_with_kernel.py` execute at module level with no
-  `if __name__ == '__main__':` guard, so importing them runs the analysis.
-  `risk_premia_gmm/plot_gmm.py` and `volatility_models/load_data.py` also lack the guard but only
-  define functions.
+- The maintained entry points are the guarded scripts named in the table above. The archival
+  exploratory modules `risk_premia_gmm/{check_kernel,q_kernel,run_gmm_fit}.py` and
+  `t_distribution/mc_pricer_with_kernel.py` execute at module level and are not import-safe library
+  modules or JOSS reviewer workflows. `risk_premia_gmm/plot_gmm.py` and
+  `volatility_models/load_data.py` only define functions. These files remain research history,
+  outside the distributed package and outside the maintained workflow claim.

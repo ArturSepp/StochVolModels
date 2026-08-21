@@ -19,13 +19,22 @@ Karasinski-Sepp log-normal stochastic-volatility model.
 
 **Documentation:** [stochvolmodels.readthedocs.io](https://stochvolmodels.readthedocs.io/en/latest/) ·
 [offline quickstart](examples/getting_started/quickstart.py) ·
-[LogSV quickstart in Colab](https://colab.research.google.com/github/ArturSepp/StochVolModels/blob/main/examples/getting_started/quickstart_colab.ipynb)
+[LogSV quickstart in Colab](https://colab.research.google.com/github/ArturSepp/StochVolModels/blob/main/examples/getting_started/quickstart_colab.ipynb) ·
+[JOSS paper draft](https://github.com/ArturSepp/StochVolModels/blob/main/paper.md)
 
 ---
 
-## Why stochvolmodels
+## Statement of need
 
 `stochvolmodels` is the reference implementation of the Karasinski-Sepp log-normal beta stochastic volatility model, maintained by one of the model's originators, with the Heston model implemented alongside as a benchmark. The design goal is a single generic interface for a stochastic volatility model — a closed-form moment generating function for Fourier-transform pricing on one side, Monte Carlo dynamics on the other — so that analytic prices, simulated prices, and calibrated implied volatilities are directly comparable model to model.
+
+Researchers and quantitative practitioners need more than a standalone pricing formula when they
+evaluate a stochastic-volatility specification: market quotes must share explicit forward,
+discount, option-type, and maturity conventions; calibration must fail visibly when constraints are
+not satisfied; and analytic prices need an independent simulation route. General derivatives
+libraries provide much broader instrument infrastructure, while model collections provide many
+formulas. This package deliberately serves the narrower workflow around the quadratic-drift LogSV
+model, with Heston as a like-for-like benchmark and paper implementations tied to the same code.
 
 The same analytics power the research: the `papers` module reproduces the computations and figures of five papers, from the quadratic-drift log-normal SV model (IJTAF) to cryptocurrency inverse options (Quantitative Finance), robust stochastic volatility modelling, impermanent-loss hedging in DeFi, and stochastic volatility for the factor HJM framework — see [Supporting Illustrations](#papers).
 
@@ -68,6 +77,32 @@ Clone using
 ```python 
 git clone https://github.com/ArturSepp/StochVolModels.git
 ```
+
+### Reviewer verification
+
+The first result is offline and needs no credentials, local YAML, `qis`, OCA, or data download:
+
+```console
+python -m pip install stochvolmodels
+python examples/getting_started/quickstart.py
+```
+
+From a source checkout, verify the complete public artifact and documentation path with:
+
+```console
+python -m pip install -e ".[dev,docs]"
+python -m pytest -m "not slow"
+python -m pytest -m slow
+python -m sphinx -W --keep-going -b html docs docs/_build/html
+python -m build
+python scripts/check_wheel_contents.py dist/*.whl
+```
+
+The v2.1.0 quickstart prints two five-strike slices and deterministic reference values including
+`vanilla_price=0.197331` and `six_month_atm_price=0.275202`. The first call normally takes seconds
+because Numba compiles the numerical kernels. See the
+[full verification guide](https://stochvolmodels.readthedocs.io/en/latest/getting_started.html) and
+[contribution/support guide](CONTRIBUTING.md).
 
 
 ### Core Dependencies
@@ -553,7 +588,8 @@ Dependency links within the stack: `optimalportfolios` builds on `qis` and `fact
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+See [CONTRIBUTING.md](https://github.com/ArturSepp/StochVolModels/blob/main/CONTRIBUTING.md) for project scope, development commands, numerical-change
+rules, bug reports, questions/support, pull requests, conduct, and contribution licensing.
 
 ## License
 

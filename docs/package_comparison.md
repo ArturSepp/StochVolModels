@@ -1,6 +1,6 @@
 # Choosing a Python derivatives library
 
-This comparison was manually audited on 2026-08-16 against each project's official documentation
+This comparison was manually audited on 2026-08-21 against each project's official documentation
 or repository. It compares workflow and scope, not popularity or numerical superiority. Verify the
 current upstream documentation before making a production decision.
 
