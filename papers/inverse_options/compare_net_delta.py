@@ -10,7 +10,7 @@ from stochvolmodels import (compute_bsm_vanilla_grid_deltas,
                             compute_bsm_forward_grid_prices,
                             compute_bsm_vanilla_price,
                             compute_bsm_vanilla_delta)
-from papers import local_path as lp
+from stochvolmodels import local_path as lp
 
 
 def compare_net_deltas(ttm: float,

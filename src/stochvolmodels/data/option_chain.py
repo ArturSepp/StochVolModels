@@ -13,8 +13,8 @@ from dataclasses import dataclass
 from typing import Tuple, Optional
 from numba.typed import List
 
-import stochvolmodels.pricers.analytic.bsm as bsm
-import stochvolmodels.pricers.analytic.bachelier as bachel
+import vanilla_option_pricers as bachel
+import vanilla_option_pricers as bsm
 from stochvolmodels.utils.var_swap_pricer import compute_var_swap_strike
 from stochvolmodels.utils.rate_core import get_default_swap_term_structure, swap_rate
 

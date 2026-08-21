@@ -11,14 +11,16 @@ from typing import Dict, Tuple, Any, Optional
 from enum import Enum
 
 # analytics
-from stochvolmodels.data.fetch_option_chain import (generate_vol_chain_np,
-                                                    sample_option_chain_at_times)
+from stochvolmodels.data.fetch_option_chain import (
+    load_tardis_hourly_option_chain,
+    load_tardis_hourly_options_data,
+    sample_option_chain_at_times,
+)
 from stochvolmodels import (OptionChain, LogSvParams, LogSVPricer, ConstraintsType, LogsvModelCalibrationType)
 
 # chain data
-from option_chain_analytics import OptionsDataDFs, create_chain_from_from_options_dfs
-from option_chain_analytics.ts_loaders import ts_data_loader_wrapper
-from papers import local_path as lp
+from option_chain_analytics import OptionsDataDFs
+from stochvolmodels import local_path as lp
 
 
 def calibrate_logsv_model_with_fixed_kappas(option_chain: OptionChain,
@@ -181,17 +183,21 @@ def run_unit_test(unit_test: UnitTests):
     value_time = pd.Timestamp('2022-12-30 10:00:00+00:00')
     value_time = pd.Timestamp('2023-06-30 10:00:00+00:00')
 
-    # chain data here
-    options_data_dfs = OptionsDataDFs(**ts_data_loader_wrapper(ticker=ticker))
-    options_data_dfs.get_start_end_date().print()
-    chain = create_chain_from_from_options_dfs(options_data_dfs=options_data_dfs, value_time=value_time)
-
-    option_chain = generate_vol_chain_np(chain=chain,
-                                         value_time=value_time,
-                                         days_map={'1w': 7, '2w': 14, '1m': 21},
-                                         # days_map={'2w': 14, '1m': 21},
-                                         delta_bounds=(-0.1, 0.1),
-                                         is_filtered=True)
+    single_chain_cases = {UnitTests.FIT_LOGSV_MODEL, UnitTests.REPORT_FITTED_MODEL}
+    option_chain = None
+    options_data_dfs = None
+    if unit_test in single_chain_cases:
+        option_chain = load_tardis_hourly_option_chain(
+            ticker=ticker,
+            value_time=value_time,
+            days_map={'1w': 7, '2w': 14, '1m': 21},
+            delta_bounds=(-0.1, 0.1),
+        )
+        if option_chain is None:
+            raise RuntimeError(f'no Tardis option observation at or before {value_time}')
+    elif unit_test == UnitTests.RUN_CALIBRATION_TIMESERIES:
+        options_data_dfs = load_tardis_hourly_options_data(ticker=ticker)
+        options_data_dfs.get_start_end_date().print()
 
     btc_kappas = dict(kappa1=2.21, kappa2=2.18)
     eth_kappas = dict(kappa1=1.96, kappa2=1.98)
@@ -217,6 +223,8 @@ def run_unit_test(unit_test: UnitTests):
         qis.save_figs_to_pdf(figs=figs_dict, file_name='btc_calibration', local_path=lp.get_output_path())
 
     elif unit_test == UnitTests.RUN_CALIBRATION_TIMESERIES:
+        if options_data_dfs is None:
+            raise RuntimeError('hourly Tardis options data was not loaded')
         time_period = qis.TimePeriod('2019-03-30 00:00:00+00:00', '2024-05-06 00:00:00+00:00', tz='UTC')
 
         output_df, figs_dict = run_calibration_time_series(options_data_dfs=options_data_dfs, time_period=time_period,

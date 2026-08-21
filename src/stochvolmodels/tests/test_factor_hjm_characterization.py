@@ -1,12 +1,13 @@
 import numpy as np
 import pytest
-from stochvolmodels.pricers.logsv.affine_expansion import ExpansionOrder
 
+import stochvolmodels as svm
 from stochvolmodels.pricers.factor_hjm.rate_affine_expansion import (
     UnderlyingType,
     compute_logsv_a_mgf_grid,
     func_a_ode_quadratic_terms,
 )
+from stochvolmodels.pricers.logsv.affine_expansion import ExpansionOrder
 
 
 def _mgf_inputs() -> dict:
@@ -86,3 +87,29 @@ def test_factor_hjm_free_mgf_terms_match_direct_formula(
 def test_factor_hjm_rejects_unknown_underlying_precisely() -> None:
     with pytest.raises(NotImplementedError, match="underlying"):
         func_a_ode_quadratic_terms(underlying_type=object(), **_quadratic_inputs())
+
+
+def test_factor_hjm_normal_volatility_uses_absolute_rate_units() -> None:
+    """Market normal vols such as 150 bp must not be scaled by the rate forward."""
+    forward = 0.04
+    ttm = 1.0
+    normal_vol = 0.015
+
+    price = svm.compute_normal_price(
+        forward=forward,
+        strike=forward,
+        ttm=ttm,
+        vol=normal_vol,
+        optiontype="C",
+    )
+    expected = normal_vol / np.sqrt(2.0 * np.pi)
+    inferred = svm.infer_normal_implied_vol(
+        forward=forward,
+        strike=forward,
+        ttm=ttm,
+        given_price=price,
+        optiontype="C",
+    )
+
+    np.testing.assert_allclose(price, expected, rtol=0.0, atol=1.0e-14)
+    np.testing.assert_allclose(inferred, normal_vol, rtol=0.0, atol=1.0e-12)

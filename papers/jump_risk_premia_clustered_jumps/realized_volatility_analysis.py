@@ -18,7 +18,9 @@ import qis.utils.struct_ops as sop
 import qis.plots.utils as put
 
 # analytics
-from sigma_strats.data.chain_loader_from_dfs import generate_vol_delta_ts
+from papers.jump_risk_premia_clustered_jumps.intraday_volatility_analysis import (
+    load_tardis_vol_delta_ts,
+)
 
 
 def plot_vol_data(ticker: str):
@@ -27,7 +29,10 @@ def plot_vol_data(ticker: str):
     tenor, span = '1m', 30
     days_map = {tenor: span}
 
-    vols, strikes, options, index_prices = generate_vol_delta_ts(ticker=ticker, days_map=days_map)
+    vols, strikes, options, index_prices = load_tardis_vol_delta_ts(
+        ticker=ticker,
+        days_map=days_map,
+    )
     put_skew = np.subtract(vols[f"-0.25d_{tenor}"], vols[f"0.50d_{tenor}"]).rename('-25delta put skew')
     call_skew = np.subtract(vols[f"0.25d_{tenor}"], vols[f"0.50d_{tenor}"]).rename('25delta call skew')
     skews = pd.concat([put_skew, call_skew], axis=1)
@@ -104,7 +109,12 @@ def plot_vol_data(ticker: str):
                                                   **kwargs)
 
     # ewm vol and spreads
-    rvol = ewm.compute_ewm_vol(data=index_returns, ewm_lambda=1.0 - 2.0 / (span + 1.0), af=365).rename(f"Realized")
+    rvol = ewm.compute_ewm_vol(
+        data=index_returns,
+        ewm_lambda=1.0 - 2.0 / (span + 1.0),
+        annualize=True,
+        annualization_factor=365.0,
+    ).rename('Realized')
 
     #atm_spread = np.subtract(vols[f"0.50d_{tenor}"], rvol).rename('Realized - ATM')
     #put_spread = np.subtract(vols[f"-0.25d_{tenor}"], rvol).rename('Realized -Put')
@@ -205,7 +215,10 @@ def plot_weekly_rvol(ticker: str):
     # tenor = '1m'
     # days_map = {tenor: 28}
 
-    vols, strikes, options, index_prices = generate_vol_delta_ts(ticker=ticker, days_map=days_map)
+    vols, strikes, options, index_prices = load_tardis_vol_delta_ts(
+        ticker=ticker,
+        days_map=days_map,
+    )
     put_skew = np.subtract(vols[f"-0.25d_{tenor}"], vols[f"0.50d_{tenor}"]).rename('25d put skew')
     call_skew = np.subtract(vols[f"0.25d_{tenor}"], vols[f"0.50d_{tenor}"]).rename('25d call skew')
     skews = pd.concat([put_skew, call_skew], axis=1)
@@ -214,8 +227,12 @@ def plot_weekly_rvol(ticker: str):
     index_returns_ = index_returns.rolling(span).sum()
 
     abs_vol = np.sqrt(52*np.pi/2.0) * np.abs(index_returns_).rename('abs_vol')
-    rvol = ewm.compute_ewm_vol(data=index_returns, ewm_lambda=1.0 - 2.0 / (span + 1.0),
-                                 af=365.0).rename(f"span-{span}")
+    rvol = ewm.compute_ewm_vol(
+        data=index_returns,
+        ewm_lambda=1.0 - 2.0 / (span + 1.0),
+        annualize=True,
+        annualization_factor=365.0,
+    ).rename(f"span-{span}")
 
     # assymetric vol
     ewm_m, ewm_p = ewm.ewm_vol_assymetric(returns=index_returns, ewm_lambda=1.0 - 2.0 / (7 + 1.0), annualization_factor=365.0)
@@ -270,7 +287,10 @@ def run_local_test(local_test: LocalTests):
     ticker = 'BTC'
 
     if local_test == LocalTests.GENERATE_VOL_DATA_TS:
-        vols, strikes, options, index_prices = generate_vol_delta_ts(ticker=ticker)
+        vols, strikes, options, index_prices = load_tardis_vol_delta_ts(
+            ticker=ticker,
+            days_map={'1w': 7, '1m': 30},
+        )
         vol_data = {'vols': vols, 'strikes': strikes, 'options': options, 'index_prices': index_prices}
         fu.save_df_to_excel(vol_data, file_name=f"{ticker}_vol_data")
 

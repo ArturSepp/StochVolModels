@@ -1,14 +1,79 @@
-"""
-test data with implied volatilities for VIX, SQQQ, Bitcoin, Gold, SPY
-data are taken around Nov2021
-data is used for logsv_model_with_quadratic_drift figures
+"""Bundled option chains for deterministic examples and paper illustrations.
+
+The OCA chain is generated data and can be redistributed. The historical VIX, SQQQ, Bitcoin,
+Gold, and SPY snapshots support legacy examples and paper figures.
 """
 
 import numpy as np
 from numpy import array
-from enum import Enum
 
 from stochvolmodels.data.option_chain import OptionChain
+
+
+def get_oca_simulated_chain_data() -> OptionChain:
+    """Return a ready-to-use chain derived from OCA's deterministic simulator.
+
+    The snapshot was produced with OptionChainAnalytics 5
+    ``generate_simulated_options_data(rate=0.05)`` and converted at
+    ``2024-01-05 08:00:00+00:00`` for the seven-day and 21-day maturity targets. It contains no
+    proprietary provider data and does not require OCA at runtime.
+
+    Returns
+    -------
+    OptionChain
+        Two-maturity generated chain with bid and ask implied volatilities.
+    """
+    strikes = np.array([80.0, 90.0, 100.0, 110.0, 120.0])
+    optiontypes = np.array(["P", "P", "P", "C", "C"])
+    return OptionChain(
+        ids=np.array(["1w: 12Jan2024", "1m: 16Feb2024"]),
+        ttms=np.array([0.02009132420091324, 0.11506849315068493]),
+        ticker="OCA_SIM",
+        forwards=np.array([100.0803975983608, 100.46133486029083]),
+        discfactors=np.array([0.9989959381976717, 0.9942630945941704]),
+        strikes_ttms=(strikes.copy(), strikes.copy()),
+        optiontypes_ttms=(optiontypes.copy(), optiontypes.copy()),
+        bid_ivs=(
+            np.array(
+                [
+                    0.222543419245907,
+                    0.208409454967141,
+                    0.19576619308820184,
+                    0.18432897151168284,
+                    0.1738876062729273,
+                ]
+            ),
+            np.array(
+                [
+                    0.23089825379543122,
+                    0.2167642895166652,
+                    0.20412102763772605,
+                    0.19268380606120705,
+                    0.1822424408224515,
+                ]
+            ),
+        ),
+        ask_ivs=(
+            np.array(
+                [
+                    0.24254341924590703,
+                    0.22840945496714102,
+                    0.21576619308820186,
+                    0.20432897151168286,
+                    0.1938876062729273,
+                ]
+            ),
+            np.array(
+                [
+                    0.25089825379543124,
+                    0.23676428951666523,
+                    0.22412102763772607,
+                    0.21268380606120707,
+                    0.20224244082245152,
+                ]
+            ),
+        ),
+    )
 
 
 def get_btc_test_chain_data() -> OptionChain:
@@ -871,42 +936,4 @@ def get_qv_options_test_chain_data(num_strikes: int = 21) -> OptionChain:
     return data
 
 
-class LocalTests(Enum):
-    BTC = 1
-    VIX = 2
-    GLD = 3
-    SQQQ = 4
-    SPY = 5
-
-
-def run_local_test(local_test: LocalTests):
-    """Run local tests for development and debugging purposes.
-
-    These are integration tests that download real data and generate reports.
-    Use for quick verification during development.
-    """
-
-    if local_test == LocalTests.BTC:
-        option_chain = get_btc_test_chain_data()
-        print(option_chain)
-
-    elif local_test == LocalTests.VIX:
-        option_chain = get_vix_test_chain_data()
-        print(option_chain)
-
-    elif local_test == LocalTests.GLD:
-        option_chain = get_gld_test_chain_data()
-        print(option_chain)
-
-    elif local_test == LocalTests.SQQQ:
-        option_chain = get_sqqq_test_chain_data()
-        print(option_chain)
-
-    elif local_test == LocalTests.SPY:
-        option_chain = get_spy_test_chain_data()
-        print(option_chain)
-
-
-if __name__ == '__main__':
-
-    run_local_test(local_test=LocalTests.BTC)
+# Manual dispatchers live in ``stochvolmodels.data.tests.sample_option_chains_test``.

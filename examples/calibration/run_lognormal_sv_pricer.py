@@ -11,7 +11,7 @@ from enum import Enum
 import stochvolmodels as sv
 from stochvolmodels.utils import plots as plot
 from stochvolmodels import LogSVPricer, LogSvParams, OptionChain, LogsvModelCalibrationType
-# from uuid import uuid4
+
 
 class LocalTests(Enum):
     COMPUTE_MODEL_PRICES = 1
@@ -253,7 +253,6 @@ def run_local_test(local_test: LocalTests):
                      f"{params0.to_str()}",
                      color = "darkblue", fontsize = 14)
 
-        # fig.savefig("c:/temp/rough_vs_conven_vol.pdf")
 
     elif local_test == LocalTests.CALIBRATE_MODEL_TO_BTC_OPTIONS:
         btc_option_chain = sv.get_btc_test_chain_data()
@@ -288,7 +287,6 @@ def run_local_test(local_test: LocalTests):
                                                        )
 
         # uuid = str(uuid4())
-        # plot.save_fig(fig=fig, local_path=r"c:/temp/", file_name=f"fit_quality_{uuid}")
 
     plt.show()
 

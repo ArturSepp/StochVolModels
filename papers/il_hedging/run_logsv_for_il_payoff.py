@@ -36,8 +36,12 @@ def logsv_il_pricer(params: LogSvParams,
         vol_scaler = params.sigma0 * np.sqrt(np.minimum(np.min(ttm), 0.5 / 12.0))
 
     # for vanilla call and put
-    phi_grid, psi_grid, theta_grid = get_transform_var_grid(vol_scaler=vol_scaler,
-                                                                 real_phi=-0.4)
+    # Composite Simpson integration requires an odd number of transform-grid points.
+    phi_grid, psi_grid, theta_grid = get_transform_var_grid(
+        vol_scaler=vol_scaler,
+        real_phi=-0.4,
+        max_phi=1001,
+    )
     a_t0 = np.zeros((phi_grid.shape[0], get_expansion_n(expansion_order)), dtype=np.complex128)
 
     a_t0, log_mgf_grid = compute_logsv_a_mgf_grid(ttm=ttm,

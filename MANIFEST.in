@@ -12,6 +12,7 @@ recursive-include src/stochvolmodels *.py
 
 # Include regression baselines and other data files that the package needs
 recursive-include src/stochvolmodels *.npz *.yml *.yaml *.json *.txt *.md
+exclude src/stochvolmodels/settings.yaml
 
 # Explicitly exclude repository-only examples, papers, figures, notebooks, and image files
 recursive-exclude examples *
@@ -19,6 +20,7 @@ recursive-exclude papers *
 recursive-exclude docs *
 recursive-exclude resources *
 recursive-exclude volatility_book *
+recursive-exclude src/stochvolmodels/pde_solvers *
 
 global-exclude *.png
 global-exclude *.jpg

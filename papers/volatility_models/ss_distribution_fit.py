@@ -8,6 +8,7 @@ from scipy.stats import norm
 from typing import Optional
 from enum import Enum
 import qis as qis
+from qis.plots.utils import get_n_colors, reset_xticks, set_legend
 
 from papers.volatility_models.load_data import fetch_ohlc_vol
 from stochvolmodels import LogSvParams, HestonParams
@@ -91,7 +92,7 @@ def plot_estimated_beta_sv(vol: pd.Series,
             current_ticks = ax.get_xticks()  # sigma' is mapped into ticks
             analytic = pd.Series(analytic, index=current_ticks)
             qis.plot_line(analytic, ax=ax)
-            qis.reset_xticks(ax=ax, data=hist.index.to_numpy())
+            reset_xticks(ax=ax, data=hist.index.to_numpy())
 
 
 def plot_estimated_beta_log_sv(vol: pd.Series,
@@ -119,7 +120,7 @@ def plot_estimated_beta_log_sv(vol: pd.Series,
             analytic = pd.Series(analytic, index=hist.index, name='analytic')
             distr = pd.concat([hist, analytic], axis=1)
             qis.plot_line(distr, ax=ax)
-            # qis.reset_xticks(ax=ax, data=hist.index.to_numpy())
+            # reset_xticks(ax=ax, data=hist.index.to_numpy())
 
 
 def fit_distribution_log_sv(vol: pd.Series,
@@ -210,7 +211,7 @@ def fit_distribution_heston(vol: pd.Series,
 
 def plot_estimated_svs(vol: pd.Series,
                        logsv_params: LogSvParams = LogSvParams(),
-                       heston_params: Optional[HestonParams] = HestonParams(),
+                       heston_params: HestonParams = HestonParams(),
                        bins: int = 100,
                        ax: plt.Subplot = None,
                        **kwargs
@@ -239,7 +240,7 @@ def plot_estimated_svs(vol: pd.Series,
                   ax=ax,
                   **kwargs)
 
-    colors = qis.get_n_colors(n=len(df.columns))
+    colors = get_n_colors(n=len(df.columns))
     qis.plot_line(df=df,
                   colors=colors,
                   y_limits=(1e-10, None),
@@ -248,14 +249,14 @@ def plot_estimated_svs(vol: pd.Series,
                   ax=ax,
                   **kwargs)
 
-    qis.set_legend(ax=ax,
-                   markers=["*"]+["_"]*len(df.columns),
-                   labels=['Empirical']+list(df.columns),
-                   handlelength=0,
-                   colors=['red']+colors,
-                   legend_loc='lower center',
-                   framealpha=0.90,
-                   **kwargs)
+    set_legend(ax=ax,
+               markers=["*"]+["_"]*len(df.columns),
+               labels=['Empirical']+list(df.columns),
+               handlelength=0,
+               colors=['red']+colors,
+               legend_loc='lower center',
+               framealpha=0.90,
+               **kwargs)
 
     ax.set_yscale('log')
 

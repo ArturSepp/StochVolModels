@@ -53,7 +53,7 @@ which contains computations and visualisations for several papers
 
 Use `stochvolmodels` for European vanilla pricing and implied-volatility analytics under stochastic volatility, for model calibration to option chains (a calibration example to Bitcoin options data is included), and for replicating the papers above.
 
-It is not a general derivatives platform: no American or path-dependent payoffs, no local-volatility or term-structure models. For fast Black-Scholes-Merton and Bachelier array pricing without stochastic volatility, use [`vanilla-option-pricers`](https://github.com/ArturSepp/VanillaOptionPricers); for strategy backtesting and reporting, use [`qis`](https://github.com/ArturSepp/QuantInvestStrats).
+It is not a general derivatives platform: no American or path-dependent payoffs, no local-volatility or term-structure models. Black-Scholes-Merton and absolute-normal Bachelier analytics are provided by the required [`vanilla-option-pricers`](https://github.com/ArturSepp/VanillaOptionPricers) package and re-exported from `stochvolmodels`; for strategy backtesting and reporting, use [`qis`](https://github.com/ArturSepp/QuantInvestStrats).
 
 ## Installation
 Install using
@@ -72,6 +72,7 @@ git clone https://github.com/ArturSepp/StochVolModels.git
 
 ### Core Dependencies
 - `python >= 3.10`
+- `vanilla-option-pricers >= 2.0.0, < 3.0.0`
 - `numba >= 0.60.0`
 - `numpy >= 2.0`
 - `scipy >= 1.12.0`
@@ -83,11 +84,11 @@ git clone https://github.com/ArturSepp/StochVolModels.git
 
 | Extra | Installs | Needed for |
 |---|---|---|
-| `research` | `qis >= 5.11.0`, `option-chain-analytics >= 4.0.0` | scripts in `papers/` and option-chain research |
+| `research` | `qis >= 3.5.7`, `option-chain-analytics >= 5.0.0` | option-chain calibration and scripts in `papers/` |
 | `visualization` | `plotly >= 5.0.0` | interactive figures |
 | `numerical` | `scikit-learn >= 1.3.0`, `statsmodels >= 0.14.0` | statistical fits |
 | `jupyter` | `jupyter`, `notebook`, `jupyterlab`, `ipykernel`, `ipywidgets` | notebooks |
-| `dev` | `build`, `pytest`, `pytest-cov`, `pytest-regressions`, `ruff` | builds, tests, and linting |
+| `dev` | `pytest`, `pytest-cov`, `pytest-regressions`, `ruff` | tests and linting |
 
 Install an extra using
 ```python
@@ -177,14 +178,63 @@ Basic features are implemented in
 examples/calibration/run_lognormal_sv_pricer.py
 ```
 
+### Option data for examples and calibration
+
+All supported data routes converge to the same lightweight `OptionChain`, so fitting and pricing
+code does not depend on the original provider:
+
+| Data route | Local data needed | SVM entry point | Example |
+|---|---|---|---|
+| Bundled OCA-generated chain | No | `get_oca_simulated_chain_data()` | `run_logsv_smile_fitter.py` |
+| Any normalized OCA panel | No for OCA's simulator | `load_option_chain()` | `run_oca_logsv_calibration.py` |
+| OCA CBOE cache | Yes | `load_cboe_option_chain()` | `load_cboe_option_chain.py` |
+| OCA ThetaData EOD cache | Yes | `load_thetadata_option_chain()` | `run_spy_thetadata_month.py` |
+| OCA Tardis hourly archive | Yes | `load_tardis_hourly_option_chain()` | clustered-jump paper workflows |
+| OCA Tardis 08:00 UTC EOD cache | Yes | `load_tardis_eod_option_chain()` | clustered-jump chain calibration |
+
+The repository does not redistribute CBOE, ThetaData, or Tardis records. OCA owns provider access,
+normalization, and caches; SVM receives only the strikes, option types, forwards, discounts, and
+bid/ask quotes required for an illustration or calibration.
+
+#### Ready chain: no credentials and no OCA runtime dependency
+
+The package includes one two-maturity chain captured from OCA's deterministic simulator. It is
+generated data rather than a vendor snapshot and is suitable for documentation, notebooks, and
+tests:
+
+```python
+import numpy as np
+
+from stochvolmodels.data.sample_option_chains import get_oca_simulated_chain_data
+from stochvolmodels.fitters import calc_logsv_ivols, fit_logsv_ivols
+
+chain = get_oca_simulated_chain_data()
+idx = 1  # one-month slice
+log_strikes = np.log(chain.strikes_ttms[idx] / chain.forwards[idx])
+mid_vols = 0.5 * (chain.bid_ivs[idx] + chain.ask_ivs[idx])
+fit = fit_logsv_ivols(log_strikes, mid_vols, chain.ttms[idx])
+fitted_vols = calc_logsv_ivols(log_strikes, **fit)
+```
+
+Run the complete plotting example with:
+
+```bash
+python examples/calibration/run_logsv_smile_fitter.py --maturity 1m
+```
+
+The same chain can be passed to `LogSVPricer.calibrate_model_params_to_chain()` for a full analytic
+model calibration. The approximate fitter is a fast three-parameter smile illustration; it is not
+a substitute for calibrating the full term-structure model.
+
 ### Loading cached SPX/VIX chains for experiments
 
 Empirical CBOE chains remain owned and normalized by OptionChainAnalytics. Install the optional
-packages separately, set `OCA_DATA_PATH` to the ignored OCA data directory containing
-`cboe_options/`, and request only the observation window needed by the experiment:
+packages separately, configure `RESOURCE_PATH` in `src/stochvolmodels/settings.yaml`, place the
+normalized cache under its `cboe_options/` subdirectory, and request only the observation window
+needed by the experiment:
 
 ```bash
-pip install "stochvolmodels[research]" "option-chain-analytics[cboe]>=4.0.0"
+pip install "stochvolmodels[research]" "option-chain-analytics[cboe]>=5.0.0"
 ```
 
 ```python
@@ -203,6 +253,81 @@ option_chain = load_cboe_option_chain(
 The adapter reads OCA's ignored per-underlying Parquet cache and returns SVM's existing lightweight
 `OptionChain`; it does not copy the dataset or add provider metadata to the calibration object. See
 `examples/calibration/load_cboe_option_chain.py` for SPX and VIX cases.
+
+For a credential-free end-to-end OCA 5 conversion and LogSV calibration, run:
+
+```bash
+python examples/calibration/run_oca_logsv_calibration.py
+```
+
+The example uses OCA's deterministic simulated panel. Replace its loader with any normalized OCA
+`OptionsDataDFs` source while keeping the same `load_option_chain` and LogSV calibration calls.
+Select `LocalTests.CONVERT_CHAIN` or `LocalTests.CALIBRATE_LOGSV` in the script's main guard.
+
+### Running the cache-first SPY monthly prototype
+
+OCA's ThetaData cache can drive time-series plots, approximate smile fitting, and full LogSV
+calibration from one example. Build the cache in the OptionChainAnalytics checkout, then run:
+
+```bash
+# From the OptionChainAnalytics checkout:
+python examples/build_thetadata_eod_cache.py --ticker SPY \
+    --start-date 2026-07-01 --end-date 2026-07-31
+
+# From the StochVolModels checkout:
+python examples/calibration/run_spy_thetadata_month.py --case all \
+    --output-dir outputs/spy_thetadata_july_2026
+```
+
+The default window is July 2026 and the calibration observation is 17 July. Use `--cache-root`
+when the cache is not under `<RESOURCE_PATH>/thetadata_options/spy`. The empirical Parquet files
+and generated figures remain ignored local artifacts. The approximate smile utilities are available
+from `stochvolmodels.fitters`; all Black prices used by their synthetic grid helper come from
+`vanilla-option-pricers`.
+
+To run only the approximate smile fit or only the full LogSV calibration:
+
+```bash
+python examples/calibration/run_spy_thetadata_month.py --case smile
+python examples/calibration/run_spy_thetadata_month.py --case calibrate
+```
+
+Programmatically, load the observation once and use it exactly like the bundled chain:
+
+```python
+from pathlib import Path
+
+import pandas as pd
+
+from stochvolmodels import local_path as lp
+from stochvolmodels.data.fetch_option_chain import load_thetadata_option_chain
+
+cache_root = Path(lp.get_resource_path()) / "thetadata_options" / "spy"
+chain = load_thetadata_option_chain(
+    cache_root=cache_root,
+    value_time=pd.Timestamp("2026-07-17 23:59:00", tz="America/New_York").tz_convert("UTC"),
+    days_map={"1w": 7, "3w": 21, "6w": 42},
+    delta_bounds=(-0.05, 0.05),
+)
+```
+
+`run_spy_thetadata_month.py` shows both downstream paths: `fit_logsv_ivols()` for a single-slice
+approximation and `LogSVPricer.calibrate_model_params_to_chain()` for the full model.
+
+### Choosing hourly or EOD Tardis data for paper workflows
+
+The cryptocurrency paper code uses two explicit conventions rather than resampling silently:
+
+- `load_tardis_hourly_options_data()` and `load_tardis_hourly_option_chain()` preserve the raw
+  hourly BTC/ETH observation grid for intraday studies and historical paper calculations.
+- `load_tardis_eod_options_data()` and `load_tardis_eod_option_chain()` read OCA's standardized
+  exact-08:00 UTC cache for daily chain reports and calibrations. The chain loader requests a
+  bounded lookback and selects the latest observation at or before the timezone-aware valuation
+  time, so it does not look ahead.
+
+Both routes default to `<RESOURCE_PATH>/tardis`; configure the ignored local settings file rather
+than hardcoding a machine path. See
+`papers/jump_risk_premia_clustered_jumps/README.md` for the script-by-script data policy.
 
 Imports:
 ```python
@@ -363,6 +488,30 @@ development code and is not an exact replication package.
 ```python
 papers/jump_risk_premia_clustered_jumps
 ```
+
+## Local resource and output paths
+
+Copy `src/stochvolmodels/settings.yaml.example` to the ignored
+`src/stochvolmodels/settings.yaml` and set the two machine-local roots:
+
+```yaml
+RESOURCE_PATH:
+  "C:\\Users\\me\\analytics\\resources\\"
+OUTPUT_PATH:
+  "C:\\Users\\me\\analytics\\outputs\\"
+```
+
+Use the same import in examples and paper workflows:
+
+```python
+from stochvolmodels import local_path as lp
+
+local_path = f"{lp.get_resource_path()}bbg_vols\\"
+```
+
+Both getters return absolute strings with a trailing separator, following the `qis` convention.
+Convert the result to `pathlib.Path` when a library or operation benefits from path objects. The
+local YAML is not included in Git or package distributions; PyYAML is loaded only when it exists.
 
 ## Project Structure
 

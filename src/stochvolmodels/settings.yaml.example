@@ -1,0 +1,9 @@
+# Copy this file to settings.yaml and edit the paths for your machine.
+# settings.yaml is ignored by Git and excluded from package distributions.
+# Only RESOURCE_PATH and OUTPUT_PATH are consumed by stochvolmodels.local_path.
+
+RESOURCE_PATH:
+  "C:\\Users\\me\\analytics\\resources\\"
+
+OUTPUT_PATH:
+  "C:\\Users\\me\\analytics\\outputs\\"

@@ -1,28 +1,61 @@
+from enum import Enum
+from pathlib import Path
+from typing import Tuple
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-from numba import njit
-from scipy.optimize import minimize
-from typing import Tuple
-from enum import Enum
 import qis
+import seaborn as sns
+from numba import njit
 from qis import TimePeriod
+from scipy.optimize import minimize
 
 # analytics
 from papers.jump_risk_premia_clustered_jumps import hawkes_estimator as he
-from stochvolmodels.data.fetch_option_chain import load_price_data
+from stochvolmodels import local_path as lp
 
 SECONDS_PER_YEAR = 365*24*60*60  # days, hours, minute, seconds
+
+
+def _load_tardis_perpetual_data(ticker: str) -> pd.DataFrame:
+    """Load the small raw Tardis perpetual history without the option panel."""
+    ticker = ticker.upper()
+    if ticker not in ('BTC', 'ETH'):
+        raise ValueError(f"unsupported Tardis perpetual ticker={ticker!r}")
+
+    file_name = f'{ticker}_perp_freq_H.feather'
+    resource_path = Path(lp.get_resource_path())
+    candidates = (
+        resource_path / 'tardis' / file_name,
+        resource_path.parent / 'data' / 'tardis' / file_name,
+    )
+    file_path = next((candidate for candidate in candidates if candidate.is_file()), None)
+    if file_path is None:
+        searched = ', '.join(str(candidate) for candidate in candidates)
+        raise FileNotFoundError(f'cannot find {file_name}; searched: {searched}')
+
+    perpetual_data = pd.read_feather(file_path)
+    required_columns = {'timestamp', 'funding_rate', 'mark_price'}
+    missing_columns = required_columns.difference(perpetual_data.columns)
+    if missing_columns:
+        raise ValueError(
+            f'{file_path} is missing Tardis columns: {sorted(missing_columns)}'
+        )
+    perpetual_data['timestamp'] = pd.to_datetime(perpetual_data['timestamp'], utc=True)
+    return perpetual_data.set_index('timestamp').sort_index()
 
 
 def get_funding_rate(ticker: str = 'BTC',
                      time_period: TimePeriod = None,
                      freq: str = 'D'
                      ) -> Tuple[pd.Series, pd.Series]:
-    funding_rate = load_price_data(ticker=ticker, data='funding_rate')
-    perp = load_price_data(ticker=ticker, data='perp')
-    perp_funding_annual = 365.0*funding_rate.resample('8H').last().resample(freq).sum()#.rolling(7).sum()
+    perpetual_data = _load_tardis_perpetual_data(ticker=ticker)
+    funding_rate = perpetual_data['funding_rate']
+    perp = perpetual_data['mark_price']
+    perp_funding_annual = (
+        365.0 * funding_rate.resample('8h').last().resample(freq).sum()
+    )
     perp_funding_annual = perp_funding_annual.dropna()
     perp = perp.reindex(index=perp_funding_annual.index, method='ffill')
     if time_period is not None:
@@ -255,15 +288,15 @@ def run_local_test(local_test: LocalTests):
     time_period = TimePeriod(start='30Apr2019', end='19Jan2023')
 
     if local_test == LocalTests.SPOT_DATA:
-        rate, perp = get_funding_rate(time_period=time_period)
+        rate, perp = get_funding_rate(ticker=ticker, time_period=time_period)
         qis.plot_time_series(df=rate, legend_stats=qis.LegendStats.AVG_MEDIAN_STD_NONNAN_LAST, var_format='{:,.2%}')
         print(rate)
 
     elif local_test == LocalTests.FIT_OU:
-        fit_rate_ou(time_period=time_period)
+        fit_rate_ou(ticker=ticker, time_period=time_period)
 
     elif local_test == LocalTests.FIT_OU_HAWKES:
-        fit_rate_ou_hawkes(time_period=time_period)
+        fit_rate_ou_hawkes(ticker=ticker, time_period=time_period)
 
     elif local_test == LocalTests.PLOT:
         plot_rate_ou_hawkes(ticker=ticker, time_period=time_period)

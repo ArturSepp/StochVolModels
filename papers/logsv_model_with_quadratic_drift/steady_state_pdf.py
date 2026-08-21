@@ -14,6 +14,7 @@ from enum import Enum
 from typing import Dict
 
 from stochvolmodels import LogSvParams
+from stochvolmodels import local_path as lp
 import stochvolmodels.utils.plots as plot
 
 VOLVOL = 1.5
@@ -234,7 +235,7 @@ def run_unit_test(unit_test: UnitTests):
 
             is_save = True
             if is_save:
-                plot.save_fig(fig=fig, local_path='../../docs/figures//', file_name='vol_steady_state')
+                plot.save_fig(fig=fig, local_path=lp.get_output_path(), file_name='vol_steady_state')
 
     plt.show()
 

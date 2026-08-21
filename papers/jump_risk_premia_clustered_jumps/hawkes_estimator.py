@@ -1,9 +1,6 @@
 """
 create data object with options time series data
 """
-# built in
-from pathlib import Path
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,9 +11,10 @@ from numba import njit
 from typing import Tuple, Optional
 from enum import Enum
 import qis as qis
+from qis.plots.utils import get_n_markers
 
 # analytics
-from papers import local_path as lp
+from stochvolmodels import local_path as lp
 from stochvolmodels.pricers.hawkes_jd_pricer import HawkesJDParams
 
 DAYS_PER_YEAR = 365
@@ -297,7 +295,13 @@ def forecast_hawkes_jd_vol(price: pd.Series,
     # vols
     mid_returns = pd.Series(clip_returns(returns_np=returns_np, shift_p=model_params.shift_p, shift_m=model_params.shift_m),
                             index=returns.index, name='sigma').fillna(0.0)
-    sigma = qis.compute_ewm_vol(data=mid_returns, ewm_lambda=1.0 - 2.0 / (mid_vol_span + 1.0), af=af, mean_adj_type=qis.MeanAdjType.NONE)
+    sigma = qis.compute_ewm_vol(
+        data=mid_returns,
+        ewm_lambda=1.0 - 2.0 / (mid_vol_span + 1.0),
+        mean_adj_type=qis.MeanAdjType.NONE,
+        annualize=True,
+        annualization_factor=af,
+    )
     vol_hawks = pd.Series(np.sqrt(sigma.to_numpy()*sigma.to_numpy()+jump_var), index=returns.index, name='Hawkes Vol')
     model_data = pd.concat([lambda_p, lambda_m, sigma], axis=1)
     return vol_hawks, model_data
@@ -459,7 +463,7 @@ def illustrate_hawkes_jd_independent(price: pd.Series, model_params: HawkesJDPar
                              colors=['darkgreen', 'darkorange', 'red'],
                              var_format='{:,.2%}',
                              legend_stats=qis.LegendStats.AVG_STD_SKEW_KURT,
-                             markers=qis.get_n_markers(n=len(joint.columns)),
+                             markers=get_n_markers(n=len(joint.columns)),
                              title=f"{price.name} daily returns",
                              markersize=4,
                              linewidth=0,
@@ -580,7 +584,7 @@ def illustrate_hawkes_jd_joint(price: pd.Series,
                              colors=['darkgreen', 'darkorange', 'red'],
                              var_format='{:,.2%}',
                              legend_stats=qis.LegendStats.AVG_STD_SKEW_KURT,
-                             markers=qis.get_n_markers(n=len(joint.columns)),
+                             markers=get_n_markers(n=len(joint.columns)),
                              title=f"{price.name} daily returns",
                              markersize=4,
                              linewidth=0,
@@ -606,7 +610,7 @@ def illustrate_hawkes_jd_joint(price: pd.Series,
                              colors=['darkgreen', 'darkorange', 'red'],
                              var_format='{:,.1%}',
                              legend_stats=qis.LegendStats.NONE,
-                             markers=qis.get_n_markers(n=len(joint.columns)),
+                             markers=get_n_markers(n=len(joint.columns)),
                              title=f"(A) Daily returns",
                              markersize=4,
                              linewidth=0,
@@ -652,12 +656,12 @@ def run_local_test(local_test: LocalTests):
     time_period = None #da.TimePeriod(None, pd.Timestamp('2022-12-02'))
 
     freq, af = 'D', 365.0
-    from option_chain_analytics.ts_loaders import ts_data_loader_wrapper
-    from option_chain_analytics import OptionsDataDFs
-    from stochvolmodels.data.fetch_option_chain import load_price_data
+    from stochvolmodels.data.fetch_option_chain import (
+        load_price_data,
+        load_tardis_hourly_options_data,
+    )
 
-    resource_path = str(Path(lp.get_resource_path()).joinpath('tardis'))
-    options_data_dfs = OptionsDataDFs(**ts_data_loader_wrapper(ticker=ticker, local_path=resource_path))
+    options_data_dfs = load_tardis_hourly_options_data(ticker=ticker)
     price = load_price_data(options_data_dfs=options_data_dfs, time_period=time_period, freq='D')
     print(price)
 

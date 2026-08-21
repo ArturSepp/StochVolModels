@@ -26,7 +26,7 @@ import pandas as pd
 from numpy import linalg as la
 
 from stochvolmodels.pricers.model_pricer import ModelParams
-from stochvolmodels.pricers.rough_logsv.RoughKernel import european_rule
+from stochvolmodels.pricers.rough_logsv.rough_kernel import european_rule
 from stochvolmodels.utils.config import VariableType
 from stochvolmodels.utils.funcs import find_nearest
 

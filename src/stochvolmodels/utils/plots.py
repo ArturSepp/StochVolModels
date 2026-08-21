@@ -13,6 +13,8 @@ import matplotlib.ticker as mticker
 from os.path import join
 from typing import Union, Dict, Tuple, List, Optional, Literal, Iterable, Any
 
+from stochvolmodels import local_path as lp
+
 
 DATE_TIME_FORMAT = '%Y%m%d_%H%M'
 DATE_FORMAT = '%d%b%Y'
@@ -91,10 +93,30 @@ def save_fig(fig: plt.Figure,
              extension: str = 'PNG',
              **kwargs
              ) -> str:
+    """Save a Matplotlib figure to the configured output directory.
+
+    Parameters
+    ----------
+    fig : matplotlib.figure.Figure
+        Figure to save.
+    file_name : str
+        File name without its extension.
+    local_path : str, optional
+        Destination directory. When omitted, use ``OUTPUT_PATH`` from
+        :mod:`stochvolmodels.local_path`.
+    dpi : int, default=300
+        Output resolution in dots per inch.
+    extension : str, default='PNG'
+        Image file extension.
+    **kwargs
+        Reserved for backward compatibility.
+
+    Returns
+    -------
+    str
+        Full path of the saved figure.
     """
-    save matplotlib figure
-    """
-    file_path = join(local_path or '..//', f"{file_name}.{extension}")
+    file_path = join(local_path or lp.get_output_path(), f"{file_name}.{extension}")
     fig.savefig(file_path, dpi=dpi)  # , bbox_inches=bbox_inches
     return file_path
 

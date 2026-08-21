@@ -31,9 +31,13 @@ def check_wheel(wheel_path: Path) -> None:
         "papers/",
         "docs/",
         "resources/",
+        "stochvolmodels/pde_solvers/",
     )
     forbidden = [member for member in members if member.startswith(forbidden_prefixes)]
     assert not forbidden, f"repository-only files entered wheel: {forbidden[:10]}"
+    assert "stochvolmodels/settings.yaml" not in members, (
+        "machine-local settings.yaml entered the wheel"
+    )
     assert "stochvolmodels/__init__.py" in members
     assert any(member.startswith("stochvolmodels/tests/test_") for member in members)
     assert any(member.endswith(".npz") for member in members), "regression baseline is missing"

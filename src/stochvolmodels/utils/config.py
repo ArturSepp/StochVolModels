@@ -5,6 +5,15 @@ config file
 from enum import Enum
 
 
+class OptionType(str, Enum):
+    """Option payoff codes accepted by SVM and VanillaOptionPricers."""
+
+    CALL = "C"
+    PUT = "P"
+    INVERSE_CALL = "IC"
+    INVERSE_PUT = "IP"
+
+
 class VariableType(Enum):
     """
     state variables for log SV model

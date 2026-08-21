@@ -6,12 +6,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import qis as qis
 from numba import njit
-from scipy.special import betainc, gamma
-from scipy.optimize import fsolve
-from typing import Union
 from enum import Enum
 
-from stochvolmodels.pricers.analytic.tdist import compute_upsilon
+from stochvolmodels.fitters.tdist import compute_upsilon
 from stochvolmodels import infer_bsm_ivols_from_slice_prices
 
 

@@ -5,6 +5,7 @@ see StochVolModels/examples/run_gmm_fit.py
 import matplotlib.pyplot as plt
 import seaborn as sns
 import qis as qis
+from qis.plots.utils import set_title
 from enum import Enum
 from stochvolmodels import (get_btc_test_chain_data,
                             get_spy_test_chain_data,
@@ -43,8 +44,14 @@ def run_unit_test(unit_test: UnitTests) -> None:
                 option_chain0 = OptionChain.get_slices_as_chain(option_chain, ids=[key])
                 # gmm_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain0, params=params, axs=[axs[idx]])
                 plot_gmm_pdfs(params=params, option_chain0=option_chain0, axs=axs[current_ax, :])
-                qis.set_title(ax=axs[current_ax, 0], title=f"{key}-slice: (A) State PDF and Aggregate Risk-Neutral PDF")
-                qis.set_title(ax=axs[current_ax, 1], title=f"{key}-slice: Model to Market Bid/Ask vols")
+                set_title(
+                    ax=axs[current_ax, 0],
+                    title=f"{key}-slice: (A) State PDF and Aggregate Risk-Neutral PDF",
+                )
+                set_title(
+                    ax=axs[current_ax, 1],
+                    title=f"{key}-slice: Model to Market Bid/Ask vols",
+                )
                 current_ax += 1
 
         qis.set_suptitle(fig, title='Fit of 4-state GMM to SPY implied vols @ 15_Jul_2022_10_23_09')

@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import norm
 
-from stochvolmodels.pricers.analytic import bsm
+import stochvolmodels as bsm
 
 
 def _reference_price(

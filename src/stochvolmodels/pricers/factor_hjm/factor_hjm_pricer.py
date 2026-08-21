@@ -18,7 +18,7 @@ from enum import Enum
 from typing import Dict, Tuple
 from numba.typed import List
 
-import stochvolmodels.pricers.analytic.bachelier as bachel
+import vanilla_option_pricers as bachel
 from stochvolmodels.pricers.factor_hjm.rate_logsv_params import MultiFactRateLogSvParams
 from stochvolmodels.utils.rate_core import get_default_swap_term_structure
 from stochvolmodels.pricers.factor_hjm.rate_logsv_pricer import simulate_logsv_MF, Measure
@@ -203,4 +203,3 @@ def calc_mc_vols(basis_type: str,
         mc_prices.append(option_mean)
 
     return mc_prices, mc_vols, mc_vols_ups, mc_vols_downs
-

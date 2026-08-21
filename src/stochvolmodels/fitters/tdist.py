@@ -7,13 +7,10 @@ and the kth moment exists only for k < nu, so low nu produces heavy tails and a
 pronounced smile while leaving the second moment intact.
 """
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 from numba import njit
 from scipy.special import betainc, gamma
 from scipy.optimize import fsolve
 from typing import Union
-from enum import Enum
 
 
 @njit
@@ -220,75 +217,4 @@ def infer_tdist_implied_vols_from_model_slice_prices(ttm: float,
     return model_vol_ttm
 
 
-class LocalTests(Enum):
-    """cases for the local test dispatcher."""
-    PLOT_PDF = 1
-    PLOT_CDF = 2
-    PLOT_CUM_X = 3
-    PLOT_H = 4
-
-
-def run_local_test(local_test: LocalTests):
-    """Run local tests for development and debugging purposes.
-
-    These are integration tests that download real data and generate reports.
-    Use for quick verification during development.
-    """
-
-    import qis as qis
-
-    x = np.linspace(-5.0, 5.0, 20000)
-    dx = x[1] - x[0]
-    ttm = 1.0
-    mu_vols = {'mu=0.0, vol=0.2': (0.0, 0.2),
-               'mu=0.2, vol=0.2': (0.2, 0.2),
-               'mu=0.2, vol=0.4': (0.2, 0.4)}
-
-    if local_test == LocalTests.PLOT_PDF:
-        pdfs = {}
-        for key, mu_vol in mu_vols.items():
-            pdf = dx * pdf_tdist(x=x, mu=mu_vol[0], vol=mu_vol[1], nu=3.0, ttm=ttm)
-            pdfs[key] = pd.Series(pdf, index=x)
-            print(f"{key}: sum={np.sum(pdf)}, mean={np.sum(x*pdf)}, std={np.sqrt(np.sum(np.square(x)*pdf)-np.square(np.sum(x*pdf)))}")
-        pdfs = pd.DataFrame.from_dict(pdfs, orient='columns')
-        qis.plot_line(df=pdfs)
-
-    elif local_test == LocalTests.PLOT_CDF:
-        pdfs = {}
-        cpdfs = {}
-        for key, mu_vol in mu_vols.items():
-            pdf = dx * pdf_tdist(x=x, mu=mu_vol[0], vol=mu_vol[1], nu=3.0, ttm=ttm)
-            cpdf = cdf_tdist(x=x, mu=mu_vol[0], vol=mu_vol[1], nu=3.0, ttm=ttm)
-            pdfs[f"{key}_pdf_sum"] = pd.Series(np.cumsum(pdf), index=x)
-            cpdfs[f"{key}_cdf"] = pd.Series(cpdf, index=x)
-        pdfs = pd.DataFrame.from_dict(pdfs, orient='columns')
-        cpdfs = pd.DataFrame.from_dict(cpdfs, orient='columns')
-        df = pd.concat([pdfs, cpdfs], axis=1)
-        colors = qis.get_n_colors(n=len(mu_vols.keys()))
-        qis.plot_line(df=df, colors=2*colors)
-
-    elif local_test == LocalTests.PLOT_CUM_X:
-        pdfs = {}
-        cpdfs = {}
-        for key, mu_vol in mu_vols.items():
-            pdf = dx * pdf_tdist(x=x, mu=mu_vol[0], vol=mu_vol[1], nu=3.0, ttm=ttm)
-            cpdf = cum_mean_tdist(x=x, mu=mu_vol[0], vol=mu_vol[1], nu=3.0, ttm=ttm)
-            pdfs[f"{key}_h_pdf_sum"] = pd.Series(np.cumsum(x*pdf), index=x)
-            cpdfs[f"{key}_t_h"] = pd.Series(cpdf, index=x)
-        pdfs = pd.DataFrame.from_dict(pdfs, orient='columns')
-        cpdfs = pd.DataFrame.from_dict(cpdfs, orient='columns')
-        df = pd.concat([pdfs, cpdfs], axis=1)
-        colors = qis.get_n_colors(n=len(mu_vols.keys()))
-        qis.plot_line(df=df, colors=2*colors)
-
-    elif local_test == LocalTests.PLOT_H:
-        x = np.linspace(-10.0, 10.0, 2000)
-        h = pd.Series(cum_mean_tdist(x=x, mu=0.5, vol=1.0, nu=3.0, ttm=1.0), index=x, name='h')
-        qis.plot_line(df=h, xlabel='x')
-
-    plt.show()
-
-
-if __name__ == '__main__':
-
-    run_local_test(local_test=LocalTests.PLOT_CUM_X)
+# Manual scenarios are available in ``stochvolmodels.fitters.tests.tdist_test``.

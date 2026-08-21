@@ -8,6 +8,8 @@ into the finite linear system of Eq. (3.48) once truncated at order k*. That
 system is solved by matrix exponentiation in Eq. (3.49), and integrated over
 [0, tau] in Eq. (3.54) to give the expected quadratic variance of Eq. (3.53).
 
+Manual scenarios are available in ``stochvolmodels.pricers.logsv.tests.vol_moments_ode_test``.
+
 Reference
 ---------
 A. Sepp and P. Rakhmonov (2024), Log-normal Stochastic Volatility Model with
@@ -17,21 +19,10 @@ Quadratic Drift, International Journal of Theoretical and Applied Finance 26(8),
 # packages
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 from numpy import linalg as la
 from scipy import linalg as sla
-from enum import Enum
 # project
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
-from stochvolmodels.utils.funcs import set_seed
-
-
-VOLVOL = 1.75
-
-DRIFT_PARAMS = {'$(kappa_{1}=4, kappa_{2}=0)$': LogSvParams(sigma0=1.0, theta=1.0, kappa1=4.0, kappa2=0.0, beta=0.0, volvol=VOLVOL),
-                '$(kappa_{1}=4, kappa_{2}=4)$': LogSvParams(sigma0=1.0, theta=1.0, kappa1=4.0, kappa2=4.0, beta=0.0, volvol=VOLVOL),
-                '$(kappa_{1}=4, kappa_{2}=8)$': LogSvParams(sigma0=1.0, theta=1.0, kappa1=4.0, kappa2=8.0, beta=0.0, volvol=VOLVOL)}
 
 
 def compute_analytic_vol_moments(params: LogSvParams,
@@ -223,94 +214,3 @@ def fit_model_vol_backbone_to_varswaps(log_sv_params: LogSvParams,
         varswap_strikes['model_eta'] = model_eta
         print(f"vars_swaps\n{varswap_strikes}")
     return model_eta
-
-
-class LocalTests(Enum):
-    VOL_MOMENTS = 1
-    EXPECTED_VOL = 2
-    EXPECTED_QVAR = 3
-    VOL_BACKBONE = 4
-
-
-def run_local_test(local_test: LocalTests):
-    """Run local tests for development and debugging purposes.
-
-    These are integration tests that download real data and generate reports.
-    Use for quick verification during development.
-    """
-
-    from stochvolmodels.pricers.logsv_pricer import LogSVPricer
-    logsv_pricer = LogSVPricer()
-
-    n_terms = 4
-    nb_path = 200000
-    ttm = 1.0
-    params = LogSvParams(sigma0=1.0, theta=1.0, kappa1=4.0, kappa2=4.0, beta=0.0, volvol=1.75)
-    params.assert_vol_moments_stability(n_terms=n_terms)
-    set_seed(8)  # 8
-    sigma_t, grid_t = logsv_pricer.simulate_vol_paths(ttm=ttm, params=params, nb_path=nb_path)
-
-    if local_test == LocalTests.VOL_MOMENTS:
-
-        mcs = []
-        for n in np.arange(n_terms):
-            if n > 0:
-                m_n = np.power(sigma_t-params.theta, n+1)
-            else:
-                m_n = sigma_t - params.theta
-            mc_mean, mc_std = np.mean(m_n, axis=1), np.std(sigma_t, axis=1) / np.sqrt(nb_path)
-            mc = pd.Series(mc_mean, index=grid_t, name=f"MC m{n+1}")
-            mc_m = pd.Series(mc_mean-1.96*mc_std, index=grid_t, name='MC-cd')
-            mc_p = pd.Series(mc_mean+1.96*mc_std, index=grid_t, name='MC+cd')
-            mcs.append(mc)
-        analytic_vol_moments = compute_vol_moments_t(params=params, ttm=grid_t, n_terms=n_terms)
-        analytic_vol_moments = pd.DataFrame(analytic_vol_moments, index=grid_t, columns=[f"m{n+1}" for n in range(n_terms)])
-        mcs = pd.concat(mcs, axis=1)
-
-        df = pd.concat([analytic_vol_moments, mcs], axis=1)
-        print(df)
-        df.plot()
-
-    elif local_test == LocalTests.EXPECTED_VOL:
-
-        mc_mean, mc_std = np.mean(sigma_t, axis=1), np.std(sigma_t, axis=1) / np.sqrt(nb_path)
-        mc = pd.Series(mc_mean, index=grid_t, name='MC')
-        mc_m = pd.Series(mc_mean-1.96*mc_std, index=grid_t, name='MC-cd')
-        mc_p = pd.Series(mc_mean+1.96*mc_std, index=grid_t, name='MC+cd')
-
-        analytic_vol_moments = compute_expected_vol_t(params=params, t=grid_t, n_terms=n_terms)
-        analytic_vol_moments = pd.Series(analytic_vol_moments, index=grid_t, name='Analytic')
-
-        df = pd.concat([analytic_vol_moments, mc, mc_m, mc_p], axis=1)
-        print(df)
-        df.plot()
-
-    elif local_test == LocalTests.EXPECTED_QVAR:
-
-        q_var = pd.DataFrame(np.square(sigma_t)).expanding(axis=0).mean().to_numpy()
-        mc_mean = np.sqrt(np.mean(q_var, axis=1))
-        mc_std = np.std(q_var, axis=1) / np.sqrt(nb_path)
-        mc = pd.Series(mc_mean, index=grid_t, name='MC')
-        mc_m = pd.Series(mc_mean-1.96*mc_std, index=grid_t, name='MC-cd')
-        mc_p = pd.Series(mc_mean+1.96*mc_std, index=grid_t, name='MC+cd')
-
-        analytic_vol_moments = compute_sqrt_qvar_t(params=params, t=grid_t, n_terms=n_terms)
-        analytic_vol_moments = pd.Series(analytic_vol_moments, index=grid_t, name='Analytic')
-
-        df = pd.concat([analytic_vol_moments, mc, mc_m, mc_p], axis=1)
-        with sns.axes_style('darkgrid'):
-            fig, ax = plt.subplots(1, 1, figsize=(18, 10), tight_layout=True)
-            sns.lineplot(data=analytic_vol_moments, dashes=False, ax=ax)
-            ax.errorbar(x=df.index[::5], y=mc_mean[::5], yerr=mc_std[::5], fmt='o', color='green', capsize=8)
-
-    elif local_test == LocalTests.VOL_BACKBONE:
-        fit_model_vol_backbone_to_varswaps(log_sv_params=params,
-                                           varswap_strikes=pd.Series([1.0, 1.0], index=[1.0 / 12., 2 / 12.0]),
-                                           verbose=True)
-
-    plt.show()
-
-
-if __name__ == '__main__':
-
-    run_local_test(local_test=LocalTests.VOL_BACKBONE)

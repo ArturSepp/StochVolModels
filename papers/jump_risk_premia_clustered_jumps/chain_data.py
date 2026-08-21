@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,14 +9,13 @@ from enum import Enum
 
 
 # analytics
-from papers import local_path as lp
+from stochvolmodels import local_path as lp
+from stochvolmodels.data.fetch_option_chain import load_tardis_eod_options_data
 from stochvolmodels.data.option_chain import OptionChain
 
 # chain
-from option_chain_analytics.chain_ts import OptionsDataDFs
-from option_chain_analytics.chain_loader_from_ts import create_chain_from_from_options_dfs
+from option_chain_analytics import OptionsDataDFs, create_chain_at_time
 from option_chain_analytics.option_chain import SliceColumn, SlicesChain
-from option_chain_analytics.ts_loaders import ts_data_loader_wrapper
 from option_chain_analytics.visuals.slices import plot_slice_vols, plot_slice_open_interest
 from option_chain_analytics.visuals.chain_report import run_chain_report
 
@@ -28,8 +25,16 @@ pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
 
-def _get_tardis_path() -> str:
-    return str(Path(lp.get_resource_path()).joinpath('tardis'))
+def _load_tardis_eod_options_data(ticker: str,
+                                  start: Optional[pd.Timestamp] = None,
+                                  end: Optional[pd.Timestamp] = None
+                                  ) -> OptionsDataDFs:
+    """Load the standardized exact-08:00-UTC OCA Tardis cache."""
+    return load_tardis_eod_options_data(
+        ticker=ticker,
+        start=start,
+        end=end,
+    )
 
 
 def generate_vol_chain_np(chain: SlicesChain,
@@ -53,7 +58,7 @@ def generate_vol_chain_np(chain: SlicesChain,
 
         slice_ids.append(f"{label}: {slice_t.expiry_id}")
         ttms.append(slice_t.get_ttm())
-        future_prices.append(slice_t.future_price)
+        future_prices.append(slice_t.get_future_price())
         # discfactors.append(slice_t.discfactor)
         discfactors.append(1.0)
         strikes_ttms.append(df.index.to_numpy())
@@ -85,9 +90,12 @@ def load_option_chain(options_data_dfs: OptionsDataDFs = None,
                       is_filtered: bool = True
                       ) -> OptionChain:
     if options_data_dfs is None:
-        options_data_dfs = OptionsDataDFs(**ts_data_loader_wrapper(
-            ticker=ticker, freq='D', hour_offset=8, local_path=_get_tardis_path()))
-    chain = create_chain_from_from_options_dfs(options_data_dfs=options_data_dfs, value_time=value_time)
+        options_data_dfs = _load_tardis_eod_options_data(
+            ticker=ticker,
+            start=value_time,
+            end=value_time,
+        )
+    chain = create_chain_at_time(options_data=options_data_dfs, value_time=value_time)
     option_chain = generate_vol_chain_np(chain=chain,
                                          value_time=value_time,
                                          days_map=days_map,
@@ -102,9 +110,14 @@ def load_price_data(ticker: str = 'BTC',
                     data: Literal['spot', 'perp', 'funding_rate'] = 'spot',
                     freq: Optional[str] = 'D'  # to do
                     ) -> pd.Series:
-    options_data_dfs = OptionsDataDFs(**ts_data_loader_wrapper(
-        ticker=ticker, freq='D', hour_offset=8, local_path=_get_tardis_path()))
-    spot_price = options_data_dfs.get_spot_data()[data]
+    options_data_dfs = _load_tardis_eod_options_data(ticker=ticker)
+    column = 'close' if data == 'spot' else data
+    if column not in options_data_dfs.get_spot_data():
+        raise ValueError(
+            f"data={data!r} is unavailable in the standardized Tardis EOD cache; "
+            "use data='spot' for its exact-time index series"
+        )
+    spot_price = options_data_dfs.get_spot_data()[column]
     if freq is not None:
         spot_price = spot_price.resample(freq).last()
     if time_period is not None:
@@ -130,9 +143,12 @@ def run_local_test(local_test: LocalTests):
     value_time = pd.Timestamp('2021-10-21 08:00:00+00:00')
     # value_time = pd.Timestamp('2023-02-06 08:00:00+00:00')
 
-    options_data_dfs = OptionsDataDFs(**ts_data_loader_wrapper(
-        ticker=ticker, freq='D', hour_offset=8, local_path=_get_tardis_path()))
-    chain = create_chain_from_from_options_dfs(options_data_dfs=options_data_dfs, value_time=value_time)
+    options_data_dfs = _load_tardis_eod_options_data(
+        ticker=ticker,
+        start=value_time,
+        end=value_time,
+    )
+    chain = create_chain_at_time(options_data=options_data_dfs, value_time=value_time)
 
     if local_test == LocalTests.PRINT_CHAIN_DATA:
         for expiry, eslice in chain.expiry_slices.items():

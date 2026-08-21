@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
-from stochvolmodels.pricers.rough_logsv.RoughKernel import (
+from stochvolmodels.pricers.rough_logsv.rough_kernel import (
     Gaussian_interval,
     Gaussian_parameters,
     fractional_kernel,

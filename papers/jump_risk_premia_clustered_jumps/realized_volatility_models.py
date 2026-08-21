@@ -11,11 +11,13 @@ import qis.perfstats.returns as ret
 import qis.models.linear.ewm as ewm
 
 # pricers
-from stochvolmodels.pricers.analytic.bsm import compute_bsm_vanilla_price
+from stochvolmodels import compute_bsm_vanilla_price
 from stochvolmodels.pricers.hawkes_jd_pricer import HawkesJDPricer
 
-# test data
-from sigma_strats.data.price_data import Frequency, load_data
+from stochvolmodels.data.fetch_option_chain import (
+    load_price_data,
+    load_tardis_hourly_options_data,
+)
 
 from papers.jump_risk_premia_clustered_jumps import hawkes_estimator as haw
 
@@ -138,10 +140,14 @@ def run_local_test(local_test: LocalTests):
     """
 
     ticker = 'BTC'
-    frequency = Frequency.DAILY
-    time_period = da.TimePeriod(None, pd.Timestamp('2022-11-19'))
+    time_period = da.TimePeriod(None, pd.Timestamp('2022-11-19', tz='UTC'))
 
-    price = load_data(ticker=ticker, time_period=time_period, frequency=frequency)
+    options_data_dfs = load_tardis_hourly_options_data(ticker=ticker)
+    price = load_price_data(
+        options_data_dfs=options_data_dfs,
+        time_period=time_period,
+        freq='D',
+    )
 
     if local_test == LocalTests.EWMA_RV:
         rv_model = EWMA_RV_MODEL(price=price)

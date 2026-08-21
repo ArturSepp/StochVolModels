@@ -10,7 +10,7 @@ from enum import Enum
 # analytics
 from stochvolmodels.data.option_chain import OptionChain
 import stochvolmodels.pricers.hawkes_jd_pricer as hjp
-from stochvolmodels.data.fetch_option_chain import load_option_chain
+from papers.jump_risk_premia_clustered_jumps.chain_data import load_option_chain
 
 
 def calibrate_params(option_chain: OptionChain) -> None:
@@ -68,7 +68,7 @@ def run_local_test(local_test: LocalTests):
     # value_time = pd.Timestamp('2022-11-15 08:00:00+00:00')  # -2.1054741773198336
 
     if local_test == LocalTests.CALIBRATE_PARAMS:
-        option_chain = load_option_chain(ticker='BTC',
+        option_chain = load_option_chain(ticker=ticker,
                                          value_time=value_time,
                                          days_map={'1m': 30},
                                          delta_bounds=(-0.2, 0.2))
@@ -76,7 +76,7 @@ def run_local_test(local_test: LocalTests):
         calibrate_params(option_chain=option_chain)
 
     elif local_test == LocalTests.CALIBRATE_RISK_PREMIA:
-        option_chain = load_option_chain(ticker='BTC',
+        option_chain = load_option_chain(ticker=ticker,
                                          value_time=value_time,
                                          days_map={'1m': 30},
                                          delta_bounds=(-0.2, 0.2))

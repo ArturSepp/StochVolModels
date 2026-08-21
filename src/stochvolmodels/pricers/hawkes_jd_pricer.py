@@ -17,25 +17,22 @@ positive and negative jump premia, and the Bitcoin option application.
 
 # built in
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 from numba.typed import List
 from typing import Tuple, Optional, Dict, Any
 from dataclasses import dataclass, asdict
 from scipy.integrate import solve_ivp
 from scipy.integrate._ivp.ivp import OdeResult
-from enum import Enum
 
 # stochvolmodels pricers
 import stochvolmodels.utils.mgf_pricer as mgfp
 from stochvolmodels.utils.config import VariableType
 from stochvolmodels.utils.mc_payoffs import compute_mc_vars_payoff
 from stochvolmodels.pricers.model_pricer import ModelPricer, ModelParams
-from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer, set_seed
+from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer
 
 # data
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
 
 MAX_PHI = 500
 
@@ -779,111 +776,4 @@ def simulate_hawkesjd_terminal(ttm: float,
     return x0, lambda_p0, lambda_m0
 
 
-class LocalTests(Enum):
-    """cases for the local test dispatcher."""
-    OPTION_PRICER = 1
-    CHAIN_PRICER = 2
-    SLICE_PRICER = 3
-    MC_COMPARISION = 4
-    CALIBRATOR = 5
-
-
-@timer
-def run_local_test(local_test: LocalTests):
-    """Run local tests for development and debugging purposes.
-
-    These are integration tests that download real data and generate reports.
-    Use for quick verification during development.
-    """
-
-    params = HawkesJDParams(sigma=0.2,
-                            shift_p=0.0,
-                            mean_p=0.2,
-                            shift_m=0.0,
-                            mean_m=-0.1,
-                            lambda_p=2.0,
-                            theta_p=2.0,
-                            kappa_p=50.0,
-                            beta1_p=100.0,
-                            beta2_p=0.0,
-                            lambda_m=2.0,
-                            theta_m=2.0,
-                            kappa_m=50.0,
-                            beta1_m=0.0,
-                            beta2_m=-100.0)
-
-    params = HawkesJDParams()
-
-    params.print()
-    pricer = HawkesJDPricer()
-
-    set_seed(3)
-    np.random.seed(3)
-
-    if local_test == LocalTests.OPTION_PRICER:
-
-        model_price, vol = pricer.price_vanilla(params=params,
-                                                ttm=0.25,
-                                                forward=100.0,
-                                                strike=100.0,
-                                                optiontype='C')
-        print(f"price={model_price:0.4f}, implied vol={vol: 0.2%}")
-
-    elif local_test == LocalTests.CHAIN_PRICER:
-        option_chain = get_btc_test_chain_data()
-        # option_chain = OptionChain.get_uniform_chain(flat_vol=params.sigma)
-        model_prices = pricer.price_chain(option_chain=option_chain, params=params)
-        print(model_prices)
-        pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain, params=params)
-
-        option_chain = OptionChain.to_uniform_strikes(option_chain, num_strikes=31)
-        pricer.plot_model_ivols(option_chain=option_chain,
-                                params=params)
-
-        # pricer.plot_model_ivols_vs_mc(option_chain=option_chain, params=params, nb_path=400000)
-
-    if local_test == LocalTests.SLICE_PRICER:
-        ttm = 1.0
-        forward = 1.0
-        strikes = np.array([0.9, 1.0, 1.1])
-        optiontypes = np.array(['P', 'C', 'C'])
-
-        model_prices, vols = pricer.price_slice(params=params,
-                                                ttm=ttm,
-                                                forward=forward,
-                                                strikes=strikes,
-                                                optiontypes=optiontypes)
-        print(model_prices)
-        print(vols)
-
-        for strike, optiontype in zip(strikes, optiontypes):
-            model_price, vol = pricer.price_vanilla(params=params,
-                                                    ttm=ttm,
-                                                    forward=forward,
-                                                    strike=strike,
-                                                    optiontype=optiontype)
-            print(f"{model_price}, {vol}")
-
-    elif local_test == LocalTests.MC_COMPARISION:
-        option_chain = get_btc_test_chain_data()
-        # option_chain = OptionChain.get_uniform_chain(ttms=np.array([0.25]), ids=np.array(['3m']), strikes=100.0*np.linspace(0.5, 2.0, 15))
-
-        pricer.plot_model_ivols_vs_mc(option_chain=option_chain,
-                                      params=params,
-                                      nb_path=100000)
-
-    elif local_test == LocalTests.CALIBRATOR:
-        option_chain = get_btc_test_chain_data()
-        fit_params = pricer.calibrate_model_params_to_chain(option_chain=option_chain,
-                                                            params0=params)
-        print('calibrated params')
-        fit_params.print()
-        pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain,
-                                           params=fit_params)
-
-    plt.show()
-
-
-if __name__ == '__main__':
-
-    run_local_test(local_test=LocalTests.CALIBRATOR)
+# Manual scenarios are available in ``stochvolmodels.pricers.tests.hawkes_jd_pricer_test``.

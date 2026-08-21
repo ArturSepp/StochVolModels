@@ -15,7 +15,7 @@ from numba.typed import List
 import matplotlib.pyplot as plt
 
 # project
-import stochvolmodels.pricers.analytic.bachelier as bachel
+import vanilla_option_pricers as bachel
 from stochvolmodels import LogSvParams
 from stochvolmodels.pricers.factor_hjm.rate_evaluate import libor_rate
 from stochvolmodels.data.option_chain import FutOptionChain, SwOptionChain
@@ -238,10 +238,7 @@ def plot_mkt_model_joint_fut_smile_MF(params0: MultiFactRateLogSvParams,
         else:
             headers = headers[:ttms.size]
         ax = axs[idx_ttm] if len(ttms) > 1 else axs
-        x_grid = bachel.strikes_to_delta(strikes=strikes_ttm,
-                                  ivols=normal_vols_ttm,
-                                  f0=forward0,
-                                  ttm=ttm)
+        x_grid = bachel.ncdf((forward0 - strikes_ttm) / normal_vols_ttm / np.sqrt(ttm))
         mkt_ivols = pd.Series(normal_vols_ttm, index=x_grid, name=f"market").sort_index()
         mkt_ivols = SwOptionChain.remap_to_inc_delta(mkt_ivols)
         model_ivols = pd.Series(model_ivs_ttms[0][0], index=x_grid, name=f"model").sort_index()

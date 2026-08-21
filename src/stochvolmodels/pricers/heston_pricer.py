@@ -3,13 +3,11 @@ Implementation of Heston model pricer deriving from ModelPricer
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 from dataclasses import dataclass
 from scipy.optimize import minimize
 from numba import njit
 from numba.typed import List
 from typing import Tuple
-from enum import Enum
 
 # stochvolmodels
 from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer
@@ -24,7 +22,6 @@ import stochvolmodels.utils.mgf_pricer as mgfp
 
 # data
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
 
 
 @dataclass
@@ -374,106 +371,4 @@ def v0_implied(v0: float, volvol: float, ttm: float):
     return v0
 
 
-class LocalTests(Enum):
-    """cases for the local test dispatcher."""
-    CHAIN_PRICER = 1
-    SLICE_PRICER = 2
-    CALIBRATOR = 3
-    MC_COMPARISION = 4
-    MC_COMPARISION_QVAR = 5
-
-
-def run_local_test(local_test: LocalTests):
-    """Run local tests for development and debugging purposes.
-
-    These are integration tests that download real data and generate reports.
-    Use for quick verification during development.
-    """
-
-    import stochvolmodels.data.sample_option_chains as chains
-
-    if local_test == LocalTests.CHAIN_PRICER:
-        params = HestonParams(v0=0.85**2,
-                              theta=1.4**2,
-                              kappa=3.0,
-                              volvol=2.0,
-                              rho=0.3)
-
-        option_chain = get_btc_test_chain_data()
-        heston_pricer = HestonPricer()
-        model_prices = heston_pricer.price_chain(option_chain=option_chain,
-                                                 params=params)
-        print(model_prices)
-        heston_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain,
-                                                  params=params)
-
-    if local_test == LocalTests.SLICE_PRICER:
-        params = HestonParams(v0=0.85**2,
-                              theta=1.4**2,
-                              kappa=3.0,
-                              volvol=2.0,
-                              rho=0.3)
-        ttm = 1.0
-        forward = 1.0
-        strikes = np.array([0.9, 1.0, 1.1])
-        optiontypes = np.array(['P', 'C', 'C'])
-
-        heston_pricer = HestonPricer()
-        model_prices, vols = heston_pricer.price_slice(params=params,
-                                                       ttm=ttm,
-                                                       forward=forward,
-                                                       strikes=strikes,
-                                                       optiontypes=optiontypes)
-        print(model_prices)
-        print(vols)
-
-        for strike, optiontype in zip(strikes, optiontypes):
-            model_price, vol = heston_pricer.price_vanilla(params=params,
-                                                           ttm=ttm,
-                                                           forward=forward,
-                                                           strike=strike,
-                                                           optiontype=optiontype)
-            print(f"{model_price}, {vol}")
-
-    elif local_test == LocalTests.CALIBRATOR:
-        option_chain = get_btc_test_chain_data()
-        heston_pricer = HestonPricer()
-        fit_params = heston_pricer.calibrate_model_params_to_chain(option_chain=option_chain,
-                                                                   params0=BTC_HESTON_PARAMS)
-        print(fit_params)
-        heston_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain,
-                                                  params=fit_params)
-
-    elif local_test == LocalTests.MC_COMPARISION:
-        option_chain = get_btc_test_chain_data()
-        heston_pricer = HestonPricer()
-        heston_pricer.plot_model_ivols_vs_mc(option_chain=option_chain,
-                                             params=BTC_HESTON_PARAMS)
-
-    elif local_test == LocalTests.MC_COMPARISION_QVAR:
-        from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar
-        from stochvolmodels import LogSvParams
-        heston_pricer = HestonPricer()
-        ttms = {'1m': 1.0/12.0, '6m': 0.5}
-        option_chain = chains.get_qv_options_test_chain_data()
-        option_chain = OptionChain.get_slices_as_chain(option_chain, ids=list(ttms.keys()))
-        LOGSV_BTC_PARAMS = LogSvParams(sigma0=0.8376, theta=1.0413, kappa1=3.1844, kappa2=3.058, beta=0.1514,
-                                       volvol=1.8458)
-
-        forwards = np.array([compute_analytic_qvar(params=LOGSV_BTC_PARAMS, ttm=ttm, n_terms=4) for ttm in ttms.values()])
-        print(f"QV forwards = {forwards}")
-
-        option_chain.forwards = forwards  # replace forwards to imply BSM vols
-        option_chain.strikes_ttms = List(forward * strikes_ttm for forward, strikes_ttm in zip(option_chain.forwards, option_chain.strikes_ttms))
-
-        fig = heston_pricer.plot_model_ivols_vs_mc(option_chain=option_chain,
-                                                   params=BTC_HESTON_PARAMS,
-                                                   variable_type=VariableType.Q_VAR,
-                                                   nb_path=200000)
-
-    plt.show()
-
-
-if __name__ == '__main__':
-
-    run_local_test(local_test=LocalTests.CALIBRATOR)
+# Manual scenarios are available in ``stochvolmodels.pricers.tests.heston_pricer_test``.

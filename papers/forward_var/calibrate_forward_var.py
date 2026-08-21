@@ -12,7 +12,7 @@ from stochvolmodels.pricers.logsv_pricer import LogSVPricer, LogsvModelCalibrati
 from stochvolmodels.pricers.logsv.vol_moments_ode import fit_model_vol_backbone_to_varswaps
 from stochvolmodels import LogSvParams
 from stochvolmodels.utils.funcs import set_seed
-from papers import local_path as lp
+from stochvolmodels import local_path as lp
 
 
 class UnitTests(Enum):

@@ -4,17 +4,106 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
-## [2.0.0] - 2026-08-19
+## [2.1.0] - 2026-08-21
+
+### Added
+- `stochvolmodels.local_path` provides the ecosystem-standard `RESOURCE_PATH` and `OUTPUT_PATH`
+  configuration through an ignored machine-local YAML file.
+- `stochvolmodels.data.fetch_option_chain` now provides centralized hourly and standardized EOD
+  Tardis `OptionsDataDFs` loaders plus single-chain adapters with explicit time conventions.
+- A deterministic OCA 5-to-SVM example converts `OptionsDataDFs` and runs analytic LogSV
+  calibration without credentials or external market data.
+- `get_oca_simulated_chain_data()` provides a bundled, provider-free `OptionChain` for smile
+  fitting and calibration illustrations.
 
 ### Changed
-- The `research` extra now installs `option-chain-analytics>=4.0.0` and `qis>=5.11.0`, providing
-  the supported option-chain research stack from one StochVolModels install while preserving the
-  core library's standalone dependency surface.
-- The `dev` extra now installs the `build` frontend used by the documented release command; the
-  isolated PEP 517 backend requirement is the sufficient `setuptools>=77.0` used by the verified
-  OptionChainAnalytics 4.0.0 build.
-- CBOE experiment setup now targets `option-chain-analytics[cboe]>=4.0.0`, whose normalized cache
-  contract and no-look-ahead selection policy are exercised by the optional integration test.
+- Clustered-jumps exploratory analyses now live directly in the paper directory; the redundant
+  `legacy_analysis/` namespace and README have been removed without duplicating the modules.
+- `run_oca_logsv_calibration.py` now uses the repository-standard direct `LocalTests` main guard;
+  select the conversion or calibration case in the script rather than with `--case`.
+- Manual data and pricer integration dispatchers now live in sibling `tests/<module>_test.py`
+  companions rather than in reusable implementation modules, following the QIS convention.
+- Options-data paper workflows now use the centralized SVM Tardis adapters and load the full
+  hourly archive only for cases that genuinely calibrate a time series; single-chain and
+  data-independent figure cases no longer read multi-gigabyte histories unnecessarily.
+- The optional OCA adapter, empirical examples, and maintained paper workflows now use
+  `option-chain-analytics>=5.0.0` and its `create_chain_at_time`/`create_chain_timeseries` API.
+- Rolled CBOE ATM-volatility and 25-delta-skew extraction now lives in the SVM example instead of
+  depending on OCA research helpers removed in OCA 5.0.
+- Examples and paper workflows now resolve local data and generated-output roots through the
+  package-wide path module instead of OCA environment discovery, repository searches, relative
+  output paths, or a second paper-specific configuration.
+- `stochvolmodels.utils.plots.save_fig()` now defaults to the configured `OUTPUT_PATH` instead of
+  the process-relative parent directory.
+- The private, ignored `pde_solvers` worktree is explicitly excluded from source and wheel
+  distributions even when it exists beside the public package during a local build.
+
+### Fixed
+- Legacy Student-t root exports now resolve from `stochvolmodels.fitters.tdist` after the fitter
+  relocation, instead of targeting the removed `stochvolmodels.pricers.analytic` package.
+- The impermanent-loss LogSV paper pricer now uses a valid 1,001-point Simpson transform grid,
+  instead of passing the default even-sized grid to the strict integration-weight helper.
+- Student-t and paper plotting workflows now import `get_n_colors`, `set_title`, and
+  `align_y_limits_axs` from the maintained `qis.plots.utils` module instead of removed QIS
+  package-root exports.
+- Only `RESOURCE_PATH` and `OUTPUT_PATH` are consumed from the machine-local YAML; unrelated
+  legacy service keys such as `AWS_POSTGRES` are ignored.
+- The clustered-jumps funding-rate fit now reads the narrow raw Tardis perpetual history and
+  maps `mark_price` and `funding_rate` explicitly, instead of calling the option-panel price
+  helper with its removed ticker-based interface; its local dispatcher also honors the selected
+  BTC/ETH ticker.
+- The clustered-jumps chain calibrator now uses its Tardis EOD paper adapter instead of passing
+  provider arguments to SVM's generic `OptionsDataDFs` converter, and honors the selected ticker.
+- The volatility-model paper now locates the retained `BTC_atm_vols_skew.csv` and
+  `ETH_atm_vols_skew.csv` source files from the configured resource root and selects the explicit
+  `atm_vol` column rather than mistaking the trailing `skew` column for volatility.
+- Paper workflows using Yahoo Finance now request full history explicitly, preserve unadjusted
+  OHLC plus `Adj Close`, normalize single-ticker/MultiIndex responses, and use a close fallback
+  compatible with current `yfinance` releases.
+- The volatility-model steady-state report imports QIS's color, legend, and tick utilities from
+  their maintained `qis.plots.utils` module instead of removed package-root exports.
+- The jump-risk-premia chain-data workflow now reads OCA's standardized exact-08:00-UTC Tardis
+  EOD cache directly, rather than forwarding removed `freq` and `hour_offset` arguments to the
+  legacy raw-history loader, and uses OCA 5's current expiry-slice forward accessor.
+- The retained OptionsDataDFs-based crypto volatility, delta, funding, and Hawkes studies now use
+  OCA 5 chain, contract, maturity, and fixed-delta APIs instead of removed SigmaStrats/CMS
+  facades. Their daily panels select exact 08:00-UTC observations, funding comes from the aligned
+  Tardis perpetual series, and Bachelier comparisons use VanillaOptionPricers' absolute-volatility
+  convention.
+- The risk-premia GMM paper now imports its chain sampler and QIS numerical/plotting helpers from
+  their maintained modules and passes maturity IDs with the current `OptionChain` sequence API.
+- The optional CBOE adapter now bypasses an OCA cache only when OCA explicitly rejects it as
+  incompatible or stale, resolves configured cache/source directories independently of the
+  process working directory, and discovers a raw provider directory for bounded source-data
+  loads while an old derived cache is rebuilt.
+- `generate_vol_chain_np` retains fitted positive discounts from normalized OCA panels and falls
+  back to the historical unit-discount convention for legacy hourly Tardis panels that predate
+  the `discount` column.
+
+## [2.0.0] - 2026-08-18
+
+### Added
+- `stochvolmodels.fitters` now owns the provider-independent approximate LogSV smile fitter,
+  density analytics, delta-grid mapping, and synthetic grid-price helper formerly staged in
+  OptionChainAnalytics.
+- A cache-first July 2026 SPY workflow loads OCA's local ThetaData Parquet partitions, plots ATM
+  volatility and 25-delta skew, fits the approximate smile, and runs full analytic LogSV
+  calibration without copying vendor data into SVM.
+
+### Changed
+- **Breaking:** Black-Scholes-Merton and Bachelier analytics now come from
+  `vanilla-option-pricers>=2.0.0`; import them from `stochvolmodels` or directly from
+  `vanilla_option_pricers`.
+- **Breaking:** removed `stochvolmodels.pricers.analytic.bsm` and
+  `stochvolmodels.pricers.analytic.bachelier` without compatibility facades.
+- Bachelier volatility is consistently annualised absolute normal volatility in the same units
+  as the forward and strike, including prices, Greeks, delta-to-strike, and IV inversion.
+- Promoted the primary Black and normal prices, Greeks, and IV fitters to SVM's stable root API.
+- The optional OCA-to-SVM adapter preserves fitted discount factors and deduplicates overlapping
+  maturity selections before constructing an `OptionChain`.
+
+### Removed
+- Removed SVM's duplicate Black-Scholes-Merton and Bachelier numerical implementations.
 
 ## [1.4.0] - 2026-08-18
 

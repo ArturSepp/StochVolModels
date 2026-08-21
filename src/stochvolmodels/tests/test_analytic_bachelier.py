@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import norm
 
-from stochvolmodels.pricers.analytic import bachelier
+import stochvolmodels as bachelier
 
 
 def _reference_price(

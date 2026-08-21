@@ -7,7 +7,6 @@ the experiment and visualization without copying the source data.
 
 from __future__ import annotations
 
-import os
 from enum import Enum
 from pathlib import Path
 from typing import Literal
@@ -15,7 +14,7 @@ from typing import Literal
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.ticker import PercentFormatter
-from option_chain_analytics import OptionsDataDFs, generate_atm_vols_skew
+from option_chain_analytics import OptionsDataDFs, create_chain_timeseries
 
 from stochvolmodels.data.fetch_option_chain import load_cboe_options_data
 
@@ -23,42 +22,17 @@ Ticker = Literal['SPX', 'VIX']
 
 DEFAULT_START = pd.Timestamp('2023-10-02')
 DEFAULT_END = pd.Timestamp('2023-10-31')
-
-
-def resolve_cboe_data_path(
-    ticker: Ticker,
-    local_path: str | Path | None = None,
-) -> Path:
-    """Resolve the directory containing the ticker's normalized OCA cache.
-
-    Resolution is independent of the process working directory: an explicit
-    path wins, followed by ``OCA_DATA_PATH``, followed by repository-relative
-    ``resources/cboe_options`` and ``data/cboe_options`` candidates.
-    """
+def _validate_cboe_data_path(path: Path, ticker: Ticker) -> Path:
+    """Return a custom OCA directory containing a source file or normalized cache."""
     cache_name = f'{ticker.lower()}_options_oca.parquet'
-    candidate_roots: list[Path] = []
-    if local_path is not None:
-        candidate_roots.append(Path(local_path))
-    else:
-        if oca_data_path := os.environ.get('OCA_DATA_PATH'):
-            candidate_roots.append(Path(oca_data_path))
-        for parent in Path(__file__).resolve().parents:
-            candidate_roots.extend((parent / 'resources', parent / 'data'))
-
-    checked: list[Path] = []
-    for root in candidate_roots:
-        for candidate in (root, root / 'cboe_options'):
-            candidate = candidate.resolve()
-            if candidate in checked:
-                continue
-            checked.append(candidate)
-            if candidate.joinpath(cache_name).is_file():
-                return candidate
-
-    raise FileNotFoundError(
-        f'Cannot find {cache_name}. Pass local_path=... with the cache directory '
-        'or set OCA_DATA_PATH to the OCA data root.'
-    )
+    source_name = f'{ticker.lower()}_options.feather'
+    path = path.expanduser().resolve()
+    if not path.joinpath(cache_name).is_file() and not path.joinpath(source_name).is_file():
+        raise FileNotFoundError(
+            f'Cannot find {cache_name} or {source_name} under {path}. Pass the OCA '
+            'provider directory containing a source file or normalized cache.'
+        )
+    return path
 
 
 def compute_cboe_vol_time_series(
@@ -73,14 +47,24 @@ def compute_cboe_vol_time_series(
     regimes. OCA selects the latest observation at or before each timestamp,
     preserving point-in-time behavior without look-ahead.
     """
-    atm_vols, skews = generate_atm_vols_skew(
-        options_data_dfs=options_data_dfs,
+    chains = create_chain_timeseries(
+        options_data=options_data_dfs,
+        time_period=options_data_dfs.get_start_end_date(),
         freq=freq,
         hour_offset=hour_offset,
-        days_before_roll=days_before_roll,
     )
+    atm_vols = {}
+    skews = {}
+    for value_time, chain in chains.items():
+        roll_date = value_time + pd.DateOffset(days=days_before_roll)
+        slice_id = chain.get_next_slice_after_date(mat_date=roll_date)
+        atm_vols[value_time] = chain.get_atm_vol(slice_id=slice_id)
+        skews[value_time] = chain.get_skew(slice_id=slice_id, delta=0.25)
     return pd.concat(
-        [atm_vols.rename('ATM volatility'), skews.rename('25-delta skew')],
+        [
+            pd.Series(atm_vols, name='ATM volatility'),
+            pd.Series(skews, name='25-delta skew'),
+        ],
         axis=1,
     ).dropna(how='all')
 
@@ -133,12 +117,16 @@ def run_local_test(
     days_before_roll: int = 30,
 ) -> tuple[plt.Figure, ...]:
     """Load one CBOE window and run the selected visualization case."""
-    resolved_path = resolve_cboe_data_path(ticker=ticker, local_path=local_path)
+    provider_path = (
+        _validate_cboe_data_path(Path(local_path), ticker)
+        if local_path is not None
+        else None
+    )
     options_data_dfs = load_cboe_options_data(
         ticker=ticker,
         start=pd.Timestamp(start),
         end=pd.Timestamp(end),
-        local_path=str(resolved_path),
+        local_path=provider_path,
     )
     vol_data = compute_cboe_vol_time_series(
         options_data_dfs=options_data_dfs,

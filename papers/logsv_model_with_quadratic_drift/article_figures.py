@@ -13,14 +13,10 @@ from typing import Tuple
 from numba.typed import List
 from enum import Enum
 
-# chain
-from option_chain_analytics import OptionsDataDFs, create_chain_from_from_options_dfs
-from option_chain_analytics.ts_loaders import ts_data_loader_wrapper
-
 # analytics
 from stochvolmodels import OptionChain, LogSvParams, LogSVPricer, VariableType, ExpansionOrder
 from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar
-from stochvolmodels.data.fetch_option_chain import generate_vol_chain_np
+from stochvolmodels.data.fetch_option_chain import load_tardis_hourly_option_chain
 import stochvolmodels.data.sample_option_chains as chains
 from stochvolmodels.utils.funcs import set_seed, compute_histogram_data
 import stochvolmodels.utils.plots as plot
@@ -30,7 +26,7 @@ import papers.logsv_model_with_quadratic_drift as mvq
 import papers.logsv_model_with_quadratic_drift.steady_state_pdf as ssp
 import papers.logsv_model_with_quadratic_drift.ode_sol_in_time as osi
 from papers.logsv_model_with_quadratic_drift.model_fit_to_options_timeseries import report_calibration_timeseries
-from papers import local_path as lp
+from stochvolmodels import local_path as lp
 
 
 def plot_fitted_model(option_chain: OptionChain,
@@ -172,14 +168,20 @@ def run_unit_test(unit_test: UnitTests):
     ticker = 'BTC'
     value_time = pd.Timestamp('2023-06-30 10:00:00+00:00')
 
-    options_data_dfs = OptionsDataDFs(**ts_data_loader_wrapper(ticker=ticker))
-    chain = create_chain_from_from_options_dfs(options_data_dfs=options_data_dfs, value_time=value_time)
-
-    option_chain = generate_vol_chain_np(chain=chain,
-                                         value_time=value_time,
-                                         days_map={'1w': 7, '2w': 14, '1m': 21},
-                                         delta_bounds=(-0.1, 0.1),
-                                         is_filtered=True)
+    option_chain = None
+    chain_cases = {
+        UnitTests.FIGURE6_JOINT_PDF,
+        UnitTests.FIGURE8_9_FITTED_MODEL,
+    }
+    if unit_test in chain_cases:
+        option_chain = load_tardis_hourly_option_chain(
+            ticker=ticker,
+            value_time=value_time,
+            days_map={'1w': 7, '2w': 14, '1m': 21},
+            delta_bounds=(-0.1, 0.1),
+        )
+        if option_chain is None:
+            raise RuntimeError(f'no Tardis option observation at or before {value_time}')
 
     # option_chain.print()
 

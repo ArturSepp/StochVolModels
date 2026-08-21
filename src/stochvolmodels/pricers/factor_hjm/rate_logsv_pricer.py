@@ -31,7 +31,7 @@ from stochvolmodels.utils.rate_core import bracket, divide_mc, prod_mc, get_futu
 from stochvolmodels.pricers.factor_hjm.rate_evaluate import swap_rate, annuity, bond
 from stochvolmodels.pricers.factor_hjm.rate_affine_expansion import compute_logsv_a_mgf_grid, UnderlyingType
 from stochvolmodels.pricers.factor_hjm.rate_logsv_params import RateLogSvParams, pw_const, get_default_swap_term_structure, MultiFactRateLogSvParams
-from stochvolmodels.pricers.analytic.bachelier import infer_normal_implied_vol, infer_normal_ivols_from_slice_prices
+from vanilla_option_pricers import infer_normal_implied_vol, infer_normal_ivols_from_slice_prices
 from stochvolmodels.pricers.logsv.affine_expansion import ExpansionOrder, get_expansion_n
 from stochvolmodels.pricers.model_pricer import ModelPricer, ModelParams
 from stochvolmodels.data.option_chain import OptionChain, SwOptionChain, FutOptionChain
@@ -638,7 +638,6 @@ def logsv_mc_chain_pricer(sigma0: float,
                                                                  seed=seed,
                                                                  is_annuity_measure=is_annuity_measure)
 
-            # np.savetxt('c:/temp/dump.txt', qvar0)
 
             option_prices, option_std = compute_mc_vars_payoff(ttm=ttm,
                                                                x0=x0,
@@ -752,8 +751,6 @@ def simulate_logsv_x_vol(ttms: np.ndarray,
     else:
         W0 = W[0] * np.sqrt(dt)
         W1 = W[1] * np.sqrt(dt)
-    # W0 = np.transpose(np.loadtxt('C:/temp/rnd1.txt', delimiter=',')) * np.sqrt(dt)
-    # W1 = np.transpose(np.loadtxt('C:/temp/rnd2.txt', delimiter=',')) * np.sqrt(dt)
 
     idx_ttms = [np.where(grid_t == t)[0][0] for t in ttms]
     # print(idx_ttms)
@@ -951,8 +948,6 @@ def simulate_logsv_MF(ttms: np.ndarray,
     else:
         W0 = W[0] * np.sqrt(dt)
         W1 = W[1] * np.sqrt(dt)
-    # W0 = np.transpose(np.loadtxt('C:/temp/rnd1.txt', delimiter=',')) * np.sqrt(dt)
-    # W1 = np.transpose(np.loadtxt('C:/temp/rnd2.txt', delimiter=',')) * np.sqrt(dt)
 
     idx_ttms = [np.where(np.isclose(grid_t, t))[0][0] for t in ttms]
     x0s = []

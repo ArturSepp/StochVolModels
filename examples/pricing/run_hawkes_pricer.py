@@ -5,23 +5,8 @@ plot implied vols of the Hawkes jump-diffusion model
 # built in
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import minimize
 from numba.typed import List
-from typing import Tuple, Optional, Dict, Any
-from dataclasses import dataclass, asdict
-from scipy.integrate import solve_ivp
-from scipy.integrate._ivp.ivp import OdeResult
 from enum import Enum
-
-# stochvolmodels pricers
-import stochvolmodels.utils.mgf_pricer as mgfp
-from stochvolmodels.utils.config import VariableType
-from stochvolmodels.utils.mc_payoffs import compute_mc_vars_payoff
-from stochvolmodels.pricers.model_pricer import ModelPricer, ModelParams
-from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer, set_seed
-
-# data
-from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels import OptionChain, HawkesJDPricer, HawkesJDParams
 
 

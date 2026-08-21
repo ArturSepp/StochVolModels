@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import qis
 import seaborn as sns
+from qis.plots.utils import align_y_limits_axs, set_title
 from typing import Dict, List
 from enum import Enum
 
@@ -16,7 +17,7 @@ from papers.volatility_models.load_data import fetch_ohlc_vol
 import papers.volatility_models.ss_distribution_fit as ssd
 from papers.volatility_models.vol_beta import estimate_vol_beta
 from papers.volatility_models.autocorr_fit import autocorr_fit_report_logsv
-from papers import local_path as lp
+from stochvolmodels import local_path as lp
 
 KWARGS = dict(fontsize=14)
 FIGSIZE = (18, 8)
@@ -70,8 +71,8 @@ def plot_autocorrs(model_params: Dict[str, LogSvParams],
             autocorr_fit_report_logsv(vol=vol, params=logsv_params, nb_path=nb_path, num_lags=num_lags, ttm=ttm,
                                       ax=axs[idx],
                                       **KWARGS)
-            qis.set_title(ax=axs[idx], title=f"{string.ascii_uppercase[idx]}) {ticker}", **KWARGS)
-        qis.align_y_limits_axs(axs)
+            set_title(ax=axs[idx], title=f"{string.ascii_uppercase[idx]}) {ticker}", **KWARGS)
+        align_y_limits_axs(axs)
 
     return fig
 
@@ -93,8 +94,8 @@ def plot_ss_distributions(model_params: Dict[str, LogSvParams],
             ssd.plot_estimated_svs(vol=vol, logsv_params=logsv_params, heston_params=heston_params, bins=bins,
                                    ax=axs[idx],
                                    **KWARGS)
-            qis.set_title(ax=axs[idx], title=f"{string.ascii_uppercase[idx]}) {ticker}", **KWARGS)
-        qis.align_y_limits_axs(axs)
+            set_title(ax=axs[idx], title=f"{string.ascii_uppercase[idx]}) {ticker}", **KWARGS)
+        align_y_limits_axs(axs)
 
     return fig
 

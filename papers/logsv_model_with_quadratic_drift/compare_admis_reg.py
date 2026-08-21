@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from enum import Enum
 
 import stochvolmodels.utils.plots as plot
+from stochvolmodels import local_path as lp
 
 
 def lognormal_combined(vartheta_min=0.5,
@@ -56,7 +57,7 @@ def lognormal_combined(vartheta_min=0.5,
         ax[i].legend()
         ax[i].set(xlabel=r"$\vartheta$", ylabel=r"$\beta$")
 
-    plot.save_fig(fig=fig, local_path='../../docs/figures//',
+    plot.save_fig(fig=fig, local_path=lp.get_output_path(),
                   file_name='logsv_regions')
 
 
@@ -101,7 +102,7 @@ def heston_exp_ou_combined(vartheta_min=0.5,
     ax[1].set(xlabel=r"$\vartheta$", ylabel=r"$\rho$")
     ax[1].set_title(f"(B) Exp-OU model")
 
-    plot.save_fig(fig=fig, local_path='../../docs/figures//',
+    plot.save_fig(fig=fig, local_path=lp.get_output_path(),
                   file_name='heston_exp_ou_combined')
 
 

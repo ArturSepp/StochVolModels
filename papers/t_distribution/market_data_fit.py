@@ -1,16 +1,9 @@
 
-import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
-import qis as qis
-from scipy.special import betainc, gamma
-from scipy.optimize import fsolve
-from typing import Union
 from enum import Enum
 
 from stochvolmodels import TdistPricer, OptionChain
-from papers import local_path as lp
+from stochvolmodels import local_path as lp
 
 
 class UnitTests(Enum):

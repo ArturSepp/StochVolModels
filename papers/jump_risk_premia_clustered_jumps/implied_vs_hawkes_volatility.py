@@ -10,17 +10,24 @@ import qis.utils.dates as da
 import qis.perfstats.returns as ret
 import qis.plots.time_series as pts
 import qis.models.linear.ewm as ewm
+from option_chain_analytics import OptionsDataDFs
 
 # local research model and historical data APIs
-from papers.jump_risk_premia_clustered_jumps.legacy_analysis import (
+from papers.jump_risk_premia_clustered_jumps import (
     realized_volatility_models as rvm,
 )
-from sigma_strats.data.price_data import load_data, Frequency
-from sigma_strats.option_chain_analytics.data.chain_loader_from_dfs import generate_vol_delta_ts
+from papers.jump_risk_premia_clustered_jumps.intraday_volatility_analysis import (
+    generate_vol_delta_ts,
+)
+from stochvolmodels.data.fetch_option_chain import (
+    load_price_data,
+    load_tardis_hourly_options_data,
+)
 
 
 def illustrate_with_implieds(ticker: str,
                              price: pd.Series,
+                             options_data_dfs: OptionsDataDFs,
                              time_period: da.TimePeriod,
                              mid_vol_span=7,
                              af: float = 365.0):
@@ -35,7 +42,13 @@ def illustrate_with_implieds(ticker: str,
     tenor, span = '1w', 7
     days_map = {tenor: span}
 
-    vols, strikes, options, index_prices = generate_vol_delta_ts(ticker=ticker, days_map=days_map)
+    vols, strikes, options, index_prices = generate_vol_delta_ts(
+        options_data_dfs=options_data_dfs,
+        time_period=time_period,
+        days_map=days_map,
+        freq='D',
+        hour_offset=8,
+    )
     market_vols = time_period.locate(vols[f"0.50d_{tenor}"].rename('ATM market'))
 
     atm_vols = pd.Series(index=dates, name='Hawkes ATM vols')
@@ -51,7 +64,7 @@ def illustrate_with_implieds(ticker: str,
     with sns.axes_style('darkgrid'):
         fig, axs = plt.subplots(2, 1, figsize=(16, 12), tight_layout=True)
 
-        kwargs = dict(framealpha=0.9, x_date_freq='M',
+        kwargs = dict(framealpha=0.9, x_date_freq='ME',
                       date_format='%d%b%Y',
                       fontsize=12)
         pts.plot_time_series(df=vols,
@@ -81,14 +94,25 @@ def run_local_test(local_test: LocalTests):
     """
 
     ticker = 'BTC'
-    frequency = Frequency.DAILY
     af = 365
-    time_period = da.TimePeriod(None, pd.Timestamp('2022-11-19'))
-    price = load_data(ticker=ticker, time_period=time_period, frequency=frequency)
+    time_period = da.TimePeriod(None, pd.Timestamp('2022-11-19', tz='UTC'))
+    options_data_dfs = load_tardis_hourly_options_data(ticker=ticker)
+    price = load_price_data(
+        options_data_dfs=options_data_dfs,
+        time_period=time_period,
+        freq='D',
+    )
 
     if local_test == LocalTests.PLOT_WITH_IMPLIEDS:
         time_period = da.TimePeriod(pd.Timestamp('2021-09-05'), pd.Timestamp('2022-11-19'), tz='UTC')
-        illustrate_with_implieds(ticker=ticker, price=price, time_period=time_period, af=af, mid_vol_span=7)
+        illustrate_with_implieds(
+            ticker=ticker,
+            price=price,
+            options_data_dfs=options_data_dfs,
+            time_period=time_period,
+            af=af,
+            mid_vol_span=7,
+        )
 
     plt.show()
 

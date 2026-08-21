@@ -36,7 +36,6 @@ from stochvolmodels.utils.config import VariableType
 import stochvolmodels.utils.mgf_pricer as mgfp
 from stochvolmodels.utils.mc_payoffs import compute_mc_vars_payoff
 from stochvolmodels.utils.funcs import (
-    compute_histogram_data,
     set_time_grid,
     timer,
     to_flat_np_array,
@@ -52,7 +51,6 @@ from stochvolmodels.pricers.rough_logsv.split_simulation import log_spot_full_co
 
 # data
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
 
 
 class LogsvModelCalibrationType(Enum):
@@ -1226,124 +1224,4 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
 
     return option_prices_ttm, option_std_ttm
 
-class LocalTests(Enum):
-    CHAIN_PRICER = 1
-    SLICE_PRICER = 2
-    CALIBRATOR = 3
-    MC_COMPARISION = 4
-    MC_COMPARISION_QVAR = 5
-    VOL_PATHS = 6
-    TERMINAL_VALUES = 7
-    MMA_INVERSE_MEASURE_VS_MC = 8
-
-
-def run_local_test(local_test: LocalTests):
-    """Run local tests for development and debugging purposes.
-
-    These are integration tests that download real data and generate reports.
-    Use for quick verification during development.
-    """
-
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    import stochvolmodels.data.sample_option_chains as chains
-
-    if local_test == LocalTests.CHAIN_PRICER:
-        option_chain = get_btc_test_chain_data()
-        logsv_pricer = LogSVPricer()
-        model_prices = logsv_pricer.price_chain(option_chain=option_chain, params=LOGSV_BTC_PARAMS)
-        print(model_prices)
-        logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain, params=LOGSV_BTC_PARAMS)
-
-    if local_test == LocalTests.SLICE_PRICER:
-        ttm = 1.0
-        forward = 1.0
-        strikes = np.array([0.9, 1.0, 1.1])
-        optiontypes = np.array(['P', 'C', 'C'])
-
-        logsv_pricer = LogSVPricer()
-        model_prices, vols = logsv_pricer.price_slice(params=LOGSV_BTC_PARAMS,
-                                                      ttm=ttm,
-                                                      forward=forward,
-                                                      strikes=strikes,
-                                                      optiontypes=optiontypes)
-        print(model_prices)
-        print(vols)
-
-        for strike, optiontype in zip(strikes, optiontypes):
-            model_price, vol = logsv_pricer.price_vanilla(params=LOGSV_BTC_PARAMS,
-                                                          ttm=ttm,
-                                                          forward=forward,
-                                                          strike=strike,
-                                                          optiontype=optiontype)
-            print(f"{model_price}, {vol}")
-
-    elif local_test == LocalTests.CALIBRATOR:
-        option_chain = get_btc_test_chain_data()
-        logsv_pricer = LogSVPricer()
-        fit_params = logsv_pricer.calibrate_model_params_to_chain(option_chain=option_chain,
-                                                                  params0=LOGSV_BTC_PARAMS)
-        print(fit_params)
-        logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain,
-                                                 params=fit_params)
-
-    elif local_test == LocalTests.MC_COMPARISION:
-        option_chain = get_btc_test_chain_data()
-        logsv_pricer = LogSVPricer()
-        logsv_pricer.plot_model_ivols_vs_mc(option_chain=option_chain,
-                                            params=LOGSV_BTC_PARAMS)
-
-    elif local_test == LocalTests.MC_COMPARISION_QVAR:
-        from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar
-        logsv_pricer = LogSVPricer()
-        ttms = {'1m': 1.0/12.0, '6m': 0.5}
-        option_chain = chains.get_qv_options_test_chain_data()
-        option_chain = OptionChain.get_slices_as_chain(option_chain, ids=list(ttms.keys()))
-        forwards = np.array([compute_analytic_qvar(params=LOGSV_BTC_PARAMS, ttm=ttm, n_terms=4) for ttm in ttms.values()])
-        print(f"QV forwards = {forwards}")
-
-        option_chain.forwards = forwards  # replace forwards to imply BSM vols
-        option_chain.strikes_ttms = List(forward * strikes_ttm for forward, strikes_ttm in zip(option_chain.forwards, option_chain.strikes_ttms))
-
-        fig = logsv_pricer.plot_model_ivols_vs_mc(option_chain=option_chain,
-                                                  params=LOGSV_BTC_PARAMS,
-                                                  variable_type=VariableType.Q_VAR)
-
-    elif local_test == LocalTests.VOL_PATHS:
-        logsv_pricer = LogSVPricer()
-        nb_path = 10
-        sigma_t, grid_t = logsv_pricer.simulate_vol_paths(params=LOGSV_BTC_PARAMS,
-                                                          nb_path=nb_path,
-                                                          nb_steps=360)
-
-        vol_paths = pd.DataFrame(sigma_t, index=grid_t, columns=[f"{x+1}" for x in range(nb_path)])
-        print(vol_paths)
-
-    elif local_test == LocalTests.TERMINAL_VALUES:
-        logsv_pricer = LogSVPricer()
-        params = LOGSV_BTC_PARAMS
-        xt, sigmat, qvart = logsv_pricer.simulate_terminal_values(params=params)
-        hx = compute_histogram_data(data=xt, x_grid=params.get_x_grid(), name='Log-price')
-        hsigmat = compute_histogram_data(data=sigmat, x_grid=params.get_sigma_grid(), name='Sigma')
-        hqvar = compute_histogram_data(data=qvart, x_grid=params.get_qvar_grid(), name='Qvar')
-        dfs = {'Log-price': hx, 'Sigma': hsigmat, 'Qvar': hqvar}
-
-        with sns.axes_style("darkgrid"):
-            fig, axs = plt.subplots(1, 3, figsize=(18, 10), tight_layout=True)
-        for idx, (key, df) in enumerate(dfs.items()):
-            axs[idx].fill_between(df.index, np.zeros_like(df.to_numpy()), df.to_numpy(),
-                                  facecolor='lightblue', step='mid', alpha=0.8, lw=1.0)
-            axs[idx].set_title(key)
-
-    elif local_test == LocalTests.MMA_INVERSE_MEASURE_VS_MC:
-        option_chain = get_btc_test_chain_data()
-        logsv_pricer = LogSVPricer()
-        logsv_pricer.plot_comp_mma_inverse_options_with_mc(option_chain=option_chain,
-                                                           params=LOGSV_BTC_PARAMS)
-
-    plt.show()
-
-
-if __name__ == '__main__':
-
-    run_local_test(local_test=LocalTests.MC_COMPARISION_QVAR)
+# Manual scenarios are available in ``stochvolmodels.pricers.tests.logsv_pricer_test``.

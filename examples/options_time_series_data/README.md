@@ -11,12 +11,23 @@ first listed maturity at least 30 calendar days ahead and plots:
 Install the optional data stack alongside this repository:
 
 ```bash
-python -m pip install -e ".[research]" "option-chain-analytics[cboe]>=4.0.0"
+python -m pip install -e ".[research]" "option-chain-analytics[cboe]>=5.0.0"
 ```
 
-Build the local normalized caches with OCA before running the example. The example resolves an
-explicit `local_path` first, then `OCA_DATA_PATH`, and finally searches repository ancestors for
-`resources/cboe_options` or `data/cboe_options`. It reads only 2--31 October 2023 by default:
+Build the local normalized caches with OCA before running the example. With no path override, the
+SVM adapter resolves directories explicitly instead of relying on OCA's import-time working
+directory. It checks `OCA_CACHE_PATH`, SVM's configured `RESOURCE_PATH`, `OCA_DATA_PATH`, and shared
+checkout-ancestor `resources/cboe_options` or `data/cboe_options` directories. Passing `local_path`
+opts into OCA's custom-path convention, where raw inputs and the derived cache are co-located. For
+example:
+
+```python
+from stochvolmodels import local_path as lp
+
+local_path = f"{lp.get_resource_path()}cboe_options\\"
+```
+
+It reads only 2--31 October 2023 by default:
 
 ```bash
 python examples/options_time_series_data/plot_cboe_vol_time_series.py
@@ -24,14 +35,20 @@ python examples/options_time_series_data/plot_cboe_vol_time_series.py
 
 Change `ticker` to `"VIX"`, the date window, or `local_path` through `run_local_test`. The path
 override is the directory containing `spx_options_oca.parquet` and/or
-`vix_options_oca.parquet`; no absolute data location is hardcoded in the example. For an installed
-checkout with a different directory layout, set for example:
+`vix_options_oca.parquet`; no absolute data location is hardcoded in the example. Configure the
+shared resource root in `src/stochvolmodels/settings.yaml`, for example:
 
-```powershell
-$env:OCA_DATA_PATH = 'D:\options-data'
+```yaml
+RESOURCE_PATH:
+  "D:\\options-data"
 ```
 
 where the caches are under `D:\options-data\cboe_options`.
+
+If OCA identifies a derived Parquet as incompatible or stale, the SVM adapter emits a warning,
+discovers the corresponding raw Feather directory, and bypasses the cache only for the requested
+bounded window. Rebuild that cache with the installed OCA version to restore cache-first
+performance; SVM does not overwrite provider data or rebuild a cache implicitly.
 
 The 21:00 UTC sampling timestamp is after the US option-market close throughout the year. OCA's
 `previous` time selection therefore uses that day's closing observation when available and never

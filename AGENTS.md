@@ -34,9 +34,9 @@ non-trivial, check whether it already exists in one of these:
 | `vanilla-option-pricers` | VanillaOptionPricers | Vanilla option pricers and implied volatility fitters |
 
 Actual package dependencies within the stack: `optimalportfolios` depends on `qis`
-and `factorlasso`; `trendfollowing` depends on `qis`; `stochvolmodels` has an
-optional `research` extra that pulls in `qis` and `option-chain-analytics`. The others are
-independent.
+and `factorlasso`; `trendfollowing` depends on `qis`; `stochvolmodels` depends on
+`vanilla-option-pricers` and has an optional `research` extra that pulls in `qis`.
+The others are independent.
 
 Do not vendor or copy code between these packages. If functionality belongs in a
 sibling package, say so rather than reimplementing it here.
@@ -46,8 +46,9 @@ sibling package, say so rather than reimplementing it here.
 ```
 src/stochvolmodels/
   pricers/           log-normal SV, Heston, Hawkes jump-diffusion, Gaussian mixture,
-                     Student-t; subpackages analytic/, logsv/, factor_hjm/, rough_logsv/
-  data/              option chain containers and market data
+                     Student-t; subpackages analytic/, logsv/, factor_hjm/, rough_logsv/;
+                     sibling tests/ packages hold manual checks
+  data/              option chain containers and market data; tests/ holds manual checks
   utils/             numerical utilities (Fourier transforms, quadrature, plotting)
   tests/             test modules (test_*.py) — inside the package
 examples/            repository-only runnable examples, grouped by task
@@ -57,7 +58,9 @@ docs/                Sphinx/Furo user guide, API reference, and adoption documen
 CHANGELOG.md         every public change is recorded here
 ```
 
-There is no top-level `tests/` directory; tests live in `src/stochvolmodels/tests/`.
+There is no top-level `tests/` directory. Automated tests live in
+`src/stochvolmodels/tests/`; feature-local `tests/` packages contain only explicitly run manual
+checks named `<module>_test.py`.
 
 ## Commands
 
@@ -68,15 +71,16 @@ pytest src/stochvolmodels/tests/ -v        # what CI runs
 ruff check src/stochvolmodels/             # lint
 ```
 
-Optional extras: `research` (pulls in `qis` and `option-chain-analytics`), `visualization`,
-`numerical`, `jupyter`, `docs`, `dev` (includes `build` and `pytest-regressions`), `all`.
-Supported Python is >= 3.10; CI runs Linux 3.10 - 3.13 plus a Windows 3.12
-numerical-regression lane.
+Optional extras: `research` (pulls in `qis`), `visualization`, `numerical`, `jupyter`,
+`docs`, `dev` (includes `pytest-regressions`), `all`. Supported Python is >= 3.10; CI runs
+Linux 3.10 - 3.13 plus a Windows 3.12 numerical-regression lane.
 
 ## Conventions
 
 - Test files are named `test_*.py` and live in `src/stochvolmodels/tests/`. Nothing named
   `test_*.py` sits anywhere else in the package.
+- Following QIS, manual `LocalTests` dispatchers live in a sibling `tests/` package as
+  `<module>_test.py`, separate from both production modules and pytest collection.
 - Line length 100 (`ruff`, rules `E`, `F`, `W`, `I`).
 - Pricing kernels are `numba`-compiled (14 modules import numba): keep them array-based,
   avoid pandas inside compiled code, and preserve the existing signature style. A
@@ -96,19 +100,21 @@ numerical-regression lane.
 
 ## Paths
 
-Nothing in `papers/` hardcodes a filesystem path. Output and input directories resolve
-through `papers/local_path.py`:
+Nothing in `papers/` or `examples/` hardcodes a developer filesystem path. Output and input
+directories resolve through the package-wide module:
 
 ```python
-from papers import local_path as lp
+from stochvolmodels import local_path as lp
 
 qis.save_fig(fig, file_name='fig_1', local_path=lp.get_output_path())
+bbg_vols_path = f"{lp.get_resource_path()}bbg_vols\\"
 ```
 
-Resolution order: `papers/settings.yaml` if present, otherwise `docs/figures` and
-`resources` under the repository root. Both defaults are gitignored, so a fresh clone
-runs with no configuration. `papers/settings.yaml` is gitignored; the committed
-template is `papers/settings.yaml.example`. Do not reintroduce absolute paths.
+`src/stochvolmodels/settings.yaml` is the ignored machine-local configuration; copy the committed
+`settings.yaml.example` beside it. Missing keys default to the ignored `resources/` and `outputs/`
+directories under the repository root. The getters return absolute strings with a trailing path
+separator, matching the QIS ecosystem convention. Convert to `Path` only when a consumer needs
+path operations. Do not reintroduce absolute paths outside the ignored YAML.
 
 ## Papers and equation numbering
 
@@ -128,15 +134,14 @@ LaTeX source.
 
 - Do not change model parameterisations or the moment generating function without
   re-running `papers/` — published papers depend on this code.
-- Do not make `qis` or `option-chain-analytics` a hard dependency: they are optional `research`
-  dependencies used by the paper and data-adapter code, not by the pricing library. `yfinance`
-  is likewise test and example only.
+- Do not make `qis` a hard dependency: it is an optional `research` extra used by the
+  paper code, not by the pricing library. `yfinance` is likewise test and example only.
 - Do not add exotic or path-dependent payoffs; this package covers European vanillas
   under stochastic volatility by design.
 - Do not silently regenerate `pytest-regressions` baselines to make a failing test pass.
 - Do not commit calibration output or figures.
 - Do not add a dependency without asking. PyYAML is imported lazily in
-  `papers/local_path.py` precisely to avoid becoming one.
+  `stochvolmodels.local_path` precisely to avoid becoming one.
 
 ## Repository-specific agent artifacts
 
@@ -160,7 +165,8 @@ location inside the generated shared-agent block below; do not edit that generat
 
 ## Dependency surface
 
-This package is standalone: nothing from the stack is a runtime dependency — `qis` enters only
+This package depends on the lower-level `vanilla-option-pricers` package for Black-Scholes-Merton
+and Bachelier analytics. Nothing else from the stack is a runtime dependency — `qis` enters only
 via the optional `research` extra used by `papers/`. Ask before adding any dependency.
 
 **Never invent a symbol.** If a function, class, or keyword argument is not in the export

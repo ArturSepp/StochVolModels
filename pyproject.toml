@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=77.0"]
+requires = ["setuptools>=77.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "stochvolmodels"
-version = "2.0.0"
+version = "2.1.0"
 description = "Fourier-transform pricing, Monte Carlo validation, and calibration of European options under stochastic-volatility models in Python."
 readme = "README.md"
 license = "MIT"
@@ -47,6 +47,7 @@ classifiers = [
 requires-python = ">=3.10"
 
 dependencies = [
+    "vanilla-option-pricers>=2.0.0",
     "numba>=0.60.0",
     "numpy>=2.0",
     "scipy>=1.12.0",
@@ -57,8 +58,8 @@ dependencies = [
 
 [project.optional-dependencies]
 research = [
-    "option-chain-analytics>=4.0.0",
-    "qis>=5.11.0",
+    "option-chain-analytics>=5.0.0",
+    "qis>=3.5.7",
 ]
 
 visualization = [
@@ -79,7 +80,6 @@ jupyter = [
 ]
 
 dev = [
-    "build>=1.2.0",
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pytest-regressions>=2.8.3",
@@ -105,10 +105,16 @@ Issues = "https://github.com/ArturSepp/StochVolModels/issues"
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["stochvolmodels*"]
-exclude = ["tests*", "docs*", "notebooks*", "resources*"]
+exclude = [
+    "stochvolmodels.pde_solvers*",
+    "tests*",
+    "docs*",
+    "notebooks*",
+    "resources*",
+]
 
 [tool.setuptools.package-data]
-stochvolmodels = ["*.yaml", "tests/*/*.npz"]
+stochvolmodels = ["tests/*/*.npz"]
 
 [tool.pytest.ini_options]
 testpaths = ["src/stochvolmodels/tests"]

@@ -5,15 +5,16 @@ import seaborn as sns
 from typing import List
 from enum import Enum
 import qis as qis
+from qis.plots.utils import align_y_limits_axs
 
 from stochvolmodels import (compute_vanilla_price_tdist,
                             infer_bsm_ivols_from_slice_prices,
                             infer_normal_ivols_from_slice_prices)
 
-from stochvolmodels.pricers.analytic.tdist import (imply_drift_tdist,
-                                                   compute_default_prob_tdist,
-                                                   compute_forward_tdist)
-from papers import local_path as lp
+from stochvolmodels.fitters.tdist import (imply_drift_tdist,
+                                          compute_default_prob_tdist,
+                                          compute_forward_tdist)
+from stochvolmodels import local_path as lp
 
 
 def plot_implied_drift_forward_defaultp(spot: float = 1.0, vol: float = 0.2, nu: float = 3.0 ) -> plt.Figure:
@@ -172,7 +173,7 @@ def run_unit_test(unit_test: UnitTests):
             fig, axs = plt.subplots(1, 2, figsize=(14, 6), tight_layout=True)
             plot_tdist_ivols_nu(vol=0.2, ttm=5.0/252.0, rf_rate=rf_rate, ax=axs[0])
             plot_tdist_ivols_nu(vol=0.2, ttm=1.0/12.0, rf_rate=rf_rate, ax=axs[1])
-            qis.align_y_limits_axs(axs)
+            align_y_limits_axs(axs)
         qis.save_fig(fig=fig, file_name='vols_in_nu', local_path=local_path)
 
     elif unit_test == UnitTests.PLOT_IVOLS_VOL:
@@ -180,7 +181,7 @@ def run_unit_test(unit_test: UnitTests):
             fig, axs = plt.subplots(1, 2, figsize=(14, 6), tight_layout=True)
             plot_tdist_ivols_vol(nu=2.5, ttm=5.0/252.0, ax=axs[0])
             plot_tdist_ivols_vol(nu=2.5, ttm=1.0/12.0, ax=axs[1])
-            qis.align_y_limits_axs(axs)
+            align_y_limits_axs(axs)
         qis.save_fig(fig=fig, file_name='vols_in_vol', local_path=local_path)
 
     plt.show()

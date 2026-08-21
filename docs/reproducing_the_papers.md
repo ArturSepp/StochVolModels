@@ -33,8 +33,9 @@ scope and prerequisites.
 
 Record the Git commit, package/dependency versions, script entry point, selected enum/test case,
 input data provenance, local settings, output path, seed, path/step counts, and hardware. Keep
-generated figures and private/local datasets outside Git. `papers/settings.yaml.example` documents
-the optional path configuration; do not commit `papers/settings.yaml`.
+generated figures and private/local datasets outside Git.
+`src/stochvolmodels/settings.yaml.example` documents the shared path configuration; copy it to the
+ignored `src/stochvolmodels/settings.yaml` and do not commit that machine-local file.
 
 The repository CI performs import and characterized numerical smoke checks, not every long paper
 calibration or figure. A full replication can take substantially longer and can depend on inputs

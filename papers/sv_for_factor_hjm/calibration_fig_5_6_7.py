@@ -14,7 +14,8 @@ from enum import Enum
 from typing import Dict, Tuple, Optional
 from numba.typed import List
 
-import stochvolmodels.pricers.analytic.bachelier as bachel
+import vanilla_option_pricers as bachel
+from stochvolmodels import local_path as lp
 from stochvolmodels import ExpansionOrder
 from stochvolmodels.data.option_chain import SwOptionChain
 from stochvolmodels.pricers.factor_hjm.rate_factor_basis import NelsonSiegel
@@ -73,8 +74,12 @@ def plot_mkt_model_joint_smile_MF(swaption_chains: Dict[str, SwOptionChain],
             headers = headers[:ttms.size]
         for idx_tenor, tenor_id in enumerate(tenors):
             ax = axs[idx_tenor]
-            x_grid = bachel.strikes_to_delta(strikes=swaption_chain.strikes_ttms[idx_tenor][idx], ivols=swaption_chain.bid_ivs[idx_tenor][idx],
-                                      f0=swaption_chain.forwards[idx_tenor][idx], ttm=ttm)
+            x_grid = bachel.ncdf(
+                (swaption_chain.forwards[idx_tenor][idx]
+                 - swaption_chain.strikes_ttms[idx_tenor][idx])
+                / swaption_chain.bid_ivs[idx_tenor][idx]
+                / np.sqrt(ttm)
+            )
             mkt_ivols = pd.Series(swaption_chain.bid_ivs[idx_tenor][idx], index=x_grid, name=f"market").sort_index()
             mkt_ivols = SwOptionChain.remap_to_inc_delta(mkt_ivols)
             model_ivols = pd.Series(model_ivs_ttms[idx_tenor][0], index=x_grid, name=f"{swaption_chain.ttms_ids[idx]}: model").sort_index()
@@ -431,7 +436,8 @@ def run_unit_test(unit_test: UnitTests):
                 ax.set_xticklabels(['{:.0f}'.format(x * 10000, 2) for x in ax.get_xticks()])
                 ax.set_yticklabels(['{:.0f}'.format(x * 10000, 2) for x in ax.get_yticks()])
 
-        save_plot('..//draft//figures//fhjm', 'scenario_approx.pdf', fig)
+        output_path = f'{lp.get_output_path()}fhjm{os.sep}'
+        save_plot(output_path, 'scenario_approx.pdf', fig)
 
 
     plt.show()

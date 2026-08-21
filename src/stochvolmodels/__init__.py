@@ -7,6 +7,8 @@ modules are not imported merely by importing the package.
 
 from importlib import import_module as _import_module
 
+_VANILLA_MODULE = "vanilla_option_pricers"
+
 __all__ = (
     "__version__",
     "VariableType",
@@ -27,10 +29,18 @@ __all__ = (
     "TdistPricer",
     "compute_bsm_vanilla_price",
     "compute_bsm_vanilla_slice_prices",
+    "compute_bsm_vanilla_delta",
+    "compute_bsm_vanilla_vega",
+    "compute_bsm_vanilla_gamma",
+    "compute_bsm_vanilla_theta",
+    "compute_bsm_strike_from_delta",
     "infer_bsm_implied_vol",
     "infer_bsm_ivols_from_slice_prices",
     "compute_normal_price",
     "compute_normal_slice_prices",
+    "compute_normal_delta",
+    "compute_normal_delta_to_strike",
+    "compute_normal_slice_vegas",
     "infer_normal_implied_vol",
     "infer_normal_ivols_from_slice_prices",
     "compute_analytic_qvar",
@@ -39,7 +49,7 @@ __all__ = (
 
 _STABLE_EXPORTS = {
     "VariableType": ("stochvolmodels.utils.config", "VariableType"),
-    "OptionType": ("stochvolmodels.pricers.analytic.bsm", "OptionType"),
+    "OptionType": ("stochvolmodels.utils.config", "OptionType"),
     "OptionChain": ("stochvolmodels.data.option_chain", "OptionChain"),
     "OptionSlice": ("stochvolmodels.data.option_chain", "OptionSlice"),
     "CalibrationError": ("stochvolmodels.pricers.model_pricer", "CalibrationError"),
@@ -58,35 +68,43 @@ _STABLE_EXPORTS = {
     "TdistParams": ("stochvolmodels.pricers.tdist_pricer", "TdistParams"),
     "TdistPricer": ("stochvolmodels.pricers.tdist_pricer", "TdistPricer"),
     "compute_bsm_vanilla_price": (
-        "stochvolmodels.pricers.analytic.bsm",
+        _VANILLA_MODULE,
         "compute_bsm_vanilla_price",
     ),
     "compute_bsm_vanilla_slice_prices": (
-        "stochvolmodels.pricers.analytic.bsm",
+        _VANILLA_MODULE,
         "compute_bsm_vanilla_slice_prices",
     ),
+    "compute_bsm_vanilla_delta": (_VANILLA_MODULE, "compute_bsm_vanilla_delta"),
+    "compute_bsm_vanilla_vega": (_VANILLA_MODULE, "compute_bsm_vanilla_vega"),
+    "compute_bsm_vanilla_gamma": (_VANILLA_MODULE, "compute_bsm_vanilla_gamma"),
+    "compute_bsm_vanilla_theta": (_VANILLA_MODULE, "compute_bsm_vanilla_theta"),
+    "compute_bsm_strike_from_delta": (_VANILLA_MODULE, "compute_bsm_strike_from_delta"),
     "infer_bsm_implied_vol": (
-        "stochvolmodels.pricers.analytic.bsm",
+        _VANILLA_MODULE,
         "infer_bsm_implied_vol",
     ),
     "infer_bsm_ivols_from_slice_prices": (
-        "stochvolmodels.pricers.analytic.bsm",
+        _VANILLA_MODULE,
         "infer_bsm_ivols_from_slice_prices",
     ),
     "compute_normal_price": (
-        "stochvolmodels.pricers.analytic.bachelier",
+        _VANILLA_MODULE,
         "compute_normal_price",
     ),
     "compute_normal_slice_prices": (
-        "stochvolmodels.pricers.analytic.bachelier",
+        _VANILLA_MODULE,
         "compute_normal_slice_prices",
     ),
+    "compute_normal_delta": (_VANILLA_MODULE, "compute_normal_delta"),
+    "compute_normal_delta_to_strike": (_VANILLA_MODULE, "compute_normal_delta_to_strike"),
+    "compute_normal_slice_vegas": (_VANILLA_MODULE, "compute_normal_slice_vegas"),
     "infer_normal_implied_vol": (
-        "stochvolmodels.pricers.analytic.bachelier",
+        _VANILLA_MODULE,
         "infer_normal_implied_vol",
     ),
     "infer_normal_ivols_from_slice_prices": (
-        "stochvolmodels.pricers.analytic.bachelier",
+        _VANILLA_MODULE,
         "infer_normal_ivols_from_slice_prices",
     ),
     "compute_analytic_qvar": (
@@ -196,103 +214,65 @@ _COMPATIBILITY_EXPORTS = {
     "npdf": ("stochvolmodels.utils.funcs", "npdf"),
     "find_nearest": ("stochvolmodels.utils.funcs", "find_nearest"),
     "compute_bsm_vanilla_slice_deltas": (
-        "stochvolmodels.pricers.analytic.bsm",
+        _VANILLA_MODULE,
         "compute_bsm_vanilla_slice_deltas",
     ),
-    "compute_bsm_forward_grid_prices": (
-        "stochvolmodels.pricers.analytic.bsm",
-        "compute_bsm_forward_grid_prices",
-    ),
-    "compute_bsm_vanilla_delta": (
-        "stochvolmodels.pricers.analytic.bsm",
-        "compute_bsm_vanilla_delta",
-    ),
+    "compute_bsm_forward_grid_prices": (_VANILLA_MODULE, "compute_bsm_forward_grid_prices"),
     "compute_bsm_vanilla_grid_deltas": (
-        "stochvolmodels.pricers.analytic.bsm",
+        _VANILLA_MODULE,
         "compute_bsm_vanilla_grid_deltas",
     ),
-    "compute_bsm_strike_from_delta": (
-        "stochvolmodels.pricers.analytic.bsm",
-        "compute_bsm_strike_from_delta",
-    ),
     "compute_bsm_vanilla_deltas_ttms": (
-        "stochvolmodels.pricers.analytic.bsm",
+        _VANILLA_MODULE,
         "compute_bsm_vanilla_deltas_ttms",
     ),
-    "compute_bsm_slice_vegas": (
-        "stochvolmodels.pricers.analytic.bsm",
-        "compute_bsm_slice_vegas",
-    ),
-    "compute_bsm_vegas_ttms": (
-        "stochvolmodels.pricers.analytic.bsm",
-        "compute_bsm_vegas_ttms",
-    ),
+    "compute_bsm_slice_vegas": (_VANILLA_MODULE, "compute_bsm_slice_vegas"),
+    "compute_bsm_vegas_ttms": (_VANILLA_MODULE, "compute_bsm_vegas_ttms"),
     "infer_bsm_ivols_from_model_chain_prices": (
-        "stochvolmodels.pricers.analytic.bsm",
+        _VANILLA_MODULE,
         "infer_bsm_ivols_from_model_chain_prices",
     ),
     "infer_bsm_ivols_from_model_slice_prices": (
-        "stochvolmodels.pricers.analytic.bsm",
+        _VANILLA_MODULE,
         "infer_bsm_ivols_from_model_slice_prices",
     ),
-    "compute_normal_delta": (
-        "stochvolmodels.pricers.analytic.bachelier",
-        "compute_normal_delta",
-    ),
     "compute_normal_delta_from_lognormal_vol": (
-        "stochvolmodels.pricers.analytic.bachelier",
+        _VANILLA_MODULE,
         "compute_normal_delta_from_lognormal_vol",
     ),
-    "compute_normal_delta_to_strike": (
-        "stochvolmodels.pricers.analytic.bachelier",
-        "compute_normal_delta_to_strike",
-    ),
-    "compute_normal_deltas_ttms": (
-        "stochvolmodels.pricers.analytic.bachelier",
-        "compute_normal_deltas_ttms",
-    ),
-    "compute_normal_slice_deltas": (
-        "stochvolmodels.pricers.analytic.bachelier",
-        "compute_normal_slice_deltas",
-    ),
-    "compute_normal_slice_vegas": (
-        "stochvolmodels.pricers.analytic.bachelier",
-        "compute_normal_slice_vegas",
-    ),
-    "compute_normal_vegas_ttms": (
-        "stochvolmodels.pricers.analytic.bachelier",
-        "compute_normal_vegas_ttms",
-    ),
+    "compute_normal_deltas_ttms": (_VANILLA_MODULE, "compute_normal_deltas_ttms"),
+    "compute_normal_slice_deltas": (_VANILLA_MODULE, "compute_normal_slice_deltas"),
+    "compute_normal_vegas_ttms": (_VANILLA_MODULE, "compute_normal_vegas_ttms"),
     "infer_normal_ivols_from_chain_prices": (
-        "stochvolmodels.pricers.analytic.bachelier",
+        _VANILLA_MODULE,
         "infer_normal_ivols_from_chain_prices",
     ),
     "infer_normal_ivols_from_model_slice_prices": (
-        "stochvolmodels.pricers.analytic.bachelier",
+        _VANILLA_MODULE,
         "infer_normal_ivols_from_model_slice_prices",
     ),
-    "pdf_tdist": ("stochvolmodels.pricers.analytic.tdist", "pdf_tdist"),
-    "cdf_tdist": ("stochvolmodels.pricers.analytic.tdist", "cdf_tdist"),
-    "cum_mean_tdist": ("stochvolmodels.pricers.analytic.tdist", "cum_mean_tdist"),
-    "imply_drift_tdist": ("stochvolmodels.pricers.analytic.tdist", "imply_drift_tdist"),
+    "pdf_tdist": ("stochvolmodels.fitters.tdist", "pdf_tdist"),
+    "cdf_tdist": ("stochvolmodels.fitters.tdist", "cdf_tdist"),
+    "cum_mean_tdist": ("stochvolmodels.fitters.tdist", "cum_mean_tdist"),
+    "imply_drift_tdist": ("stochvolmodels.fitters.tdist", "imply_drift_tdist"),
     "compute_default_prob_tdist": (
-        "stochvolmodels.pricers.analytic.tdist",
+        "stochvolmodels.fitters.tdist",
         "compute_default_prob_tdist",
     ),
     "compute_forward_tdist": (
-        "stochvolmodels.pricers.analytic.tdist",
+        "stochvolmodels.fitters.tdist",
         "compute_forward_tdist",
     ),
     "compute_vanilla_price_tdist": (
-        "stochvolmodels.pricers.analytic.tdist",
+        "stochvolmodels.fitters.tdist",
         "compute_vanilla_price_tdist",
     ),
     "infer_implied_vol_tdist": (
-        "stochvolmodels.pricers.analytic.tdist",
+        "stochvolmodels.fitters.tdist",
         "infer_implied_vol_tdist",
     ),
     "infer_tdist_implied_vols_from_model_slice_prices": (
-        "stochvolmodels.pricers.analytic.tdist",
+        "stochvolmodels.fitters.tdist",
         "infer_tdist_implied_vols_from_model_slice_prices",
     ),
     "BTC_HESTON_PARAMS": ("stochvolmodels.pricers.heston_pricer", "BTC_HESTON_PARAMS"),

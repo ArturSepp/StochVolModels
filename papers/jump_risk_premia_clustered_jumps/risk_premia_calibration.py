@@ -1,6 +1,4 @@
 # packages
-from pathlib import Path
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,13 +8,15 @@ from enum import Enum
 
 # data
 from option_chain_analytics import OptionsDataDFs
-from option_chain_analytics.ts_loaders import ts_data_loader_wrapper
 
 # analytics
-from papers import local_path as lp
+from stochvolmodels import local_path as lp
 from papers.jump_risk_premia_clustered_jumps import hawkes_estimator as he
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.data.fetch_option_chain import load_option_chain
+from stochvolmodels.data.fetch_option_chain import (
+    load_option_chain,
+    load_tardis_hourly_options_data,
+)
 import stochvolmodels.pricers.hawkes_jd_pricer as hjp
 from stochvolmodels.pricers.hawkes_jd_pricer import HawkesJDParams
 
@@ -110,11 +110,7 @@ def run_local_test(local_test: LocalTests):
     """
 
     ticker = 'ETH'  # BTC, ETH
-    resource_path = str(Path(lp.get_resource_path()).joinpath('tardis'))
-    options_data_dfs = OptionsDataDFs(**ts_data_loader_wrapper(
-        ticker=ticker,
-        local_path=resource_path,
-    ))
+    options_data_dfs = load_tardis_hourly_options_data(ticker=ticker)
 
     is_bespoke_calibration_dates = True
     if is_bespoke_calibration_dates:  # set bespoke dates
@@ -125,7 +121,8 @@ def run_local_test(local_test: LocalTests):
         # calibration_dates = {'Current': pd.Timestamp('2023-02-18 08:00:00+00:00')}
     else:
         freq = 'M-FRI'  # set freq from W-FRI, M-FRI
-        schedule_at_8h = qis.generate_dates_schedule(time_period=qis.get_time_period(df=options_data_dfs.prices),
+        schedule_at_8h = qis.generate_dates_schedule(time_period=qis.get_time_period(
+                                                         df=options_data_dfs.get_spot_data()),
                                                      freq=freq,
                                                      hour_offset=8,
                                                      include_end_date=True)

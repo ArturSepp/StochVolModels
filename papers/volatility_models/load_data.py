@@ -1,23 +1,47 @@
 """
 fetch vol data either using historical ohlc vol or VIX and the likes
 """
+from pathlib import Path
+from typing import Optional, Tuple
+
 import numpy as np
 import pandas as pd
 import qis
-import yfinance as yf
-from typing import Optional, Tuple
 from qis import OhlcEstimatorType
-from papers import local_path as lp
+
+from papers.yfinance_utils import download_yfinance_history, get_yfinance_close
+from stochvolmodels import local_path as lp
+
+
+def _load_crypto_atm_vol_data(ticker: str) -> pd.DataFrame:
+    """Load one retained BTC/ETH ATM-volatility research series."""
+    file_name = f'{ticker}_atm_vols_skew.csv'
+    resource_path = Path(lp.get_resource_path())
+    candidates = (
+        resource_path / file_name,
+        resource_path.parent / 'data' / file_name,
+    )
+    file_path = next((candidate for candidate in candidates if candidate.is_file()), None)
+    if file_path is None:
+        searched = ', '.join(str(candidate) for candidate in candidates)
+        raise FileNotFoundError(f'cannot find {file_name}; searched: {searched}')
+
+    data = pd.read_csv(file_path, index_col=0)
+    data.index = pd.to_datetime(data.index, utc=True)
+    required_columns = {ticker, 'atm_vol'}
+    missing_columns = required_columns.difference(data.columns)
+    if missing_columns:
+        raise ValueError(f'{file_path} is missing columns: {sorted(missing_columns)}')
+    return data.sort_index()
 
 
 def fetch_ohlc_vol(ticker: str = 'SPY',
                    af: float = 260,
                    timeperiod: Optional[qis.TimePeriod] = qis.TimePeriod('31Dec1999', None),
-                   ohlc_estimator_type: OhlcEstimatorType = OhlcEstimatorType.ROGERS_SATCHELL
+    ohlc_estimator_type: OhlcEstimatorType = OhlcEstimatorType.ROGERS_SATCHELL
                    ) -> Tuple[pd.Series, pd.Series]:
     if ticker in ['VIX', 'MOVE', 'OVX']:  # use implied indices
-        ohlc_data = yf.download(tickers=f"^{ticker}", start=None, end=None, ignore_tz=True)
-        ohlc_data.index = ohlc_data.index.tz_localize('UTC').tz_convert('UTC')
+        ohlc_data = download_yfinance_history(ticker=f'^{ticker}')
         vol = ohlc_data['Close'] / 100.0
 
         if ticker == 'VIX':
@@ -29,8 +53,7 @@ def fetch_ohlc_vol(ticker: str = 'SPY',
         else:
             raise NotImplementedError
 
-        prices = yf.download(tickers=spot_ticker, start=None, end=None, ignore_tz=True)['Adj Close']
-        prices.index = prices.index.tz_localize('UTC').tz_convert('UTC')
+        prices = get_yfinance_close(download_yfinance_history(ticker=spot_ticker))
 
         if ticker == 'MOVE':
             returns = prices.diff(1)
@@ -39,20 +62,18 @@ def fetch_ohlc_vol(ticker: str = 'SPY',
             returns = prices.pct_change()
 
     elif ticker in ['BTC', 'ETH']:  # use implied atm vols from internal data
-        df = qis.load_df_from_csv(file_name=f"{ticker}_atm_vols",
-                                  local_path=lp.get_resource_path())
-        prices = df.iloc[:, 0]
-        vol = df.iloc[:, -1]
+        df = _load_crypto_atm_vol_data(ticker=ticker)
+        prices = df[ticker]
+        vol = df['atm_vol']
         returns = prices.pct_change()
 
     else:  # use historical vol
-        data = yf.download(tickers=ticker, start=None, end=None, ignore_tz=True)
-        data.index = data.index.tz_localize('UTC').tz_convert('UTC')
+        data = download_yfinance_history(ticker=ticker)
         ohlc_data = data[['Open', 'High', 'Low', 'Close']].rename({'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close'}, axis=1)
         var = qis.estimate_ohlc_var(ohlc_data=ohlc_data, ohlc_estimator_type=ohlc_estimator_type)
         vol = np.sqrt(af*var)
 
-        returns = np.log(data['Adj Close']).diff(1)
+        returns = np.log(get_yfinance_close(data=data)).diff(1)
 
     vol = vol.replace([0.0, np.inf, -np.inf], np.nan).dropna()  # drop outliers
 

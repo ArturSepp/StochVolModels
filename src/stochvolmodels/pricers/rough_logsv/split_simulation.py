@@ -477,5 +477,3 @@ def log_spot_full_combined(nodes: np.ndarray, weight: np.ndarray,
                                           rho, volvol, timegrid, nb_path, Z0, Z1)
     return log_spot_full_combined_f64(nodes, weight, v0, theta, kappa1, kappa2, log_s0, v_init,
                                       rho, volvol, timegrid, nb_path, Z0, Z1)
-
-

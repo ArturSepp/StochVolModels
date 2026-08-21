@@ -8,9 +8,9 @@ import seaborn as sns
 from typing import Tuple, Optional
 from enum import Enum
 import qis
-import yfinance as yf
 
-from papers import local_path as lp
+from papers.yfinance_utils import download_yfinance_history, get_yfinance_close
+from stochvolmodels import local_path as lp
 from papers.jump_risk_premia_clustered_jumps import hawkes_estimator as he
 
 # need a tuple for yf ticker, name, and af factor
@@ -35,7 +35,8 @@ def run_estimation_report():
 
     figs = {}
     for ticker, asset in ASSETS_FOR_ESTIMATION.items():
-        price = yf.download(tickers=[ticker], start="2018-06-01", end=None, ignore_tz=True, progress=False)['Adj Close']
+        data = download_yfinance_history(ticker=ticker, start='2018-06-01')
+        price = get_yfinance_close(data=data)
         print(f"############# asset = {asset[0]} ##############")
         model_params = he.estimate_hawkes_jd_joint(price=price,  af=asset[1], is_print=False)
         model_params.print()

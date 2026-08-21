@@ -17,6 +17,7 @@ from typing import Tuple, List
 import stochvolmodels.utils.plots as plot
 from stochvolmodels.pricers.logsv.affine_expansion import solve_ode_for_a, ExpansionOrder, func_a_ode_quadratic_terms, get_expansion_n
 from stochvolmodels import LogSvParams
+from stochvolmodels import local_path as lp
 
 
 def plot_ode_sol_in_t(params: LogSvParams,
@@ -281,13 +282,13 @@ def run_unit_test(unit_test: UnitTests):
         fig = plot_ode_solutions(params=params, ttm=ttm, expansion_order=ExpansionOrder.FIRST,
                                  is_spot_measure=is_spot_measure)
         if is_save:
-            plot.save_fig(fig=fig, local_path='../../docs/figures//', file_name="first_order_fig")
+            plot.save_fig(fig=fig, local_path=lp.get_output_path(), file_name="first_order_fig")
 
     elif unit_test == UnitTests.SECOND_ORDER:
         fig = plot_ode_solutions(params=params, ttm=ttm, expansion_order=ExpansionOrder.SECOND,
                                  is_spot_measure=is_spot_measure)
         if is_save:
-            plot.save_fig(fig=fig, local_path='../../docs/figures//', file_name="second_order_fig")
+            plot.save_fig(fig=fig, local_path=lp.get_output_path(), file_name="second_order_fig")
 
     elif unit_test == UnitTests.APPROXIMATION:
         plot_approximate_solutions(phi=-0.5 + 1j,

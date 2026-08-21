@@ -7,21 +7,25 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import qis as qis
+from qis.utils.np_ops import compute_expanding_power
 from typing import Dict, Tuple, Optional
 from scipy.optimize import minimize_scalar
 from enum import Enum
 
 # analytics
-from stochvolmodels import (OptionChain, GmmParams, GmmPricer,
-                            generate_vol_chain_np, sample_option_chain_at_times)
+from stochvolmodels import GmmParams, GmmPricer, OptionChain
+from stochvolmodels.data.fetch_option_chain import (
+    load_tardis_hourly_option_chain,
+    load_tardis_hourly_options_data,
+    sample_option_chain_at_times,
+)
 
 
 # chain data
-from option_chain_analytics import OptionsDataDFs, create_chain_from_from_options_dfs
-from option_chain_analytics.ts_loaders import ts_data_loader_wrapper
+from option_chain_analytics import OptionsDataDFs
 
 from papers.risk_premia_gmm.plot_gmm import plot_gmm_pdfs
-from papers import local_path as lp
+from stochvolmodels import local_path as lp
 
 FIGSIZE = (16, 4.5)
 
@@ -93,7 +97,11 @@ def fit_kappa(returns: pd.Series, span: int = None) -> float:
     """
     x = returns.to_numpy()
     if span is not None:
-        weights = qis.compute_expanding_power(n=len(x), power_lambda=1.0-2.0/(span+1.0), reverse_columns=True)
+        weights = compute_expanding_power(
+            n=len(x),
+            power_lambda=1.0 - 2.0 / (span + 1.0),
+            reverse_columns=True,
+        )
     else:
         weights = None
 
@@ -359,17 +367,29 @@ def run_unit_test(unit_test: UnitTests):
     value_time = pd.Timestamp('2024-01-05 10:00:00+00:00')
     # value_time = pd.Timestamp('2024-01-11 10:00:00+00:00')
 
-    # chain data here
-    options_data_dfs = OptionsDataDFs(**ts_data_loader_wrapper(ticker=ticker))
-    chain = create_chain_from_from_options_dfs(options_data_dfs=options_data_dfs, value_time=value_time)
-
-    option_chain = generate_vol_chain_np(chain=chain,
-                                         value_time=value_time,
-                                         # days_map={'1w': 7, '2w': 14, '1m': 21},
-                                         days_map={'1w': 7, '1m': 21, '1q': 60},
-                                         delta_bounds=(-0.05, 0.05),
-                                         #delta_bounds=(-0.1, 0.1),
-                                         is_filtered=True)
+    single_chain_cases = {
+        UnitTests.FIT_GMM_MODEL,
+        UnitTests.FIGURE1_RISK_PREMIA,
+        UnitTests.FIGURE2_PLOT_PDFS,
+    }
+    full_history_cases = {
+        UnitTests.FIT_KAPPA,
+        UnitTests.FIGURE3_PLOT_ROLLING_KAPPA,
+        UnitTests.FIT_TIME_SERIES_RISK_PREMIA,
+    }
+    option_chain = None
+    options_data_dfs = None
+    if unit_test in single_chain_cases:
+        option_chain = load_tardis_hourly_option_chain(
+            ticker=ticker,
+            value_time=value_time,
+            days_map={'1w': 7, '1m': 21, '1q': 60},
+            delta_bounds=(-0.05, 0.05),
+        )
+        if option_chain is None:
+            raise RuntimeError(f'no Tardis option observation at or before {value_time}')
+    elif unit_test in full_history_cases:
+        options_data_dfs = load_tardis_hourly_options_data(ticker=ticker)
 
     # option_chain.print()
     # print(option_chain0)
@@ -377,7 +397,7 @@ def run_unit_test(unit_test: UnitTests):
     if unit_test == UnitTests.FIT_GMM_MODEL:
         gmm_pricer = GmmPricer()
         for ids in option_chain.ids:
-            option_chain0 = OptionChain.get_slices_as_chain(option_chain, ids=ids)
+            option_chain0 = OptionChain.get_slices_as_chain(option_chain, ids=[ids])
             params = gmm_pricer.calibrate_model_params_to_chain_slice(option_chain=option_chain0,
                                                                                  n_mixtures=4)
             print(f"{ids}: {params}")
@@ -421,6 +441,8 @@ def run_unit_test(unit_test: UnitTests):
         qis.save_fig(fig=fig, file_name='figure2_state_pdfs', local_path=local_path)
 
     elif unit_test == UnitTests.FIT_KAPPA:
+        if options_data_dfs is None:
+            raise RuntimeError('hourly Tardis options data was not loaded')
         prices = options_data_dfs.get_spot_data()['close']
         print(prices)
         returns = qis.to_returns(prices=prices, is_log_returns=True, drop_first=True)
@@ -428,6 +450,8 @@ def run_unit_test(unit_test: UnitTests):
         print(kappa)
 
     elif unit_test == UnitTests.FIGURE3_PLOT_ROLLING_KAPPA:
+        if options_data_dfs is None:
+            raise RuntimeError('hourly Tardis options data was not loaded')
 
         fig = plot_rolling_kappa(prices=options_data_dfs.get_spot_data()['close'],
                                  span=12*30*24,
@@ -436,6 +460,8 @@ def run_unit_test(unit_test: UnitTests):
         qis.save_fig(fig=fig, file_name='figure3_lambda_ts', local_path=local_path)
 
     elif unit_test == UnitTests.FIT_TIME_SERIES_RISK_PREMIA:
+        if options_data_dfs is None:
+            raise RuntimeError('hourly Tardis options data was not loaded')
         time_period = qis.TimePeriod('28Feb2020', '02Mar2024', tz='UTC')
 
         risk_premias = calibrate_time_series_of_risk_premia(options_data_dfs=options_data_dfs,

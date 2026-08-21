@@ -59,6 +59,30 @@ LogSV deep-module paths are experimental research APIs.
 .. autoexception:: stochvolmodels.CalibrationError
 ```
 
-Analytic Black-Scholes-Merton, Bachelier, implied-volatility, and quadratic-variance functions are
-also stable and listed in `stochvolmodels.__all__`; inspect `dir(stochvolmodels)` or the package
-initializer for the exact release-specific manifest.
+Analytic Black-Scholes-Merton, absolute-normal Bachelier, implied-volatility, and
+quadratic-variance functions are also stable and listed in `stochvolmodels.__all__`. The Black and
+Bachelier functions are the same callable objects exported by `vanilla_option_pricers`; SVM does
+not maintain duplicate implementations. The removed
+`stochvolmodels.pricers.analytic.bsm` and `stochvolmodels.pricers.analytic.bachelier` paths are not
+compatibility facades in 2.0.
+
+## Local resource and output paths
+
+`stochvolmodels.local_path` reads the ignored package-adjacent `settings.yaml`. Its getters return
+absolute, separator-terminated strings for compatibility with the wider `qis` ecosystem.
+
+```{eval-rst}
+.. automodule:: stochvolmodels.local_path
+   :members: get_resource_path, get_local_resource_path, get_output_path
+```
+
+## Approximate LogSV smile utilities
+
+The provider-independent utilities under `stochvolmodels.fitters` support initialization,
+diagnostics, and synthetic grids. They are separate from the full transform-based
+`LogSVPricer.calibrate_model_params_to_chain` calibration.
+
+```{eval-rst}
+.. automodule:: stochvolmodels.fitters
+   :members:
+```

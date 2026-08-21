@@ -2,12 +2,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from enum import Enum
 
-# analytics
-from sigma_strats.option_chain_analytics.data.chain_loader_from_dfs import create_chain_from_from_options_dfs
-from sigma_strats.option_chain_analytics.ts_loaders import ts_data_loader_wrapper, DataSource
-from sigma_strats.option_chain_analytics.ts_data import OptionsDataDFs
-
 # stoch vols
+from stochvolmodels.data.fetch_option_chain import (
+    load_option_chain,
+    load_tardis_hourly_options_data,
+)
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.pricers.logsv_pricer import LogSVPricer
 from stochvolmodels import LogSvParams
@@ -30,8 +29,7 @@ def run_local_test(local_test: LocalTests):
     ticker = 'BTC'
     # value_time = pd.Timestamp('2021-10-21 08:00:00+00:00')
     value_time = pd.Timestamp('2021-10-21 08:00:00+00:00')
-    options_data_dfs = OptionsDataDFs(
-        **ts_data_loader_wrapper(ticker=ticker, freq='D', hour_offset=8, data_source=DataSource.AWS_CMS_LOCAL))
+    options_data_dfs = load_tardis_hourly_options_data(ticker=ticker)
 
     days_map = {'1w': 7, '2w': 14, '1m': 30, '2m': 60}
 
@@ -39,9 +37,11 @@ def run_local_test(local_test: LocalTests):
     set_seed(40)
 
     if local_test == LocalTests.CHAIN_DATA:
-
-        chain = create_chain_from_from_options_dfs(options_data_dfs=options_data_dfs, value_time=value_time)
-        btc_option_chain = chain.generate_vol_chain_np(value_time=value_time, days_map=days_map)
+        btc_option_chain = load_option_chain(
+            options_data_dfs=options_data_dfs,
+            value_time=value_time,
+            days_map=days_map,
+        )
         print(btc_option_chain)
 
         btc_calibrated_params = LogSvParams(sigma0=0.8327, theta=1.0139, kappa1=4.8609, kappa2=4.7940, beta=0.1988, volvol=2.3694)
@@ -51,8 +51,11 @@ def run_local_test(local_test: LocalTests):
     elif local_test == LocalTests.CALIBRATE_CHAIN:
         value_time = pd.Timestamp('2021-10-20 08:00:00+00:00')
         value_time = pd.Timestamp('2021-10-19 08:00:00+00:00')
-        chain = create_chain_from_from_options_dfs(options_data_dfs=options_data_dfs, value_time=value_time)
-        btc_option_chain = chain.generate_vol_chain_np(value_time=value_time, days_map=days_map)
+        btc_option_chain = load_option_chain(
+            options_data_dfs=options_data_dfs,
+            value_time=value_time,
+            days_map=days_map,
+        )
         params0 = LogSvParams(sigma0=0.8531, theta=0.9509, kappa1=5.041, kappa2=None, beta=0.1284, volvol=2.4575)
         btc_calibrated_params = params0 # logsv_pricer.calibrate_model_params_to_chain(option_chain=btc_option_chain, params0=params0, constraints_type=ConstraintsType.UNCONSTRAINT)
         print(btc_calibrated_params)
@@ -65,8 +68,11 @@ def run_local_test(local_test: LocalTests):
     elif local_test == LocalTests.CALIBRATE_CHAIN2:
         value_time = pd.Timestamp('2022-11-10 08:00:00+00:00')
         value_time = pd.Timestamp('2022-11-09 08:00:00+00:00')
-        chain = create_chain_from_from_options_dfs(options_data_dfs=options_data_dfs, value_time=value_time)
-        btc_option_chain = chain.generate_vol_chain_np(value_time=value_time, days_map=days_map)
+        btc_option_chain = load_option_chain(
+            options_data_dfs=options_data_dfs,
+            value_time=value_time,
+            days_map=days_map,
+        )
         params0 = LogSvParams(sigma0=0.8996, theta=0.6724, kappa1=6.999, kappa2=None, beta=-2.0143, volvol=2.2969)
         btc_calibrated_params = params0 # logsv_pricer.calibrate_model_params_to_chain(option_chain=btc_option_chain, params0=params0, constraints_type=ConstraintsType.MMA_MARTINGALE_MOMENT4)
         print(btc_calibrated_params)

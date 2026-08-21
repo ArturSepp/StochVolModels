@@ -1,7 +1,10 @@
 """Load cached SPX/VIX CBOE data as an SVM calibration chain.
 
-Install OptionChainAnalytics with its CBOE extra and set ``OCA_DATA_PATH`` to
-the ignored OCA data directory when the packages do not share a source checkout.
+Install OptionChainAnalytics with its CBOE extra and configure ``RESOURCE_PATH``
+in ``stochvolmodels/settings.yaml``. The configured cache is preferred. If OCA
+rejects an older derived cache, the SVM adapter discovers the raw provider
+directory, warns, and loads only this bounded window from the source Feather
+file. Rebuild the cache with OCA afterward for faster repeated access.
 """
 
 from enum import Enum

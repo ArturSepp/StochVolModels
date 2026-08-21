@@ -11,11 +11,17 @@ import qis.plots.time_series as pts
 import qis.models.linear.ewm as ewm
 import qis.plots.boxplot as box
 from qis.utils.dates import TimePeriod
+from option_chain_analytics import OptionsDataDFs
 
-from papers import local_path as lp
+from stochvolmodels import local_path as lp
 
 # analytics
-from sigma_strats.data.chain_loader_from_dfs import generate_vol_delta_ts
+from papers.jump_risk_premia_clustered_jumps.intraday_volatility_analysis import (
+    generate_vol_delta_ts,
+)
+from stochvolmodels.data.fetch_option_chain import (
+    load_tardis_hourly_options_data,
+)
 
 
 # FIGSIZE = (17, 6)
@@ -23,29 +29,48 @@ FIGSIZE = (17, 17)
 
 
 def check_funding_rate(ticker: str = 'BTC'):
-    df = fu.load_df_from_excel(file_name=f'crypto_funding_rates', sheet_name=ticker, subfolder_name='data')
-    df['median'] = pd.Series(np.nanmedian(df.to_numpy(), axis=1), index=df.index, name=f"{ticker} median")
-    df = df.loc['2021':, :]
-    pts.plot_time_series(df=df, var_format='{:,.2%}',
+    options_data_dfs = load_tardis_hourly_options_data(ticker=ticker)
+    archive_period = options_data_dfs.get_start_end_date()
+    funding_rate = get_smoothed_funding_rate(
+        ticker=ticker,
+        options_data_dfs=options_data_dfs,
+        time_period=TimePeriod(
+            pd.Timestamp('2021-01-01', tz='UTC'),
+            archive_period.end,
+        ),
+    )
+    pts.plot_time_series(df=funding_rate, var_format='{:,.2%}',
                          legend_stats=pts.LegendStats.AVG_STD_LAST)
 
 
-def get_funding_rate(ticker: str = 'BTC',
-                     time_period: TimePeriod = None
-                     ) -> pd.Series:
+def get_smoothed_funding_rate(ticker: str = 'BTC',
+                              options_data_dfs: OptionsDataDFs | None = None,
+                              time_period: TimePeriod = None
+                              ) -> pd.Series:
+    """Return the seven-day smoothed 08:00 UTC funding series used in the figures."""
+    if options_data_dfs is None:
+        options_data_dfs = load_tardis_hourly_options_data(ticker=ticker)
+    if time_period is None:
+        time_period = options_data_dfs.get_start_end_date()
 
-    df = fu.load_df_from_excel(file_name=f'crypto_funding_rates', sheet_name=ticker, subfolder_name='data')
+    def to_utc(timestamp: pd.Timestamp) -> pd.Timestamp:
+        timestamp = pd.Timestamp(timestamp)
+        return (
+            timestamp.tz_localize('UTC')
+            if timestamp.tzinfo is None
+            else timestamp.tz_convert('UTC')
+        )
 
-    med = pd.Series(np.nanmedian(df.to_numpy(), axis=1), index=df.index, name=f"{ticker} funding")
-    med = med.rolling(7).mean()
-    if time_period is not None:
-        med = time_period.locate(med)
-
-    med = med.resample('D').mean()
-    med.index = med.index.tz_localize('UTC')
-    med.index = med.index + pd.DateOffset(hours=8)
-    # med = med.rolling(2).mean()
-    return med
+    start = to_utc(time_period.start).normalize() + pd.Timedelta(hours=8)
+    end = to_utc(time_period.end).normalize() + pd.Timedelta(hours=8)
+    schedule = pd.date_range(start=start, end=end, freq='D')
+    funding_rate = options_data_dfs.get_spot_data()['funding_rate'].sort_index()
+    return (
+        funding_rate.reindex(schedule, method='ffill')
+        .rolling(7, min_periods=1)
+        .mean()
+        .rename(f'{ticker} funding')
+    )
 
 
 def plot_vol_data_with_funding(ticker: str = 'BTC',
@@ -57,10 +82,21 @@ def plot_vol_data_with_funding(ticker: str = 'BTC',
     # tenor, span = '1m', 30
     days_map = {tenor: span}
 
-    funding_rate = get_funding_rate(ticker=ticker, time_period=time_period)
+    options_data_dfs = load_tardis_hourly_options_data(ticker=ticker)
+    funding_rate = get_smoothed_funding_rate(
+        ticker=ticker,
+        options_data_dfs=options_data_dfs,
+        time_period=time_period,
+    )
 
     # vols and skews
-    vols, strikes, options, index_prices = generate_vol_delta_ts(ticker=ticker, days_map=days_map)
+    vols, strikes, options, index_prices = generate_vol_delta_ts(
+        options_data_dfs=options_data_dfs,
+        days_map=days_map,
+        time_period=time_period,
+        freq='D',
+        hour_offset=8,
+    )
     put_skew = np.subtract(vols[f"-0.25d_{tenor}"], vols[f"0.50d_{tenor}"]).rename('-25delta put skew')
     call_skew = np.subtract(vols[f"0.25d_{tenor}"], vols[f"0.50d_{tenor}"]).rename('25delta call skew')
     skews = pd.concat([put_skew, call_skew], axis=1)
@@ -69,9 +105,13 @@ def plot_vol_data_with_funding(ticker: str = 'BTC',
     index_returns = index_prices[f"0.50d_{tenor}"].pct_change().rename('index')
 
     # ewm vol and spreads
-    rvol = ewm.compute_ewm_vol(data=index_returns, ewm_lambda=1.0 - 2.0 / (span + 1.0),
-                                 mean_adj_type=ewm.MeanAdjType.NONE,
-                                 af=365).rename(f"Realized")
+    rvol = ewm.compute_ewm_vol(
+        data=index_returns,
+        ewm_lambda=1.0 - 2.0 / (span + 1.0),
+        mean_adj_type=ewm.MeanAdjType.NONE,
+        annualize=True,
+        annualization_factor=365.0,
+    ).rename('Realized')
 
     atm_spread = np.subtract(rvol, vols[f"0.50d_{tenor}"].shift(span)).rename('Realized - ATM(lag=7)')
     put_spread = np.subtract(rvol, vols[f"-0.25d_{tenor}"].shift(span)).rename('Realized -Put')

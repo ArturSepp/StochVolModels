@@ -11,7 +11,8 @@ from typing import Dict, List
 from enum import Enum
 
 import stochvolmodels.utils.plots as plot
-from stochvolmodels import LogSvParams
+from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
+from stochvolmodels import local_path as lp
 
 VOLVOL = 1.75
 
@@ -64,7 +65,7 @@ def run_unit_test(unit_test: UnitTests):
         is_save = False
         if is_save:
             plot.save_fig(fig=fig,
-                          local_path='../../docs/figures//',
+                          local_path=lp.get_output_path(),
                           file_name='vol_drift')
 
     plt.show()

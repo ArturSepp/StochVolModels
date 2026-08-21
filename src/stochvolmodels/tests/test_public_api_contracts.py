@@ -3,6 +3,8 @@ import json
 import subprocess
 import sys
 
+import vanilla_option_pricers
+
 import stochvolmodels
 
 STABLE_PUBLIC_API = (
@@ -25,17 +27,25 @@ STABLE_PUBLIC_API = (
     "TdistPricer",
     "compute_bsm_vanilla_price",
     "compute_bsm_vanilla_slice_prices",
+    "compute_bsm_vanilla_delta",
+    "compute_bsm_vanilla_vega",
+    "compute_bsm_vanilla_gamma",
+    "compute_bsm_vanilla_theta",
+    "compute_bsm_strike_from_delta",
     "infer_bsm_implied_vol",
     "infer_bsm_ivols_from_slice_prices",
     "compute_normal_price",
     "compute_normal_slice_prices",
+    "compute_normal_delta",
+    "compute_normal_delta_to_strike",
+    "compute_normal_slice_vegas",
     "infer_normal_implied_vol",
     "infer_normal_ivols_from_slice_prices",
     "compute_analytic_qvar",
 )
-LEGACY_PUBLIC_NAME_COUNT = 118
+LEGACY_PUBLIC_NAME_COUNT = 121
 LEGACY_PUBLIC_NAME_SHA256 = (
-    "e412ccdb921692d70a86a6acb7246fae5d1c1cda7ae6863029b3ef265d0cc285"
+    "d88adc979f2a8a4f5accf12ef7970a0e18dd46f6b44fc46bad21cff949912ff1"
 )
 
 
@@ -48,6 +58,13 @@ def test_stable_public_api_is_explicit_and_resolvable() -> None:
     assert "get_btc_test_chain_data" not in stochvolmodels.__all__
     assert "save_fig" not in stochvolmodels.__all__
     assert "compute_logsv_a_mgf_grid" not in stochvolmodels.__all__
+
+
+def test_vanilla_analytics_are_direct_dependency_reexports() -> None:
+    prefixes = ("compute_bsm", "infer_bsm", "compute_normal", "infer_normal")
+    names = [name for name in STABLE_PUBLIC_API if name.startswith(prefixes)]
+    for name in names:
+        assert getattr(stochvolmodels, name) is getattr(vanilla_option_pricers, name)
 
 
 def test_all_legacy_root_names_remain_discoverable_and_resolvable() -> None:

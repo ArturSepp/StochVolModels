@@ -4,6 +4,7 @@ illustrations of gmm vols
 import numpy as np
 import pandas as pd
 import qis as qis
+from qis.plots.utils import set_title
 import seaborn as sns
 import matplotlib.pyplot as plt
 from typing import List
@@ -50,7 +51,7 @@ def plot_gmm_pdfs(params: GmmParams,
                   **kwargs)
     axs[0].get_lines()[0].set_linewidth(4.0)
     axs[0].get_legend().get_lines()[0].set_linewidth(4.0)
-    qis.set_title(ax=axs[0], title='(A) State PDF and Aggregate Risk-Neutral PDF', **kwargs)
+    set_title(ax=axs[0], title='(A) State PDF and Aggregate Risk-Neutral PDF', **kwargs)
 
     gmm_pricer = GmmPricer()
     gmm_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain0, params=params,

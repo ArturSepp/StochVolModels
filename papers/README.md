@@ -7,22 +7,24 @@ dependency runs one way, `papers` uses the package.
 
 ## Install
 
-`qis` and `option-chain-analytics` are required by the research workflows. Neither is a core
-dependency of `stochvolmodels`, so install the extra:
+`qis` is required. It is not a core dependency of `stochvolmodels`, so install the extra:
 
 ```python
 pip install stochvolmodels[research]
 ```
 
-The research workflows commonly import `qis`; the option-chain workflows in `risk_premia_gmm/`,
-`logsv_model_with_quadratic_drift/`, and `jump_risk_premia_clustered_jumps/` import
-`option-chain-analytics`. Only `il_hedging` and `sv_for_factor_hjm` run without either package.
+The research workflows commonly import `qis`. Only `il_hedging` and `sv_for_factor_hjm` run
+without it.
 
-`yfinance` is not covered by an extra. Install it for the directories that need it:
+Two further packages are not covered by any extra. Install them for the directories that need them:
 
 ```python
-pip install yfinance  # volatility_models, jump-risk-premia development code
+pip install yfinance                  # volatility_models, jump-risk-premia development code
+pip install option-chain-analytics    # option-chain research and development workflows
 ```
+
+`option-chain-analytics` is needed by the option-chain workflows in `risk_premia_gmm/`,
+`logsv_model_with_quadratic_drift/`, and `jump_risk_premia_clustered_jumps/`.
 
 ## Papers
 
@@ -61,34 +63,33 @@ the same pattern as root `examples/`.
 
 ## Paths
 
-Figures, fitted parameters, and local research inputs resolve through `papers/local_path.py` rather
-than hardcoded machine paths:
+Figures, fitted parameters, and local research inputs resolve through the package-wide path module
+rather than hardcoded machine paths:
 
 ```python
-from papers import local_path as lp
+from stochvolmodels import local_path as lp
 
 qis.save_fig(fig, file_name='fig_1', local_path=lp.get_output_path())
 df = qis.load_df_from_excel(file_name='btc_calibration', local_path=lp.get_resource_path())
 ```
 
-Resolution order per key: `papers/settings.yaml` if it exists and defines the key, otherwise a
-default under the repository root — `docs/figures` for output and `resources` for input. Both
-defaults are already gitignored, so a fresh clone runs with no configuration and writes nothing git
-will pick up. The output directory is created on demand; the resource directory is not, since a
-missing input directory should fail rather than be silently created empty.
+The getters read `RESOURCE_PATH` and `OUTPUT_PATH` from
+`src/stochvolmodels/settings.yaml`. Missing values default to the ignored repository-root
+`resources/` and `outputs/` directories. The output directory is created on demand; the resource
+directory is not, since a missing input directory should fail rather than be silently created
+empty.
 
-To write somewhere else, copy `settings.yaml.example` to `settings.yaml` and edit it:
+Copy `src/stochvolmodels/settings.yaml.example` to `src/stochvolmodels/settings.yaml` and edit it:
 
 ```yaml
 OUTPUT_PATH:
   "C:\\Users\\me\\analytics\\outputs"
 ```
 
-`papers/settings.yaml` is in `.gitignore`, so there is no `git update-index --skip-worktree` step
-and no way to commit your paths by accident. PyYAML is imported only when that file exists, so it
-is not needed unless you opt in.
-
-`logsv_model_with_quadratic_drift/vol_drift.py` writes to a relative path and is unchanged.
+The machine-local YAML is in `.gitignore` and excluded from distributions. PyYAML is imported only
+when that file exists, so it is not a core pricing dependency. Package getters return absolute
+strings with a trailing separator, matching `qis`; compose provider folders directly or convert to
+`pathlib.Path` for path operations.
 
 ## Known issues
 
