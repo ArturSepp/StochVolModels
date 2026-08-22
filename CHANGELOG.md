@@ -40,6 +40,12 @@ Entries start at 1.2.0. For earlier releases see the git log.
   commitment documented for the 2.x series.
 
 ### Fixed
+- One-state `GmmPricer` calibration now imposes its unit weight and martingale drift analytically
+  and optimizes only volatility, avoiding platform-dependent SLSQP stalls from redundant equality
+  constraints.
+- CI's dependency-boundary checker supports Python 3.10 without adding a TOML dependency; the
+  authoritative coverage lane installs the measured research adapters, and the JOSS workflow now
+  uses the valid immutable `actions/setup-python` v6.2.0 commit.
 - `heston_chain_pricer` now selects the quadratic-variation transform grid for
   `VariableType.Q_VAR`, restoring finite Fourier prices for variance options.
 - `calc_logsv_pdf(..., is_norm=True)` now returns discrete probability mass normalized to one

@@ -36,7 +36,7 @@ jobs:
 
       - name: Sync locked primary environment
         if: matrix.python-version == '3.12'
-        run: uv sync --extra dev --locked
+        run: uv sync --extra dev --extra research --locked
 
       - name: Resolve current compatibility environment
         if: matrix.python-version != '3.12'

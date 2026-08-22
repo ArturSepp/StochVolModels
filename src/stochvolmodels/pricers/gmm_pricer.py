@@ -3,7 +3,7 @@ implementation of gaussian mixture pricer and calibration
 """
 import numpy as np
 from dataclasses import dataclass
-from scipy.optimize import minimize
+from scipy.optimize import minimize, minimize_scalar
 from numba import njit
 from numba.typed import List
 from typing import Tuple
@@ -11,6 +11,7 @@ from typing import Tuple
 import vanilla_option_pricers as bsm
 from stochvolmodels.utils.funcs import to_flat_np_array, timer, npdf
 from stochvolmodels.pricers.model_pricer import (
+    CalibrationError,
     ModelParams,
     ModelPricer,
     validate_optimization_result,
@@ -31,7 +32,8 @@ class GmmParams(ModelParams):
     gmm_weights: np.ndarray
     gmm_mus: np.ndarray
     gmm_vols: np.ndarray
-    ttm: float  # ttm is important as all params are fixed to this ttm, it is not part of calibration
+    # TTM is fixed for each fitted slice and is not itself calibrated.
+    ttm: float
 
     def sort_by_mus(self):
         """order the mixture states by drift, so fitted states stay comparable across slices."""
@@ -48,7 +50,8 @@ class GmmParams(ModelParams):
         """per-state densities and their weighted aggregate on a log-return grid."""
         state_pdfs = np.zeros((len(x), len(self.gmm_weights)))
         agg_pdf = np.zeros_like(x)
-        for idx, (gmm_weight, mu, vol) in enumerate(zip(self.gmm_weights, self.gmm_mus, self.gmm_vols)):
+        states = zip(self.gmm_weights, self.gmm_mus, self.gmm_vols)
+        for idx, (gmm_weight, mu, vol) in enumerate(states):
             state_pdf = npdf(x, mu=mu*self.ttm, vol=vol*np.sqrt(self.ttm))
             state_pdfs[:, idx] = state_pdf
             agg_pdf += gmm_weight*state_pdf
@@ -142,9 +145,37 @@ class GmmPricer(ModelPricer):
         def objective(pars: np.ndarray, args: np.ndarray) -> float:
             """weighted mean squared error between model and market implied volatilities."""
             params = parse_model_params(pars=pars)
-            model_vols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params)
+            model_vols = self.compute_model_ivols_for_chain(
+                option_chain=option_chain,
+                params=params,
+            )
             resid = np.nansum(weights * np.square(to_flat_np_array(model_vols) - market_vols))
             return resid
+
+        if n_mixtures == 1:
+
+            def objective_vol(vol: float) -> float:
+                """One-state objective with weight and martingale drift imposed exactly."""
+                pars = np.array([1.0, -0.5 * vol * vol, vol])
+                return objective(pars, args=None)
+
+            scalar_result = minimize_scalar(
+                objective_vol,
+                bounds=gmm_vols_bounds[0],
+                method='bounded',
+                options={'xatol': 1.0e-10, 'maxiter': 500},
+            )
+            if not scalar_result.success or not np.isfinite(scalar_result.x):
+                raise CalibrationError(
+                    f"Calibration failed: {getattr(scalar_result, 'message', 'no message')}"
+                )
+            fitted_vol = float(scalar_result.x)
+            return GmmParams(
+                gmm_weights=np.array([1.0]),
+                gmm_mus=np.array([-0.5 * fitted_vol * fitted_vol]),
+                gmm_vols=np.array([fitted_vol]),
+                ttm=ttm,
+            )
 
         def weights_sum(pars: np.ndarray) -> float:
             """equality constraint sum of mixture weights minus one."""
@@ -160,12 +191,23 @@ class GmmPricer(ModelPricer):
             forward; the scaling by the actual forward happens at pricing time.
             """
             params = parse_model_params(pars=pars)
-            return np.sum(params.gmm_weights*np.exp((params.gmm_mus+0.5*params.gmm_vols*params.gmm_vols)*ttm)) - 1.0
+            terminal_means = np.exp(
+                (params.gmm_mus + 0.5 * params.gmm_vols * params.gmm_vols) * ttm
+            )
+            return np.sum(params.gmm_weights * terminal_means) - 1.0
 
         constraints = ({'type': 'eq', 'fun': weights_sum}, {'type': 'eq', 'fun': martingale})
         options = {'disp': True, 'ftol': 1e-10, 'maxiter': 500}
 
-        res = minimize(objective, p0, args=None, method='SLSQP', constraints=constraints, bounds=bounds, options=options)
+        res = minimize(
+            objective,
+            p0,
+            args=None,
+            method='SLSQP',
+            constraints=constraints,
+            bounds=bounds,
+            options=options,
+        )
         fit_params = parse_model_params(
             pars=validate_optimization_result(res, bounds)
         )
@@ -271,8 +313,13 @@ def gmm_vanilla_chain_pricer(gmm_weights: np.ndarray,
     """
     # outputs as numpy lists
     model_prices_ttms = List()
-    for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm in zip(ttms, forwards, discfactors, strikes_ttms,
-                                                                      optiontypes_ttms):
+    for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm in zip(
+        ttms,
+        forwards,
+        discfactors,
+        strikes_ttms,
+        optiontypes_ttms,
+    ):
         option_prices_ttm = compute_gmm_vanilla_slice_prices(gmm_weights=gmm_weights,
                                                              gmm_mus=gmm_mus,
                                                              gmm_vols=gmm_vols,

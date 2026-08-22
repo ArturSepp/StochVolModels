@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import argparse
 import re
-import tomllib
 from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - exercised by the Python 3.10 CI lane
+    tomllib = None
 
 MODULE_DISTRIBUTIONS = {
     "option_chain_analytics": {"option-chain-analytics"},
@@ -32,13 +36,35 @@ def _resolved(path: Path) -> set[str]:
     return names
 
 
+def _banned_modules(pyproject: Path) -> list[str]:
+    """Load Ruff's banned module list, including on Python 3.10 without dependencies."""
+    if tomllib is not None:
+        with pyproject.open("rb") as stream:
+            config = tomllib.load(stream)
+        return config["tool"]["ruff"]["lint"]["flake8-tidy-imports"][
+            "banned-module-level-imports"
+        ]
+
+    text = pyproject.read_text(encoding="utf-8")
+    section = re.search(
+        r"^\[tool\.ruff\.lint\.flake8-tidy-imports\]\s*$([\s\S]*?)(?=^\[|\Z)",
+        text,
+        flags=re.MULTILINE,
+    )
+    if section is None:
+        raise AssertionError("Ruff flake8-tidy-imports section is missing")
+    assignment = re.search(
+        r"banned-module-level-imports\s*=\s*\[([\s\S]*?)\]",
+        section.group(1),
+    )
+    if assignment is None:
+        raise AssertionError("optional-module boundary list is missing")
+    return re.findall(r'["\']([^"\']+)["\']', assignment.group(1))
+
+
 def check_boundaries(pyproject: Path, requirement_files: list[Path]) -> None:
     """Assert optional module providers are absent from every requirements tree."""
-    with pyproject.open("rb") as stream:
-        config = tomllib.load(stream)
-    modules = config["tool"]["ruff"]["lint"]["flake8-tidy-imports"][
-        "banned-module-level-imports"
-    ]
+    modules = _banned_modules(pyproject)
     assert modules, "optional-module boundary list is empty"
 
     failures = []
@@ -49,7 +75,9 @@ def check_boundaries(pyproject: Path, requirement_files: list[Path]) -> None:
         for module in modules:
             providers = MODULE_DISTRIBUTIONS.get(module, {_normalise(module)})
             leaks.extend(
-                provider for provider in providers if provider in resolved and provider not in allowed
+                provider
+                for provider in providers
+                if provider in resolved and provider not in allowed
             )
         leaks = sorted(set(leaks))
         if leaks:
