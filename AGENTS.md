@@ -68,7 +68,7 @@ excluded from built distributions.
 ## Commands
 
 ```bash
-uv sync --extra dev --locked
+uv sync --group test --locked
 uv run pytest -m "not slow"                       # core-fast source suite
 uv run pytest -m slow                             # numerical regression/simulation suite
 uv run pytest --cov=stochvolmodels --cov-report=json
@@ -79,8 +79,8 @@ python -m pytest --pyargs stochvolmodels          # complete installed-wheel col
 ```
 
 Optional extras: `research` (pulls in `qis` and OCA), `visualization`, `numerical`, `jupyter`,
-`docs`, `dev` (includes `pytest-regressions`), `all`. Supported Python is >= 3.10. CI runs Linux
-3.10 - 3.13, Windows 3.12 numerical regressions, macOS 3.12 smoke tests, a core-only installed
+`docs`, `all`. The `test` dependency group includes `pytest-regressions`. Supported Python is
+>= 3.10. CI runs Linux 3.10 - 3.14, Windows 3.12 numerical regressions, macOS 3.12 smoke tests, a core-only installed
 wheel, cross-platform quickstarts, documentation/doctests/link checks, and scheduled audits.
 
 ## Conventions

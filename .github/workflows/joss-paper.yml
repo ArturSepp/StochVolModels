@@ -1,3 +1,4 @@
+# SHARED CI CORE v1.0 — T2 — synced 2026-08-22
 name: JOSS paper
 
 permissions:
@@ -29,14 +30,16 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  MPLBACKEND: Agg
 
 jobs:
   validate:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -51,18 +54,20 @@ jobs:
 
   evidence:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           python-version: "3.12"
       - name: Install package and test tools
-        run: python -m pip install -e ".[dev]"
+        run: uv sync --locked --group test
       - name: Verify paper claims and stable API evidence
-        run: python -m pytest src/stochvolmodels/tests/test_joss_evidence.py -v
+        run: uv run --no-sync pytest src/stochvolmodels/tests/test_joss_evidence.py -v
 
   paper:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build the JOSS draft PDF

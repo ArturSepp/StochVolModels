@@ -1,20 +1,20 @@
 # StochVolModels (`stochvolmodels`)
 
+[![PyPI](https://img.shields.io/pypi/v/stochvolmodels?style=flat-square)](https://pypi.org/project/stochvolmodels/)
+[![Python](https://img.shields.io/pypi/pyversions/stochvolmodels?style=flat-square)](https://pypi.org/project/stochvolmodels/)
+[![License](https://img.shields.io/github/license/ArturSepp/StochVolModels.svg?style=flat-square)](LICENSE.txt)
+[![CI](https://github.com/ArturSepp/StochVolModels/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ArturSepp/StochVolModels/actions/workflows/ci.yml)
+[![Docs](https://readthedocs.org/projects/stochvolmodels/badge/?version=latest)](https://stochvolmodels.readthedocs.io/en/latest/)
+[![Downloads](https://static.pepy.tech/badge/stochvolmodels)](https://pepy.tech/project/stochvolmodels)
+[![Monthly](https://static.pepy.tech/badge/stochvolmodels/month)](https://pepy.tech/project/stochvolmodels)
+[![Open LogSV quickstart in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ArturSepp/StochVolModels/blob/main/examples/getting_started/quickstart_colab.ipynb)
+
 `stochvolmodels` provides Fourier-transform pricing, Monte Carlo validation, and calibration of
 European options under stochastic-volatility models in Python.
 
 It is a focused research and practitioner library, not a general derivatives platform: the stable
 workflows cover European vanilla and related variance analytics under Heston and the
 Karasinski-Sepp log-normal stochastic-volatility model.
-
-[![PyPI](https://img.shields.io/pypi/v/stochvolmodels?style=flat-square)](https://pypi.org/project/stochvolmodels/)
-[![Python](https://img.shields.io/pypi/pyversions/stochvolmodels?style=flat-square)](https://pypi.org/project/stochvolmodels/)
-[![License](https://img.shields.io/github/license/ArturSepp/StochVolModels.svg?style=flat-square)](LICENSE.txt)
-[![CI](https://github.com/ArturSepp/StochVolModels/actions/workflows/ci.yml/badge.svg)](https://github.com/ArturSepp/StochVolModels/actions)
-[![Documentation](https://readthedocs.org/projects/stochvolmodels/badge/?version=latest)](https://stochvolmodels.readthedocs.io/en/latest/)
-[![Downloads](https://static.pepy.tech/badge/stochvolmodels)](https://pepy.tech/project/stochvolmodels)
-[![Monthly](https://static.pepy.tech/badge/stochvolmodels/month)](https://pepy.tech/project/stochvolmodels)
-[![Open LogSV quickstart in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ArturSepp/StochVolModels/blob/main/examples/getting_started/quickstart_colab.ipynb)
 
 **Paper:** Sepp, A. and Rakhmonov, P. (2023), *Log-normal stochastic volatility model with quadratic drift*, [International Journal of Theoretical and Applied Finance, 26(8)](https://www.worldscientific.com/doi/10.1142/S0219024924500031). See [Citation](#citation) for the full BibTeX list.
 

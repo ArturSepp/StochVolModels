@@ -4392,11 +4392,6 @@ all = [
     { name = "scikit-learn", version = "1.9.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "statsmodels" },
 ]
-dev = [
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-regressions" },
-]
 docs = [
     { name = "furo" },
     { name = "myst-parser", version = "4.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -4433,6 +4428,11 @@ lint = [
     { name = "interrogate" },
     { name = "ruff" },
 ]
+test = [
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-regressions" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -4449,9 +4449,6 @@ requires-dist = [
     { name = "option-chain-analytics", marker = "extra == 'research'", specifier = ">=5.0.0" },
     { name = "pandas", specifier = ">=2.2.0" },
     { name = "plotly", marker = "extra == 'visualization'", specifier = ">=5.0.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
-    { name = "pytest-regressions", marker = "extra == 'dev'", specifier = ">=2.8.3" },
     { name = "qis", marker = "extra == 'research'", specifier = ">=3.5.7" },
     { name = "scikit-learn", marker = "extra == 'numerical'", specifier = ">=1.3.0" },
     { name = "scipy", specifier = ">=1.12.0" },
@@ -4461,13 +4458,18 @@ requires-dist = [
     { name = "stochvolmodels", extras = ["research", "visualization", "numerical", "jupyter"], marker = "extra == 'all'" },
     { name = "vanilla-option-pricers", specifier = ">=2.0.0" },
 ]
-provides-extras = ["research", "visualization", "numerical", "jupyter", "dev", "docs", "all"]
+provides-extras = ["research", "visualization", "numerical", "jupyter", "docs", "all"]
 
 [package.metadata.requires-dev]
 audit = [{ name = "pip-audit", specifier = "==2.10.1" }]
 lint = [
     { name = "interrogate", specifier = "==1.7.0" },
     { name = "ruff", specifier = "==0.16.2" },
+]
+test = [
+    { name = "pytest", specifier = ">=7.0.0" },
+    { name = "pytest-cov", specifier = ">=4.0.0" },
+    { name = "pytest-regressions", specifier = ">=2.8.3" },
 ]
 
 [[package]]
