@@ -23,7 +23,7 @@ from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar
 from stochvolmodels.utils.config import VariableType
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     """Available manual Heston pricer checks."""
 
     CHAIN_PRICER = 1
@@ -33,15 +33,15 @@ class LocalTests(Enum):
     MC_COMPARISION_QVAR = 5
 
 
-def run_local_test(local_test: LocalTests) -> None:
+def run_local(local: Locals) -> None:
     """Run the selected manual Heston pricer check.
 
     Parameters
     ----------
-    local_test : LocalTests
+    local : Locals
         Scenario to run.
     """
-    if local_test == LocalTests.CHAIN_PRICER:
+    if local == Locals.CHAIN_PRICER:
         params = HestonParams(v0=0.85**2, theta=1.4**2, kappa=3.0, volvol=2.0, rho=0.3)
         option_chain = get_btc_test_chain_data()
         heston_pricer = HestonPricer()
@@ -49,7 +49,7 @@ def run_local_test(local_test: LocalTests) -> None:
         print(model_prices)
         heston_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain, params=params)
 
-    if local_test == LocalTests.SLICE_PRICER:
+    if local == Locals.SLICE_PRICER:
         params = HestonParams(v0=0.85**2, theta=1.4**2, kappa=3.0, volvol=2.0, rho=0.3)
         ttm = 1.0
         forward = 1.0
@@ -77,7 +77,7 @@ def run_local_test(local_test: LocalTests) -> None:
             )
             print(f"{model_price}, {vol}")
 
-    elif local_test == LocalTests.CALIBRATOR:
+    elif local == Locals.CALIBRATOR:
         option_chain = get_btc_test_chain_data()
         heston_pricer = HestonPricer()
         fit_params = heston_pricer.calibrate_model_params_to_chain(
@@ -90,14 +90,14 @@ def run_local_test(local_test: LocalTests) -> None:
             params=fit_params,
         )
 
-    elif local_test == LocalTests.MC_COMPARISION:
+    elif local == Locals.MC_COMPARISION:
         option_chain = get_btc_test_chain_data()
         HestonPricer().plot_model_ivols_vs_mc(
             option_chain=option_chain,
             params=BTC_HESTON_PARAMS,
         )
 
-    elif local_test == LocalTests.MC_COMPARISION_QVAR:
+    elif local == Locals.MC_COMPARISION_QVAR:
         heston_pricer = HestonPricer()
         ttms = {"1m": 1.0 / 12.0, "6m": 0.5}
         option_chain = chains.get_qv_options_test_chain_data()
@@ -134,4 +134,4 @@ def run_local_test(local_test: LocalTests) -> None:
 
 
 if __name__ == "__main__":
-    run_local_test(local_test=LocalTests.CALIBRATOR)
+    run_local(local=Locals.CALIBRATOR)

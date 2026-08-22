@@ -934,6 +934,3 @@ def get_qv_options_test_chain_data(num_strikes: int = 21) -> OptionChain:
                        ask_ivs=None)
 
     return data
-
-
-# Manual dispatchers live in ``stochvolmodels.data.tests.sample_option_chains_local``.

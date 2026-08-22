@@ -1231,4 +1231,4 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
 
     return option_prices_ttm, option_std_ttm
 
-# Manual scenarios are available in ``stochvolmodels.pricers.tests.logsv_pricer_local``.
+# Manual scenarios are available in ``stochvolmodels.pricers.run_local.logsv_pricer_run``.

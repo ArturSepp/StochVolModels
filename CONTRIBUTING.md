@@ -61,7 +61,15 @@ python examples/getting_started/quickstart.py
 Tests live in `src/stochvolmodels/tests/`. Unmarked fast tests cover core contracts and
 deterministic numerical properties; `slow` covers simulation/regressions,
 `optional_integration` covers optional providers, `repository_only` covers JOSS/docs/examples, and
-`paper_replication` is reserved for long paper gates. Build and inspect an installed artifact with:
+`paper_replication` is reserved for long paper gates.
+
+Component development diagnostics live beside their implementation under the nearest
+`run_local/` package and end in `*_run.py`. Each exposes `Locals` and
+`run_local(local=...)`; invoke it explicitly, for example with
+`python -m stochvolmodels.pricers.run_local.heston_pricer_run`. Pytest modules remain in
+`src/stochvolmodels/tests/`, and distributions exclude development runners.
+
+Build and inspect an installed artifact with:
 
 ```console
 python -m pip install build twine

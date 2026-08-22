@@ -16,7 +16,7 @@ from stochvolmodels.data.sample_option_chains import (
 )
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     """Available bundled option-chain samples."""
 
     BTC = 1
@@ -27,31 +27,31 @@ class LocalTests(Enum):
     OCA_SIMULATED = 6
 
 
-def run_local_test(local_test: LocalTests) -> None:
-    """Print the sample option chain selected by ``local_test``.
+def run_local(local: Locals) -> None:
+    """Print the sample option chain selected by ``local``.
 
     Parameters
     ----------
-    local_test : LocalTests
+    local : Locals
         Bundled sample chain to print.
     """
-    if local_test == LocalTests.BTC:
+    if local == Locals.BTC:
         option_chain = get_btc_test_chain_data()
-    elif local_test == LocalTests.VIX:
+    elif local == Locals.VIX:
         option_chain = get_vix_test_chain_data()
-    elif local_test == LocalTests.GLD:
+    elif local == Locals.GLD:
         option_chain = get_gld_test_chain_data()
-    elif local_test == LocalTests.SQQQ:
+    elif local == Locals.SQQQ:
         option_chain = get_sqqq_test_chain_data()
-    elif local_test == LocalTests.SPY:
+    elif local == Locals.SPY:
         option_chain = get_spy_test_chain_data()
-    elif local_test == LocalTests.OCA_SIMULATED:
+    elif local == Locals.OCA_SIMULATED:
         option_chain = get_oca_simulated_chain_data()
     else:
-        raise ValueError(f"Unsupported local test: {local_test!r}")
+        raise ValueError(f"Unsupported local test: {local!r}")
 
     print(option_chain)
 
 
 if __name__ == "__main__":
-    run_local_test(local_test=LocalTests.BTC)
+    run_local(local=Locals.BTC)

@@ -15,7 +15,7 @@ from qis.plots.utils import get_n_colors
 from stochvolmodels.fitters.tdist import cdf_tdist, cum_mean_tdist, pdf_tdist
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     """Available manual analytic Student-t checks."""
 
     PLOT_PDF = 1
@@ -24,12 +24,12 @@ class LocalTests(Enum):
     PLOT_H = 4
 
 
-def run_local_test(local_test: LocalTests) -> None:
+def run_local(local: Locals) -> None:
     """Run the selected manual analytic Student-t check.
 
     Parameters
     ----------
-    local_test : LocalTests
+    local : Locals
         Scenario to run.
     """
     x = np.linspace(-5.0, 5.0, 20000)
@@ -41,7 +41,7 @@ def run_local_test(local_test: LocalTests) -> None:
         "mu=0.2, vol=0.4": (0.2, 0.4),
     }
 
-    if local_test == LocalTests.PLOT_PDF:
+    if local == Locals.PLOT_PDF:
         pdfs = {}
         for key, mu_vol in mu_vols.items():
             pdf = dx * pdf_tdist(x=x, mu=mu_vol[0], vol=mu_vol[1], nu=3.0, ttm=ttm)
@@ -53,7 +53,7 @@ def run_local_test(local_test: LocalTests) -> None:
             )
         qis.plot_line(df=pd.DataFrame.from_dict(pdfs, orient="columns"))
 
-    elif local_test == LocalTests.PLOT_CDF:
+    elif local == Locals.PLOT_CDF:
         pdfs = {}
         cpdfs = {}
         for key, mu_vol in mu_vols.items():
@@ -71,7 +71,7 @@ def run_local_test(local_test: LocalTests) -> None:
         colors = get_n_colors(n=len(mu_vols))
         qis.plot_line(df=frame, colors=2 * colors)
 
-    elif local_test == LocalTests.PLOT_CUM_X:
+    elif local == Locals.PLOT_CUM_X:
         pdfs = {}
         cpdfs = {}
         for key, mu_vol in mu_vols.items():
@@ -89,7 +89,7 @@ def run_local_test(local_test: LocalTests) -> None:
         colors = get_n_colors(n=len(mu_vols))
         qis.plot_line(df=frame, colors=2 * colors)
 
-    elif local_test == LocalTests.PLOT_H:
+    elif local == Locals.PLOT_H:
         x = np.linspace(-10.0, 10.0, 2000)
         h = pd.Series(
             cum_mean_tdist(x=x, mu=0.5, vol=1.0, nu=3.0, ttm=1.0),
@@ -102,4 +102,4 @@ def run_local_test(local_test: LocalTests) -> None:
 
 
 if __name__ == "__main__":
-    run_local_test(local_test=LocalTests.PLOT_CUM_X)
+    run_local(local=Locals.PLOT_CUM_X)

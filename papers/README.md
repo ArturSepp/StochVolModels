@@ -1,6 +1,6 @@
 # papers
 
-Code accompanying the published papers. Nine directories contain figure and calibration
+Code accompanying the published papers. Ten directories contain figure and calibration
 replication workflows; `jump_risk_premia_clustered_jumps/` is explicitly retained as development
 code rather than an exact replication package. Nothing here is imported by `stochvolmodels`: the
 dependency runs one way, `papers` uses the package.
@@ -46,6 +46,7 @@ PDF: for both papers the source numbers equations differently, and each `paper/R
 | `risk_premia_gmm` | `gmm_slides.py` | Exploratory Gaussian-mixture risk-premia analysis; no publication mapping is asserted |
 | `t_distribution` | `illustrations.py` | Exploratory Student-t distribution analysis; no publication mapping is asserted |
 | `forward_var` | `calibrate_forward_var.py` | Exploratory forward-variance calibration analysis; no publication mapping is asserted |
+| `barriers` | `article_figures.py` | Exploratory stochastic-volatility barrier-option analysis; no publication mapping is asserted |
 
 The Hawkes jump-diffusion pricer in `src/stochvolmodels/pricers/hawkes_jd_pricer.py` implements the
 bivariate self- and cross-exciting specification used by the new development-code directory.

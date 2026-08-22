@@ -333,4 +333,4 @@ def gmm_vanilla_chain_pricer(gmm_weights: np.ndarray,
     return model_prices_ttms
 
 
-# Manual scenarios are available in ``stochvolmodels.pricers.tests.gmm_pricer_local``.
+# Manual scenarios are available in ``stochvolmodels.pricers.run_local.gmm_pricer_run``.

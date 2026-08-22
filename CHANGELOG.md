@@ -4,6 +4,8 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-08-22
+
 ### Added
 - CI now separates pinned static, installed-wheel, dependency-audit, documentation/example, and
   JOSS contracts; stable docstring coverage is enforced at 100%, and independent data,
@@ -30,14 +32,19 @@ Entries start at 1.2.0. For earlier releases see the git log.
   human consent, affiliation, funding, conflict, and disclosure decisions still required.
 - Pytest markers now distinguish core-fast, numerical-slow, optional-integration,
   repository-only, and paper-replication lanes.
+- Repository research now includes exploratory barrier-option workflows and empirical-analysis
+  modules for the LogSV and factor-HJM studies.
 
 ### Changed
-- Manual data and pricer diagnostics use the unambiguous `*_local.py` suffix, allowing the wheel
-  gate to collect the complete `stochvolmodels` package on a core-only install.
+- Development diagnostics now live beside their components as `run_local/<subject>_run.py`
+  modules using `Locals` / `run_local`; pytest modules remain centralized under
+  `stochvolmodels/tests`, and built distributions exclude the development runners.
 - Contributor lint and audit tools are pinned in PEP 735 dependency groups; import-boundary rules
   now protect the standalone runtime and optional-extra layers.
 - The PyPI development-status classifier is `5 - Production/Stable`, matching the stable-API
   commitment documented for the 2.x series.
+- Local factor-HJM XML and CSV inputs under `papers/sv_for_factor_hjm/empirics/xml/` are ignored;
+  the empirical-analysis code remains tracked.
 
 ### Fixed
 - One-state `GmmPricer` calibration now imposes its unit weight and martingale drift analytically

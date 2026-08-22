@@ -15,7 +15,7 @@ from stochvolmodels.pricers.hawkes_jd_pricer import HawkesJDParams, HawkesJDPric
 from stochvolmodels.utils.funcs import set_seed, timer
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     """Available manual Hawkes jump-diffusion pricer checks."""
 
     OPTION_PRICER = 1
@@ -26,12 +26,12 @@ class LocalTests(Enum):
 
 
 @timer
-def run_local_test(local_test: LocalTests) -> None:
+def run_local(local: Locals) -> None:
     """Run the selected manual Hawkes jump-diffusion pricer check.
 
     Parameters
     ----------
-    local_test : LocalTests
+    local : Locals
         Scenario to run.
     """
     params = HawkesJDParams()
@@ -41,7 +41,7 @@ def run_local_test(local_test: LocalTests) -> None:
     set_seed(3)
     np.random.seed(3)
 
-    if local_test == LocalTests.OPTION_PRICER:
+    if local == Locals.OPTION_PRICER:
         model_price, vol = pricer.price_vanilla(
             params=params,
             ttm=0.25,
@@ -51,7 +51,7 @@ def run_local_test(local_test: LocalTests) -> None:
         )
         print(f"price={model_price:0.4f}, implied vol={vol: 0.2%}")
 
-    elif local_test == LocalTests.CHAIN_PRICER:
+    elif local == Locals.CHAIN_PRICER:
         option_chain = get_btc_test_chain_data()
         model_prices = pricer.price_chain(option_chain=option_chain, params=params)
         print(model_prices)
@@ -60,7 +60,7 @@ def run_local_test(local_test: LocalTests) -> None:
         option_chain = OptionChain.to_uniform_strikes(option_chain, num_strikes=31)
         pricer.plot_model_ivols(option_chain=option_chain, params=params)
 
-    if local_test == LocalTests.SLICE_PRICER:
+    if local == Locals.SLICE_PRICER:
         ttm = 1.0
         forward = 1.0
         strikes = np.array([0.9, 1.0, 1.1])
@@ -86,7 +86,7 @@ def run_local_test(local_test: LocalTests) -> None:
             )
             print(f"{model_price}, {vol}")
 
-    elif local_test == LocalTests.MC_COMPARISION:
+    elif local == Locals.MC_COMPARISION:
         option_chain = get_btc_test_chain_data()
         pricer.plot_model_ivols_vs_mc(
             option_chain=option_chain,
@@ -94,7 +94,7 @@ def run_local_test(local_test: LocalTests) -> None:
             nb_path=100000,
         )
 
-    elif local_test == LocalTests.CALIBRATOR:
+    elif local == Locals.CALIBRATOR:
         option_chain = get_btc_test_chain_data()
         fit_params = pricer.calibrate_model_params_to_chain(
             option_chain=option_chain,
@@ -108,4 +108,4 @@ def run_local_test(local_test: LocalTests) -> None:
 
 
 if __name__ == "__main__":
-    run_local_test(local_test=LocalTests.CALIBRATOR)
+    run_local(local=Locals.CALIBRATOR)

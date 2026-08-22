@@ -8,7 +8,8 @@ into the finite linear system of Eq. (3.48) once truncated at order k*. That
 system is solved by matrix exponentiation in Eq. (3.49), and integrated over
 [0, tau] in Eq. (3.54) to give the expected quadratic variance of Eq. (3.53).
 
-Manual scenarios are available in ``stochvolmodels.pricers.logsv.tests.vol_moments_ode_local``.
+Manual scenarios are available in
+``stochvolmodels.pricers.logsv.run_local.vol_moments_ode_run``.
 
 Reference
 ---------

@@ -48,10 +48,9 @@ sibling package, say so rather than reimplementing it here.
 src/stochvolmodels/
   pricers/           log-normal SV, Heston, Hawkes jump-diffusion, Gaussian mixture,
                      Student-t; subpackages logsv/, factor_hjm/, rough_logsv/;
-                     sibling tests/ packages hold *_local.py manual checks
-  data/              option chain containers and market data; tests/ holds *_local.py checks
-  fitters/           approximate LogSV smile fitter and Student-t utilities; tests/ holds
-                     *_local.py manual checks
+                     source-adjacent run_local/ packages hold development runners
+  data/              option-chain containers; run_local/ holds development diagnostics
+  fitters/           approximate LogSV smile fitter; run_local/ holds development diagnostics
   utils/             numerical utilities (Fourier transforms, quadrature, plotting)
   tests/             test modules (test_*.py) — inside the package
 examples/            repository-only runnable examples, grouped by task
@@ -62,8 +61,9 @@ CHANGELOG.md         every public change is recorded here
 ```
 
 There is no top-level `tests/` directory. Automated tests live in
-`src/stochvolmodels/tests/`; feature-local `tests/` packages contain only explicitly run manual
-checks named `<module>_local.py`.
+`src/stochvolmodels/tests/`. Component development runners live beside their implementation in
+the nearest `run_local/<subject>_run.py`, expose `Locals` and `run_local(local=...)`, and are
+excluded from built distributions.
 
 ## Commands
 
@@ -87,9 +87,9 @@ wheel, cross-platform quickstarts, documentation/doctests/link checks, and sched
 
 - Test files are named `test_*.py` and live in `src/stochvolmodels/tests/`. Nothing named
   `test_*.py` sits anywhere else in the package.
-- Following OptimalPortfolios, manual `LocalTests` dispatchers live in a sibling `tests/` package
-  as `<module>_local.py`. Every file matching pytest's `test_*.py` or `*_test.py` patterns is an
-  automated test and must collect at least one test.
+- Following OptimalPortfolios, component development dispatchers live in the nearest
+  `run_local/<module>_run.py` and use `Locals` plus `run_local(local=...)`. Production modules do
+  not import them. Every pytest-shaped file is an automated test and collects at least one test.
 - Line length 100 (`ruff`, configured rules `E`, `F`, `W`; CI gates correctness and import
   boundaries through `F`, `TID251`, `TID253`, and `ICN`).
 - Pricing kernels are `numba`-compiled (14 modules import numba): keep them array-based,
@@ -99,8 +99,9 @@ wheel, cross-platform quickstarts, documentation/doctests/link checks, and sched
   simulator; new models are expected to provide both so they can be cross-validated.
 - Dataclasses carry model parameters; enums carry model and option type selection.
 - Runnable examples sit behind an enum of cases plus a dispatcher called under
-  `if __name__ == '__main__':`. The package uses `LocalTests` / `run_local_test`;
-  `papers/` uses `UnitTests` / `run_unit_test`.
+  `if __name__ == '__main__':`. Package development runners use `Locals` / `run_local`;
+  repository examples retain their existing case enums, and `papers/` uses
+  `UnitTests` / `run_unit_test`.
 - Runnable examples live under root `examples/`, are repository-only, and are excluded from the
   wheel. Stable user examples use the public API; advanced examples may use internals when labelled.
 - Regression tests use `pytest-regressions`; when output legitimately changes, update

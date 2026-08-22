@@ -35,6 +35,10 @@ def check_wheel(wheel_path: Path) -> None:
     )
     forbidden = [member for member in members if member.startswith(forbidden_prefixes)]
     assert not forbidden, f"repository-only files entered wheel: {forbidden[:10]}"
+    development = [
+        member for member in members if "/run_local/" in member or member.endswith("_run.py")
+    ]
+    assert not development, f"development runners entered wheel: {development[:10]}"
     assert "stochvolmodels/settings.yaml" not in members, (
         "machine-local settings.yaml entered the wheel"
     )
@@ -44,11 +48,11 @@ def check_wheel(wheel_path: Path) -> None:
         for member in members
         if member.startswith("stochvolmodels/tests/test_") and member.endswith(".py")
     }
-    assert len(test_modules) == 20, (
-        f"expected exactly 20 automated test modules, found {len(test_modules)}"
+    assert len(test_modules) == 21, (
+        f"expected exactly 21 automated test modules, found {len(test_modules)}"
     )
     assert not any(member.endswith("_test.py") for member in members), (
-        "manual diagnostics must use the *_local.py suffix"
+        "automated tests must use the test_*.py form"
     )
     baselines = {member for member in members if member.endswith(".npz")}
     assert baselines == {

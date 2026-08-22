@@ -176,4 +176,4 @@ def tdist_vanilla_chain_pricer(vol: float,
     return model_prices_ttms
 
 
-# Manual scenarios are available in ``stochvolmodels.pricers.tests.tdist_pricer_local``.
+# Manual scenarios are available in ``stochvolmodels.pricers.run_local.tdist_pricer_run``.

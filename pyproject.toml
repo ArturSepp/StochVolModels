@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stochvolmodels"
-version = "2.1.0"
+version = "2.2.0"
 description = "Fourier-transform pricing, Monte Carlo validation, and calibration of European options under stochastic-volatility models in Python."
 readme = "README.md"
 license = "MIT"
@@ -123,6 +123,9 @@ exclude = [
     "docs*",
     "notebooks*",
     "resources*",
+    "stochvolmodels.run_local*",
+    "stochvolmodels.*.run_local*",
+    "stochvolmodels.*.*.run_local*",
 ]
 
 [tool.setuptools.package-data]
@@ -175,8 +178,8 @@ pandas = "pd"
 "src/stochvolmodels/pricers/rough_logsv/split_simulation.py" = ["F401"]
 # Dedicated optional-data leaf; it is not reachable from the package root.
 "src/stochvolmodels/data/fetch_option_chain.py" = ["TID253"]
-# Manual diagnostics are optional-extra entry points and are not imported by the package root.
-"src/stochvolmodels/**/tests/*_local.py" = ["TID253"]
+# Development runners are optional-extra entry points and are not imported by the package root.
+"src/stochvolmodels/**/run_local/*_run.py" = ["TID253"]
 
 [tool.interrogate]
 fail-under = 100
@@ -189,11 +192,16 @@ exclude = [
     "src/stochvolmodels/pde_solvers",
     "src/stochvolmodels/pricers/factor_hjm",
     "src/stochvolmodels/pricers/rough_logsv",
+    "src/stochvolmodels/data/run_local",
+    "src/stochvolmodels/fitters/run_local",
+    "src/stochvolmodels/pricers/run_local",
+    "src/stochvolmodels/pricers/logsv/run_local",
+    "src/stochvolmodels/pricers/rough_logsv/run_local",
 ]
 
 [tool.coverage.run]
 source = ["stochvolmodels"]
-omit = ["*/tests/*", "*/examples/*", "*/pde_solvers/*"]
+omit = ["*/tests/*", "*/examples/*", "*/run_local/*", "*/pde_solvers/*"]
 
 [tool.coverage.report]
 precision = 2

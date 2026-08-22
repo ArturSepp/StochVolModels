@@ -15,21 +15,21 @@ from stochvolmodels.pricers.gmm_pricer import GmmPricer
 from stochvolmodels.utils import plots as plot
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     """Available manual Gaussian-mixture pricer checks."""
 
     CALIBRATOR = 1
 
 
-def run_local_test(local_test: LocalTests) -> None:
+def run_local(local: Locals) -> None:
     """Run the selected manual Gaussian-mixture pricer check.
 
     Parameters
     ----------
-    local_test : LocalTests
+    local : Locals
         Scenario to run.
     """
-    if local_test == LocalTests.CALIBRATOR:
+    if local == Locals.CALIBRATOR:
         option_chain = get_btc_test_chain_data()
         gmm_pricer = GmmPricer()
         fit_params = gmm_pricer.calibrate_model_params_to_chain(option_chain=option_chain)
@@ -51,4 +51,4 @@ def run_local_test(local_test: LocalTests) -> None:
 
 
 if __name__ == "__main__":
-    run_local_test(local_test=LocalTests.CALIBRATOR)
+    run_local(local=Locals.CALIBRATOR)

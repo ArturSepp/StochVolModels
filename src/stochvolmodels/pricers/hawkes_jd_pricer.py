@@ -776,4 +776,4 @@ def simulate_hawkesjd_terminal(ttm: float,
     return x0, lambda_p0, lambda_m0
 
 
-# Manual scenarios are available in ``stochvolmodels.pricers.tests.hawkes_jd_pricer_local``.
+# Manual scenarios are available in ``stochvolmodels.pricers.run_local.hawkes_jd_pricer_run``.

@@ -9,6 +9,7 @@ import time
 import tracemalloc
 import threading
 from dataclasses import dataclass
+from enum import Enum
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -196,7 +197,7 @@ def run_rough_logsv_loop_bench(nb_path: int = 50000,
                 use_legacy_rng=False,
             )
         except TypeError:
-            # Backward-compatibility: older signatures may not support dtype/chunk_size/use_legacy_rng.
+            # Older signatures may not support dtype, chunk_size, or use_legacy_rng.
             Z0, Z1, grid_ttms = sv.get_randoms_for_rough_vol_chain_valuation(
                 ttms=option_chain.ttms,
                 nb_path=nb_path,
@@ -216,7 +217,9 @@ def run_rough_logsv_loop_bench(nb_path: int = 50000,
                 grid_t = np.asarray(grid_t, dtype=np.float32)
             grid_ttms.append(grid_t)
 
-    base_params = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=2.18, beta=0.15, volvol=2.0)
+    base_params = LogSvParams(
+        sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=2.18, beta=0.15, volvol=2.0
+    )
     base_params.H = 0.1
     base_params.approximate_kernel(T=option_chain.ttms[-1])
     if float32_mode:
@@ -227,7 +230,17 @@ def run_rough_logsv_loop_bench(nb_path: int = 50000,
 
     # Warm up numba kernels before timing.
     for _ in range(max(0, warmup)):
-        _rough_price_once(option_chain, Z0, Z1, grid_ttms, variants[0][1], nb_path, seed, random_mode, float32_mode)
+        _rough_price_once(
+            option_chain,
+            Z0,
+            Z1,
+            grid_ttms,
+            variants[0][1],
+            nb_path,
+            seed,
+            random_mode,
+            float32_mode,
+        )
 
     tracemalloc.start()
     results: List[PerfResult] = []
@@ -243,7 +256,17 @@ def run_rough_logsv_loop_bench(nb_path: int = 50000,
             sampler.start()
         cpu_start = time.process_time()
 
-        option_prices_ttm, option_std_ttm = _rough_price_once(option_chain, Z0, Z1, grid_ttms, params, nb_path, seed, random_mode, float32_mode)
+        option_prices_ttm, option_std_ttm = _rough_price_once(
+            option_chain,
+            Z0,
+            Z1,
+            grid_ttms,
+            params,
+            nb_path,
+            seed,
+            random_mode,
+            float32_mode,
+        )
 
         cpu_end = time.process_time()
         if sampler is not None:
@@ -269,8 +292,14 @@ def run_rough_logsv_loop_bench(nb_path: int = 50000,
                 mem_peak_kib=(mem_peak - mem_before) / 1024.0,
                 rss_before_kib=rss_before,
                 rss_after_kib=rss_after,
-                rss_delta_kib=None if rss_before is None or rss_after is None else rss_after - rss_before,
-                rss_peak_delta_kib=None if rss_before is None or rss_peak_kib is None else rss_peak_kib - rss_before,
+                rss_delta_kib=(
+                    None if rss_before is None or rss_after is None else rss_after - rss_before
+                ),
+                rss_peak_delta_kib=(
+                    None
+                    if rss_before is None or rss_peak_kib is None
+                    else rss_peak_kib - rss_before
+                ),
                 rss_peak_kib=rss_peak_kib,
                 checksum=checksum,
             )
@@ -296,7 +325,26 @@ def run_rough_logsv_loop_bench(nb_path: int = 50000,
     return df[cols]
 
 
-if __name__ == "__main__":
+class Locals(Enum):
+    """Available rough-LogSV performance diagnostics."""
+
+    BENCHMARK = 1
+
+
+def run_local(local: Locals) -> None:
+    """Run the selected rough-LogSV performance diagnostic.
+
+    Parameters
+    ----------
+    local : Locals
+        Diagnostic to execute.
+    """
+    if local != Locals.BENCHMARK:
+        raise ValueError(f"Unsupported local diagnostic: {local!r}")
     df_results = run_rough_logsv_loop_bench(rss_sample_interval=0.01)
     pd.set_option("display.max_columns", None)
     print(df_results.to_string(index=False))
+
+
+if __name__ == "__main__":
+    run_local(local=Locals.BENCHMARK)

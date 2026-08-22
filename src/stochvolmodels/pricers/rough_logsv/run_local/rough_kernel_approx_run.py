@@ -9,16 +9,18 @@ from enum import Enum
 from stochvolmodels import LogSvParams
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     KERNEL_APPROX_BY_HURST = 1
 
 
-def run_local_test(local_test: LocalTests) -> None:
+def run_local(local: Locals) -> None:
     """Run local tests for development and debugging purposes."""
 
-    if local_test == LocalTests.KERNEL_APPROX_BY_HURST:
+    if local == Locals.KERNEL_APPROX_BY_HURST:
         ttm = 1.0
-        params0 = LogSvParams(sigma0=1.32, theta=0.47, kappa1=4.0, kappa2=2.0, beta=0.45, volvol=0.83)
+        params0 = LogSvParams(
+            sigma0=1.32, theta=0.47, kappa1=4.0, kappa2=2.0, beta=0.45, volvol=0.83
+        )
         for hurst in np.linspace(0.3, 0.5, 150):
             params0.H = hurst
             params0.approximate_kernel(T=ttm)
@@ -29,4 +31,4 @@ def run_local_test(local_test: LocalTests) -> None:
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.KERNEL_APPROX_BY_HURST)
+    run_local(local=Locals.KERNEL_APPROX_BY_HURST)

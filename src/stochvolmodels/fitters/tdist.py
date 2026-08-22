@@ -229,4 +229,4 @@ def infer_tdist_implied_vols_from_model_slice_prices(ttm: float,
     return model_vol_ttm
 
 
-# Manual scenarios are available in ``stochvolmodels.fitters.tests.tdist_local``.
+# Manual scenarios are available in ``stochvolmodels.fitters.run_local.tdist_run``.

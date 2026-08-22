@@ -24,7 +24,7 @@ from stochvolmodels.data.fetch_option_chain import (
 )
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     """Available manual option-chain integration checks."""
 
     PRINT_CHAIN_DATA = 1
@@ -54,12 +54,12 @@ def _resolve_tardis_local_path(ticker: str) -> str:
     )
 
 
-def run_local_test(local_test: LocalTests) -> None:
+def run_local(local: Locals) -> None:
     """Run the selected manual option-chain integration check.
 
     Parameters
     ----------
-    local_test : LocalTests
+    local : Locals
         Integration scenario to run.
     """
     ticker = "BTC"  # BTC, ETH
@@ -77,11 +77,11 @@ def run_local_test(local_test: LocalTests) -> None:
         value_time=value_time,
     )
 
-    if local_test == LocalTests.PRINT_CHAIN_DATA:
+    if local == Locals.PRINT_CHAIN_DATA:
         for expiry_slice in chain.expiry_slices.values():
             expiry_slice.print()
 
-    elif local_test == LocalTests.GENERATE_VOL_CHAIN_NP:
+    elif local == Locals.GENERATE_VOL_CHAIN_NP:
         option_chain = generate_vol_chain_np(
             chain=chain,
             value_time=value_time,
@@ -92,7 +92,7 @@ def run_local_test(local_test: LocalTests) -> None:
         option_chain.print()
         print(option_chain.get_chain_skews(delta=0.35))
 
-    elif local_test == LocalTests.SAMPLE_CHAIN_AT_TIMES:
+    elif local == Locals.SAMPLE_CHAIN_AT_TIMES:
         time_period = qis.TimePeriod("01Jan2023", "31Jan2023", tz="UTC")
         option_chains = sample_option_chain_at_times(
             options_data_dfs=options_data_dfs,
@@ -108,4 +108,4 @@ def run_local_test(local_test: LocalTests) -> None:
 
 
 if __name__ == "__main__":
-    run_local_test(local_test=LocalTests.SAMPLE_CHAIN_AT_TIMES)
+    run_local(local=Locals.SAMPLE_CHAIN_AT_TIMES)

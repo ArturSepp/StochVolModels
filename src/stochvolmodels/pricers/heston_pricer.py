@@ -390,4 +390,4 @@ def v0_implied(v0: float, volvol: float, ttm: float):
     return v0
 
 
-# Manual scenarios are available in ``stochvolmodels.pricers.tests.heston_pricer_local``.
+# Manual scenarios are available in ``stochvolmodels.pricers.run_local.heston_pricer_run``.

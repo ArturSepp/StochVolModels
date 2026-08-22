@@ -15,21 +15,21 @@ from stochvolmodels.pricers.tdist_pricer import TdistPricer
 from stochvolmodels.utils import plots as plot
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     """Available manual Student-t pricer checks."""
 
     CALIBRATOR = 1
 
 
-def run_local_test(local_test: LocalTests) -> None:
+def run_local(local: Locals) -> None:
     """Run the selected manual Student-t pricer check.
 
     Parameters
     ----------
-    local_test : LocalTests
+    local : Locals
         Scenario to run.
     """
-    if local_test == LocalTests.CALIBRATOR:
+    if local == Locals.CALIBRATOR:
         option_chain = chains.get_spy_test_chain_data()
         tdist_pricer = TdistPricer()
         fit_params = tdist_pricer.calibrate_model_params_to_chain(option_chain=option_chain)
@@ -51,4 +51,4 @@ def run_local_test(local_test: LocalTests) -> None:
 
 
 if __name__ == "__main__":
-    run_local_test(local_test=LocalTests.CALIBRATOR)
+    run_local(local=Locals.CALIBRATOR)

@@ -11,6 +11,8 @@ def download_yfinance_history(
     start: Optional[str] = None,
     end: Optional[str] = None,
     progress: bool = False,
+    period: Optional[str] = None,
+    interval: Optional[str] = None,
 ) -> pd.DataFrame:
     """Download one full-history OHLC panel with stable column conventions."""
     download_kwargs = dict(
@@ -20,10 +22,16 @@ def download_yfinance_history(
         multi_level_index=False,
         progress=progress,
     )
-    if start is None and end is None:
+    if period is not None and (start is not None or end is not None):
+        raise ValueError('period cannot be combined with start or end')
+    if period is not None:
+        download_kwargs['period'] = period
+    elif start is None and end is None:
         download_kwargs['period'] = 'max'
     else:
         download_kwargs.update(start=start, end=end)
+    if interval is not None:
+        download_kwargs['interval'] = interval
 
     data = yf.download(**download_kwargs)
     if data is None or data.empty:

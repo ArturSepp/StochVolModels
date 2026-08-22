@@ -22,7 +22,7 @@ from stochvolmodels.pricers.logsv_pricer import LogSVPricer
 from stochvolmodels.utils.funcs import set_seed
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     """Available manual LogSV moment checks."""
 
     VOL_MOMENTS = 1
@@ -31,12 +31,12 @@ class LocalTests(Enum):
     VOL_BACKBONE = 4
 
 
-def run_local_test(local_test: LocalTests) -> None:
+def run_local(local: Locals) -> None:
     """Run the selected manual LogSV moment check.
 
     Parameters
     ----------
-    local_test : LocalTests
+    local : Locals
         Scenario to run.
     """
     logsv_pricer = LogSVPricer()
@@ -59,7 +59,7 @@ def run_local_test(local_test: LocalTests) -> None:
         nb_path=nb_path,
     )
 
-    if local_test == LocalTests.VOL_MOMENTS:
+    if local == Locals.VOL_MOMENTS:
         mcs = []
         for moment in np.arange(n_terms):
             if moment > 0:
@@ -79,7 +79,7 @@ def run_local_test(local_test: LocalTests) -> None:
         print(frame)
         frame.plot()
 
-    elif local_test == LocalTests.EXPECTED_VOL:
+    elif local == Locals.EXPECTED_VOL:
         mc_mean = np.mean(sigma_t, axis=1)
         mc_std = np.std(sigma_t, axis=1) / np.sqrt(nb_path)
         mc = pd.Series(mc_mean, index=grid_t, name="MC")
@@ -94,7 +94,7 @@ def run_local_test(local_test: LocalTests) -> None:
         print(frame)
         frame.plot()
 
-    elif local_test == LocalTests.EXPECTED_QVAR:
+    elif local == Locals.EXPECTED_QVAR:
         q_var = pd.DataFrame(np.square(sigma_t)).expanding(axis=0).mean().to_numpy()
         mc_mean = np.sqrt(np.mean(q_var, axis=1))
         mc_std = np.std(q_var, axis=1) / np.sqrt(nb_path)
@@ -119,7 +119,7 @@ def run_local_test(local_test: LocalTests) -> None:
                 capsize=8,
             )
 
-    elif local_test == LocalTests.VOL_BACKBONE:
+    elif local == Locals.VOL_BACKBONE:
         fit_model_vol_backbone_to_varswaps(
             log_sv_params=params,
             varswap_strikes=pd.Series([1.0, 1.0], index=[1.0 / 12.0, 2.0 / 12.0]),
@@ -130,4 +130,4 @@ def run_local_test(local_test: LocalTests) -> None:
 
 
 if __name__ == "__main__":
-    run_local_test(local_test=LocalTests.VOL_BACKBONE)
+    run_local(local=Locals.VOL_BACKBONE)
