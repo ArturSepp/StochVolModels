@@ -5,6 +5,19 @@ Entries start at 1.2.0. For earlier releases see the git log.
 ## [Unreleased]
 
 ### Added
+- CI now separates pinned static, installed-wheel, dependency-audit, documentation/example, and
+  JOSS contracts; stable docstring coverage is enforced at 100%, and independent data,
+  transform, payoff, fitter, pricer, and calibration contracts raise the whole-package coverage
+  ratchet from 26.80% to 44.50% and the stable-scope ratchet from 45.00% to 86.50%.
+- Numerical characterization now covers MGF/PDF/digital/QV identities, Python-versus-Numba
+  equivalence, affine-versus-adaptive ODE solutions, analytic-versus-Monte-Carlo LogSV/Heston
+  checks, scalar/slice/chain consistency, and successful synthetic GMM and Student-t calibration.
+- Documentation now includes executable doctests, link checking, a testing/coverage scope page,
+  and a cross-platform output-free LogSV Colab contract.
+- A narrow offline `paper_replication` lane verifies LogSV transform normalization, moment
+  stability, its constant-volatility limit, and analytic-versus-Monte-Carlo agreement.
+- Repository contracts verify test-file collection, optional-dependency isolation, version
+  metadata, executable README results, and the exact shipped test and regression-baseline set.
 - JOSS adoption now includes contributor/support guidance, an explicit statement of need,
   reviewer verification commands, and a tracked baseline evidence record.
 - A draft JOSS manuscript, checked bibliography, evidence audit, manuscript contract tests, and
@@ -18,7 +31,33 @@ Entries start at 1.2.0. For earlier releases see the git log.
 - Pytest markers now distinguish core-fast, numerical-slow, optional-integration,
   repository-only, and paper-replication lanes.
 
+### Changed
+- Manual data and pricer diagnostics use the unambiguous `*_local.py` suffix, allowing the wheel
+  gate to collect the complete `stochvolmodels` package on a core-only install.
+- Contributor lint and audit tools are pinned in PEP 735 dependency groups; import-boundary rules
+  now protect the standalone runtime and optional-extra layers.
+- The PyPI development-status classifier is `5 - Production/Stable`, matching the stable-API
+  commitment documented for the 2.x series.
+
 ### Fixed
+- `heston_chain_pricer` now selects the quadratic-variation transform grid for
+  `VariableType.Q_VAR`, restoring finite Fourier prices for variance options.
+- `calc_logsv_pdf(..., is_norm=True)` now returns discrete probability mass normalized to one
+  on a validated uniform log-strike grid.
+- `infer_strikes_from_deltas` now brackets roots in valid positive-volatility log-moneyness
+  regions, supports call and put deltas, validates its inputs, and raises instead of silently
+  substituting the forward when inversion fails.
+- Swaption maturity slicing uses `numpy.isin` instead of the deprecated `numpy.in1d`, keeping the
+  warning-as-error CI lane compatible with current NumPy.
+- Monte Carlo density filtering now builds initialized finite/infinite masks explicitly, removing
+  NumPy 2.5 warnings and making the reported invalid-path counts deterministic.
+- Pre-submission consistency pass across the JOSS manuscript, README, and AGENTS.md: the
+  manuscript's CI platform list includes macOS, the advanced-surface claim matches the lazy root
+  exports, the AI disclosure names tool versions, and the Karasinski-Sepp model name carries its
+  Risk (2012) reference; README's dependency floors, project tree, and ecosystem table (now
+  including `privateassets`) match the repository; the LogSV article is cited with the
+  publisher's year (IJTAF 2023, 26(8) 2450003) everywhere; `settings.yaml.example` is included
+  in the sdist.
 - Source-checkout coverage now excludes the ignored private `pde_solvers` worktree, matching the
   public wheel contents and installed-wheel CI coverage scope.
 - `GmmPricer` and `TdistPricer` calibrations now reject failed or unusable optimizer results
@@ -276,7 +315,7 @@ Entries start at 1.2.0. For earlier releases see the git log.
   returned trailing all-zero rows; above 1.0 it raised.
 - `LogSvParams.eta` returns `2 (kappa2 theta - kappa1) / vartheta^2 - 1`, the
   exponent of the generalized inverse Gaussian steady state in Eq. (3.38) of Sepp
-  and Rakhmonov (2024). It returned `kappa1 theta / vartheta^2 - 1`, which is not
+  and Rakhmonov (2023). It returned `kappa1 theta / vartheta^2 - 1`, which is not
   that exponent. No caller in the repository reads the property.
 - `compute_analytic_vol_moments` no longer branches on `is_qvar` to assign the same
   value to `rhs[-1]` twice. Behaviour is unchanged.

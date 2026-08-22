@@ -60,6 +60,7 @@ def fit_logsv_ivols(
     p0 = np.array([atm_fit_params[ATM_VOL], 0.0, 0.1])
 
     def func(x: np.ndarray, sigma0: float, beta: float, volvol: float) -> np.ndarray:
+        """Evaluate the approximate smile in SciPy's curve-fit signature."""
         return calc_logsv_ivols(x, sigma0, beta, volvol)
 
     if is_vega_weights:
@@ -145,7 +146,11 @@ def calc_logsv_pdf(
     cut: float = 6.0,
     is_analytic: bool = False,
 ) -> pd.Series:
-    """Compute the approximate LogSV risk-neutral density over log-strike."""
+    """Compute the approximate LogSV risk-neutral density over log-strike.
+
+    When ``is_norm`` is true, the returned values are discrete probability masses
+    on a uniformly spaced grid and therefore sum to one.
+    """
     if log_strikes is None:
         width = cut * sigma0 * np.sqrt(ttm)
         log_strikes = np.linspace(-width, width, 100)
@@ -158,7 +163,21 @@ def calc_logsv_pdf(
         is_analytic=is_analytic,
     )
     if is_norm:
-        pdf = (log_strikes[1] - log_strikes[0]) * pdf
+        grid = np.asarray(log_strikes, dtype=float)
+        if grid.ndim != 1 or grid.size < 2:
+            raise ValueError('normalization requires at least two log-strike grid points')
+        steps = np.diff(grid)
+        if (
+            not np.all(np.isfinite(steps))
+            or np.any(steps <= 0.0)
+            or not np.allclose(steps, steps[0], rtol=1.0e-10, atol=1.0e-14)
+        ):
+            raise ValueError('normalization requires a finite, increasing, uniform grid')
+        probability_mass = steps[0] * pdf
+        total_mass = float(probability_mass.sum())
+        if not np.isfinite(total_mass) or total_mass <= 0.0:
+            raise ValueError('LogSV density has no finite positive mass on the supplied grid')
+        pdf = probability_mass / total_mass
     return pdf
 
 
@@ -201,23 +220,82 @@ def infer_strikes_from_deltas(
     beta: float,
     volvol: float,
 ) -> pd.Series:
-    """Invert Black deltas under the approximate LogSV smile."""
+    """Invert Black forward deltas under the approximate LogSV smile.
+
+    Positive values denote call deltas and negative values denote put deltas. The
+    root search operates in log-moneyness and ignores regions where the local
+    quadratic smile approximation is non-positive.
+
+    Raises
+    ------
+    ValueError
+        If inputs are invalid or no positive-volatility root brackets a delta.
+    """
+    deltas = np.asarray(deltas, dtype=float)
+    if deltas.ndim != 1:
+        raise ValueError('deltas must be a one-dimensional array')
+    if not np.isfinite(forward) or forward <= 0.0:
+        raise ValueError('forward must be finite and positive')
+    if not np.isfinite(ttm) or ttm <= 0.0:
+        raise ValueError('ttm must be finite and positive')
+    if not np.isfinite(sigma0) or sigma0 <= 0.0:
+        raise ValueError('sigma0 must be finite and positive')
+    valid_deltas = ((deltas > 0.0) & (deltas < 1.0)) | (
+        (deltas > -1.0) & (deltas < 0.0)
+    )
+    if not np.all(np.isfinite(deltas) & valid_deltas):
+        raise ValueError('deltas must lie in (-1, 0) or (0, 1)')
+
     sqrt_ttm = np.sqrt(ttm)
 
-    def func(strike: float, given_delta: float) -> float:
-        log_strike = np.log(strike / forward)
+    def func(log_strike: float, target: float) -> float:
+        """Return the Black-delta inversion residual at log-moneyness."""
         vol_st = sqrt_ttm * calc_logsv_ivols(log_strike, sigma0, beta, volvol)
-        target = norm.ppf(given_delta if given_delta >= 0.0 else 1.0 + given_delta)
+        if not np.isfinite(vol_st) or vol_st <= 0.0:
+            return np.nan
         return -log_strike / vol_st + 0.5 * vol_st - target
 
-    implied = {}
+    implied = []
     for given_delta in deltas:
-        try:
-            strike = brenth(func, 0.0001 * forward, 200.0 * forward, args=(given_delta,))
-        except ValueError:
-            strike = forward
-        implied[given_delta] = strike
-    return pd.Series(implied, dtype=float)
+        target = norm.ppf(given_delta if given_delta > 0.0 else 1.0 + given_delta)
+        width = max(1.0, 8.0 * sigma0 * sqrt_ttm)
+        bracket = None
+        exact_root = None
+        for _ in range(4):
+            log_grid = np.linspace(-width, width, 2_001)
+            vol_grid = sqrt_ttm * calc_logsv_ivols(log_grid, sigma0, beta, volvol)
+            positive_vol = np.isfinite(vol_grid) & (vol_grid > 0.0)
+            residuals = np.full_like(log_grid, np.nan)
+            residuals[positive_vol] = (
+                -log_grid[positive_vol] / vol_grid[positive_vol]
+                + 0.5 * vol_grid[positive_vol]
+                - target
+            )
+            finite = np.isfinite(residuals)
+            exact = np.flatnonzero(finite & (np.abs(residuals) <= 1.0e-14))
+            if exact.size:
+                exact_root = float(log_grid[exact[np.argmin(np.abs(log_grid[exact]))]])
+                break
+            crossings = np.flatnonzero(
+                finite[:-1]
+                & finite[1:]
+                & (np.signbit(residuals[:-1]) != np.signbit(residuals[1:]))
+            )
+            if crossings.size:
+                midpoints = 0.5 * (log_grid[crossings] + log_grid[crossings + 1])
+                index = int(crossings[np.argmin(np.abs(midpoints))])
+                bracket = (float(log_grid[index]), float(log_grid[index + 1]))
+                break
+            width *= 2.0
+
+        if exact_root is not None:
+            log_strike = exact_root
+        elif bracket is not None:
+            log_strike = brenth(func, bracket[0], bracket[1], args=(target,))
+        else:
+            raise ValueError(f'no positive-volatility strike root for delta={given_delta:g}')
+        implied.append(forward * np.exp(log_strike))
+    return pd.Series(implied, index=deltas, dtype=float)
 
 
 def get_vols_delta_space(

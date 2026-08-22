@@ -24,7 +24,7 @@ enum case and includes Numba compilation on first use.
 | `getting_started/quick_run_lognormal_sv_pricer.py` | legacy plotted LogSV demonstration | core only, bundled chain | manual |
 | `calibration/run_lognormal_sv_pricer.py` | full analytic LogSV cases | core only, bundled chain | manual; optimization cases can take minutes |
 | `calibration/run_logsv_smile_fitter.py` | reproducible approximate smile fit | core only, bundled generated chain | manual |
-| `calibration/run_oca_logsv_calibration.py` | OCA integration with generated quotes | `research` extra; no credentials | manual optional integration |
+| `calibration/run_oca_logsv_calibration.py` | OCA integration with generated quotes | `research` extra; no credentials | synthetic conversion contracts in Linux CI; full calibration manual |
 | `calibration/load_cboe_option_chain.py` | provider-cache integration | OCA CBOE extra and local cache | private/local-data only |
 | `calibration/run_spy_thetadata_month.py` | provider-cache smile/calibration | `research` extra and local ThetaData cache | private/local-data only |
 | `options_time_series_data/plot_cboe_vol_time_series.py` | provider-cache time-series analysis | OCA CBOE extra and local cache | private/local-data only |

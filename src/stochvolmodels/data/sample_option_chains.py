@@ -936,4 +936,4 @@ def get_qv_options_test_chain_data(num_strikes: int = 21) -> OptionChain:
     return data
 
 
-# Manual dispatchers live in ``stochvolmodels.data.tests.sample_option_chains_test``.
+# Manual dispatchers live in ``stochvolmodels.data.tests.sample_option_chains_local``.

@@ -1,0 +1,36 @@
+name: Documentation
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  MPLBACKEND: Agg
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
+        with:
+          python-version: "3.12"
+      - name: Sync documentation environment
+        run: uv sync --locked --extra docs
+      - name: Build HTML with warnings as errors
+        run: uv run --no-sync python -m sphinx -E -W --keep-going -b html docs docs/_build/html
+      - name: Run documentation examples
+        run: uv run --no-sync python -m sphinx -E -W -b doctest docs docs/_build/doctest
+      - name: Check documentation links
+        run: uv run --no-sync python -m sphinx -E -W -b linkcheck docs docs/_build/linkcheck

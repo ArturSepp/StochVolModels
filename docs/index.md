@@ -44,6 +44,7 @@ heston_model
 calibration
 analytic_vs_monte_carlo
 numerical_accuracy_and_performance
+testing_and_coverage
 reproducing_the_papers
 package_comparison
 api

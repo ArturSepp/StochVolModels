@@ -142,7 +142,10 @@ class HestonPricer(ModelPricer):
         def objective(pars: np.ndarray, args: np.ndarray) -> float:
             """weighted mean squared error between model and market implied volatilities."""
             params = parse_model_params(pars=pars)
-            model_vols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params)
+            model_vols = self.compute_model_ivols_for_chain(
+                option_chain=option_chain,
+                params=params,
+            )
             resid = np.nansum(weights * np.square(to_flat_np_array(model_vols) - market_vols))
             return resid
 
@@ -159,7 +162,15 @@ class HestonPricer(ModelPricer):
         options = {'disp': True, 'ftol': 1e-8}
 
         if constraints is not None:
-            res = minimize(objective, p0, args=None, method='SLSQP', constraints=constraints, bounds=bounds, options=options)
+            res = minimize(
+                objective,
+                p0,
+                args=None,
+                method='SLSQP',
+                constraints=constraints,
+                bounds=bounds,
+                options=options,
+            )
         else:
             res = minimize(objective, p0, args=None, method='SLSQP', bounds=bounds, options=options)
 
@@ -222,13 +233,19 @@ def heston_chain_pricer(v0: float,
     """price an option chain by Fourier inversion of the Heston MGF."""
     if vol_scaler is None:
         vol_scaler = np.minimum(0.3, np.sqrt(v0*ttms[0]))
-    phi_grid, psi_grid, theta_grid = mgfp.get_transform_var_grid(vol_scaler=vol_scaler)
-    a_t0, b_t0 = np.zeros(phi_grid.shape[0], dtype=np.complex128), np.zeros(phi_grid.shape[0], dtype=np.complex128)
+    phi_grid, psi_grid, theta_grid = mgfp.get_transform_var_grid(
+        variable_type=variable_type,
+        vol_scaler=vol_scaler,
+    )
+    a_t0 = np.zeros(phi_grid.shape[0], dtype=np.complex128)
+    b_t0 = np.zeros(phi_grid.shape[0], dtype=np.complex128)
     ttm0 = 0.0
 
     # outputs as numpy lists
     model_prices_ttms = List()
-    for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm in zip(ttms, forwards, discfactors, strikes_ttms, optiontypes_ttms):
+    for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm in zip(
+        ttms, forwards, discfactors, strikes_ttms, optiontypes_ttms
+    ):
         log_mgf_grid, a_t0, b_t0 = compute_heston_mgf_grid(ttm=ttm - ttm0,
                                                            v0=v0,
                                                            theta=theta,
@@ -239,7 +256,7 @@ def heston_chain_pricer(v0: float,
                                                            psi_grid=psi_grid,
                                                            a_t0=a_t0,
                                                            b_t0=b_t0)
-        
+
         if variable_type == VariableType.LOG_RETURN:
             option_prices = mgfp.vanilla_slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
                                                                     phi_grid=phi_grid,
@@ -258,7 +275,7 @@ def heston_chain_pricer(v0: float,
                                                                discfactor=discfactor)
         else:
             raise NotImplementedError(f"variable_type={variable_type}")
-            
+
         model_prices_ttms.append(option_prices)
         ttm0 = ttm
 
@@ -288,7 +305,9 @@ def heston_mc_chain_pricer(ttms: np.ndarray,
     var0 = v0*np.ones(nb_path)
     # outputs as numpy lists
     option_prices_ttm, option_std_ttm = List(), List()
-    for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm in zip(ttms, forwards, discfactors, strikes_ttms, optiontypes_ttms):
+    for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm in zip(
+        ttms, forwards, discfactors, strikes_ttms, optiontypes_ttms
+    ):
         x0, var0, qvar0 = simulate_heston_x_vol_terminal(ttm=ttm - ttm0,
                                                          x0=x0,
                                                          var0=var0,
@@ -371,4 +390,4 @@ def v0_implied(v0: float, volvol: float, ttm: float):
     return v0
 
 
-# Manual scenarios are available in ``stochvolmodels.pricers.tests.heston_pricer_test``.
+# Manual scenarios are available in ``stochvolmodels.pricers.tests.heston_pricer_local``.

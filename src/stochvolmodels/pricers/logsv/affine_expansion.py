@@ -413,7 +413,7 @@ def solve_analytic_ode_for_a0(t_span: Tuple[float, float],
     dt = (t_span[1]-t_span[0]) / nt
 
     A0 = np.zeros_like(H, dtype=np.complex128)
-    quadratic = np.zeros_like(A0, dtype=np.complex128)
+    quadratic = np.zeros_like(A0, dtype=np.complex128)  # noqa: F841 - legacy scheme notation
 
     w, v = la.eig(L)
     v_inv = la.inv(v)

@@ -22,8 +22,8 @@ bibliography: paper.bib
 
 `stochvolmodels` is a Python library for pricing, simulation, implied-volatility analysis, and
 calibration of European options under stochastic-volatility models. It is the reference
-implementation of the Karasinski-Sepp log-normal stochastic-volatility (LogSV) model with
-quadratic drift [@sepp2023logsv]. The Heston model [@heston1993] is implemented through the same
+implementation of the Karasinski-Sepp log-normal stochastic-volatility (LogSV) model
+[@karasinski2012beta] with quadratic drift [@sepp2023logsv]. The Heston model [@heston1993] is implemented through the same
 interface as a benchmark, so a researcher can compare transform prices, Monte Carlo estimates,
 and calibrated volatility smiles without changing data conventions.
 
@@ -85,26 +85,37 @@ and convert between discount rates and factors explicitly. `ModelPricer` defines
 single-option, slice, chain, implied-volatility, calibration, and simulation interfaces. Concrete
 parameter dataclasses keep model state separate from data and dispatch.
 
+This interface embodies the package's extension logic. A new model engine supplies its parameter
+dataclass and three model-specific methods: analytic chain pricing through the model's
+moment-generating function, Monte Carlo chain pricing from its simulated dynamics, and
+constrained calibration that reports failure through `CalibrationError`. Single-option and slice
+pricing, implied-volatility inversion, Monte Carlo confidence bounds, and the visualisation layer
+are inherited unchanged. Requiring both pricing routes from every engine is deliberate: two
+implementations cost more to write, but each new model enters the analytic-versus-simulation
+comparison and the calibration workflow without new infrastructure.
+
 For LogSV and Heston, complex moment-generating-function grids feed transform pricing in the
 Fourier tradition of Carr and Madan [@carrmadan1999]. The corresponding Monte Carlo simulators
 provide an independent path to terminal returns, volatility, and quadratic variance. Numerical
 kernels are array-based and compiled with Numba [@lam2015numba], while containers, validation,
-and calibration remain in ordinary Python and NumPy [@harris2020numpy]. SciPy supplies numerical
-optimization and special functions [@virtanen2020scipy].
+and calibration remain in ordinary Python and NumPy [@harris2020numpy]. Numba is preferred to C
+or Cython extensions so that installation needs no build toolchain and the kernels remain
+readable Python; the accepted cost is a first-call compilation delay, which the quickstart
+documents. SciPy supplies numerical optimization and special functions [@virtanen2020scipy].
 
 The stable root namespace has 34 explicit exports. It contains LogSV and Heston parameters and
 pricers, option-chain classes and conventions, calibration enums and errors, supporting
 Gaussian-mixture and Student-t terminal-distribution pricers, delegated vanilla analytics, and
 quadratic-variance analytics. Historical names resolve lazily for compatibility, but are not the
 recommended starting point. Advanced Hawkes research and experimental rough-LogSV/factor-HJM
-modules are available only through deeper paths and are labelled accordingly.
+modules sit outside the stable list and are labelled accordingly.
 
 Verification follows the design. Limiting cases and closed-form identities complement stored
 regressions; analytic prices are compared with Monte Carlo estimates; calibration failures must
 raise `CalibrationError`; a one-state Gaussian mixture reduces to Black-Scholes; and Student-t
 prices satisfy the martingale and discounted put-call identities. CI builds the wheel first and
-runs tests against the installed artifact on Linux and Windows, while the offline quickstart and
-warning-free documentation build exercise the reviewer path.
+runs tests against the installed artifact on Linux, Windows, and macOS, while the offline
+quickstart and warning-free documentation build exercise the reviewer path.
 
 # Research impact statement
 
@@ -118,21 +129,24 @@ code, and exploratory analyses; it does not claim that every directory is an exa
 
 Development has been public since August 2022, with activity in 25 distinct calendar months by
 the v2.1.0 baseline. The public history includes contributions and merged pull requests from users
-outside the maintainer account. Research integrations that need plotting or licensed option data
-remain optional, while the package, synthetic calibration chain, tests, and first result are
-provider-independent.
+outside the maintainer account, and the supported publications extend beyond the maintainer's own
+group: the cryptocurrency inverse-options work is joint with Vladimir Lucic, and the clustered
+jump-risk work with Francis Liu and Natalie Packham. Research integrations that need `qis`
+reporting or licensed option data remain optional, while the package, synthetic calibration
+chain, tests, and first result are provider-independent.
 
 # AI usage disclosure
 
 The analytical models, financial conventions, and scientific interpretation are the human
 author's work; no model in the package originated from a generative-AI system. During the 2026 OSS
-adoption and JOSS-preparation work, the author used Anthropic Claude and OpenAI Codex through
-agentic coding interfaces to assist with repository audits, test and documentation infrastructure,
-code refactoring, and manuscript drafting. The tools worked from maintainer instructions and
-measured repository evidence. The author selected the scope, reviewed the changes, ran the
-independent numerical checks and paper reproductions appropriate to each change, and remains
-responsible for correctness, citations, licensing, and this manuscript. Tool/model versions that
-cannot be established from the retained records are not inferred.
+adoption and JOSS-preparation work, the author used Anthropic's Claude (2026 models) and OpenAI's
+Codex (GPT-5.6, 2026) through agentic coding interfaces to assist with repository audits, test
+and documentation infrastructure, code refactoring, and manuscript drafting. The tools worked
+from maintainer instructions and measured repository evidence. The author selected the scope,
+reviewed, edited, and validated the assisted output, ran the independent numerical checks and
+paper reproductions appropriate to each change, and remains responsible for correctness,
+citations, licensing, and this manuscript. Tool/model versions for earlier sessions that cannot
+be established from the retained records are not inferred.
 
 # Acknowledgements
 

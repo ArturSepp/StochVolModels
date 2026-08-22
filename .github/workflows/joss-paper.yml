@@ -1,5 +1,8 @@
 name: JOSS paper
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
@@ -24,15 +27,33 @@ on:
       - .github/workflows/joss-paper.yml
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  validate:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@a7345e0508bb808b80e45ac5f06b551ea02aa727 # v6.2.0
+        with:
+          python-version: "3.12"
+      - name: Validate manuscript structure and citations
+        run: python scripts/check_joss_paper.py
+
   evidence:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@a7345e0508bb808b80e45ac5f06b551ea02aa727 # v6.2.0
         with:
           python-version: "3.12"
       - name: Install package and test tools
@@ -43,13 +64,13 @@ jobs:
   paper:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build the JOSS draft PDF
-        uses: openjournals/openjournals-draft-action@master
+        uses: openjournals/openjournals-draft-action@85a18372e48f551d8af9ddb7a747de685fbbb01c
         with:
           journal: joss
           paper-path: paper.md
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: paper
+          name: stochvolmodels-joss-paper
           path: paper.pdf

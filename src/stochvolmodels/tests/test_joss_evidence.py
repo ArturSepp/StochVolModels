@@ -5,6 +5,8 @@ from __future__ import annotations
 import inspect
 import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -17,6 +19,7 @@ EVIDENCE_PATH = REPOSITORY_ROOT / "docs" / "audit" / "joss_evidence.json"
 API_PATH = REPOSITORY_ROOT / "docs" / "api.md"
 BIB_PATH = REPOSITORY_ROOT / "paper.bib"
 EXAMPLES_README_PATH = REPOSITORY_ROOT / "examples" / "README.md"
+PAPERS_README_PATH = REPOSITORY_ROOT / "papers" / "README.md"
 AUTHORSHIP_PATH = REPOSITORY_ROOT / "docs" / "audit" / "joss_authorship.json"
 AI_USE_PATH = REPOSITORY_ROOT / "docs" / "audit" / "ai_use.json"
 RESEARCH_IMPACT_PATH = REPOSITORY_ROOT / "docs" / "audit" / "research_impact.json"
@@ -72,6 +75,41 @@ def test_joss_citations_have_bibliography_entries() -> None:
     assert citations <= entries, sorted(citations - entries)
 
 
+def test_standalone_joss_validator_rejects_mutations(tmp_path: Path) -> None:
+    """The standard-library paper gate fails closed on representative submission defects."""
+    validator = REPOSITORY_ROOT / "scripts" / "check_joss_paper.py"
+    original = PAPER_PATH.read_text(encoding="utf-8")
+    bibliography = tmp_path / "paper.bib"
+    bibliography.write_text(BIB_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+
+    def run(mutated: str) -> subprocess.CompletedProcess[str]:
+        paper = tmp_path / "paper.md"
+        paper.write_text(mutated, encoding="utf-8")
+        return subprocess.run(
+            [
+                sys.executable,
+                str(validator),
+                "--paper",
+                str(paper),
+                "--bibliography",
+                str(bibliography),
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+    assert run(original).returncode == 0
+    mutations = (
+        original.replace("# Statement of need", "# Need", 1),
+        original.replace("[@heston1993]", "[@unknown_reference]", 1),
+        original + "\n" + "excess " * 1800,
+        original.removeprefix("---\n"),
+    )
+    for mutated in mutations:
+        completed = run(mutated)
+        assert completed.returncode != 0, completed.stdout
+
+
 def test_live_joss_evidence_matches_repository() -> None:
     """Stable-surface and manuscript measurements cannot drift silently."""
     evidence = _evidence()
@@ -114,8 +152,24 @@ def test_every_root_example_has_a_reviewer_lane() -> None:
         for path in (REPOSITORY_ROOT / "examples").rglob("*.py")
         if path.name != "__init__.py"
     )
-    unclassified = [script for script in scripts if script not in examples_readme]
-    assert unclassified == []
+    lanes = examples_readme.split("## Lanes", maxsplit=1)[1].split("## Option data", maxsplit=1)[0]
+    listed = re.findall(r"^\| `([^`]+\.py)` \|", lanes, re.MULTILINE)
+    assert sorted(listed) == scripts
+    assert len(listed) == len(set(listed)), "an example is classified more than once"
+
+
+def test_every_paper_directory_has_exactly_one_status_row() -> None:
+    """Published, development, and exploratory paper directories are all classified once."""
+    papers_readme = PAPERS_README_PATH.read_text(encoding="utf-8")
+    table = papers_readme.split("## Papers", maxsplit=1)[1].split("## Running", maxsplit=1)[0]
+    listed = re.findall(r"^\| `([^`]+)` \|", table, re.MULTILINE)
+    directories = sorted(
+        path.name
+        for path in (REPOSITORY_ROOT / "papers").iterdir()
+        if path.is_dir() and path.name != "__pycache__"
+    )
+    assert sorted(listed) == directories
+    assert len(listed) == len(set(listed)), "a paper directory is classified more than once"
 
 
 def test_human_evidence_ledgers_are_explicit_and_structured() -> None:

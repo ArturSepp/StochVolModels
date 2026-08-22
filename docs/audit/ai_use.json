@@ -7,19 +7,20 @@
     {
       "provider": "Anthropic",
       "tool": "Claude through an agentic coding interface",
-      "model_or_version": "not established by retained repository evidence",
-      "period": "2026 OSS adoption work before the JOSS roadmap",
+      "model_or_version": "Claude (2026 models); exact per-session versions of earlier 2026 sessions not established from retained repository evidence",
+      "period": "2026 OSS adoption and JOSS-preparation work",
       "assistance": [
         "repository review and roadmap feedback",
         "documentation and test-infrastructure assistance",
-        "code-refactoring assistance"
+        "code-refactoring assistance",
+        "JOSS submission review and the 2026-08-21 manuscript/repository-documentation consistency pass"
       ],
-      "evidence": "maintainer-provided CLAUDE roadmap reference and repository agent reports; exact sessions/models require human confirmation"
+      "evidence": "maintainer-provided CLAUDE roadmap reference, repository agent reports, and agents/JOSS_SUBMISSION_REVIEW_2026-08-21.md; exact earlier sessions/models require human confirmation"
     },
     {
       "provider": "OpenAI",
       "tool": "Codex through an agentic coding interface",
-      "model_or_version": "exact product model/version not retained in repository evidence",
+      "model_or_version": "GPT-5.6 (2026)",
       "period": "2026-08-21 JOSS roadmap and implementation batch",
       "assistance": [
         "repository and public-history audit",

@@ -105,7 +105,7 @@ class GmmPricer(ModelPricer):
 
         ttms = option_chain.ttms
         if len(ttms) > 1:
-            raise NotImplementedError(f"cannot calibrate to multiple slices")
+            raise NotImplementedError("cannot calibrate to multiple slices")
         ttm = ttms[0]
 
         # p0 = (gmm_weights, gmm_mus, gmm_vols)
@@ -286,4 +286,4 @@ def gmm_vanilla_chain_pricer(gmm_weights: np.ndarray,
     return model_prices_ttms
 
 
-# Manual scenarios are available in ``stochvolmodels.pricers.tests.gmm_pricer_test``.
+# Manual scenarios are available in ``stochvolmodels.pricers.tests.gmm_pricer_local``.

@@ -18,7 +18,7 @@ Distribution and import name `stochvolmodels`. Licensed MIT (`LICENSE.txt`).
 
 ## Ecosystem position
 
-This package is one of eight open-source Python libraries maintained at
+This package is one of nine open-source Python libraries maintained at
 [github.com/ArturSepp](https://github.com/ArturSepp). Before implementing anything
 non-trivial, check whether it already exists in one of these:
 
@@ -29,14 +29,15 @@ non-trivial, check whether it already exists in one of these:
 | `factorlasso` | factorlasso | Sparse factor models and factor covariance estimation |
 | `bbg-fetch` | BloombergFetch | Bloomberg data fetching |
 | `trendfollowing` | TrendFollowingSystems | Trend-following systems: closed-form theory and replication |
+| `privateassets` | PrivateAssets | Private-assets analytics |
 | `goal-based-allocation` | GoalBasedAllocation | Dynamic MV allocation under regime-switching jump-diffusions |
 | `stochvolmodels` | StochVolModels | Stochastic volatility pricing analytics |
 | `vanilla-option-pricers` | VanillaOptionPricers | Vanilla option pricers and implied volatility fitters |
 
 Actual package dependencies within the stack: `optimalportfolios` depends on `qis`
-and `factorlasso`; `trendfollowing` depends on `qis`; `stochvolmodels` depends on
-`vanilla-option-pricers` and has an optional `research` extra that pulls in `qis`.
-The others are independent.
+and `factorlasso`; `trendfollowing` and `privateassets` depend on `qis`; `stochvolmodels`
+depends on `vanilla-option-pricers` and has an optional `research` extra that pulls in
+`qis`. The others are independent.
 
 Do not vendor or copy code between these packages. If functionality belongs in a
 sibling package, say so rather than reimplementing it here.
@@ -46,13 +47,15 @@ sibling package, say so rather than reimplementing it here.
 ```
 src/stochvolmodels/
   pricers/           log-normal SV, Heston, Hawkes jump-diffusion, Gaussian mixture,
-                     Student-t; subpackages analytic/, logsv/, factor_hjm/, rough_logsv/;
-                     sibling tests/ packages hold manual checks
-  data/              option chain containers and market data; tests/ holds manual checks
+                     Student-t; subpackages logsv/, factor_hjm/, rough_logsv/;
+                     sibling tests/ packages hold *_local.py manual checks
+  data/              option chain containers and market data; tests/ holds *_local.py checks
+  fitters/           approximate LogSV smile fitter and Student-t utilities; tests/ holds
+                     *_local.py manual checks
   utils/             numerical utilities (Fourier transforms, quadrature, plotting)
   tests/             test modules (test_*.py) — inside the package
 examples/            repository-only runnable examples, grouped by task
-papers/              replication code, 8 directories
+papers/              replication code, 9 directories
   <paper>/paper/     article PDF and LaTeX source, where available
 docs/                Sphinx/Furo user guide, API reference, and adoption documentation
 CHANGELOG.md         every public change is recorded here
@@ -60,28 +63,35 @@ CHANGELOG.md         every public change is recorded here
 
 There is no top-level `tests/` directory. Automated tests live in
 `src/stochvolmodels/tests/`; feature-local `tests/` packages contain only explicitly run manual
-checks named `<module>_test.py`.
+checks named `<module>_local.py`.
 
 ## Commands
 
 ```bash
-pip install -e ".[dev]"
-pytest                                     # testpaths points at src/stochvolmodels/tests
-pytest src/stochvolmodels/tests/ -v        # what CI runs
-ruff check src/stochvolmodels/             # lint
+uv sync --extra dev --locked
+uv run pytest -m "not slow"                       # core-fast source suite
+uv run pytest -m slow                             # numerical regression/simulation suite
+uv run pytest --cov=stochvolmodels --cov-report=json
+uv run python scripts/check_coverage_scopes.py coverage.json
+uv run --only-group lint ruff check --select F,TID251,TID253,ICN src/stochvolmodels
+uv run --only-group lint interrogate -v src/stochvolmodels
+python -m pytest --pyargs stochvolmodels          # complete installed-wheel collection
 ```
 
-Optional extras: `research` (pulls in `qis`), `visualization`, `numerical`, `jupyter`,
-`docs`, `dev` (includes `pytest-regressions`), `all`. Supported Python is >= 3.10; CI runs
-Linux 3.10 - 3.13 plus a Windows 3.12 numerical-regression lane.
+Optional extras: `research` (pulls in `qis` and OCA), `visualization`, `numerical`, `jupyter`,
+`docs`, `dev` (includes `pytest-regressions`), `all`. Supported Python is >= 3.10. CI runs Linux
+3.10 - 3.13, Windows 3.12 numerical regressions, macOS 3.12 smoke tests, a core-only installed
+wheel, cross-platform quickstarts, documentation/doctests/link checks, and scheduled audits.
 
 ## Conventions
 
 - Test files are named `test_*.py` and live in `src/stochvolmodels/tests/`. Nothing named
   `test_*.py` sits anywhere else in the package.
-- Following QIS, manual `LocalTests` dispatchers live in a sibling `tests/` package as
-  `<module>_test.py`, separate from both production modules and pytest collection.
-- Line length 100 (`ruff`, rules `E`, `F`, `W`, `I`).
+- Following OptimalPortfolios, manual `LocalTests` dispatchers live in a sibling `tests/` package
+  as `<module>_local.py`. Every file matching pytest's `test_*.py` or `*_test.py` patterns is an
+  automated test and must collect at least one test.
+- Line length 100 (`ruff`, configured rules `E`, `F`, `W`; CI gates correctness and import
+  boundaries through `F`, `TID251`, `TID253`, and `ICN`).
 - Pricing kernels are `numba`-compiled (14 modules import numba): keep them array-based,
   avoid pandas inside compiled code, and preserve the existing signature style. A
   mutable default such as `arr: np.ndarray = None` cannot be typed in nopython mode.
@@ -216,7 +226,7 @@ its out-of-scope list is binding.
 ## Replication contract
 
 `papers/` reproduces the results of the published papers, including the log-normal
-stochastic volatility model with quadratic drift (IJTAF 2024, 26(8) 2450003), stochastic
+stochastic volatility model with quadratic drift (IJTAF 2023, 26(8) 2450003), stochastic
 volatility for the factor HJM framework (Review of Derivatives Research 2025, 28:12), and
 cryptocurrency inverse options. Changes to pricers, transforms, or simulation must be
 verified against these before being proposed.

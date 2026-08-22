@@ -54,7 +54,7 @@
         "paper_phrase": null
       },
       "paper_body_words": {
-        "value": 1065,
+        "value": 1231,
         "how": "whitespace-separated paper.md body tokens after YAML front matter",
         "live": true,
         "paper_phrase": null

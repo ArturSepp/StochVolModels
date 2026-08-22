@@ -9,7 +9,10 @@ from stochvolmodels.utils.mgf_pricer import compute_integration_weights
 def test_simpson_weights_integrate_low_order_polynomials() -> None:
     integration_grid = np.linspace(-2.0, 2.0, 9)
     transform_grid = 0.5 + 1j * integration_grid
-    weights = compute_integration_weights(transform_grid, is_simpson=True)
+    weights = compute_integration_weights.py_func(transform_grid, is_simpson=True)
+    np.testing.assert_allclose(
+        compute_integration_weights(transform_grid, is_simpson=True), weights
+    )
 
     np.testing.assert_allclose(np.dot(weights, np.ones(9)), 4.0, atol=1.0e-14)
     np.testing.assert_allclose(np.dot(weights, integration_grid), 0.0, atol=1.0e-14)
@@ -25,7 +28,10 @@ def test_simpson_weights_integrate_low_order_polynomials() -> None:
 def test_trapezoidal_weights_integrate_constant_and_linear_functions() -> None:
     integration_grid = np.linspace(0.0, 1.0, 5)
     transform_grid = -0.5 + 1j * integration_grid
-    weights = compute_integration_weights(transform_grid, is_simpson=False)
+    weights = compute_integration_weights.py_func(transform_grid, is_simpson=False)
+    np.testing.assert_allclose(
+        compute_integration_weights(transform_grid, is_simpson=False), weights
+    )
 
     np.testing.assert_allclose(np.dot(weights, np.ones(5)), 1.0, atol=1.0e-14)
     np.testing.assert_allclose(np.dot(weights, integration_grid), 0.5, atol=1.0e-14)
@@ -34,7 +40,7 @@ def test_trapezoidal_weights_integrate_constant_and_linear_functions() -> None:
 def test_simpson_weights_reject_even_point_grid() -> None:
     transform_grid = 1j * np.linspace(0.0, 1.0, 4)
     with pytest.raises(ValueError, match="odd"):
-        compute_integration_weights(transform_grid, is_simpson=True)
+        compute_integration_weights.py_func(transform_grid, is_simpson=True)
 
 
 @pytest.mark.parametrize(
@@ -50,7 +56,7 @@ def test_integration_weights_reject_invalid_grids(
     grid: np.ndarray, is_simpson: bool, message: str
 ) -> None:
     with pytest.raises(ValueError, match=message):
-        compute_integration_weights(1j * grid, is_simpson=is_simpson)
+        compute_integration_weights.py_func(1j * grid, is_simpson=is_simpson)
 
 
 def _expected_payoffs(spots: np.ndarray, strike: float) -> np.ndarray:
@@ -71,7 +77,7 @@ def test_mc_payoff_codes_match_direct_pathwise_calculation() -> None:
     optiontypes = np.array(["C", "P", "IC", "IP"])
     discfactor = 0.95
 
-    prices, standard_errors = compute_mc_vars_payoff(
+    prices, standard_errors = compute_mc_vars_payoff.py_func(
         x0=x0,
         sigma0=np.ones_like(x0),
         qvar0=np.zeros_like(x0),
@@ -83,6 +89,17 @@ def test_mc_payoff_codes_match_direct_pathwise_calculation() -> None:
         variable_type=VariableType.LOG_RETURN,
     )
     payoffs = _expected_payoffs(spots, strike=1.0)
+    compiled_prices, compiled_errors = compute_mc_vars_payoff(
+        x0=x0,
+        sigma0=np.ones_like(x0),
+        qvar0=np.zeros_like(x0),
+        ttm=1.0,
+        forward=1.0,
+        strikes_ttm=strikes,
+        optiontypes_ttm=optiontypes,
+        discfactor=discfactor,
+        variable_type=VariableType.LOG_RETURN,
+    )
 
     np.testing.assert_allclose(prices, discfactor * np.mean(payoffs, axis=1), atol=1.0e-14)
     np.testing.assert_allclose(
@@ -90,6 +107,8 @@ def test_mc_payoff_codes_match_direct_pathwise_calculation() -> None:
         discfactor * np.std(payoffs, axis=1) / np.sqrt(spots.size),
         atol=1.0e-14,
     )
+    np.testing.assert_allclose(compiled_prices, prices, rtol=0.0, atol=1.0e-14)
+    np.testing.assert_allclose(compiled_errors, standard_errors, rtol=0.0, atol=1.0e-14)
 
 
 def test_mc_standard_error_scales_with_inverse_sqrt_path_count() -> None:
@@ -104,14 +123,14 @@ def test_mc_standard_error_scales_with_inverse_sqrt_path_count() -> None:
         variable_type=VariableType.LOG_RETURN,
     )
 
-    prices, standard_errors = compute_mc_vars_payoff(
+    prices, standard_errors = compute_mc_vars_payoff.py_func(
         x0=x0,
         sigma0=np.ones_like(x0),
         qvar0=np.zeros_like(x0),
         **common,
     )
     repeated_x0 = np.tile(x0, 4)
-    repeated_prices, repeated_errors = compute_mc_vars_payoff(
+    repeated_prices, repeated_errors = compute_mc_vars_payoff.py_func(
         x0=repeated_x0,
         sigma0=np.ones_like(repeated_x0),
         qvar0=np.zeros_like(repeated_x0),
@@ -128,7 +147,7 @@ def test_mc_qvar_payoff_uses_annualized_quadratic_variance() -> None:
     strikes = np.array([0.15, 0.15])
     optiontypes = np.array(["C", "P"])
 
-    prices, _ = compute_mc_vars_payoff(
+    prices, _ = compute_mc_vars_payoff.py_func(
         x0=np.zeros(qvar0.size),
         sigma0=np.ones(qvar0.size),
         qvar0=qvar0,
@@ -150,7 +169,7 @@ def test_mc_qvar_payoff_uses_annualized_quadratic_variance() -> None:
 
 def test_mc_payoff_rejects_unknown_option_type() -> None:
     with pytest.raises(ValueError, match="payoff"):
-        compute_mc_vars_payoff(
+        compute_mc_vars_payoff.py_func(
             x0=np.zeros(4),
             sigma0=np.ones(4),
             qvar0=np.zeros(4),
@@ -158,4 +177,18 @@ def test_mc_payoff_rejects_unknown_option_type() -> None:
             forward=1.0,
             strikes_ttm=np.array([1.0]),
             optiontypes_ttm=np.array(["BAD"]),
+        )
+
+
+def test_mc_payoff_rejects_unsupported_variable() -> None:
+    with pytest.raises(NotImplementedError):
+        compute_mc_vars_payoff.py_func(
+            x0=np.zeros(4),
+            sigma0=np.ones(4),
+            qvar0=np.zeros(4),
+            ttm=1.0,
+            forward=1.0,
+            strikes_ttm=np.array([1.0]),
+            optiontypes_ttm=np.array(["C"]),
+            variable_type=VariableType.SIGMA,
         )

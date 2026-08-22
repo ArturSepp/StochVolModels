@@ -17,6 +17,7 @@ release = metadata["version"]
 extensions = [
     "myst_parser",
     "sphinx.ext.autodoc",
+    "sphinx.ext.doctest",
     "sphinx.ext.napoleon",
 ]
 autodoc_typehints = "description"

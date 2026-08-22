@@ -11,6 +11,7 @@ Karasinski-Sepp log-normal stochastic-volatility model.
 [![Python](https://img.shields.io/pypi/pyversions/stochvolmodels?style=flat-square)](https://pypi.org/project/stochvolmodels/)
 [![License](https://img.shields.io/github/license/ArturSepp/StochVolModels.svg?style=flat-square)](LICENSE.txt)
 [![CI](https://github.com/ArturSepp/StochVolModels/actions/workflows/ci.yml/badge.svg)](https://github.com/ArturSepp/StochVolModels/actions)
+[![Documentation](https://readthedocs.org/projects/stochvolmodels/badge/?version=latest)](https://stochvolmodels.readthedocs.io/en/latest/)
 [![Downloads](https://static.pepy.tech/badge/stochvolmodels)](https://pepy.tech/project/stochvolmodels)
 [![Monthly](https://static.pepy.tech/badge/stochvolmodels/month)](https://pepy.tech/project/stochvolmodels)
 [![Open LogSV quickstart in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ArturSepp/StochVolModels/blob/main/examples/getting_started/quickstart_colab.ipynb)
@@ -26,7 +27,7 @@ Karasinski-Sepp log-normal stochastic-volatility model.
 
 ## Statement of need
 
-`stochvolmodels` is the reference implementation of the Karasinski-Sepp log-normal beta stochastic volatility model, maintained by one of the model's originators, with the Heston model implemented alongside as a benchmark. The design goal is a single generic interface for a stochastic volatility model — a closed-form moment generating function for Fourier-transform pricing on one side, Monte Carlo dynamics on the other — so that analytic prices, simulated prices, and calibrated implied volatilities are directly comparable model to model.
+`stochvolmodels` is the reference implementation of the Karasinski-Sepp log-normal stochastic volatility model, maintained by one of the model's originators, with the Heston model implemented alongside as a benchmark. The design goal is a single generic interface for a stochastic volatility model — a closed-form moment generating function for Fourier-transform pricing on one side, Monte Carlo dynamics on the other — so that analytic prices, simulated prices, and calibrated implied volatilities are directly comparable model to model.
 
 Researchers and quantitative practitioners need more than a standalone pricing formula when they
 evaluate a stochastic-volatility specification: market quotes must share explicit forward,
@@ -36,27 +37,7 @@ libraries provide much broader instrument infrastructure, while model collection
 formulas. This package deliberately serves the narrower workflow around the quadratic-drift LogSV
 model, with Heston as a like-for-like benchmark and paper implementations tied to the same code.
 
-The same analytics power the research: the `papers` module reproduces the computations and figures of five papers, from the quadratic-drift log-normal SV model (IJTAF) to cryptocurrency inverse options (Quantitative Finance), robust stochastic volatility modelling, impermanent-loss hedging in DeFi, and stochastic volatility for the factor HJM framework — see [Supporting Illustrations](#papers).
-
-## Overview
-
-The StochVol package provides:
-1) Analytics for Black-Scholes and Normal vols
-2) Interfaces and implementation for stochastic volatility models,
-including Karasinski-Sepp log-normal SV model and Heston SV model 
-using analytical method with Fourier transform and Monte Carlo simulations
-3) Visualization of model implied volatilities
-
-For the analytic implementation of stochastic volatility models, the package provides interfaces for a generic volatility model with the following features.
-1) Interface for analytical pricing of vanilla options 
-using Fourier transform with closed-form solution for moment generating function
-2) Interface for Monte-Carlo simulations of model dynamics
-
-
-[Illustrations](#papers) of using package analytics for research 
-work is provided in top-level package ```papers``` 
-which contains computations and visualisations for several papers
-
+The same analytics power the research: the repository's `papers/` directory reproduces the computations and figures of five papers, from the quadratic-drift log-normal SV model (IJTAF) to cryptocurrency inverse options (Quantitative Finance), robust stochastic volatility modelling, impermanent-loss hedging in DeFi, and stochastic volatility for the factor HJM framework — see [Supporting Illustrations](#papers).
 
 ## When to use it — and when not
 
@@ -93,6 +74,8 @@ From a source checkout, verify the complete public artifact and documentation pa
 python -m pip install -e ".[dev,docs]"
 python -m pytest -m "not slow"
 python -m pytest -m slow
+python -m pytest --cov=stochvolmodels --cov-report=json
+python scripts/check_coverage_scopes.py coverage.json
 python -m sphinx -W --keep-going -b html docs docs/_build/html
 python -m build
 python scripts/check_wheel_contents.py dist/*.whl
@@ -107,7 +90,7 @@ because Numba compiles the numerical kernels. See the
 
 ### Core Dependencies
 - `python >= 3.10`
-- `vanilla-option-pricers >= 2.0.0, < 3.0.0`
+- `vanilla-option-pricers >= 2.0.0`
 - `numba >= 0.60.0`
 - `numpy >= 2.0`
 - `scipy >= 1.12.0`
@@ -123,13 +106,15 @@ because Numba compiles the numerical kernels. See the
 | `visualization` | `plotly >= 5.0.0` | interactive figures |
 | `numerical` | `scikit-learn >= 1.3.0`, `statsmodels >= 0.14.0` | statistical fits |
 | `jupyter` | `jupyter`, `notebook`, `jupyterlab`, `ipykernel`, `ipywidgets` | notebooks |
-| `dev` | `pytest`, `pytest-cov`, `pytest-regressions`, `ruff` | tests and linting |
+| `dev` | `pytest`, `pytest-cov`, `pytest-regressions` | automated tests and coverage |
 
 Install an extra using
 ```python
 pip install stochvolmodels[research]
 ```
 The library itself imports none of these: `import stochvolmodels` needs the core dependencies only.
+Pinned contributor lint and audit tools live in PEP 735 groups and are installed with `uv`; see
+the [testing and coverage guide](https://stochvolmodels.readthedocs.io/en/latest/testing_and_coverage.html).
 
 ### API stability
 
@@ -147,8 +132,9 @@ minor releases. The legacy `Gaussian_interval` quadrature path requires unsuppor
 
 # Table of contents
 1. [Model Interface](#introduction)
-    1. [Log-normal stochastic volatility model](#logsv)
-    2. [Heston stochastic volatility model](#hestonsv)
+    1. [Adding a new model engine](#newmodel)
+    2. [Log-normal stochastic volatility model](#logsv)
+    3. [Heston stochastic volatility model](#hestonsv)
 2. [Running log-normal SV pricer](#paragraph1)
    1. [Computing model prices and vols](#subparagraph1)
    2. [Running model calibration to sample Bitcoin options data](#subparagraph2)
@@ -158,8 +144,6 @@ minor releases. The legacy `Gaussian_interval` quadrature path requires unsuppor
 4. [Supporting Illustrations for Public Papers](#papers)
 
 
-Running model calibration to sample Bitcoin options data
-
 ## Implemented Stochastic Volatility models <a name="introduction"></a>
 The package provides interfaces for a generic volatility model with the following features.
 1) Interface for analytical pricing of vanilla options using Fourier transform with closed-form solution for moment generating function
@@ -167,6 +151,29 @@ The package provides interfaces for a generic volatility model with the followin
 3) Interface for visualization of model implied volatilities
 
 The model interface is in `src/stochvolmodels/pricers/model_pricer.py`.
+
+### Adding a new model engine <a name="newmodel"></a>
+
+`ModelPricer` separates what a model must supply from what every model inherits. To add a model
+engine, subclass `ModelPricer`, define the model's `ModelParams` dataclass, and implement three
+model-specific pieces:
+
+1. `price_chain` — analytic pricing of an `OptionChain`, typically a wrapper over a
+   Numba-compiled moment-generating-function transform;
+2. `model_mc_price_chain` with `simulate_vol_paths` and `simulate_terminal_values` — Monte Carlo
+   simulation of the model dynamics and chain pricing from the simulated paths;
+3. `calibrate_model_params_to_chain` — constrained calibration to an option chain, reporting
+   failures through `CalibrationError`.
+
+Everything downstream is inherited and works unchanged for the new model: single-option and
+slice pricing (`price_vanilla`, `price_slice`), model implied vols from chain prices
+(`compute_chain_prices_with_vols`), Monte Carlo implied vols with confidence bounds
+(`compute_mc_chain_implied_vols`), and the visualisation layer (`plot_model_ivols`,
+`plot_model_ivols_vs_bid_ask`, `plot_model_ivols_vs_mc`). `LogSVPricer` and `HestonPricer` are
+the two stable reference implementations of this contract. Requiring both the analytic and the
+Monte Carlo route from each model is deliberate: it means every new engine can be cross-validated
+analytic-versus-simulation through the same interface, at the cost of implementing two pricing
+paths rather than one.
 
 ### Log-normal stochastic volatility model <a name="logsv"></a>
 
@@ -478,7 +485,7 @@ plt.show()
 
 ## Supporting Illustrations for Public Papers <a name="papers"></a>
 
-As illustrations of different analytics, this package includes module ```papers``` 
+As illustrations of different analytics, this repository includes the directory ```papers/```
 with codes for computations and visualisations featured in several papers
 for 
 
@@ -555,6 +562,7 @@ StochVolModels/
 ├── src/
 │   └── stochvolmodels/
 │       ├── data/                 # option-chain containers and sample data
+│       ├── fitters/              # approximate LogSV smile fitter and Student-t utilities
 │       ├── pricers/              # analytic, transform, and Monte Carlo models
 │       ├── utils/                # quadrature, payoff, plotting, and rate helpers
 │       └── tests/                # shipped pytest suite and regression data
@@ -562,8 +570,7 @@ StochVolModels/
 │   ├── getting_started/
 │   ├── pricing/
 │   ├── calibration/
-│   ├── monte_carlo/
-│   └── advanced/
+│   └── options_time_series_data/
 ├── papers/                       # paper replications and labelled development code
 ├── docs/                         # documentation sources and figures
 └── README.md
@@ -580,11 +587,12 @@ This package is part of an open-source Python stack for quantitative finance —
 | [`factorlasso`](https://github.com/ArturSepp/factorlasso) | Sparse factor models and factor covariance estimation |
 | [`bbg-fetch`](https://github.com/ArturSepp/BloombergFetch) | Bloomberg data fetching |
 | [`trendfollowing`](https://github.com/ArturSepp/TrendFollowingSystems) | Trend-following systems: closed-form theory and replication |
+| [`privateassets`](https://github.com/ArturSepp/PrivateAssets) | Private-assets analytics |
 | [`goal-based-allocation`](https://github.com/ArturSepp/GoalBasedAllocation) | Dynamic MV allocation under regime-switching jump-diffusions |
 | [`stochvolmodels`](https://github.com/ArturSepp/StochVolModels) *(this package)* | Stochastic volatility pricing analytics |
 | [`vanilla-option-pricers`](https://github.com/ArturSepp/VanillaOptionPricers) | Vectorised vanilla option pricers and implied volatility fitters |
 
-Dependency links within the stack: `optimalportfolios` builds on `qis` and `factorlasso`; `trendfollowing` builds on `qis`.
+Dependency links within the stack: `optimalportfolios` builds on `qis` and `factorlasso`; `trendfollowing` and `privateassets` build on `qis`.
 
 ## Contributing
 
@@ -600,10 +608,11 @@ This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.t
 If you use this package in your research, please cite the relevant papers:
 
 ```bibtex
-@misc{sepp2024stochvolmodels,
+@misc{sepp2026stochvolmodels,
   title={StochVolModels: Python Implementation of Stochastic Volatility Models},
   author={Sepp, Artur},
-  year={2024},
+  year={2026},
+  version={2.1.0},
   howpublished={\url{https://github.com/ArturSepp/StochVolModels}},
   note={Python package for pricing analytics and Monte Carlo simulations}
 }

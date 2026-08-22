@@ -1,0 +1,47 @@
+name: Audit
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  push:
+    branches: [main]
+    paths: [pyproject.toml, uv.lock, .github/workflows/audit.yml]
+  pull_request:
+    branches: [main]
+    paths: [pyproject.toml, uv.lock, .github/workflows/audit.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
+        with:
+          python-version: "3.12"
+      - name: Resolve latest dependency trees
+        run: |
+          uv pip compile --all-extras --python-version 3.12 --quiet pyproject.toml -o "$RUNNER_TEMP/all.txt"
+          uv pip compile --python-version 3.12 --quiet pyproject.toml -o "$RUNNER_TEMP/core.txt"
+          uv pip compile --extra dev --python-version 3.12 --quiet pyproject.toml -o "$RUNNER_TEMP/dev.txt"
+      - name: Audit latest and locked all-extras trees
+        run: |
+          uv run --locked --only-group audit pip-audit -r "$RUNNER_TEMP/all.txt"
+          uv export --locked --all-extras --no-emit-project --quiet --format requirements-txt -o "$RUNNER_TEMP/locked.txt"
+          uv run --locked --only-group audit pip-audit -r "$RUNNER_TEMP/locked.txt"
+      - name: Assert optional dependencies do not leak into core or dev
+        if: ${{ !cancelled() }}
+        run: >-
+          uv run --no-project python scripts/check_dependency_boundaries.py
+          "$RUNNER_TEMP/core.txt" "$RUNNER_TEMP/dev.txt"

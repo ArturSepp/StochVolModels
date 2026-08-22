@@ -154,7 +154,7 @@ def compute_vanilla_price_tdist(spot: Union[float, np.ndarray],
             h_1 = cum_mean_tdist(x=x_lower_bound, mu=0.0, vol=vol, nu=nu, ttm=ttm)
             price_ = ((strike_ - spot_star) * (c_y - c_1) - spot * (h_y - h_1)+strike_*c_1)
         else:
-            raise NotImplementedError(f"optiontype")
+            raise NotImplementedError("optiontype")
         return discfactor * price_
 
     if isinstance(optiontypes, str):
@@ -229,4 +229,4 @@ def infer_tdist_implied_vols_from_model_slice_prices(ttm: float,
     return model_vol_ttm
 
 
-# Manual scenarios are available in ``stochvolmodels.fitters.tests.tdist_test``.
+# Manual scenarios are available in ``stochvolmodels.fitters.tests.tdist_local``.

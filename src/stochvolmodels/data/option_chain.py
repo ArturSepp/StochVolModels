@@ -602,7 +602,7 @@ class SwOptionChain:
     def reduce_ttms(self, ttms_ids: List[str]):
         """restrict the cube to the listed expiry ids."""
         if not np.all(np.isin(ttms_ids, self.ttms_ids)):
-            raise ValueError(f"Expiries to be removed not present if chain")
+            raise ValueError("Expiries to be removed not present if chain")
         idx_ttms = np.where(np.isin(self.ttms_ids, ttms_ids))[0]
         strikes = [[self.strikes_ttms[idx_tenor][idx_ttm] for idx_ttm in idx_ttms] for
                    idx_tenor, _ in enumerate(self.tenors_ids)]
@@ -628,7 +628,7 @@ class SwOptionChain:
     def reduce_tenors(self, tenors_ids: List[str]):
         """restrict the cube to the listed swap tenor ids."""
         if not np.all(np.isin(tenors_ids, self.tenors_ids)):
-            raise ValueError(f"Tenors to be removed not present if chain")
+            raise ValueError("Tenors to be removed not present if chain")
         idx_tenors = np.where(np.isin(self.tenors_ids, tenors_ids))[0]
         strikes = [[self.strikes_ttms[idx_tenor][idx_ttm] for idx_ttm, _ in enumerate(self.ttms_ids)] for
                    idx_tenor in idx_tenors]
@@ -703,7 +703,7 @@ class SwOptionChain:
     @classmethod
     def get_slices_as_chain(cls, option_chain: SwOptionChain, ids: List[str]) -> SwOptionChain:
         """sub-cube containing only the listed slice ids."""
-        indices = np.in1d(option_chain.ttms_ids, ids).nonzero()[0]
+        indices = np.isin(option_chain.ttms_ids, ids).nonzero()[0]
         option_chain = cls(ccy=option_chain.ccy,
                            ttms=option_chain.ttms[indices],
                            tenors=option_chain.tenors,
@@ -793,7 +793,7 @@ class FutOptionChain:
         Optionally forces the at-the-money strike into the selection regardless of rank.
         """
         if self.call_oi is None:
-            raise NotImplementedError(f"call/put open interest cannot be None")
+            raise NotImplementedError("call/put open interest cannot be None")
 
         mid_idx = int(0.5 * (self.strikes_ttms[0].size - 1))
 
@@ -856,7 +856,7 @@ class FutOptionChain:
     def reduce_ttms(self, ttms_ids: List[str]):
         """restrict the chain to the listed expiry ids."""
         if not np.all(np.isin(ttms_ids, self.ttms_ids)):
-            raise ValueError(f"Expiries to be removed not present if chain")
+            raise ValueError("Expiries to be removed not present if chain")
         idx_ttms = np.where(np.isin(self.ttms_ids, ttms_ids))[0]
         strikes = [self.strikes_ttms[idx_ttm] for idx_ttm in idx_ttms]
         ivs_call_ttms = [self.ivs_call_ttms[idx_ttm] for idx_ttm in idx_ttms]

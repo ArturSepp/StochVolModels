@@ -7,9 +7,9 @@ import pytest
 pytestmark = pytest.mark.optional_integration
 
 pytest.importorskip('qis')
-pytest.importorskip('option_chain_analytics')
-
-from option_chain_analytics import generate_simulated_options_data
+generate_simulated_options_data = pytest.importorskip(
+    'option_chain_analytics'
+).generate_simulated_options_data
 
 from stochvolmodels.data import fetch_option_chain as fetch
 

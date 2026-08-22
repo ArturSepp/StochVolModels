@@ -176,7 +176,7 @@ class RateLogSvParams(RateLogSvParamsBase):
         assert tenor == self.term
         ts_sw = get_default_swap_term_structure(expiry=expiry, tenor=tenor)
         if expiry not in t_grid:
-            raise ValueError(f"expiry must be in grid")
+            raise ValueError("expiry must be in grid")
         idx_ttm = np.where(t_grid == expiry)[0][0]
         t_grid = t_grid[:idx_ttm + 1]
 
@@ -305,7 +305,7 @@ class MultiFactRateLogSvParams(ModelParams):
         assert self.A.shape[1] == self.basis.nb_factors
 
         if self.vol_interpolation not in ["BY_YIELD", "DIRECT"]:
-            raise NotImplementedError(f"Wrong vol interpolation type")
+            raise NotImplementedError("Wrong vol interpolation type")
 
         # TODO: check if definition of cholesky decomposion is same assume,
         # TODO: in numpy resuling R is lower triangular
@@ -413,7 +413,7 @@ class MultiFactRateLogSvParams(ModelParams):
         # interpolate a, beta, vol-vol from coarse grid to finer one
         ts_sw = get_default_swap_term_structure(expiry=expiry, tenor=tenor)
         if expiry not in t_grid:
-            raise ValueError(f"expiry must be in grid")
+            raise ValueError("expiry must be in grid")
         idx_ttm = np.where(t_grid == expiry)[0][0]
         t_grid = t_grid[:idx_ttm + 1]
 
@@ -466,7 +466,7 @@ class MultiFactRateLogSvParams(ModelParams):
         q = self.theta if self.q is None else self.q
 
         if expiry not in t_grid:
-            raise ValueError(f"expiry must be in grid")
+            raise ValueError("expiry must be in grid")
         idx_ttm = np.where(t_grid == expiry)[0][0]
         t_grid = t_grid[:idx_ttm + 1]
 
@@ -612,7 +612,7 @@ class MultiFactRateLogSvParams(ModelParams):
         elif id == '194d':
             return 194.0/365
         else:
-            raise NotImplementedError(f"id not found")
+            raise NotImplementedError("id not found")
 
 
     def calc_factor_vols(self, yield_vols: np.ndarray) -> np.ndarray:

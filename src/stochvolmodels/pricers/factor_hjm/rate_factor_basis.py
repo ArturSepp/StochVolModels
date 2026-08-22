@@ -185,11 +185,11 @@ class Cheyette1D(BasisHJM):
 
     def get_basis(self, tau: float) -> np.ndarray:
         """main basis vector B(tau) of Eq. (2) at tenor tau."""
-        raise NotImplementedError(f"not supported for Cheyette1D")
+        raise NotImplementedError("not supported for Cheyette1D")
 
     def get_aux_basis(self, tau: float):
         """auxiliary basis vector B~(tau) of Eq. (2) at tenor tau."""
-        raise NotImplementedError(f"not supported for Cheyette1D")
+        raise NotImplementedError("not supported for Cheyette1D")
 
     @classmethod
     def get_nb_factors(cls) -> int:
@@ -207,7 +207,7 @@ class Cheyette1D(BasisHJM):
         # D[1, 2] = 1.0
         # return D
         """generator matrix D of the main basis, B(tau) = B_0 exp(D tau) in Eq. (3)."""
-        raise NotImplementedError(f"not supported for Cheyette1D")
+        raise NotImplementedError("not supported for Cheyette1D")
 
     def get_aux_generating_matrix(self) -> np.ndarray:
         # D = np.zeros((self.nb_aux_factors, self.nb_aux_factors))
@@ -218,7 +218,7 @@ class Cheyette1D(BasisHJM):
         # D[5, 6] = D[6, 7] = 1.0
         # return D
         """generator matrix D~ of the auxiliary basis, with spectrum given by Eq. (24)."""
-        raise NotImplementedError(f"not supported for Cheyette1D")
+        raise NotImplementedError("not supported for Cheyette1D")
 
     def get_matrix_B(self, key_terms: List[float]) -> np.ndarray:
         # assert len(key_terms) == 3  # for now we assume three key terms
@@ -228,11 +228,11 @@ class Cheyette1D(BasisHJM):
         #
         # return B
         """matrix of basis values across the key tenors."""
-        raise NotImplementedError(f"not supported for Cheyette1D")
+        raise NotImplementedError("not supported for Cheyette1D")
 
     def calc_Omega(self, M: np.ndarray) -> np.ndarray:
         """auxiliary drift Omega_t solving Eq. (5) for the given factor covariance."""
-        raise NotImplementedError(f"not supported for Cheyette1D")
+        raise NotImplementedError("not supported for Cheyette1D")
 
     # @njit(cache=False, fastmath=True) # TODO: cannot make it numba as it is member function
     def bond_coeffs(self, tau: float) -> Tuple[np.ndarray, np.ndarray]:

@@ -622,6 +622,7 @@ class LogSVPricer(ModelPricer):
                    variable_type: VariableType = VariableType.LOG_RETURN,
                    vol_scaler: float = None
                    ) -> np.ndarray:
+        """Compute the requested LogSV terminal density on ``space_grid``."""
         return logsv_pdfs(params=params,
                           ttm=ttm,
                           space_grid=space_grid,
@@ -644,6 +645,7 @@ def v0_implied(atm: float, beta: float, volvol: float, theta: float, kappa1: flo
     vartheta2 = beta2 + volvol2
 
     def simple():
+        """Return the regular short-maturity approximation for the initial volatility."""
         return atm - (beta2 + volvol2) * ttm / 4.0
 
     if np.abs(beta) > 1.0:  # cannot use approximation when beta is too high
@@ -928,9 +930,9 @@ def simulate_vol_paths(ttm: float,
         brownians = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))
 
     if is_spot_measure:
-        alpha, adj = -1.0, 0.0
+        alpha, adj = -1.0, 0.0  # noqa: F841 - retain the published scheme notation
     else:
-        alpha, adj = 1.0, beta
+        alpha, adj = 1.0, beta  # noqa: F841 - retain the published scheme notation
 
     vartheta2 = beta*beta + volvol*volvol
     vartheta = np.sqrt(vartheta2)
@@ -1178,6 +1180,11 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
                                               variable_type: VariableType = VariableType.LOG_RETURN,
                                               debug: bool = False  # print per-slice path diagnostics
                                               ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+    """Price a rough-LogSV option chain using caller-supplied Gaussian draws.
+
+    This experimental routine preserves identical random inputs across parameter
+    evaluations, which is useful for calibration diagnostics.
+    """
     assert weights.shape == nodes.shape and weights.ndim == 1
     # assert kappa2 == 0.0
     N = nodes.size
@@ -1224,4 +1231,4 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
 
     return option_prices_ttm, option_std_ttm
 
-# Manual scenarios are available in ``stochvolmodels.pricers.tests.logsv_pricer_test``.
+# Manual scenarios are available in ``stochvolmodels.pricers.tests.logsv_pricer_local``.

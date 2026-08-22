@@ -30,7 +30,7 @@ keywords = [
     "volatility surface",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Financial and Insurance Industry",
     "Intended Audience :: Science/Research",
@@ -83,7 +83,6 @@ dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pytest-regressions>=2.8.3",
-    "ruff>=0.4",
 ]
 
 docs = [
@@ -94,6 +93,16 @@ docs = [
 
 all = [
     "stochvolmodels[research,visualization,numerical,jupyter]",
+]
+
+[dependency-groups]
+# Contributor-only tools are exact so local and CI verdicts are reproducible.
+lint = [
+    "ruff==0.16.2",
+    "interrogate==1.7.0",
+]
+audit = [
+    "pip-audit==2.10.1",
 ]
 
 [project.urls]
@@ -132,10 +141,60 @@ markers = [
 
 [tool.ruff]
 line-length = 100
+exclude = ["src/stochvolmodels/pde_solvers"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
+select = ["E", "F", "W"]
+extend-select = ["TID251", "TID253", "ICN"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"optimalportfolios".msg = "Subject packages must not depend on each other."
+"factorlasso".msg = "Subject packages must not depend on each other."
+"trendfollowing".msg = "Subject packages must not depend on each other."
+"privateassets".msg = "Subject packages must not depend on each other."
+"goal_based_allocation".msg = "Subject packages must not depend on each other."
+
+[tool.ruff.lint.flake8-tidy-imports]
+banned-module-level-imports = [
+    "qis",
+    "option_chain_analytics",
+    "plotly",
+    "sklearn",
+    "statsmodels",
+    "yfinance",
+    "yaml",
+]
+
+[tool.ruff.lint.flake8-import-conventions.aliases]
+numpy = "np"
+pandas = "pd"
+
+[tool.ruff.lint.per-file-ignores]
+# Experimental research modules retain dormant derivation variables and imports.
+"src/stochvolmodels/pricers/factor_hjm/**" = ["F401", "F841", "TID253"]
+"src/stochvolmodels/pricers/rough_logsv/split_simulation.py" = ["F401"]
+# Dedicated optional-data leaf; it is not reachable from the package root.
+"src/stochvolmodels/data/fetch_option_chain.py" = ["TID253"]
+# Manual diagnostics are optional-extra entry points and are not imported by the package root.
+"src/stochvolmodels/**/tests/*_local.py" = ["TID253"]
+
+[tool.interrogate]
+fail-under = 100
+ignore-init-method = true
+ignore-magic = true
+ignore-semiprivate = true
+ignore-private = true
+exclude = [
+    "src/stochvolmodels/tests",
+    "src/stochvolmodels/pde_solvers",
+    "src/stochvolmodels/pricers/factor_hjm",
+    "src/stochvolmodels/pricers/rough_logsv",
+]
 
 [tool.coverage.run]
 source = ["stochvolmodels"]
 omit = ["*/tests/*", "*/examples/*", "*/pde_solvers/*"]
+
+[tool.coverage.report]
+precision = 2
+fail_under = 44.5

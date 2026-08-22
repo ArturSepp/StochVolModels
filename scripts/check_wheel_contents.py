@@ -39,8 +39,22 @@ def check_wheel(wheel_path: Path) -> None:
         "machine-local settings.yaml entered the wheel"
     )
     assert "stochvolmodels/__init__.py" in members
-    assert any(member.startswith("stochvolmodels/tests/test_") for member in members)
-    assert any(member.endswith(".npz") for member in members), "regression baseline is missing"
+    test_modules = {
+        member
+        for member in members
+        if member.startswith("stochvolmodels/tests/test_") and member.endswith(".py")
+    }
+    assert len(test_modules) == 20, (
+        f"expected exactly 20 automated test modules, found {len(test_modules)}"
+    )
+    assert not any(member.endswith("_test.py") for member in members), (
+        "manual diagnostics must use the *_local.py suffix"
+    )
+    baselines = {member for member in members if member.endswith(".npz")}
+    assert baselines == {
+        "stochvolmodels/tests/test_rough_logsv_pricer_regression/"
+        "test_rough_logsv_pricer_pricing_regression.npz"
+    }, f"unexpected regression baselines: {sorted(baselines)}"
     assert not any(member.endswith((".pyc", ".pyo")) for member in members)
 
     print(f"wheel-content-check: PASS ({len(members)} files): {wheel_path.name}")

@@ -1,0 +1,56 @@
+name: Examples
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  MPLBACKEND: Agg
+  TZ: UTC
+
+jobs:
+  quickstart:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
+        with:
+          python-version: "3.12"
+      - name: Sync core environment
+        run: uv sync --locked
+      - name: Validate Colab mirror
+        run: uv run --no-sync python scripts/check_quickstart_notebook.py
+      - name: Run canonical offline example
+        run: uv run --no-sync python examples/getting_started/quickstart.py
+
+  oca-synthetic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
+        with:
+          python-version: "3.12"
+      - name: Sync research integration environment
+        run: uv sync --locked --extra research --extra dev
+      - name: Run deterministic OCA contracts
+        run: >-
+          uv run --no-sync pytest
+          src/stochvolmodels/tests/test_oca_option_chain_adapter.py
+          src/stochvolmodels/tests/test_cboe_option_data_optional.py -v

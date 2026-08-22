@@ -141,14 +141,14 @@ class ModelPricer(ABC):
         abstract method for pricing chain data using simulation of model dynamics
         recommended as a wrapper for numba implementation
         """
-        raise NotImplementedError(f"must be implemented in parent class")
+        raise NotImplementedError("must be implemented in parent class")
 
     def calibrate_model_params_to_chain(self, option_chain: OptionChain, **kwargs):
         """
         this is analytic method for model calibration
         we keep as not generic because model implementation may not require calibration of model parameters
         """
-        raise NotImplementedError(f"must be implemented in parent class")
+        raise NotImplementedError("must be implemented in parent class")
 
     #########################################################
     #          implemented interfaces for pricing
@@ -202,13 +202,13 @@ class ModelPricer(ABC):
         """
         get grid of vol paths
         """
-        raise NotImplementedError(f"must be implemented in parent class")
+        raise NotImplementedError("must be implemented in parent class")
 
     def simulate_terminal_values(self, params: ModelParams, **kwargs) -> (np.ndarray, np.ndarray, np.ndarray):
         """
         get realizationss of terminal paths of x, vol, qvar
         """
-        raise NotImplementedError(f"must be implemented in parent class")
+        raise NotImplementedError("must be implemented in parent class")
 
     #########################################################
     #          implemented interfaces for mc implied vol comptutions
@@ -253,8 +253,8 @@ class ModelPricer(ABC):
         cut_off = 1e16
         # nan can be present too
         inf_nans = np.isnan(t_values)
-        inf_pos = np.greater(t_values, cut_off, where=inf_nans == False)
-        inf_neg = np.less(t_values, -cut_off, where=inf_nans == False)
+        inf_pos = np.logical_and(~inf_nans, t_values > cut_off)
+        inf_neg = np.logical_and(~inf_nans, t_values < -cut_off)
 
         print(f"in mc: num -inf = {np.sum(inf_neg)}, num +inf = {np.sum(inf_pos)}, num nans = {np.sum(inf_nans)}")
         t_values = t_values[np.logical_and(np.logical_and(inf_neg == False, inf_pos == False), inf_nans == False)]
@@ -271,7 +271,7 @@ class ModelPricer(ABC):
         """
         model pdf
         """
-        raise NotImplementedError(f"must be implemented in parent class")
+        raise NotImplementedError("must be implemented in parent class")
 
     #########################################################
     #          visualization interfaces

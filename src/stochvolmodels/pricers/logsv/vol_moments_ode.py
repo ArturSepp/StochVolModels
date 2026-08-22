@@ -8,11 +8,11 @@ into the finite linear system of Eq. (3.48) once truncated at order k*. That
 system is solved by matrix exponentiation in Eq. (3.49), and integrated over
 [0, tau] in Eq. (3.54) to give the expected quadratic variance of Eq. (3.53).
 
-Manual scenarios are available in ``stochvolmodels.pricers.logsv.tests.vol_moments_ode_test``.
+Manual scenarios are available in ``stochvolmodels.pricers.logsv.tests.vol_moments_ode_local``.
 
 Reference
 ---------
-A. Sepp and P. Rakhmonov (2024), Log-normal Stochastic Volatility Model with
+A. Sepp and P. Rakhmonov (2023), Log-normal Stochastic Volatility Model with
 Quadratic Drift, International Journal of Theoretical and Applied Finance 26(8),
 2450003. Equation numbers throughout this module refer to that article.
 """

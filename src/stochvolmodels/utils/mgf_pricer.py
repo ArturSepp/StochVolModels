@@ -209,14 +209,14 @@ def vanilla_slice_pricer_with_mgf_grid(log_mgf_grid: np.ndarray,
             elif type_ == 'P':
                 option_prices[idx] = discfactor*(strike - strike * capped_option_price)
             else:
-                raise ValueError(f"not implemented")
+                raise ValueError("not implemented")
         else:  # for inverse measure we multiply by forward
             if type_ in ['IC', 'C']:
                 option_prices[idx] = forward*discfactor*(1.0 - capped_option_price)
             elif type_ in ['IP', 'P']:
                 option_prices[idx] = forward*discfactor*(np.exp(-x) - capped_option_price)
             else:
-                raise ValueError(f"not implemented")
+                raise ValueError("not implemented")
 
     return option_prices
 
@@ -262,7 +262,7 @@ def digital_slice_pricer_with_mgf_grid(log_mgf_grid: np.ndarray,
             else:
                 price = digital_option_price
         else:
-            raise ValueError(f"not implemented")
+            raise ValueError("not implemented")
 
         option_prices[idx] = discfactor * price
 
@@ -313,9 +313,9 @@ def slice_pricer_with_mgf_grid_with_gamma(log_mgf_grid: np.ndarray,
             elif type_ == 'P':
                 option_prices[idx] = (strike - normalizer*gamma_strike * capped_option_price)
             else:
-                raise ValueError(f"not implemented")
+                raise ValueError("not implemented")
         else:
-            raise ValueError(f"not implemented")
+            raise ValueError("not implemented")
 
     return option_prices
 
@@ -348,12 +348,12 @@ def slice_qvar_pricer_with_a_grid(log_mgf_grid: np.ndarray,
             if type_ == 'C':
                 option_prices[idx] = option_price
             else:
-                raise ValueError(f"not implemented")
+                raise ValueError("not implemented")
         else:
             if type_ == 'C':
                 option_prices[idx] = option_price
             else:
-                raise ValueError(f"not implemented")
+                raise ValueError("not implemented")
 
     return option_prices
 

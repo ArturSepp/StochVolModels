@@ -2,8 +2,8 @@
 fetch OptionChain data with live options data
 
 this module is not imported by ``src/stochvolmodels/__init__.py``: it needs two packages
-that are not core dependencies, ``qis`` (the [research] extra) and
-``option-chain-analytics`` (not packaged as an extra, install it directly)
+that are not core dependencies, ``qis`` and ``option-chain-analytics``. Both are installed by
+the [research] extra; install OptionChainAnalytics provider extras separately when required
 see https://pypi.org/project/option-chain-analytics
 """
 

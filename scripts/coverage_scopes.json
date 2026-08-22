@@ -1,0 +1,15 @@
+{
+  "whole": {
+    "minimum_percent": 44.5
+  },
+  "stable": {
+    "minimum_percent": 86.5,
+    "exclude_path_fragments": [
+      "/pricers/factor_hjm/",
+      "/pricers/rough_logsv/",
+      "/pricers/hawkes_jd_pricer.py",
+      "/utils/plots.py",
+      "/utils/rate_core.py"
+    ]
+  }
+}

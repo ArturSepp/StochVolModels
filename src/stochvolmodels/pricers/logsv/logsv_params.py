@@ -301,6 +301,7 @@ class LogSvParams(ModelParams):
         theta2 = self.theta2
 
         def c(n: int) -> float:
+            """Return the diffusion contribution to the order-``n`` moment."""
             return 0.5 * vartheta2 * n * (n - 1.0)
 
         lambda_m = np.zeros((n_terms, n_terms))
@@ -338,6 +339,7 @@ class LogSvParams(ModelParams):
         print the per-moment diagonal conditions c(n) - n kappa and the spectrum of Lambda.
         """
         def c(n: int) -> float:
+            """Return the diffusion contribution to the order-``n`` moment."""
             return 0.5 * self.vartheta2 * n * (n - 1.0)
 
         cond_m2 = c(2) - 2.0*self.kappa

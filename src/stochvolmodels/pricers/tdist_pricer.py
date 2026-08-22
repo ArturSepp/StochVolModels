@@ -76,7 +76,7 @@ class TdistPricer(ModelPricer):
         """
         ttms = option_chain.ttms
         if len(ttms) > 1:
-            raise NotImplementedError(f"cannot calibrate to multiple slices")
+            raise NotImplementedError("cannot calibrate to multiple slices")
         ttm = ttms[0]
         rf_rate = option_chain.discount_rates[0]
 
@@ -176,4 +176,4 @@ def tdist_vanilla_chain_pricer(vol: float,
     return model_prices_ttms
 
 
-# Manual scenarios are available in ``stochvolmodels.pricers.tests.tdist_pricer_test``.
+# Manual scenarios are available in ``stochvolmodels.pricers.tests.tdist_pricer_local``.

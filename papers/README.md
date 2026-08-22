@@ -1,6 +1,6 @@
 # papers
 
-Code accompanying the published papers. Eight directories contain figure and calibration
+Code accompanying the published papers. Nine directories contain figure and calibration
 replication workflows; `jump_risk_premia_clustered_jumps/` is explicitly retained as development
 code rather than an exact replication package. Nothing here is imported by `stochvolmodels`: the
 dependency runs one way, `papers` uses the package.
@@ -16,15 +16,18 @@ pip install stochvolmodels[research]
 The research workflows commonly import `qis`. Only `il_hedging` and `sv_for_factor_hjm` run
 without it.
 
-Two further packages are not covered by any extra. Install them for the directories that need them:
+The `research` extra installs OptionChainAnalytics. One further package is not covered by an
+extra; install it for the directories that need it. Install OCA provider extras only when a
+provider workflow requires them:
 
 ```python
-pip install yfinance                  # volatility_models, jump-risk-premia development code
-pip install option-chain-analytics    # option-chain research and development workflows
+pip install yfinance                              # volatility_models, jump-risk-premia code
+pip install "option-chain-analytics[cboe]>=5.0.0" # local CBOE provider workflows
 ```
 
-`option-chain-analytics` is needed by the option-chain workflows in `risk_premia_gmm/`,
-`logsv_model_with_quadratic_drift/`, and `jump_risk_premia_clustered_jumps/`.
+The base `option-chain-analytics` package from `[research]` is needed by option-chain workflows in
+`risk_premia_gmm/`, `logsv_model_with_quadratic_drift/`, and
+`jump_risk_premia_clustered_jumps/`.
 
 ## Papers
 
