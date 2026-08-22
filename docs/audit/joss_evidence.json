@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "as_of": "2026-08-21",
+  "as_of": "2026-08-22",
   "baseline": {
     "tag": "v2.1.0",
     "commit": "c109a6dde3eb3fb6ca34a8ebe577d682b92f8439",
@@ -33,7 +33,7 @@
     "moving_metrics_policy": "Regenerate at the submission commit; do not gate ordinary commits on moving GitHub counts."
   },
   "current": {
-    "measured_at_commit": "c109a6dde3eb3fb6ca34a8ebe577d682b92f8439",
+    "measured_at_commit": "db6ea3ec2e724ae8d08e19bc9a8e41054b6f4dd7",
     "metrics": {
       "package_version": {
         "value": "2.1.0",
@@ -60,13 +60,13 @@
         "paper_phrase": null
       },
       "collected_tests": {
-        "value": 100,
+        "value": 187,
         "how": "python -m pytest --collect-only -q",
         "live": false,
         "paper_phrase": null
       },
       "commits": {
-        "value": 106,
+        "value": 108,
         "how": "git rev-list --count HEAD",
         "live": false,
         "paper_phrase": null
