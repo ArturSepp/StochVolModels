@@ -25,10 +25,10 @@ enum case and includes Numba compilation on first use.
 | `calibration/run_lognormal_sv_pricer.py` | full analytic LogSV cases | core only, bundled chain | manual; optimization cases can take minutes |
 | `calibration/run_logsv_smile_fitter.py` | reproducible approximate smile fit | core only, bundled generated chain | manual |
 | `calibration/run_oca_logsv_calibration.py` | OCA integration with generated quotes | `research` extra; no credentials | synthetic conversion contracts in Linux CI; full calibration manual |
-| `calibration/load_cboe_option_chain.py` | provider-cache integration | OCA CBOE extra and local cache | private/local-data only |
+| `calibration/load_cboe_option_chain.py` | provider-cache integration | `research` extra and local cache | private/local-data only |
 | `calibration/run_spy_thetadata_month.py` | provider-cache smile/calibration | `research` extra and local ThetaData cache | private/local-data only |
-| `options_time_series_data/plot_cboe_vol_time_series.py` | provider-cache time-series analysis | OCA CBOE extra and local cache | private/local-data only |
-| `options_time_series_data/plot_vix_1m_atm_vol.py` | continuous VIX ATM-volatility history | partitioned OCA VIX EOD cache | private/local-data only |
+| `options_time_series_data/plot_cboe_vol_time_series.py` | provider-cache time-series analysis | `research` extra and local cache | private/local-data only |
+| `options_time_series_data/plot_vix_1m_atm_vol.py` | continuous VIX ATM-volatility history | `research` extra and partitioned OCA VIX EOD cache | private/local-data only |
 | `pricing/plot_bsm_zero_dte_theta.py` | offline vanilla visualization | core only | manual plotting |
 | `pricing/run_heston.py` | offline stable Heston demonstration | core only | manual plotting |
 | `pricing/run_heston_sv_pricer.py` | extended Heston research cases | core only, legacy/advanced exports | manual advanced |
@@ -38,9 +38,10 @@ enum case and includes Numba compilation on first use.
 | `pricing/run_qvar_analytics.py` | analytic/MC quadratic-variance research | core only, internal APIs | manual advanced |
 
 The core project dependencies cover the model examples. The optional `research` extra installs
-base OCA 5 and supports the credential-free `calibration/run_oca_logsv_calibration.py` bridge. The
-CBOE time-series lane additionally needs the `cboe` extra and local normalized SPX/VIX caches; its
-directory README gives the setup. Paper-replication code under `papers/` also uses `research`.
+OCA 5 with its CBOE/Parquet support and supports the credential-free
+`calibration/run_oca_logsv_calibration.py` bridge. The CBOE time-series lane also needs local
+normalized SPX/VIX caches; its directory README gives the setup. Paper-replication code under
+`papers/` also uses `research`.
 
 ## Option data and calibration
 
@@ -109,7 +110,7 @@ The `smile` case applies the fast approximate `fit_logsv_ivols()` fitter to one 
 
 ### 4. Local CBOE cache
 
-Install `option-chain-analytics[cboe]>=5.0.0`, keep normalized SPX/VIX data under
+Install the `research` extra, keep normalized SPX/VIX data under
 `<RESOURCE_PATH>/cboe_options`, and run:
 
 ```bash

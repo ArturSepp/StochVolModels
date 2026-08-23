@@ -32,7 +32,7 @@ first listed maturity at least 30 calendar days ahead and plots:
 Install the optional data stack alongside this repository:
 
 ```bash
-python -m pip install -e ".[research]" "option-chain-analytics[cboe]>=5.0.0"
+python -m pip install -e ".[research]"
 ```
 
 Build the local normalized caches with OCA before running the example. With no path override, the
