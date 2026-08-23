@@ -1,4 +1,25 @@
-# CBOE option time-series examples
+# Option time-series examples
+
+## Continuous VIX 1-month ATM volatility
+
+`plot_vix_1m_atm_vol.py` reads the partitioned continuous VIX EOD dataset produced by OCA,
+extracts the nearest-forward ATM call/put mean for each listed expiry, and interpolates total
+variance to a constant 30-day maturity. Every observation uses one option-market session only;
+the script neither extrapolates the expiry curve nor fills missing dates.
+
+The default input is `<RESOURCE_PATH>/vix_continuous_eod`, resolved through
+`stochvolmodels.local_path`. The plot and its reusable CSV are written to the configured
+`OUTPUT_PATH`:
+
+```bash
+python examples/options_time_series_data/plot_vix_1m_atm_vol.py
+```
+
+Use `--cache-root` and `--output-dir` to override those locations, `--target-days` for another
+constant maturity, and `--no-show` in automation. If the dataset manifest records a provider
+cutover, the plot marks it without hardcoding the date.
+
+## Bounded CBOE ATM-volatility and skew analysis
 
 `plot_cboe_vol_time_series.py` uses the SVM experiment adapter and OptionChainAnalytics (OCA) to
 load the local normalized SPX or VIX CBOE-data cache into `OptionsDataDFs`. It then rolls to the

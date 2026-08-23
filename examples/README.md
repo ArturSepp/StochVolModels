@@ -28,6 +28,7 @@ enum case and includes Numba compilation on first use.
 | `calibration/load_cboe_option_chain.py` | provider-cache integration | OCA CBOE extra and local cache | private/local-data only |
 | `calibration/run_spy_thetadata_month.py` | provider-cache smile/calibration | `research` extra and local ThetaData cache | private/local-data only |
 | `options_time_series_data/plot_cboe_vol_time_series.py` | provider-cache time-series analysis | OCA CBOE extra and local cache | private/local-data only |
+| `options_time_series_data/plot_vix_1m_atm_vol.py` | continuous VIX ATM-volatility history | partitioned OCA VIX EOD cache | private/local-data only |
 | `pricing/plot_bsm_zero_dte_theta.py` | offline vanilla visualization | core only | manual plotting |
 | `pricing/run_heston.py` | offline stable Heston demonstration | core only | manual plotting |
 | `pricing/run_heston_sv_pricer.py` | extended Heston research cases | core only, legacy/advanced exports | manual advanced |
@@ -114,6 +115,7 @@ Install `option-chain-analytics[cboe]>=5.0.0`, keep normalized SPX/VIX data unde
 ```bash
 python examples/calibration/load_cboe_option_chain.py
 python examples/options_time_series_data/plot_cboe_vol_time_series.py
+python examples/options_time_series_data/plot_vix_1m_atm_vol.py
 ```
 
 These workflows are cache-first and never copy the underlying provider dataset into SVM. By
@@ -121,6 +123,11 @@ default, OCA resolves its configured raw-data and cache roots independently. Pas
 uses OCA's custom co-located source/cache convention. If OCA rejects an old derived cache as stale,
 the adapter warns and performs only the requested bounded raw-data load; rebuild the cache with the
 current OCA version to restore cached performance.
+
+The VIX history script reads the stitched partitioned cache at
+`<RESOURCE_PATH>/vix_continuous_eod`. It calculates the 30-day constant-maturity series with
+same-session total-variance interpolation and writes both CSV and PNG outputs. Its directory
+README documents path overrides and the no-display automation mode.
 
 The BTC/ETH Tardis adapters are exercised by the paper workflows rather than the standalone
 examples. They deliberately expose separate raw-hourly and exact-08:00-UTC EOD routes; see
