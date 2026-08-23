@@ -135,13 +135,6 @@ dmypy.json
 .pyre/
 /resources
 /outputs/
-/volatility_book/*
-!/volatility_book/__init__.py
-!/volatility_book/ch_vol_estimation/
-/volatility_book/ch_vol_estimation/notes/
-/volatility_book/ch_vol_estimation/outputs/
-/volatility_book/ch_vol_estimation/resources/
 /agents/
 /papers/sv_for_factor_hjm/empirics/xml/
 /src/stochvolmodels/pde_solvers/
-/papers/volatility_book_2026/

@@ -18,9 +18,6 @@ Entries start at 1.2.0. For earlier releases see the git log.
   pooled OHLC level-NNLS fits with immutable diagnostics and non-negative predictions.
 - `walk_forward_volatility_forecast` adds expanding or rolling horizon-purged refits, immutable
   per-origin and per-refit diagnostics, forecast losses, and common-sample benchmark comparisons.
-- The repository-only `volatility_book/ch_vol_estimation` workflow adds checksum-manifested Yahoo
-  and Bloomberg acquisition, strict provider reconciliation, and the initial 1/5/21-day model
-  study.
 - `stochvolmodels.fitters.adapters.oca.option_chain_from_oca` is the reusable conversion from
   one OCA point-in-time `SlicesChain` to SVM calibration inputs.
 - `plot_vix_1m_atm_vol.py` extracts and plots a same-session, constant-maturity VIX ATM

@@ -25,7 +25,6 @@ recursive-exclude examples *
 recursive-exclude papers *
 recursive-exclude docs *
 recursive-exclude resources *
-recursive-exclude volatility_book *
 recursive-exclude src/stochvolmodels/pde_solvers *
 
 global-exclude *.png

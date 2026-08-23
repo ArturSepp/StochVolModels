@@ -14,26 +14,21 @@ by `stochvolmodels`: the dependency runs one way, `papers` uses the package.
 pip install stochvolmodels[research]
 ```
 
-The established paper workflows commonly import `qis`. `il_hedging` and `sv_for_factor_hjm` run
-without it. The volatility-book workflow now lives under
-[`volatility_book/ch_vol_estimation`](../volatility_book/ch_vol_estimation); its provider-neutral
-parts also run without `qis` and its live acquisition uses the optional clients named below.
+The established paper workflows commonly import `qis`. Only `il_hedging` and `sv_for_factor_hjm`
+run without it.
 
 The `research` extra installs OptionChainAnalytics. One further package is not covered by an
 extra; install it for the directories that need it. Install OCA provider extras only when a
 provider workflow requires them:
 
 ```python
-pip install yfinance                              # volatility_models, volatility-book, jump-risk-premia code
+pip install yfinance                              # volatility_models, jump-risk-premia code
 pip install "option-chain-analytics[cboe]>=5.0.0" # local CBOE provider workflows
 ```
 
 The base `option-chain-analytics` package from `[research]` is needed by option-chain workflows in
 `risk_premia_gmm/`, `logsv_model_with_quadratic_drift/`, and
 `jump_risk_premia_clustered_jumps/`.
-The Bloomberg book lane additionally uses the separately installed sibling `bbg-fetch` package
-and an entitled Bloomberg session; it is not required for public Yahoo replication.
-
 ## Papers
 
 Two directories carry the article and its LaTeX source under `paper/`, so the equations the
