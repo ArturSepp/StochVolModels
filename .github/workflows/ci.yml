@@ -1,3 +1,4 @@
+# SHARED CI CORE v1.0 — T2 — synced 2026-08-22
 name: CI
 
 permissions:
@@ -21,26 +22,43 @@ env:
 jobs:
   linux-source:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install uv and Python ${{ matrix.python-version }}
-        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Sync locked primary environment
         if: matrix.python-version == '3.12'
-        run: uv sync --extra dev --extra research --locked
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if uv sync --group test --extra research --locked; then exit 0; fi
+            if [ "$attempt" -eq 3 ]; then echo "::error::uv sync failed after 3 attempts"; exit 1; fi
+            delay=$((attempt * 30 - 15))
+            echo "::warning::uv sync attempt $attempt failed; retrying in ${delay}s"
+            sleep "$delay"
+          done
 
       - name: Resolve current compatibility environment
         if: matrix.python-version != '3.12'
-        run: uv sync --extra dev --upgrade
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if uv sync --group test --upgrade; then exit 0; fi
+            if [ "$attempt" -eq 3 ]; then echo "::error::uv sync failed after 3 attempts"; exit 1; fi
+            delay=$((attempt * 30 - 15))
+            echo "::warning::uv sync attempt $attempt failed; retrying in ${delay}s"
+            sleep "$delay"
+          done
 
       - name: Run fast source tests
         if: matrix.python-version != '3.12'
@@ -65,17 +83,18 @@ jobs:
 
   windows-numerical-regression:
     runs-on: windows-latest
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install uv and Python 3.12
-        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           python-version: "3.12"
 
       - name: Sync locked test environment
-        run: uv sync --extra dev --locked
+        run: uv sync --group test --locked
 
       - name: Run fast source tests
         run: uv run --no-sync pytest -m "not slow" -v
@@ -85,33 +104,38 @@ jobs:
 
   macos-source-smoke:
     runs-on: macos-latest
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install uv and Python 3.12
-        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           python-version: "3.12"
 
       - name: Sync locked test environment
-        run: uv sync --extra dev --locked
+        run: uv sync --group test --locked
 
       - name: Run fast source tests
         run: uv run --no-sync pytest -m "not slow" -v
 
   wheel:
+    name: built wheel (core install)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install uv and Python 3.12
-        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           python-version: "3.12"
-      - name: Build and inspect wheel
+      - name: Build the wheel from the source distribution
         run: |
-          uv build --wheel --out-dir dist
+          uv build --sdist --clear --out-dir dist
+          uv build --wheel dist/*.tar.gz --out-dir dist
+      - name: Assert wheel contents
+        run: |
           uv run --no-project python scripts/check_wheel_contents.py dist/*.whl
       - name: Install core wheel and test tools in a clean environment
         run: |

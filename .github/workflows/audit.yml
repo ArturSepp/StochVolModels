@@ -1,3 +1,4 @@
+# SHARED CI CORE v1.0 — T2 — synced 2026-08-22
 name: Audit
 
 on:
@@ -16,32 +17,34 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  MPLBACKEND: Agg
 
 jobs:
   audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install uv
-        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           python-version: "3.12"
       - name: Resolve latest dependency trees
         run: |
           uv pip compile --all-extras --python-version 3.12 --quiet pyproject.toml -o "$RUNNER_TEMP/all.txt"
           uv pip compile --python-version 3.12 --quiet pyproject.toml -o "$RUNNER_TEMP/core.txt"
-          uv pip compile --extra dev --python-version 3.12 --quiet pyproject.toml -o "$RUNNER_TEMP/dev.txt"
+          uv pip compile --group test --python-version 3.12 --quiet -o "$RUNNER_TEMP/test.txt"
       - name: Audit latest and locked all-extras trees
         run: |
           uv run --locked --only-group audit pip-audit -r "$RUNNER_TEMP/all.txt"
           uv export --locked --all-extras --no-emit-project --quiet --format requirements-txt -o "$RUNNER_TEMP/locked.txt"
           uv run --locked --only-group audit pip-audit -r "$RUNNER_TEMP/locked.txt"
-      - name: Assert optional dependencies do not leak into core or dev
+      - name: Assert optional dependencies do not leak into core or test
         if: ${{ !cancelled() }}
         run: >-
           uv run --no-project python scripts/check_dependency_boundaries.py
-          "$RUNNER_TEMP/core.txt" "$RUNNER_TEMP/dev.txt"
+          "$RUNNER_TEMP/core.txt" "$RUNNER_TEMP/test.txt"

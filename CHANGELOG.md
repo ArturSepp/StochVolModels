@@ -4,6 +4,14 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+### Added
+- `plot_vix_1m_atm_vol.py` extracts and plots a same-session, constant-maturity VIX ATM
+  implied-volatility history from a partitioned OCA EOD cache without committing provider data.
+
+### Removed
+- The legacy `dev` extra has been retired; contributor test dependencies now live in the
+  PEP 735 `test` dependency group.
+
 ## [2.2.0] - 2026-08-22
 
 ### Added

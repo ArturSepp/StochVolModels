@@ -1,4 +1,4 @@
-"""Reject optional distributions in freshly resolved core and development trees."""
+"""Reject optional distributions in freshly resolved core and test trees."""
 
 from __future__ import annotations
 
@@ -16,9 +16,9 @@ MODULE_DISTRIBUTIONS = {
     "sklearn": {"scikit-learn"},
     "yaml": {"pyyaml"},
 }
-# pytest-regressions legitimately brings PyYAML into the contributor-only dev tree. It remains
+# pytest-regressions legitimately brings PyYAML into the contributor-only test tree. It remains
 # forbidden from core and from module-level first-party imports.
-TREE_ALLOWANCES = {"dev": {"pyyaml"}}
+TREE_ALLOWANCES = {"dev": {"pyyaml"}, "test": {"pyyaml"}}
 
 
 def _normalise(name: str) -> str:
@@ -85,7 +85,7 @@ def check_boundaries(pyproject: Path, requirement_files: list[Path]) -> None:
         else:
             print(f"{requirements.name}: clean ({len(resolved)} distributions)")
     if failures:
-        raise AssertionError("optional distributions leaked into core/dev: " + "; ".join(failures))
+        raise AssertionError("optional distributions leaked into core/test: " + "; ".join(failures))
 
 
 def main() -> None:

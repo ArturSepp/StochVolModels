@@ -40,6 +40,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Office/Business :: Financial :: Investment",
     "Topic :: Scientific/Engineering :: Mathematics",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -79,12 +80,6 @@ jupyter = [
     "ipywidgets>=8.0.0",
 ]
 
-dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "pytest-regressions>=2.8.3",
-]
-
 docs = [
     "sphinx>=8.0,<10.0",
     "furo>=2024.8.6",
@@ -97,6 +92,11 @@ all = [
 
 [dependency-groups]
 # Contributor-only tools are exact so local and CI verdicts are reproducible.
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-regressions>=2.8.3",
+]
 lint = [
     "ruff==0.16.2",
     "interrogate==1.7.0",

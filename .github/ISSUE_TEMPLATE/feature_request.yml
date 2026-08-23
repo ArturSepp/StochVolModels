@@ -1,0 +1,49 @@
+name: Feature request
+description: Propose a focused addition within StochVolModels' European-option model boundary.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: research_task
+    attributes:
+      label: Research or user task
+      description: Describe the task before proposing an API.
+    validations:
+      required: true
+  - type: textarea
+    id: current_gap
+    attributes:
+      label: Current limitation
+      description: Explain why the public API and documented LogSV/Heston workflows do not handle it.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Include model, payoff, rate, volatility, maturity, and validation conventions.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Pricing or implied volatility
+        - Simulation or transform
+        - Calibration or fitting
+        - Option-chain conventions
+        - Documentation or example
+        - Packaging or developer tooling
+    validations:
+      required: true
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Project boundary
+      options:
+        - label: This remains within European vanilla and related variance analytics.
+          required: true
+        - label: This does not require committing proprietary data or generated numerical output.
+          required: true
+        - label: I considered whether the functionality belongs in vanilla-option-pricers or qis.
+          required: true
