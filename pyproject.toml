@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stochvolmodels"
-version = "2.2.0"
+version = "2.3.0"
 description = "Fourier-transform pricing, Monte Carlo validation, and calibration of European options under stochastic-volatility models in Python."
 readme = "README.md"
 license = "MIT"

@@ -4,11 +4,34 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-08-23
+
 ### Added
+- `stochvolmodels.estimation` now owns the Parkinson, Garman-Klass,
+  Rogers-Satchell, and close-to-close OHLC volatility estimators formerly maintained by `qis`.
+- `ForecastHorizon`, trading/calendar horizon presets, and the forward variance and volatility
+  target builders define point-in-time 1-day, 1-week, and 1-month forecast intervals without
+  including the information-time observation.
+- `estimate_ohlc_variances` and `build_volatility_features` provide a pooled OHLC variance panel
+  and append-only current, lagged, rolling-mean, LWMA, and downside-return forecast features.
+- `fit_volatility_forecaster` provides expanding-mean, persistence, fixed-decay EWMA, HAR, and
+  pooled OHLC level-NNLS fits with immutable diagnostics and non-negative predictions.
+- `walk_forward_volatility_forecast` adds expanding or rolling horizon-purged refits, immutable
+  per-origin and per-refit diagnostics, forecast losses, and common-sample benchmark comparisons.
+- The repository-only `volatility_book/ch_vol_estimation` workflow adds checksum-manifested Yahoo
+  and Bloomberg acquisition, strict provider reconciliation, and the initial 1/5/21-day model
+  study.
+- `stochvolmodels.fitters.adapters.oca.option_chain_from_oca` is the reusable conversion from
+  one OCA point-in-time `SlicesChain` to SVM calibration inputs.
 - `plot_vix_1m_atm_vol.py` extracts and plots a same-session, constant-maturity VIX ATM
   implied-volatility history from a partitioned OCA EOD cache without committing provider data.
 
 ### Changed
+- `sample_option_chain_at_times` now delegates observation schedules and point-in-time selection
+  to OCA's `create_chain_timeseries`; `generate_vol_chain_np` remains a deprecated compatibility
+  wrapper around the fitter adapter.
+- `load_price_data` now delegates to the OCA chain object's linked underlying-data loader and is
+  retained only as a deprecated compatibility wrapper.
 - The `research` extra now installs `option-chain-analytics[cboe]`, including PyArrow support
   required by the local Parquet-backed option-data examples.
 

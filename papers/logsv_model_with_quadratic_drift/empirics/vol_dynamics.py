@@ -21,7 +21,7 @@ from qis.plots.scatter import plot_classification_scatter
 from qis.plots.qqplot import plot_qq
 import qis.plots.utils as put
 
-import qis.models.stats.ohlc_vol as ovo
+import stochvolmodels.estimation as ovo
 from stochvolmodels import local_path as lp
 
 from . import data as cvd

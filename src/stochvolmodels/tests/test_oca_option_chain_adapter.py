@@ -6,18 +6,19 @@ from stochvolmodels.data.sample_option_chains import get_oca_simulated_chain_dat
 
 pytestmark = pytest.mark.optional_integration
 
-pytest.importorskip('qis')
+qis = pytest.importorskip('qis')
 oca = pytest.importorskip('option_chain_analytics')
 fetch_option_chain = pytest.importorskip('stochvolmodels.data.fetch_option_chain')
+oca_adapter = pytest.importorskip('stochvolmodels.fitters.adapters.oca')
 
 
 def test_oca_adapter_deduplicates_expiries_and_preserves_discounts() -> None:
     options_data = oca.generate_simulated_options_data(rate=0.05)
     value_time = pd.Timestamp('2024-01-05 08:00:00+00:00')
 
-    chain = fetch_option_chain.load_option_chain(
-        options_data_dfs=options_data,
-        value_time=value_time,
+    oca_chain = oca.create_chain_at_time(options_data=options_data, value_time=value_time)
+    chain = oca_adapter.option_chain_from_oca(
+        chain=oca_chain,
         days_map={'near_1': 1, 'near_2': 2, 'far': 21},
         delta_bounds=(None, None),
     )
@@ -126,3 +127,65 @@ def test_bundled_chain_matches_oca_deterministic_simulator() -> None:
         generated.optiontypes_ttms,
     ):
         np.testing.assert_array_equal(bundled_slice, generated_slice)
+
+
+def test_price_data_compatibility_wrapper_delegates_to_oca_chain_data(monkeypatch) -> None:
+    options_data = oca.generate_simulated_options_data()
+    expected = options_data.get_spot_data()
+    calls = {}
+
+    def fake_get_spot_data(**kwargs):
+        calls.update(kwargs)
+        return expected
+
+    monkeypatch.setattr(options_data, 'get_spot_data', fake_get_spot_data)
+
+    with pytest.deprecated_call(match='OptionChainAnalytics'):
+        actual = fetch_option_chain.load_price_data(
+            options_data_dfs=options_data,
+            data='close',
+            freq=None,
+        )
+
+    assert actual.equals(expected['close'])
+    assert calls == {'time_period': None}
+
+
+def test_frequency_sampling_delegates_to_oca_reconstruction(monkeypatch) -> None:
+    options_data = oca.generate_simulated_options_data()
+    value_time = pd.Timestamp('2024-01-05 08:00:00+00:00')
+    reconstructed = oca.create_chain_at_time(
+        options_data=options_data,
+        value_time=value_time,
+    )
+    calls = {}
+
+    def fake_create_chain_timeseries(**kwargs):
+        calls.update(kwargs)
+        return {value_time: reconstructed}
+
+    monkeypatch.setattr(
+        fetch_option_chain,
+        'create_chain_timeseries',
+        fake_create_chain_timeseries,
+    )
+    time_period = qis.TimePeriod(value_time, value_time + pd.Timedelta(days=31))
+
+    with pytest.deprecated_call(match='frequency sampling is owned'):
+        sampled = fetch_option_chain.sample_option_chain_at_times(
+            options_data_dfs=options_data,
+            time_period=time_period,
+            freq='M-FRI',
+            days_map={'1w': 7, '1m': 21},
+            delta_bounds=(None, None),
+            hour_offset=9,
+        )
+
+    assert list(sampled) == [value_time]
+    assert calls == {
+        'options_data': options_data,
+        'time_period': time_period,
+        'freq': 'M-FRI',
+        'hour_offset': 9,
+        'time_selection': 'previous',
+    }

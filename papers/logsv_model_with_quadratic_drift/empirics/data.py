@@ -6,7 +6,7 @@ from enum import Enum
 import qis
 import qis.file_utils as fu
 
-import qis.models.stats.ohlc_vol as ovo
+import stochvolmodels.estimation as ovo
 from papers.yfinance_utils import download_yfinance_history
 
 

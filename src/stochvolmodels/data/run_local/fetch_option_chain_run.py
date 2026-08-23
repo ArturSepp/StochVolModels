@@ -14,14 +14,12 @@ import qis
 from option_chain_analytics import (
     OptionsDataDFs,
     create_chain_at_time,
+    create_chain_timeseries,
 )
 from option_chain_analytics.data.tardis import load_local_tardis_contract_ts_data
 
 from stochvolmodels import local_path as lp
-from stochvolmodels.data.fetch_option_chain import (
-    generate_vol_chain_np,
-    sample_option_chain_at_times,
-)
+from stochvolmodels.fitters.adapters.oca import option_chain_from_oca
 
 
 class Locals(Enum):
@@ -82,7 +80,7 @@ def run_local(local: Locals) -> None:
             expiry_slice.print()
 
     elif local == Locals.GENERATE_VOL_CHAIN_NP:
-        option_chain = generate_vol_chain_np(
+        option_chain = option_chain_from_oca(
             chain=chain,
             value_time=value_time,
             days_map={"1w": 7},
@@ -94,12 +92,16 @@ def run_local(local: Locals) -> None:
 
     elif local == Locals.SAMPLE_CHAIN_AT_TIMES:
         time_period = qis.TimePeriod("01Jan2023", "31Jan2023", tz="UTC")
-        option_chains = sample_option_chain_at_times(
-            options_data_dfs=options_data_dfs,
+        chains = create_chain_timeseries(
+            options_data=options_data_dfs,
             time_period=time_period,
             freq="W-FRI",
             hour_offset=9,
         )
+        option_chains = {
+            schedule_time: option_chain_from_oca(chain=sampled_chain)
+            for schedule_time, sampled_chain in chains.items()
+        }
         for value_time_key, option_chain in option_chains.items():
             print(value_time_key)
             print(option_chain)

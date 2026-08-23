@@ -97,6 +97,15 @@ duplicate implementation.
 .. autofunction:: stochvolmodels.compute_analytic_qvar
 ```
 
+## OHLC volatility estimation
+
+OHLC estimators operate only on price-bar data and have no market-data-provider dependency.
+
+```{eval-rst}
+.. automodule:: stochvolmodels.estimation
+   :members:
+```
+
 The removed
 `stochvolmodels.pricers.analytic.bsm` and `stochvolmodels.pricers.analytic.bachelier` paths are not
 compatibility facades in 2.0.

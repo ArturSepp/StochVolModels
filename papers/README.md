@@ -1,33 +1,38 @@
 # papers
 
-Code accompanying the published papers. Ten directories contain figure and calibration
-replication workflows; `jump_risk_premia_clustered_jumps/` is explicitly retained as development
-code rather than an exact replication package. Nothing here is imported by `stochvolmodels`: the
-dependency runs one way, `papers` uses the package.
+Code accompanying published papers and active long-form research. Ten directories contain
+figure or calibration workflows; `jump_risk_premia_clustered_jumps/` is explicitly
+retained as development code rather than an exact replication package. Nothing here is imported
+by `stochvolmodels`: the dependency runs one way, `papers` uses the package.
 
 ## Install
 
-`qis` is required. It is not a core dependency of `stochvolmodels`, so install the extra:
+`qis` is required by the established paper workflows. It is not a core dependency of
+`stochvolmodels`, so install the extra:
 
 ```python
 pip install stochvolmodels[research]
 ```
 
-The research workflows commonly import `qis`. Only `il_hedging` and `sv_for_factor_hjm` run
-without it.
+The established paper workflows commonly import `qis`. `il_hedging` and `sv_for_factor_hjm` run
+without it. The volatility-book workflow now lives under
+[`volatility_book/ch_vol_estimation`](../volatility_book/ch_vol_estimation); its provider-neutral
+parts also run without `qis` and its live acquisition uses the optional clients named below.
 
 The `research` extra installs OptionChainAnalytics. One further package is not covered by an
 extra; install it for the directories that need it. Install OCA provider extras only when a
 provider workflow requires them:
 
 ```python
-pip install yfinance                              # volatility_models, jump-risk-premia code
+pip install yfinance                              # volatility_models, volatility-book, jump-risk-premia code
 pip install "option-chain-analytics[cboe]>=5.0.0" # local CBOE provider workflows
 ```
 
 The base `option-chain-analytics` package from `[research]` is needed by option-chain workflows in
 `risk_premia_gmm/`, `logsv_model_with_quadratic_drift/`, and
 `jump_risk_premia_clustered_jumps/`.
+The Bloomberg book lane additionally uses the separately installed sibling `bbg-fetch` package
+and an entitled Bloomberg session; it is not required for public Yahoo replication.
 
 ## Papers
 
@@ -53,8 +58,8 @@ bivariate self- and cross-exciting specification used by the new development-cod
 
 ## Running
 
-Run from the repository root. There are no `__init__.py` files here, so the intra-directory imports
-resolve as implicit namespace packages and only when the root is on `sys.path`:
+Run from the repository root. Most original paper directories are implicit namespace packages,
+so their intra-directory imports resolve only when the root is on `sys.path`:
 
 ```python
 python -m papers.volatility_models.article_figures

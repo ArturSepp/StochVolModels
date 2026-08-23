@@ -12,22 +12,20 @@ import warnings
 from pathlib import Path
 from typing import Dict, Literal, Optional, Tuple
 
-import numpy as np
 import pandas as pd
-from numba.typed import List
 
 try:
-    import qis as qis
     from option_chain_analytics import (
         OptionsDataDFs,
+        SlicesChain,
         create_chain_at_time,
+        create_chain_timeseries,
     )
     from option_chain_analytics.data.cboe import load_local_cboe_options_data
     from option_chain_analytics.data.tardis import (
         load_local_tardis_contract_ts_data,
         load_local_tardis_eod_options_data,
     )
-    from option_chain_analytics.option_chain import SliceColumn, SlicesChain
     from qis import TimePeriod
 except ImportError as error:
     raise ImportError(
@@ -38,6 +36,7 @@ except ImportError as error:
 # stochvolmodels
 from stochvolmodels import local_path as lp
 from stochvolmodels.data.option_chain import OptionChain
+from stochvolmodels.fitters.adapters.oca import option_chain_from_oca
 
 
 def _resolve_tardis_hourly_path(
@@ -345,74 +344,19 @@ def generate_vol_chain_np(chain: SlicesChain,
                           delta_bounds: Tuple[Optional[float], Optional[float]] = (-0.1, 0.1),
                           is_filtered: bool = True
                           ) -> OptionChain:
-    """Convert an OCA slices chain into SVM calibration inputs.
-
-    Normalized OCA panels supply positive fitted discount factors. Historical
-    hourly Tardis panels predate that column and retain their original unit-
-    discount convention.
-    """
-
-    records = []
-    seen_expiries = set()
-    for label, day in days_map.items():
-        next_date = value_time + pd.DateOffset(days=day)
-        slice_date = chain.get_next_slice_after_date(mat_date=next_date)
-        if slice_date in seen_expiries:
-            continue
-        slice_t = chain.expiry_slices[slice_date]
-        df = slice_t.get_joint_slice(delta_bounds=delta_bounds, is_filtered=is_filtered)
-        if not df.empty:
-            if SliceColumn.DISCOUNT.value in df.columns:
-                discounts = pd.to_numeric(
-                    df[SliceColumn.DISCOUNT.value], errors='coerce'
-                ).to_numpy()
-                discounts = discounts[np.isfinite(discounts) & (discounts > 0.0)]
-                if discounts.size == 0:
-                    raise ValueError(f"missing positive discount factor for {slice_t.expiry_id}")
-                discfactor = float(np.median(discounts))
-            else:
-                discfactor = 1.0
-            records.append(
-                {
-                    'id': f"{label}: {slice_t.expiry_id}",
-                    'ttm': slice_t.get_ttm(),
-                    'forward': slice_t.get_future_price(),
-                    'discfactor': discfactor,
-                    'strikes': df.index.to_numpy(),
-                    'optiontypes': df[SliceColumn.OPTION_TYPE].to_numpy(dtype=str),
-                    'bid_ivs': df[SliceColumn.BID_IV].to_numpy(),
-                    'ask_ivs': df[SliceColumn.ASK_IV].to_numpy(),
-                    'bid_prices': df[SliceColumn.BID_PRICE].to_numpy(),
-                    'ask_prices': df[SliceColumn.ASK_PRICE].to_numpy(),
-                }
-            )
-            seen_expiries.add(slice_date)
-
-    if not records:
-        raise ValueError("no non-empty OCA maturity slices matched days_map")
-    records.sort(key=lambda record: record['ttm'])
-    strikes_ttms, optiontypes_ttms = List(), List()
-    bid_ivs, ask_ivs = List(), List()
-    bid_prices, ask_prices = List(), List()
-    for record in records:
-        strikes_ttms.append(record['strikes'])
-        optiontypes_ttms.append(record['optiontypes'])
-        bid_ivs.append(record['bid_ivs'])
-        ask_ivs.append(record['ask_ivs'])
-        bid_prices.append(record['bid_prices'])
-        ask_prices.append(record['ask_prices'])
-
-    return OptionChain(
-        ttms=np.array([record['ttm'] for record in records]),
-        forwards=np.array([record['forward'] for record in records]),
-        discfactors=np.array([record['discfactor'] for record in records]),
-        ids=np.array([record['id'] for record in records]),
-        strikes_ttms=strikes_ttms,
-        optiontypes_ttms=optiontypes_ttms,
-        bid_ivs=bid_ivs,
-        ask_ivs=ask_ivs,
-        bid_prices=bid_prices,
-        ask_prices=ask_prices,
+    """Compatibility wrapper for :func:`option_chain_from_oca`."""
+    warnings.warn(
+        'generate_vol_chain_np moved to '
+        'stochvolmodels.fitters.adapters.oca.option_chain_from_oca',
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return option_chain_from_oca(
+        chain=chain,
+        value_time=value_time,
+        days_map=days_map,
+        delta_bounds=delta_bounds,
+        is_filtered=is_filtered,
     )
 
 
@@ -430,16 +374,14 @@ def load_option_chain(options_data_dfs: OptionsDataDFs,
         value_time=value_time,
         time_selection='previous',
     )
-    if chain is not None:
-        option_chain = generate_vol_chain_np(chain=chain,
-                                             value_time=chain.value_time,
-                                             days_map=days_map,
-                                             delta_bounds=delta_bounds,
-                                             is_filtered=is_filtered)
-    else:
-        option_chain = None
-
-    return option_chain
+    if chain is None:
+        return None
+    return option_chain_from_oca(
+        chain=chain,
+        days_map=days_map,
+        delta_bounds=delta_bounds,
+        is_filtered=is_filtered,
+    )
 
 
 def sample_option_chain_at_times(options_data_dfs: OptionsDataDFs,
@@ -452,32 +394,44 @@ def sample_option_chain_at_times(options_data_dfs: OptionsDataDFs,
                                  ),
                                  hour_offset: int = 8
                                  ) -> Dict[pd.Timestamp, OptionChain]:
-    """
-    extract chains at a sequence of observation times, for time series calibration.
-    """
-    value_times = qis.generate_dates_schedule(time_period=time_period,
-                                              freq=freq,
-                                              hour_offset=hour_offset)
-    option_chains = {}
-    for value_time in value_times:
-        option_chains[value_time] = load_option_chain(options_data_dfs=options_data_dfs,
-                                                      value_time=value_time,
-                                                      days_map=days_map,
-                                                      delta_bounds=delta_bounds,
-                                                      is_filtered=True)
-    return option_chains
+    """Compatibility workflow using OCA-owned observation-frequency sampling."""
+    warnings.warn(
+        'frequency sampling is owned by OptionChainAnalytics.create_chain_timeseries; '
+        'map its results with stochvolmodels.fitters.adapters.oca.option_chain_from_oca',
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    chains = create_chain_timeseries(
+        options_data=options_data_dfs,
+        time_period=time_period,
+        freq=freq,
+        hour_offset=hour_offset,
+        time_selection='previous',
+    )
+    return {
+        value_time: option_chain_from_oca(
+            chain=chain,
+            days_map=days_map,
+            delta_bounds=delta_bounds,
+            is_filtered=True,
+        )
+        for value_time, chain in chains.items()
+    }
 
 
 def load_price_data(options_data_dfs: OptionsDataDFs,
                     time_period: TimePeriod = None,
                     data: Literal['close', 'perp', 'funding_rate'] = 'close',
-                    freq: Optional[str] = 'D'  # to do
+                    freq: Optional[str] = 'D'
                     ) -> pd.Series:
-    # options_data_dfs can also come from ts_data_loader_wrapper for legacy local sources.
-    """load the underlying price series accompanying the options data."""
-    spot_price = options_data_dfs.get_spot_data()[data]
+    """Compatibility wrapper for OCA's chain-linked underlying-data loader."""
+    warnings.warn(
+        'load_price_data moved to OptionChainAnalytics chain data: '
+        'options_data_dfs.get_spot_data(...)',
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    spot_price = options_data_dfs.get_spot_data(time_period=time_period)[data]
     if freq is not None:
         spot_price = spot_price.resample(freq).last()
-    if time_period is not None:
-        spot_price = time_period.locate(spot_price)
     return spot_price

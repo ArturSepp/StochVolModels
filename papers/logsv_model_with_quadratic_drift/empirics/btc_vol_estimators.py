@@ -11,7 +11,7 @@ from scipy.optimize import minimize
 
 # internal
 from .data import get_ohlc_vol_data, load_ohlc_data
-from qis.models.stats.ohlc_vol import OhlcEstimatorType, estimate_hf_ohlc_vol
+from stochvolmodels.estimation import OhlcEstimatorType, estimate_hf_ohlc_vol
 
 
 DT = 1.0/260.0

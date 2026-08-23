@@ -7,7 +7,8 @@ from typing import Optional, Tuple
 import numpy as np
 import pandas as pd
 import qis
-from qis import OhlcEstimatorType
+
+from stochvolmodels.estimation import OhlcEstimatorType, estimate_ohlc_var
 
 from papers.yfinance_utils import download_yfinance_history, get_yfinance_close
 from stochvolmodels import local_path as lp
@@ -70,7 +71,10 @@ def fetch_ohlc_vol(ticker: str = 'SPY',
     else:  # use historical vol
         data = download_yfinance_history(ticker=ticker)
         ohlc_data = data[['Open', 'High', 'Low', 'Close']].rename({'Open': 'open', 'High': 'high', 'Low': 'low', 'Close': 'close'}, axis=1)
-        var = qis.estimate_ohlc_var(ohlc_data=ohlc_data, ohlc_estimator_type=ohlc_estimator_type)
+        var = estimate_ohlc_var(
+            ohlc_data=ohlc_data,
+            ohlc_estimator_type=ohlc_estimator_type,
+        )
         vol = np.sqrt(af*var)
 
         returns = np.log(get_yfinance_close(data=data)).diff(1)

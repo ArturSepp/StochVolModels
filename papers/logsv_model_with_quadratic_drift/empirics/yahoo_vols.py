@@ -17,7 +17,7 @@ import qis.plots.histogram as hist
 from qis.plots.qqplot import plot_qq
 import qis.plots.utils as put
 
-import qis.models.stats.ohlc_vol as ovo
+import stochvolmodels.estimation as ovo
 from papers.yfinance_utils import download_yfinance_history, get_yfinance_close
 from stochvolmodels import local_path as lp
 

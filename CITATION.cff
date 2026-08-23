@@ -12,8 +12,8 @@ authors:
 repository-code: "https://github.com/ArturSepp/StochVolModels"
 url: "https://pypi.org/project/stochvolmodels/"
 license: MIT
-version: 2.2.0
-date-released: "2026-08-22"
+version: 2.3.0
+date-released: "2026-08-23"
 keywords:
   - stochastic-volatility
   - option-pricing

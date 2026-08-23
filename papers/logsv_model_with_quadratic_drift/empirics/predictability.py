@@ -10,7 +10,7 @@ import qis.models.linear.ewm as ewm
 import qis.plots.histogram as hist
 
 # internal
-import qis.models.stats.ohlc_vol as ovo
+import stochvolmodels.estimation as ovo
 from . import data as cvd
 
 
