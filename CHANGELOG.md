@@ -17,6 +17,10 @@ Entries start at 1.2.0. For earlier releases see the git log.
 - `stochvolmodels.models.tgarch` adds a distinct discrete TGARCH terminal path model with
   physical, exact finite-step pricing, and limit-pricing measures, including raw
   P-to-exact-Q likelihood ratios and simulation diagnostics.
+- The direct submodule `stochvolmodels.models.logsv` adds `LogSvModel` and `LogSvMeasure` for
+  continuous LogSV simulation under money-market-account and inverse measures, returning raw
+  zero-drift price, volatility, and quadratic-variation paths through the unchanged legacy
+  simulation kernel.
 
 ## [2.3.0] - 2026-08-24
 
