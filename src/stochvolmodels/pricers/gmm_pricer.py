@@ -1,15 +1,15 @@
-"""
-implementation of gaussian mixture pricer and calibration
-"""
-import numpy as np
+"""Gaussian-mixture terminal-distribution pricing and calibration."""
 from dataclasses import dataclass
-from scipy.optimize import minimize, minimize_scalar
+from numbers import Real
+from typing import ClassVar, Tuple
+
+import numpy as np
 from numba import njit
 from numba.typed import List
-from typing import Tuple
-# project
+from scipy.optimize import minimize, minimize_scalar
+
 import vanilla_option_pricers as bsm
-from stochvolmodels.utils.funcs import to_flat_np_array, timer, npdf
+from stochvolmodels.data.option_chain import OptionChain, OptionSlice
 from stochvolmodels.pricers.model_pricer import (
     CalibrationError,
     ModelParams,
@@ -17,7 +17,17 @@ from stochvolmodels.pricers.model_pricer import (
     validate_optimization_result,
 )
 from stochvolmodels.utils.config import VariableType
-from stochvolmodels.data.option_chain import OptionChain
+from stochvolmodels.utils.funcs import npdf, timer, to_flat_np_array
+
+
+def _require_finite_reported_objective(result: object) -> None:
+    """Reject optimizer success that does not carry a finite objective value."""
+    try:
+        objective = float(getattr(result, "fun"))
+    except (AttributeError, TypeError, ValueError) as error:
+        raise CalibrationError("Calibration returned no finite objective value") from error
+    if not np.isfinite(objective):
+        raise CalibrationError("Calibration returned a non-finite objective value")
 
 
 @dataclass
@@ -126,14 +136,30 @@ class GmmPricer(ModelPricer):
         gmm_vols_bounds = [(0.01, 4.0)]*n_mixtures
         bounds = np.concatenate((gmm_weights_bounds, gmm_mus_bounds, gmm_vols_bounds))
 
-        x, y = option_chain.get_chain_data_as_xy()
+        _, y = option_chain.get_chain_data_as_xy()
         market_vols = to_flat_np_array(y)  # market mid quotes
         if is_vega_weighted:
             vegas_ttms = option_chain.get_chain_vegas(is_unit_ttm_vega=is_unit_ttm_vega)
-            vegas_ttms = [vegas_ttm/sum(vegas_ttm) for vegas_ttm in vegas_ttms]
-            weights = to_flat_np_array(vegas_ttms)
+            normalized_vegas = []
+            for vegas_ttm in vegas_ttms:
+                vegas_array = np.asarray(vegas_ttm, dtype=float)
+                vega_sum = float(np.sum(vegas_array))
+                if (
+                    not np.all(np.isfinite(vegas_array))
+                    or np.any(vegas_array < 0.0)
+                    or not np.isfinite(vega_sum)
+                    or vega_sum <= 0.0
+                ):
+                    raise CalibrationError("Calibration received invalid vega weights")
+                normalized_vegas.append(vegas_array / vega_sum)
+            weights = to_flat_np_array(normalized_vegas)
         else:
             weights = np.ones_like(market_vols)
+        if weights.shape != market_vols.shape:
+            raise CalibrationError("Calibration quote values and weights have different shapes")
+        active_quotes = np.isfinite(market_vols) & np.isfinite(weights) & (weights > 0.0)
+        if not np.any(active_quotes):
+            raise CalibrationError("Calibration has no finite positive-weight quotes")
 
         def parse_model_params(pars: np.ndarray) -> GmmParams:
             """map the optimizer parameter vector onto a model parameter object."""
@@ -143,14 +169,24 @@ class GmmPricer(ModelPricer):
             return GmmParams(gmm_weights=gmm_weights, gmm_mus=gmm_mus, gmm_vols=gmm_vols, ttm=ttm)
 
         def objective(pars: np.ndarray, args: np.ndarray) -> float:
-            """weighted mean squared error between model and market implied volatilities."""
+            """Weighted SSE, with non-finite repricing treated as an invalid trial."""
             params = parse_model_params(pars=pars)
             model_vols = self.compute_model_ivols_for_chain(
                 option_chain=option_chain,
                 params=params,
             )
-            resid = np.nansum(weights * np.square(to_flat_np_array(model_vols) - market_vols))
-            return resid
+            model_vols_flat = to_flat_np_array(model_vols)
+            if model_vols_flat.shape != market_vols.shape:
+                return np.inf
+            active_model_vols = model_vols_flat[active_quotes]
+            if not np.all(np.isfinite(active_model_vols)):
+                return np.inf
+            residual_terms = weights[active_quotes] * np.square(
+                active_model_vols - market_vols[active_quotes]
+            )
+            if not np.all(np.isfinite(residual_terms)):
+                return np.inf
+            return float(np.sum(residual_terms))
 
         if n_mixtures == 1:
 
@@ -169,13 +205,25 @@ class GmmPricer(ModelPricer):
                 raise CalibrationError(
                     f"Calibration failed: {getattr(scalar_result, 'message', 'no message')}"
                 )
+            _require_finite_reported_objective(scalar_result)
             fitted_vol = float(scalar_result.x)
-            return GmmParams(
+            if not gmm_vols_bounds[0][0] <= fitted_vol <= gmm_vols_bounds[0][1]:
+                raise CalibrationError("Calibration returned volatility outside its bounds")
+            if not np.isfinite(objective_vol(fitted_vol)):
+                raise CalibrationError("Calibration returned a non-finite repricing objective")
+            fit_params = GmmParams(
                 gmm_weights=np.array([1.0]),
                 gmm_mus=np.array([-0.5 * fitted_vol * fitted_vol]),
                 gmm_vols=np.array([fitted_vol]),
                 ttm=ttm,
             )
+            try:
+                GmmTerminalModel(params=fit_params)
+            except (TypeError, ValueError) as error:
+                raise CalibrationError(
+                    f"Calibration returned invalid GMM parameters: {error}"
+                ) from error
+            return fit_params
 
         def weights_sum(pars: np.ndarray) -> float:
             """equality constraint sum of mixture weights minus one."""
@@ -211,7 +259,23 @@ class GmmPricer(ModelPricer):
         fit_params = parse_model_params(
             pars=validate_optimization_result(res, bounds)
         )
+        _require_finite_reported_objective(res)
         fit_params.sort_by_mus()
+        if not np.isfinite(
+            objective(
+                np.concatenate(
+                    (fit_params.gmm_weights, fit_params.gmm_mus, fit_params.gmm_vols)
+                ),
+                args=None,
+            )
+        ):
+            raise CalibrationError("Calibration returned a non-finite repricing objective")
+        try:
+            GmmTerminalModel(params=fit_params)
+        except (TypeError, ValueError) as error:
+            raise CalibrationError(
+                f"Calibration returned invalid GMM parameters: {error}"
+            ) from error
 
         return fit_params
 
@@ -239,6 +303,190 @@ class GmmPricer(ModelPricer):
                                                                  **kwargs)
             fit_params[ids_] = params0
         return fit_params
+
+
+@dataclass(frozen=True, init=False)
+class GmmTerminalModel:
+    """Validated Gaussian-mixture law for one-maturity European options.
+
+    The state parameters describe normalized terminal log-return
+    ``X = log(S_T / F_T)``. The adapter enforces both probability normalization and
+    ``E[exp(X)] = 1``, while the supplied option-slice discount factor discounts the
+    standard call or put payoff exactly once.
+    """
+
+    _gmm_weights: np.ndarray
+    _gmm_mus: np.ndarray
+    _gmm_vols: np.ndarray
+    _ttm: float
+
+    _CONSTRAINT_ATOL: ClassVar[float] = 5.0e-10
+
+    def __init__(self, params: GmmParams) -> None:
+        """Validate and snapshot one legacy Gaussian-mixture parameter payload."""
+        if not isinstance(params, GmmParams):
+            raise TypeError("params must be a GmmParams instance")
+
+        weights = self._snapshot_real_array("gmm_weights", params.gmm_weights)
+        mus = self._snapshot_real_array("gmm_mus", params.gmm_mus)
+        vols = self._snapshot_real_array("gmm_vols", params.gmm_vols)
+        if not weights.size == mus.size == vols.size:
+            raise ValueError("gmm_weights, gmm_mus, and gmm_vols must have the same length")
+        if np.any(weights < 0.0):
+            raise ValueError("gmm_weights must be nonnegative")
+        if np.any(vols <= 0.0):
+            raise ValueError("gmm_vols must be positive")
+
+        ttm = params.ttm
+        if (
+            isinstance(ttm, (bool, np.bool_))
+            or not isinstance(ttm, Real)
+            or not np.isfinite(ttm)
+            or ttm <= 0.0
+        ):
+            raise ValueError("ttm must be a finite positive real scalar")
+        ttm_float = float(ttm)
+
+        weight_error = abs(float(np.sum(weights)) - 1.0)
+        if weight_error > self._CONSTRAINT_ATOL:
+            raise ValueError(
+                "gmm_weights must sum to one within "
+                f"{self._CONSTRAINT_ATOL:.0e}"
+            )
+        log_martingale = self._evaluate_log_mgf(
+            weights=weights,
+            mus=mus,
+            vols=vols,
+            ttm=ttm_float,
+            phi_grid=np.array([1.0]),
+        )[0]
+        if not np.isfinite(log_martingale) or abs(float(log_martingale)) > self._CONSTRAINT_ATOL:
+            raise ValueError(
+                "GMM martingale condition abs(log M(1)) must not exceed "
+                f"{self._CONSTRAINT_ATOL:.0e}"
+            )
+
+        for array in (weights, mus, vols):
+            array.setflags(write=False)
+        object.__setattr__(self, "_gmm_weights", weights)
+        object.__setattr__(self, "_gmm_mus", mus)
+        object.__setattr__(self, "_gmm_vols", vols)
+        object.__setattr__(self, "_ttm", ttm_float)
+
+    @staticmethod
+    def _snapshot_real_array(name: str, values: object) -> np.ndarray:
+        """Return a detached finite one-dimensional real floating array."""
+        object_array = np.asarray(values, dtype=object)
+        if any(isinstance(value, (bool, np.bool_)) for value in object_array.flat):
+            raise ValueError(f"{name} must contain finite real numbers, not booleans")
+        array = np.asarray(values)
+        if array.ndim != 1 or array.size == 0:
+            raise ValueError(f"{name} must be a non-empty one-dimensional array")
+        if array.dtype.kind not in "iuf":
+            raise ValueError(f"{name} must contain finite real numbers")
+        snapshot = np.array(array, dtype=float, copy=True)
+        if not np.all(np.isfinite(snapshot)):
+            raise ValueError(f"{name} must contain finite real numbers")
+        return snapshot
+
+    @staticmethod
+    def _evaluate_log_mgf(
+        *,
+        weights: np.ndarray,
+        mus: np.ndarray,
+        vols: np.ndarray,
+        ttm: float,
+        phi_grid: np.ndarray,
+    ) -> np.ndarray:
+        """Evaluate the mixture log-MGF with a real-part exponential shift."""
+        phi_array = np.asarray(phi_grid)
+        flat_phi = phi_array.reshape(-1)
+        positive_weights = weights > 0.0
+        active_weights = weights[positive_weights]
+        active_mus = mus[positive_weights]
+        active_vols = vols[positive_weights]
+        exponents = ttm * (
+            active_mus[:, np.newaxis] * flat_phi[np.newaxis, :]
+            + 0.5
+            * np.square(active_vols[:, np.newaxis])
+            * np.square(flat_phi[np.newaxis, :])
+        )
+        real_shifts = np.max(np.real(exponents), axis=0)
+        shifted_sum = np.sum(
+            active_weights[:, np.newaxis]
+            * np.exp(exponents - real_shifts[np.newaxis, :]),
+            axis=0,
+        )
+        return (real_shifts + np.log(shifted_sum)).reshape(phi_array.shape)
+
+    @property
+    def params(self) -> GmmParams:
+        """Return a detached legacy parameter payload for inspection or facade calls."""
+        return GmmParams(
+            gmm_weights=self._gmm_weights.copy(),
+            gmm_mus=self._gmm_mus.copy(),
+            gmm_vols=self._gmm_vols.copy(),
+            ttm=self._ttm,
+        )
+
+    @property
+    def ttm(self) -> float:
+        """Return the terminal law's time to maturity in years."""
+        return self._ttm
+
+    def _option_chain(self, option_slice: OptionSlice) -> OptionChain:
+        """Validate a standard-payoff slice and convert it to the legacy facade input."""
+        if not isinstance(option_slice, OptionSlice):
+            raise TypeError("option_slice must be an OptionSlice instance")
+        if option_slice.ttm != self.ttm:
+            raise ValueError("option_slice.ttm must exactly match the bound params.ttm")
+        unsupported = set(np.asarray(option_slice.optiontypes).astype(str)) - {"C", "P"}
+        if unsupported:
+            raise NotImplementedError(
+                "GmmTerminalModel supports C/P only; inverse IC/IP settlement is not implemented"
+            )
+        return OptionChain.slice_to_chain(
+            ttm=option_slice.ttm,
+            forward=option_slice.forward,
+            strikes=np.asarray(option_slice.strikes, dtype=float),
+            optiontypes=np.asarray(option_slice.optiontypes),
+            discfactor=option_slice.discfactor,
+            id=option_slice.id,
+        )
+
+    def price_european(self, option_slice: OptionSlice) -> np.ndarray:
+        """Return standard-call/put prices shaped like ``option_slice.strikes``."""
+        option_chain = self._option_chain(option_slice)
+        prices = GmmPricer().price_chain(option_chain=option_chain, params=self.params)
+        return np.asarray(prices[0], dtype=float)
+
+    def implied_vols(self, option_slice: OptionSlice) -> np.ndarray:
+        """Return Black implied volatilities shaped like ``option_slice.strikes``."""
+        option_chain = self._option_chain(option_slice)
+        ivols = GmmPricer().compute_model_ivols_for_chain(
+            option_chain=option_chain,
+            params=self.params,
+        )
+        return np.asarray(ivols[0], dtype=float)
+
+    def log_mgf_grid(self, *, phi_grid: np.ndarray) -> np.ndarray:
+        """Return ``log E[exp(phi*X)]`` on a finite real or complex grid."""
+        raw_grid = np.asarray(phi_grid)
+        if raw_grid.size == 0 or raw_grid.dtype.kind not in "iufc":
+            raise ValueError("phi_grid must be a non-empty finite real or complex numeric grid")
+        if raw_grid.dtype.kind == "c":
+            validated_grid = np.asarray(raw_grid, dtype=np.complex128)
+        else:
+            validated_grid = np.asarray(raw_grid, dtype=float)
+        if not np.all(np.isfinite(validated_grid)):
+            raise ValueError("phi_grid must be a non-empty finite real or complex numeric grid")
+        return self._evaluate_log_mgf(
+            weights=self._gmm_weights,
+            mus=self._gmm_mus,
+            vols=self._gmm_vols,
+            ttm=self._ttm,
+            phi_grid=validated_grid,
+        )
 
 
 @njit
