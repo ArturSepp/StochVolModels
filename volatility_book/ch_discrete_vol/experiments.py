@@ -215,6 +215,14 @@ def _sha256(path: Path) -> str | None:
     return digest.hexdigest()
 
 
+def _sha256_normalized_text(path: Path) -> str | None:
+    """Hash text using the repository's LF-normalized Git-content convention."""
+    if not path.exists():
+        return None
+    content = path.read_bytes().replace(b"\r\n", b"\n")
+    return hashlib.sha256(content).hexdigest()
+
+
 def _git_output(repository: Path, *arguments: str) -> str:
     try:
         completed = subprocess.run(
@@ -232,6 +240,7 @@ def collect_provenance(output_dir: Path, profile: StudyProfile) -> dict[str, Any
     """Collect source hashes, versions, seeds, and the enclosing repository revision."""
     repo = Path(__file__).resolve().parents[2]
     code_dir = Path(__file__).resolve().parent
+    notes_dir = code_dir / "notes"
     source_files = ("sim.py", "experiments.py", "reporting.py", "run_study.py")
     packages = ("numpy", "scipy", "matplotlib", "numba", "pandas", "stochvolmodels")
     versions: dict[str, str] = {}
@@ -252,10 +261,10 @@ def collect_provenance(output_dir: Path, profile: StudyProfile) -> dict[str, Any
         "study_folder_git_tag": "N/A: the Volatility Book folder is not a Git repository",
         "code_sha256": {name: _sha256(code_dir / name) for name in source_files},
         "input_sha256": {
-            "brief": _sha256(
-                output_dir / "2026-08-23_SOL_BRIEF_discrete_vs_continuous_tgarch_study.md"
+            "brief": _sha256_normalized_text(
+                notes_dir / "SOL_BRIEF_discrete_vs_continuous_tgarch_study.md"
             ),
-            "note": _sha256(output_dir / "tgarch_quadratic_drift_note.tex"),
+            "note": _sha256_normalized_text(notes_dir / "tgarch_quadratic_drift_note.tex"),
         },
         "seeds": {f"E{index}": BASE_SEED + index for index in range(1, 8)},
     }

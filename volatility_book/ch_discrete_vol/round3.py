@@ -26,14 +26,20 @@ from .round3_traceability import (
 )
 
 BASE_DIR = Path(__file__).resolve().parent
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_NOTES_DIR = BASE_DIR / "notes"
 ROUND3_BRIEF = DEFAULT_NOTES_DIR / "SOL_BRIEF_discrete_vs_continuous_tgarch_study_1.md"
 TRACKED_NOTE = DEFAULT_NOTES_DIR / "tgarch_quadratic_drift_note.tex"
-DEFAULT_BACKGROUND_NOTE = (
-    Path(r"C:\Users\artur\OneDrive\My Papers\Volatility Book 2026\My Reference Papers")
-    / "Chapter on Discrete Volatility Estimation. Zurich. Aug 2026"
-    / "tgarch_quadratic_drift_note.tex"
-)
+ACCEPTANCE_MANIFEST = BASE_DIR / "acceptance_manifest.json"
+DEFAULT_BACKGROUND_NOTE = TRACKED_NOTE
+DEFAULT_OUTPUT_ROOT = REPOSITORY_ROOT / "outputs" / "volatility_book" / "ch_discrete_vol"
+DEFAULT_ROUND1_JSON = DEFAULT_OUTPUT_ROOT / "round1" / "results.json"
+DEFAULT_ROUND2_JSON = DEFAULT_OUTPUT_ROOT / "round2" / "round2_results.json"
+_ROUND3_OUTPUT_NAMES = {
+    StudyProfile.FULL: "round3",
+    StudyProfile.REFERENCE: "round3_reference",
+    StudyProfile.SMOKE: "round3_smoke",
+}
 
 
 def _sha256(path: Path) -> str:
@@ -66,7 +72,15 @@ def _git(repository: Path, *arguments: str) -> str:
 
 
 def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+    return REPOSITORY_ROOT
+
+
+def _default_output_dir(profile: StudyProfile) -> Path:
+    """Return the ignored, profile-specific Round-3 artifact directory."""
+
+    if not isinstance(profile, StudyProfile):
+        raise ValueError("profile must be a StudyProfile")
+    return DEFAULT_OUTPUT_ROOT / _ROUND3_OUTPUT_NAMES[profile]
 
 
 def _execution_provenance(
@@ -85,7 +99,11 @@ def _execution_provenance(
     if profile is StudyProfile.FULL and not tag:
         raise RuntimeError("Round 3 FULL must run from an exactly tagged commit")
 
-    executed_inputs = sorted(BASE_DIR.glob("*.py")) + [ROUND3_BRIEF, TRACKED_NOTE]
+    executed_inputs = sorted(BASE_DIR.glob("*.py")) + [
+        ROUND3_BRIEF,
+        TRACKED_NOTE,
+        ACCEPTANCE_MANIFEST,
+    ]
     ledger: list[dict[str, Any]] = []
     for path in executed_inputs:
         relative = path.resolve().relative_to(repository.resolve()).as_posix()
@@ -137,6 +155,12 @@ def _execution_provenance(
         "profile": profile.value,
         "package_versions": package_versions,
         "executed_inputs": ledger,
+        "acceptance_manifest": {
+            "path": ACCEPTANCE_MANIFEST.resolve()
+            .relative_to(repository.resolve())
+            .as_posix(),
+            "sha256": _sha256(ACCEPTANCE_MANIFEST),
+        },
         "background_note": {
             "absolute_path": str(background),
             "sha256": background_hash,
@@ -444,9 +468,24 @@ def _parse_args() -> argparse.Namespace:
         choices=[item.value for item in StudyProfile],
         default=StudyProfile.SMOKE.value,
     )
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_NOTES_DIR)
-    parser.add_argument("--round1-json", type=Path)
-    parser.add_argument("--round2-json", type=Path)
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help=(
+            "Artifact directory. Defaults under outputs/volatility_book/ch_discrete_vol "
+            "to round3, round3_reference, or round3_smoke according to --profile."
+        ),
+    )
+    parser.add_argument(
+        "--round1-json",
+        type=Path,
+        help=f"Round-1 FULL archive (default: {DEFAULT_ROUND1_JSON}).",
+    )
+    parser.add_argument(
+        "--round2-json",
+        type=Path,
+        help=f"Round-2 FULL archive (default: {DEFAULT_ROUND2_JSON}).",
+    )
     parser.add_argument("--background-note", type=Path, default=DEFAULT_BACKGROUND_NOTE)
     return parser.parse_args()
 
@@ -455,15 +494,20 @@ def main() -> None:
     """Execute the command-line-selected round-three workload."""
 
     arguments = _parse_args()
-    output = Path(arguments.output_dir)
+    profile = StudyProfile(arguments.profile)
+    output = (
+        Path(arguments.output_dir)
+        if arguments.output_dir is not None
+        else _default_output_dir(profile)
+    )
     run_round3(
         output_dir=output,
-        profile=StudyProfile(arguments.profile),
+        profile=profile,
         round1_json=(
-            Path(arguments.round1_json) if arguments.round1_json else output / "results.json"
+            Path(arguments.round1_json) if arguments.round1_json else DEFAULT_ROUND1_JSON
         ),
         round2_json=(
-            Path(arguments.round2_json) if arguments.round2_json else output / "round2_results.json"
+            Path(arguments.round2_json) if arguments.round2_json else DEFAULT_ROUND2_JSON
         ),
         background_note=arguments.background_note,
     )

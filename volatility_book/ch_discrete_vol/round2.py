@@ -35,12 +35,13 @@ from volatility_book.ch_discrete_vol.round2_reporting import (
 
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_NOTES_DIR = BASE_DIR / "notes"
-DEFAULT_BACKGROUND_NOTE = Path(
-    r"C:\Users\artur\OneDrive\My Papers\Volatility Book 2026\My Reference Papers"
-    r"\Chapter on Discrete Volatility Estimation. Zurich. Aug 2026"
-    r"\tgarch_quadratic_drift_note.tex"
-)
-ROUND1_ARCHIVE_HASHES = {
+ACCEPTANCE_MANIFEST = BASE_DIR / "acceptance_manifest.json"
+DEFAULT_BACKGROUND_NOTE = DEFAULT_NOTES_DIR / "tgarch_quadratic_drift_note.tex"
+OUTPUT_ROOT = BASE_DIR.parents[1] / "outputs" / "volatility_book" / "ch_discrete_vol"
+DEFAULT_OUTPUT_DIR = OUTPUT_ROOT / "round2"
+DEFAULT_ROUND1_JSON = OUTPUT_ROOT / "round1" / "results.json"
+DEFAULT_R1_JSON = OUTPUT_ROOT / "round1_reference" / "results.json"
+ROUND1_ARCHIVED_WHOLE_ARTIFACT_PROVENANCE_HASHES = {
     "results.md": "3d368fe8f93b9ecaf55bd156325187a8ea53b465397148b168eadd14f8070f5c",
     "results.json": "f4c08fe9a5df7b1967a57155d93762ff78d87463f3d774223427a21705629196",
     "figures.pdf": "0262aad5c07b6a612300a1435891a8c021926f1c22334976628b205f37d5d336",
@@ -88,17 +89,20 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def _require_clean_exact_tag() -> dict[str, str]:
+def _require_clean_exact_tag(profile: StudyProfile) -> dict[str, str]:
     repo = _repo_root()
-    status = _git(repo, "status", "--short")
-    if status:
+    status = _git(repo, "status", "--short", "--untracked-files=all")
+    if profile is StudyProfile.FULL and status:
         raise RuntimeError("Round 2 must run from a clean tree; git status is:\n" + status)
     try:
         tag = _git(repo, "describe", "--tags", "--exact-match", "HEAD")
     except subprocess.CalledProcessError as error:
-        raise RuntimeError("Round 2 must run from an exactly tagged commit") from error
+        if profile is StudyProfile.FULL:
+            raise RuntimeError("Round 2 must run from an exactly tagged commit") from error
+        tag = ""
     executed_inputs = sorted(BASE_DIR.glob("*.py")) + [
-        DEFAULT_NOTES_DIR / "SOL_BRIEF_discrete_vs_continuous_tgarch_study.md"
+        DEFAULT_NOTES_DIR / "SOL_BRIEF_discrete_vs_continuous_tgarch_study.md",
+        ACCEPTANCE_MANIFEST,
     ]
     for path in executed_inputs:
         relative = path.resolve().relative_to(repo.resolve()).as_posix()
@@ -107,10 +111,12 @@ def _require_clean_exact_tag() -> dict[str, str]:
             head_blob = _git(repo, "rev-parse", f"HEAD:{relative}")
             working_blob = _git(repo, "hash-object", str(path))
         except subprocess.CalledProcessError as error:
-            raise RuntimeError(
-                f"Executed study input is not tracked at HEAD: {relative}"
-            ) from error
-        if head_blob != working_blob:
+            if profile is StudyProfile.FULL:
+                raise RuntimeError(
+                    f"Executed study input is not tracked at HEAD: {relative}"
+                ) from error
+            continue
+        if profile is StudyProfile.FULL and head_blob != working_blob:
             raise RuntimeError(f"Executed study input differs from tagged HEAD: {relative}")
     return {
         "repository_head": _git(repo, "rev-parse", "HEAD"),
@@ -293,10 +299,19 @@ def _provenance(
     r1_json: Path,
     background_note: Path,
 ) -> dict[str, Any]:
-    git = _require_clean_exact_tag()
+    git = _require_clean_exact_tag(profile)
     packages = ("numpy", "scipy", "matplotlib", "numba", "pandas", "stochvolmodels")
     code_dir = Path(__file__).resolve().parent
     code_files = sorted(code_dir.glob("*.py"))
+    archive_dir = Path(round1_json).resolve().parent
+    observed_archive_hashes = {
+        name: _sha256(archive_dir / name)
+        for name in ROUND1_ARCHIVED_WHOLE_ARTIFACT_PROVENANCE_HASHES
+    }
+    archive_hash_matches = {
+        name: observed_archive_hashes[name] == expected
+        for name, expected in ROUND1_ARCHIVED_WHOLE_ARTIFACT_PROVENANCE_HASHES.items()
+    }
     return {
         "script": "python -m volatility_book.ch_discrete_vol.round2",
         "profile": profile.value,
@@ -312,12 +327,26 @@ def _provenance(
             "background_note": _sha256(background_note),
             "round1_results_json": _sha256(round1_json),
             "r1_repeat_results_json": _sha256(r1_json),
+            "acceptance_manifest": _sha256(ACCEPTANCE_MANIFEST),
         },
-        "round1_archive_expected_sha256": ROUND1_ARCHIVE_HASHES,
-        "round1_archive_observed_sha256": {
-            name: _sha256(Path(round1_json).resolve().parent / name)
-            for name in ROUND1_ARCHIVE_HASHES
+        "portable_acceptance_manifest": {
+            "path": ACCEPTANCE_MANIFEST.resolve().relative_to(_repo_root().resolve()).as_posix(),
+            "sha256": _sha256(ACCEPTANCE_MANIFEST),
+            "role": "portable content-level numerical acceptance contract",
         },
+        "round1_archived_whole_artifact_provenance": {
+            "expected_sha256": ROUND1_ARCHIVED_WHOLE_ARTIFACT_PROVENANCE_HASHES,
+            "observed_sha256": observed_archive_hashes,
+            "matches": archive_hash_matches,
+            "blocking": False,
+            "portable_numerical_golden": False,
+            "role": (
+                "Historical whole-artifact provenance only; hashes include revision, paths, "
+                "versions, runtime, and rendering metadata."
+            ),
+        },
+        # Backward-compatible reporting alias; never use as a portable acceptance gate.
+        "round1_archive_observed_sha256": observed_archive_hashes,
         "seeds": {
             "R1_repeat_E1_to_E7": "20260824 through 20260830",
             "R2_R3_base_seed": 20260823,
@@ -335,16 +364,9 @@ def _validate_r1_inputs(
     *,
     round1: Mapping[str, Any],
     repeat: Mapping[str, Any],
-    round1_json: Path,
 ) -> None:
-    archive_dir = Path(round1_json).resolve().parent
-    mismatches = {
-        name: (_sha256(archive_dir / name), expected)
-        for name, expected in ROUND1_ARCHIVE_HASHES.items()
-        if _sha256(archive_dir / name) != expected
-    }
-    if mismatches:
-        raise RuntimeError(f"Round-1 archive hash validation failed: {mismatches}")
+    if round1.get("profile") != "full":
+        raise RuntimeError("Round-1 input must use the full profile")
     if repeat.get("profile") != "reference":
         raise RuntimeError("R1 clean repeat must use the reference profile")
     repeat_provenance = repeat.get("provenance", {})
@@ -372,9 +394,15 @@ def _unwrap(value: dict[str, Any], key: str) -> dict[str, Any]:
     return nested if isinstance(nested, dict) else value
 
 
+def _default_output_dir(profile: StudyProfile) -> Path:
+    if profile is StudyProfile.FULL:
+        return DEFAULT_OUTPUT_DIR
+    return OUTPUT_ROOT / f"round2_{profile.value}"
+
+
 def run_round2(
     *,
-    output_dir: Path,
+    output_dir: Path | None = None,
     profile: StudyProfile,
     round1_json: Path,
     r1_json: Path,
@@ -382,15 +410,15 @@ def run_round2(
 ) -> dict[str, Any]:
     """Execute R1--R6 and write the round-2 memo, audit JSON, and combined PDF."""
     started = time.perf_counter()
-    _require_clean_exact_tag()
-    output_dir = Path(output_dir).resolve()
+    _require_clean_exact_tag(profile)
+    selected_output = _default_output_dir(profile) if output_dir is None else Path(output_dir)
+    output_dir = selected_output.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     round1 = _json(round1_json)
     repeat = _json(r1_json)
     _validate_r1_inputs(
         round1=round1,
         repeat=repeat,
-        round1_json=Path(round1_json),
     )
     r1 = build_r1_stability(round1, repeat)
     if not r1["blocking_gate_passed"]:
@@ -489,7 +517,7 @@ def run_round2(
 def run_local_test(
     local_test: LocalTests,
     *,
-    output_dir: Path = DEFAULT_NOTES_DIR,
+    output_dir: Path | None = None,
     round1_json: Path | None = None,
     r1_json: Path | None = None,
     background_note: Path = DEFAULT_BACKGROUND_NOTE,
@@ -497,12 +525,14 @@ def run_local_test(
     """Run one named workload through the production round-2 entry point."""
     if not isinstance(local_test, LocalTests):
         raise ValueError("local_test must be a LocalTests member")
-    notes = Path(output_dir)
+    profile = StudyProfile(local_test.value)
     return run_round2(
-        output_dir=notes,
-        profile=StudyProfile(local_test.value),
-        round1_json=Path(round1_json) if round1_json else notes / "results.json",
-        r1_json=Path(r1_json) if r1_json else notes / "r1_reference" / "results.json",
+        output_dir=(
+            Path(output_dir) if output_dir is not None else _default_output_dir(profile)
+        ),
+        profile=profile,
+        round1_json=Path(round1_json) if round1_json else DEFAULT_ROUND1_JSON,
+        r1_json=Path(r1_json) if r1_json else DEFAULT_R1_JSON,
         background_note=background_note,
     )
 
@@ -510,7 +540,14 @@ def run_local_test(
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", choices=[item.value for item in LocalTests], default="smoke")
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_NOTES_DIR)
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help=(
+            "Artifact directory; defaults under outputs/volatility_book/ch_discrete_vol "
+            "to round2, round2_reference, or round2_smoke according to --profile."
+        ),
+    )
     parser.add_argument("--round1-json", type=Path)
     parser.add_argument("--r1-json", type=Path)
     parser.add_argument("--background-note", type=Path, default=DEFAULT_BACKGROUND_NOTE)
