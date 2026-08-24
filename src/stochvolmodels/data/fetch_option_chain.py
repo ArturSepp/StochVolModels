@@ -30,7 +30,7 @@ try:
 except ImportError as error:
     raise ImportError(
         "stochvolmodels.data.fetch_option_chain needs qis and option-chain-analytics: "
-        'pip install "stochvolmodels[research]" "option-chain-analytics[cboe]>=5.0.0"'
+        'pip install "stochvolmodels[research]" "option-chain-analytics[cboe]>=5.2.0"'
     ) from error
 
 # stochvolmodels
@@ -427,11 +427,12 @@ def load_price_data(options_data_dfs: OptionsDataDFs,
     """Compatibility wrapper for OCA's chain-linked underlying-data loader."""
     warnings.warn(
         'load_price_data moved to OptionChainAnalytics chain data: '
-        'options_data_dfs.get_spot_data(...)',
+        'options_data_dfs.load_price_data(...)',
         DeprecationWarning,
         stacklevel=2,
     )
-    spot_price = options_data_dfs.get_spot_data(time_period=time_period)[data]
-    if freq is not None:
-        spot_price = spot_price.resample(freq).last()
-    return spot_price
+    return options_data_dfs.load_price_data(
+        time_period=time_period,
+        data=data,
+        freq=freq,
+    )

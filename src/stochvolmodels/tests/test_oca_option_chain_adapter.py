@@ -131,14 +131,14 @@ def test_bundled_chain_matches_oca_deterministic_simulator() -> None:
 
 def test_price_data_compatibility_wrapper_delegates_to_oca_chain_data(monkeypatch) -> None:
     options_data = oca.generate_simulated_options_data()
-    expected = options_data.get_spot_data()
+    expected = options_data.load_price_data(data='close', freq=None)
     calls = {}
 
-    def fake_get_spot_data(**kwargs):
+    def fake_load_price_data(**kwargs):
         calls.update(kwargs)
         return expected
 
-    monkeypatch.setattr(options_data, 'get_spot_data', fake_get_spot_data)
+    monkeypatch.setattr(options_data, 'load_price_data', fake_load_price_data)
 
     with pytest.deprecated_call(match='OptionChainAnalytics'):
         actual = fetch_option_chain.load_price_data(
@@ -147,8 +147,8 @@ def test_price_data_compatibility_wrapper_delegates_to_oca_chain_data(monkeypatc
             freq=None,
         )
 
-    assert actual.equals(expected['close'])
-    assert calls == {'time_period': None}
+    assert actual.equals(expected)
+    assert calls == {'time_period': None, 'data': 'close', 'freq': None}
 
 
 def test_frequency_sampling_delegates_to_oca_reconstruction(monkeypatch) -> None:
