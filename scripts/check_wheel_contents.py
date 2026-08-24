@@ -42,14 +42,23 @@ def check_wheel(wheel_path: Path) -> None:
     assert "stochvolmodels/settings.yaml" not in members, (
         "machine-local settings.yaml entered the wheel"
     )
-    assert "stochvolmodels/__init__.py" in members
+    required_runtime_files = {
+        "stochvolmodels/__init__.py",
+        "stochvolmodels/data/model_paths.py",
+        "stochvolmodels/models/__init__.py",
+        "stochvolmodels/products/__init__.py",
+    }
+    missing_runtime_files = required_runtime_files.difference(members)
+    assert not missing_runtime_files, (
+        f"required runtime files missing from wheel: {sorted(missing_runtime_files)}"
+    )
     test_modules = {
         member
         for member in members
         if member.startswith("stochvolmodels/tests/test_") and member.endswith(".py")
     }
-    assert len(test_modules) == 26, (
-        f"expected exactly 26 automated test modules, found {len(test_modules)}"
+    assert len(test_modules) == 27, (
+        f"expected exactly 27 automated test modules, found {len(test_modules)}"
     )
     assert not any(member.endswith("_test.py") for member in members), (
         "automated tests must use the test_*.py form"
