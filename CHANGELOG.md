@@ -11,6 +11,9 @@ Entries start at 1.2.0. For earlier releases see the git log.
 - `stochvolmodels.pricers.tdist_pricer.TdistTerminalModel` provides a validated,
   parameter-bound Student-t terminal-law and Black-smile adapter for standard European calls and
   puts while preserving the legacy pricing and calibration entry points.
+- `stochvolmodels.models.tgarch` adds a distinct discrete TGARCH terminal path model with
+  physical, exact finite-step pricing, and limit-pricing measures, including raw
+  P-to-exact-Q likelihood ratios and simulation diagnostics.
 
 ## [2.3.0] - 2026-08-24
 
