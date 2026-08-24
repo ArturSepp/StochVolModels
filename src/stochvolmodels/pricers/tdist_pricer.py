@@ -1,13 +1,13 @@
-"""
-implementation of gaussian mixture pricer and calibration
-"""
-import numpy as np
+"""Student-t terminal-distribution pricing and calibration."""
 from dataclasses import dataclass
-from scipy.optimize import minimize
-from numba.typed import List
-from typing import Tuple
+from numbers import Real
+from typing import ClassVar, Tuple
 
-# sv 
+import numpy as np
+from numba.typed import List
+from scipy.optimize import minimize
+
+# sv
 import stochvolmodels.fitters.tdist as td
 from stochvolmodels.utils.funcs import to_flat_np_array, timer
 from stochvolmodels.pricers.model_pricer import (
@@ -18,7 +18,7 @@ from stochvolmodels.pricers.model_pricer import (
 from stochvolmodels.utils.config import VariableType
 
 # data
-from stochvolmodels.data.option_chain import OptionChain
+from stochvolmodels.data.option_chain import OptionChain, OptionSlice
 
 
 @dataclass
@@ -26,22 +26,21 @@ class TdistParams(ModelParams):
     """
     parameters of the Student-t model: volatility, drift and degrees of freedom nu.
 
-    Terminal log-returns are Student-t with nu > 2, scaled so the variance matches
-    vol^2 ttm. Lower nu gives heavier tails and a more pronounced smile.
+    The centered arithmetic-return shock is Student-t with nu > 2 and variance
+    ``vol**2 * ttm``. The terminal asset is the positive part of spot times one plus
+    drift times maturity plus that shock, so the floor creates an atom at zero.
     """
     drift: float
     vol: float
     nu: float
-    ttm: float  # ttm is important as all params are fixed to this ttm, it is not part of calibration
+    ttm: float  # Parameters are fixed to this maturity, which is not calibrated.
 
 
 class TdistPricer(ModelPricer):
 
     """ModelPricer valuing options under a Student-t terminal distribution."""
     def price_chain(self, option_chain: OptionChain, params: TdistParams, **kwargs) -> np.ndarray:
-        """
-        implementation of generic method price_chain using heston wrapper for tdist prices
-        """
+        """Price all chain slices through the legacy closed-form Student-t kernel."""
         model_prices_ttms = tdist_vanilla_chain_pricer(drift=params.drift,
                                                        vol=params.vol,
                                                        nu=params.nu,
@@ -109,7 +108,10 @@ class TdistPricer(ModelPricer):
         def objective(pars: np.ndarray, args: np.ndarray) -> float:
             """weighted mean squared error between model and market implied volatilities."""
             params = parse_model_params(pars=pars)
-            model_vols = self.compute_model_ivols_for_chain(option_chain=option_chain, params=params)
+            model_vols = self.compute_model_ivols_for_chain(
+                option_chain=option_chain,
+                params=params,
+            )
             resid = np.nansum(weights * np.square(to_flat_np_array(model_vols) - market_vols))
             return resid
 
@@ -145,6 +147,142 @@ class TdistPricer(ModelPricer):
         return fit_params
 
 
+@dataclass(frozen=True, init=False)
+class TdistTerminalModel:
+    """Validated, parameter-bound Student-t law for one-maturity European options.
+
+    The bound drift is consistent with exactly one maturity and discount rate through
+    the floored-arithmetic-return martingale equation. Only standard calls and puts are
+    supported; the historical ``IC`` and ``IP`` codes do not implement inverse settlement
+    and are deliberately rejected at this boundary. Discount consistency uses the
+    dimensionless condition ``abs(log(discount * expected_growth)) <= 5e-10``.
+    """
+
+    _drift: float
+    _vol: float
+    _nu: float
+    _ttm: float
+
+    _MARTINGALE_LOG_ATOL: ClassVar[float] = 5.0e-10
+
+    def __init__(self, params: TdistParams) -> None:
+        """Validate and snapshot one legacy parameter payload."""
+        if not isinstance(params, TdistParams):
+            raise TypeError("params must be a TdistParams instance")
+
+        values = {
+            "drift": params.drift,
+            "vol": params.vol,
+            "nu": params.nu,
+            "ttm": params.ttm,
+        }
+        for name in ("drift", "vol", "nu", "ttm"):
+            value = values[name]
+            if (
+                isinstance(value, (bool, np.bool_))
+                or not isinstance(value, Real)
+                or not np.isfinite(value)
+            ):
+                raise ValueError(f"{name} must be a finite real scalar")
+        if values["vol"] <= 0.0:
+            raise ValueError("vol must be positive")
+        if values["nu"] <= 2.0:
+            raise ValueError("nu must be greater than 2")
+        if values["ttm"] <= 0.0:
+            raise ValueError("ttm must be positive")
+
+        for name, value in values.items():
+            object.__setattr__(self, f"_{name}", float(value))
+
+    @property
+    def params(self) -> TdistParams:
+        """Return a detached legacy parameter payload for inspection or facade calls."""
+        return TdistParams(
+            drift=self._drift,
+            vol=self._vol,
+            nu=self._nu,
+            ttm=self._ttm,
+        )
+
+    @property
+    def ttm(self) -> float:
+        """Return the terminal law's time to maturity in years."""
+        return self._ttm
+
+    def _expected_growth(self) -> float:
+        """Return expected terminal asset growth before discounting."""
+        default_boundary = -(1.0 + self._drift * self._ttm)
+        default_probability = td.cdf_tdist(
+            x=default_boundary,
+            mu=0.0,
+            vol=self._vol,
+            nu=self._nu,
+            ttm=self._ttm,
+        )
+        truncated_mean = td.cum_mean_tdist(
+            x=default_boundary,
+            mu=0.0,
+            vol=self._vol,
+            nu=self._nu,
+            ttm=self._ttm,
+        )
+        expected_growth = (
+            (1.0 + self._drift * self._ttm) * (1.0 - default_probability)
+            - truncated_mean
+        )
+        if not np.isfinite(expected_growth) or expected_growth <= 0.0:
+            raise ValueError("params imply an invalid expected terminal growth factor")
+        return float(expected_growth)
+
+    def _option_chain(self, option_slice: OptionSlice) -> OptionChain:
+        """Validate one standard-payoff slice and convert it to the legacy facade input."""
+        if not isinstance(option_slice, OptionSlice):
+            raise TypeError("option_slice must be an OptionSlice instance")
+        if option_slice.ttm != self.ttm:
+            raise ValueError("option_slice.ttm must exactly match the bound params.ttm")
+
+        unsupported = set(np.asarray(option_slice.optiontypes).astype(str)) - {"C", "P"}
+        if unsupported:
+            raise NotImplementedError(
+                "TdistTerminalModel supports C/P only; inverse IC/IP settlement is not implemented"
+            )
+
+        discounted_growth = option_slice.discfactor * self._expected_growth()
+        if not np.isfinite(discounted_growth) or discounted_growth <= 0.0:
+            raise ValueError("option_slice discount rate implies invalid discounted growth")
+        martingale_log_error = abs(np.log(discounted_growth))
+        if martingale_log_error > self._MARTINGALE_LOG_ATOL:
+            raise ValueError(
+                "option_slice discount rate is inconsistent with the bound drift: "
+                f"abs(log(discount * expected_growth)) must not exceed "
+                f"{self._MARTINGALE_LOG_ATOL:.0e}"
+            )
+
+        return OptionChain.slice_to_chain(
+            ttm=option_slice.ttm,
+            forward=option_slice.forward,
+            strikes=np.asarray(option_slice.strikes, dtype=float),
+            optiontypes=np.asarray(option_slice.optiontypes),
+            discfactor=option_slice.discfactor,
+            id=option_slice.id,
+        )
+
+    def price_european(self, option_slice: OptionSlice) -> np.ndarray:
+        """Return standard-call/put prices shaped like ``option_slice.strikes``."""
+        option_chain = self._option_chain(option_slice)
+        prices = TdistPricer().price_chain(option_chain=option_chain, params=self.params)
+        return np.asarray(prices[0], dtype=float)
+
+    def implied_vols(self, option_slice: OptionSlice) -> np.ndarray:
+        """Return Black implied volatilities shaped like ``option_slice.strikes``."""
+        option_chain = self._option_chain(option_slice)
+        ivols = TdistPricer().compute_model_ivols_for_chain(
+            option_chain=option_chain,
+            params=self.params,
+        )
+        return np.asarray(ivols[0], dtype=float)
+
+
 def tdist_vanilla_chain_pricer(vol: float,
                                nu: float,
                                drift: float,
@@ -159,8 +297,9 @@ def tdist_vanilla_chain_pricer(vol: float,
     """
     # outputs as numpy lists
     model_prices_ttms = List()
-    for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm in zip(ttms, forwards, discfactors, strikes_ttms,
-                                                                      optiontypes_ttms):
+    for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm in zip(
+        ttms, forwards, discfactors, strikes_ttms, optiontypes_ttms
+    ):
         discount_rate = -np.log(discfactor) / ttm
         option_prices_ttm = td.compute_vanilla_price_tdist(spot=forward*discfactor,
                                                            strikes=strikes_ttm,

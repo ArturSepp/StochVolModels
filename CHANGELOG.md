@@ -8,6 +8,9 @@ Entries start at 1.2.0. For earlier releases see the git log.
 - `ModelPaths` and the provisional `PathModel`, `TransformModel`,
   `TerminalDistributionModel`, `TerminalSmileModel`, and `Payoff` capability contracts establish
   the path, terminal-model, and pathwise-product boundaries for book analytics.
+- `stochvolmodels.pricers.tdist_pricer.TdistTerminalModel` provides a validated,
+  parameter-bound Student-t terminal-law and Black-smile adapter for standard European calls and
+  puts while preserving the legacy pricing and calibration entry points.
 
 ## [2.3.0] - 2026-08-24
 

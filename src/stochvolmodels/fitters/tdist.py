@@ -1,10 +1,11 @@
 """
-Student-t distribution analytics for option valuation.
+Student-t arithmetic-return analytics for option valuation.
 
-Terminal log-returns are Student-t with nu > 2 degrees of freedom, scaled by
-upsilon so that the variance matches vol^2 ttm. Finite variance requires nu > 2,
-and the kth moment exists only for k < nu, so low nu produces heavy tails and a
-pronounced smile while leaving the second moment intact.
+The centered simple-return shock is Student-t with nu > 2 degrees of freedom and
+scale upsilon chosen so its variance is vol^2 ttm. The terminal asset is spot times
+the positive part of one plus drift times maturity plus that shock, which creates an
+atom at zero. Finite variance requires nu > 2, and the kth shock moment exists only
+for k < nu.
 """
 import numpy as np
 from numba import njit
@@ -31,7 +32,13 @@ def compute_upsilon(vol: float, ttm: float, nu: float) -> float:
     return vol*np.sqrt(ttm*(nu-2.0)/nu)
 
 
-def pdf_tdist(x: Union[np.ndarray, float], mu: float, vol: float, nu: float, ttm: float) -> Union[float, np.ndarray]:
+def pdf_tdist(
+    x: Union[np.ndarray, float],
+    mu: float,
+    vol: float,
+    nu: float,
+    ttm: float,
+) -> Union[float, np.ndarray]:
     """Student-t density with location mu ttm, scale upsilon and nu degrees of freedom."""
     upsilon = compute_upsilon(vol=vol, ttm=ttm, nu=nu)
     z = (x - mu * ttm) / upsilon
@@ -40,7 +47,13 @@ def pdf_tdist(x: Union[np.ndarray, float], mu: float, vol: float, nu: float, ttm
     return c*f
 
 
-def cdf_tdist(x: Union[np.ndarray, float], mu: float, vol: float, nu: float, ttm: float) -> Union[float, np.ndarray]:
+def cdf_tdist(
+    x: Union[np.ndarray, float],
+    mu: float,
+    vol: float,
+    nu: float,
+    ttm: float,
+) -> Union[float, np.ndarray]:
     """
     cumulative distribution of cumullative location-scale t-distribution
     cdf = int^{x}_{-infty} f(u)du
@@ -51,8 +64,13 @@ def cdf_tdist(x: Union[np.ndarray, float], mu: float, vol: float, nu: float, ttm
     return cdf
 
 
-def cum_mean_tdist(x: Union[np.ndarray, float], mu: float = 0, vol: float = 0.2, nu: float = 3.0, ttm: float = 0.25
-                   ) -> Union[float, np.ndarray]:
+def cum_mean_tdist(
+    x: Union[np.ndarray, float],
+    mu: float = 0,
+    vol: float = 0.2,
+    nu: float = 3.0,
+    ttm: float = 0.25,
+) -> Union[float, np.ndarray]:
     """
     cumulative expected value
     h = int^{x}_{-infty} u f(u)du
@@ -60,11 +78,19 @@ def cum_mean_tdist(x: Union[np.ndarray, float], mu: float = 0, vol: float = 0.2,
     upsilon = compute_upsilon(vol=vol, ttm=ttm, nu=nu)
     z = (x-mu*ttm) / upsilon
     norm = (gamma(0.5*(1.0+nu)) / gamma(0.5*nu))*np.sqrt(nu/np.pi) / (1.0-nu)
-    h = mu * cdf_tdist(x, mu=mu, vol=vol, nu=nu, ttm=ttm) + upsilon * norm * np.power(1.0 + np.square(z) / nu, -0.5 * (nu - 1.0))
+    h = (
+        mu * cdf_tdist(x, mu=mu, vol=vol, nu=nu, ttm=ttm)
+        + upsilon * norm * np.power(1.0 + np.square(z) / nu, -0.5 * (nu - 1.0))
+    )
     return h
 
 
-def imply_drift_tdist(rf_rate: float = 0.0, vol: float = 0.2, nu: float = 3.0, ttm: float = 0.25) -> float:
+def imply_drift_tdist(
+    rf_rate: float = 0.0,
+    vol: float = 0.2,
+    nu: float = 3.0,
+    ttm: float = 0.25,
+) -> float:
     """
     imply drift of t-distribution under risk-neutral measure
     """
@@ -180,8 +206,24 @@ def infer_implied_vol_tdist(spot: float,
     compute normal implied vol
     """
     x1, x2 = 0.05, 10.0  # starting values
-    f = compute_vanilla_price_tdist(spot=spot, strikes=strike, ttm=ttm, vol=x1, nu=nu, rf_rate=rf_rate, optiontypes=optiontype) - given_price
-    fmid = compute_vanilla_price_tdist(spot=spot, strikes=strike, ttm=ttm, vol=x2, nu=nu, rf_rate=rf_rate, optiontypes=optiontype) - given_price
+    f = compute_vanilla_price_tdist(
+        spot=spot,
+        strikes=strike,
+        ttm=ttm,
+        vol=x1,
+        nu=nu,
+        rf_rate=rf_rate,
+        optiontypes=optiontype,
+    ) - given_price
+    fmid = compute_vanilla_price_tdist(
+        spot=spot,
+        strikes=strike,
+        ttm=ttm,
+        vol=x2,
+        nu=nu,
+        rf_rate=rf_rate,
+        optiontypes=optiontype,
+    ) - given_price
     if f*fmid < 0.0:
         if f < 0.0:
             rtb = x1
@@ -193,7 +235,15 @@ def infer_implied_vol_tdist(spot: float,
         for j in range(0, 100):
             dx = dx*0.5
             xmid = rtb+dx
-            fmid = compute_vanilla_price_tdist(spot=spot, strikes=strike, ttm=ttm, vol=xmid, nu=nu, rf_rate=rf_rate, optiontypes=optiontype) - given_price
+            fmid = compute_vanilla_price_tdist(
+                spot=spot,
+                strikes=strike,
+                ttm=ttm,
+                vol=xmid,
+                nu=nu,
+                rf_rate=rf_rate,
+                optiontypes=optiontype,
+            ) - given_price
             if fmid <= 0.0:
                 rtb = xmid
             if np.abs(fmid) < tol:
@@ -220,7 +270,9 @@ def infer_tdist_implied_vols_from_model_slice_prices(ttm: float,
                                                      ) -> np.ndarray:
     """invert model prices of one slice to Student-t implied volatilities."""
     model_vol_ttm = np.zeros_like(strikes)
-    for idx, (strike, model_price, optiontype) in enumerate(zip(strikes, model_prices, optiontypes)):
+    for idx, (strike, model_price, optiontype) in enumerate(
+        zip(strikes, model_prices, optiontypes)
+    ):
         model_vol_ttm[idx] = infer_implied_vol_tdist(spot=spot, ttm=ttm, rf_rate=rf_rate,
                                                      given_price=model_price,
                                                      strike=strike,
