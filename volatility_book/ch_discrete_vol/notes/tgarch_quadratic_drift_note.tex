@@ -1,0 +1,990 @@
+% ============================================================================
+% AI-DRAFTED BLOCK (Claude), revision 3, 2026-08-23. Entire file is one
+% generated block, delimited per the project seam protocol. Author passages
+% pending:
+%   (1) the economic-mechanism paragraph in Section 1 is marked for redraft
+%       by the author per the project drafting protocol;
+%   (2) bibliography entries marked % TODO carry unverified volume/page data.
+% Revision 3 changes vs revision 2: simulation-backed upgrades from the
+% companion study (through tag tgarch-study-round3-v1). Remark on filtering
+% now carries the two closed-form error laws with measured constants; the
+% tails remark states the verified Kesten-to-inverse-gamma index
+% convergence instead of the former non-commuting-limits claim; Section 5
+% reports the completed verification numbers, the identification results,
+% and the fixed-budget shortfall illustration of the open uniform
+% integrability problem. The full-budget clean-tag pricing rerun and the
+% nested path-budget diagnostic are complete.
+% Revision 2 changes vs revision 1: notation aligned with the published
+% log-normal beta SV paper (signed volatility beta, residual vol-of-vol,
+% hatted Q-parameters); Student-t section removed; one-step kernels presented
+% as a product measure change; exact-filtration proposition added; remarks
+% added on the minimal kernel, on the Girsanov (not Ito) origin of the
+% quadratic term, and on the correspondence with the paper's parameter
+% transformation.
+% ============================================================================
+\documentclass[11pt]{article}
+\usepackage[margin=1.1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{assumption}[theorem]{Assumption}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Pm}{\mathbb{P}}
+\newcommand{\Qm}{\mathbb{Q}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Dt}{\Delta}
+
+\title{A Discrete-Time Origin of the Log-Normal Beta Stochastic Volatility
+Model with Quadratic Drift}
+\author{Working note (draft)\thanks{AI-assisted draft, revision 3, prepared
+2026-08-23. All numbered claims carry proofs in the text. Bibliography
+entries marked in the source require verification before any submission
+use.}}
+\date{August 23, 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+The log-normal beta stochastic volatility model with quadratic drift of Sepp
+and Rakhmonov (2023) connects its statistical and risk-neutral dynamics
+through a Girsanov change with two risk prices proportional to volatility,
+whose constants $\bar\lambda_0$ and $\bar\lambda_1$ are free parameters.
+A discrete-time model generating these dynamics, and an economic
+identification of the two constants, have been missing.
+We apply one-period exponential-quadratic pricing kernels with
+volatility-dependent loadings to a threshold recursion on the volatility
+level driven by the single return innovation.
+The risk-neutral drift reproduces the parameter transformation of the
+continuous model with $\bar\lambda_0=\gamma_1$, the slope of the Sharpe
+ratio in volatility, and $\bar\lambda_1=-(m_1/s_1)\,\eta_1$, the slope of
+the kernel variance preference.
+The drift intercept $\kappa_1\theta$ is invariant under every admissible
+kernel, and the recursion converges weakly to the continuous model under
+both measures.
+The recursion supplies an exact volatility filter from returns at every
+step and a cross-measure restriction for joint estimation from returns and
+options.
+\end{abstract}
+
+\section{Introduction and results}\label{sec:intro}
+
+The log-normal beta stochastic volatility (SV) model with quadratic drift
+specifies the volatility dynamics
+$d\sigma_t=(\kappa_1+\kappa_2\sigma_t)(\theta-\sigma_t)\,dt
++\beta\sigma_t\,dW^{(0)}_t+\varepsilon\sigma_t\,dW^{(1)}_t$, with the
+volatility beta $\beta\in\R$ measuring the response of volatility to
+returns and with $\varepsilon>0$ the residual volatility of volatility
+\cite{SeppRakhmonov2023}.
+The published paper connects the statistical and the risk-neutral dynamics
+through a Girsanov change with risk prices
+$\lambda_0(t)=\bar\lambda_0\sigma_t$ and
+$\lambda_1(t)=\bar\lambda_1\sigma_t$, which shifts the quadratic
+mean-reversion rate to
+$\hat\kappa_2=\kappa_2+\beta\bar\lambda_0+\varepsilon\bar\lambda_1$ and
+leaves the products $\kappa_1\theta=\hat\kappa_1\hat\theta$ matched.
+Carr and Willems (2019) study a close relative with the same drift
+structure.
+The discrete-time side of this model family has remained open.
+Nelson (1990) showed that the standard GARCH(1,1) recursion converges to a
+variance diffusion with linear mean reversion, not to the Heston model.
+Duan (1997) extended the convergence theory to an augmented family that
+nests recursions on the volatility level, whose limits carry linear
+drift.
+The affine recursion of Heston and Nandi (2000) converges to the Heston
+model with perfectly correlated shocks.
+No discrete-time model has been shown to generate the quadratic drift, and
+the continuous-time constants $\bar\lambda_0$ and $\bar\lambda_1$ have had
+no primitive interpretation.
+
+We establish three results.
+First, we derive the transformation of the volatility drift under
+one-period exponential-quadratic pricing kernels with volatility-dependent
+loadings (Theorem~\ref{thm:main}).
+The physical drift polynomial $d_0+d_1\sigma+d_2\sigma^2$ maps to
+$d_0+(d_1+\Lambda_0)\sigma+(d_2+\Lambda_1)\sigma^2$, where $\Lambda_0$ and
+$\Lambda_1$ collect the intercepts and the slopes of the Sharpe ratio
+$\gamma(\sigma)=\gamma_0+\gamma_1\sigma$ and of the kernel variance
+preference $\eta(\sigma)=\eta_0+\eta_1\sigma$.
+The map reproduces the parameter transformation of the continuous model
+exactly, with the induced risk prices $\lambda_0(\sigma)=\gamma(\sigma)$
+and $\lambda_1(\sigma)=-(m_1/s_1)\,\eta(\sigma)$.
+The free constants of the published paper acquire discrete primitives:
+$\bar\lambda_0$ is the Sharpe-ratio slope and $\bar\lambda_1$ is the slope
+of the variance preference scaled by the news-impact constant $m_1/s_1$
+(Corollary~\ref{cor:theta} and Remark~\ref{rem:match}).
+Second, we show that the drift intercept $d_0=\kappa_1\theta$ is invariant
+under every admissible pricing kernel, at every step size and in the limit
+(Proposition~\ref{prop:invariance}).
+The invariance turns the matching convention
+$\kappa_1\theta=\hat\kappa_1\hat\theta$ of the published paper into a
+structural restriction available for joint estimation.
+Third, we prove weak convergence of the recursion to the continuous model
+under both measures (Theorem~\ref{thm:limit}), and we show that the
+recursion admits an exact volatility filter from returns at every step
+(Proposition~\ref{prop:filter}), a property the two-Brownian limit does not
+share.
+
+% [AUTHOR: mechanism paragraph below is a placeholder draft. Per project
+% protocol the economic-mechanism passage is author-written. Redraft.]
+Under the risk-neutral measure the volatility drift acquires the covariance
+between the pricing kernel and the volatility innovation.
+The kernel prices two features of the single return innovation: its level,
+at the market Sharpe ratio, and its size, at the variance preference.
+When the Sharpe ratio rises with volatility, the compensation for the level
+shock scales with $\sigma$, and its transmission into the volatility
+recursion scales with $\beta\sigma$, which contributes
+$\beta\gamma_1\sigma^2$ to the drift.
+The variance-preference slope acts in the same way through the size channel
+carried by $\varepsilon$.
+The quadratic drift is the continuous-time image of level-dependent risk
+prices, and the sign of $\beta$ decides which channel can fund it.
+
+The construction subsumes the linear-drift case: setting
+$\kappa_2=\gamma_1=\eta_1=0$ recovers a linear drift under both measures,
+and the physical recursion is exactly the threshold model of Zakoian (1994)
+written on the volatility level.
+As a discrete-to-continuous bridge, the construction substitutes for Heston
+and Nandi (2000) on assets with log-normal volatility and a signed
+volatility beta.
+The cost of switching is the loss of an exact discrete moment-generating
+function recursion, and the retained benefit is a single-shock recursion
+whose volatility is an exact function of observed returns.
+
+One problem stays open, and we state it rather than hide it.
+Weak convergence delivers option prices only for bounded payoffs, and call
+prices require uniform integrability of the discrete price family, which
+fails for $\hat\kappa_2=0$ with $\beta>0$ because the discounted limiting
+stock-price process is a strict local martingale.
+Section~\ref{sec:open} formulates the required uniform moment bound, which
+we regard as the central technical claim of any full paper built on this
+note.
+Section~\ref{sec:model} defines the discrete model.
+Section~\ref{sec:kernel} derives the risk-neutral recursion.
+Section~\ref{sec:limit} states the diffusion limits, and
+Section~\ref{sec:open} collects verification steps, constraints, and the
+open problem.
+
+\section{The discrete model under the physical measure}\label{sec:model}
+
+We fix a horizon $T$, a step $\Dt>0$, and the grid $t_k=k\Dt$.
+Innovations $z_{k}$ are independent standard Gaussian variables on a
+filtered space with filtration $\mathcal{F}_k$ generated by the
+innovations.
+We write $m_1=\E|z|=\sqrt{2/\pi}$ and
+$s_1^2=\operatorname{Var}(|z|)=1-2/\pi$, and we define the standardized
+size innovation
+\begin{equation}\label{eq:w}
+w \;=\; \frac{|z|-m_1}{s_1},
+\end{equation}
+which satisfies $\E[w]=0$, $\E[w^2]=1$ and $\E[z\,w]=0$ by symmetry of $z$.
+The physical model for the log price $X=\ln S$ and the volatility $\sigma$
+is
+\begin{align}
+X_{k+1}&=X_k+\Big(r+\gamma(\sigma_k)\,\sigma_k
+-\tfrac{1}{2}\sigma_k^2\Big)\Dt+\sigma_k\sqrt{\Dt}\,z_{k+1},
+\label{eq:Xdyn}\\
+\sigma_{k+1}&=\sigma_k+b(\sigma_k)\,\Dt
++\sigma_k\sqrt{\Dt}\,\big(\beta\,z_{k+1}+\varepsilon\,w_{k+1}\big),
+\label{eq:sigdyn}
+\end{align}
+with the quadratic drift and the Sharpe ratio
+\begin{equation}\label{eq:drift}
+b(\sigma)=(\kappa_1+\kappa_2\sigma)(\theta-\sigma)
+=d_0+d_1\sigma+d_2\sigma^2,
+\qquad
+\gamma(\sigma)=\gamma_0+\gamma_1\sigma ,
+\end{equation}
+so that $d_0=\kappa_1\theta>0$, $d_1=\kappa_2\theta-\kappa_1$ and
+$d_2=-\kappa_2\le0$, with $\kappa_1,\theta>0$ and $\kappa_2\ge0$ as in the
+continuous model.
+The volatility beta $\beta\in\R$ is signed, the residual volatility of
+volatility satisfies $\varepsilon>0$, and the total variance of the
+volatility innovation is $\vartheta^2=\beta^2+\varepsilon^2$, matching the
+continuous convention.
+The excess return in \eqref{eq:Xdyn} equals $\gamma(\sigma)\sigma$, so
+$\gamma(\sigma)$ is the conditional Sharpe ratio of the asset.
+We believe the affine Sharpe specification is the right trade-off because
+it is the minimal specification that can move the quadratic drift
+coefficient and it nests the proportional risk price
+$\lambda_0=\bar\lambda_0\sigma$ of the continuous model at $\gamma_0=0$
+with $\bar\lambda_0=\gamma_1$.
+
+\begin{lemma}\label{lem:innov}
+The volatility innovation admits the threshold form
+$\beta z+\varepsilon w
+=(\beta+\varepsilon/s_1)\,z^{+}-(\beta-\varepsilon/s_1)\,z^{-}
+-\varepsilon m_1/s_1$
+with $z^{+}=\max(z,0)$ and $z^{-}=\max(-z,0)$, and its variance equals
+$\vartheta^2$.
+\end{lemma}
+
+\begin{proof}
+Substitute $z=z^{+}-z^{-}$ and $|z|=z^{+}+z^{-}$ into
+$\beta z+\varepsilon w$.
+The variance follows from $\E[zw]=0$.
+\end{proof}
+
+The threshold form identifies \eqref{eq:sigdyn} as a Zakoian (1994) model
+on the volatility level with an intercept, so the physical dynamics require
+no new econometrics, and for $\beta<0$ the down-move slope
+$\varepsilon/s_1-\beta$ exceeds the up-move slope, which is the leverage
+asymmetry.
+Both equations are driven by functions of the single innovation $z$, and
+the next proposition records the consequence that the volatility path is an
+exact function of the return path.
+
+\begin{proposition}\label{prop:filter}
+Fix the model parameters and $\sigma_0>0$, and suppose the recursion is
+modified by the localization device of Remark~\ref{rem:trunc} so that
+$\sigma_k>0$ for all $k$.
+Then for every $k$ the volatility $\sigma_k$ is measurable with respect to
+$\sigma(X_1,\dots,X_k;\sigma_0)$: the innovation is recovered from the
+observed return by
+\begin{equation}\label{eq:filter}
+z_{k+1}
+=\frac{X_{k+1}-X_k-\big(r+\gamma(\sigma_k)\sigma_k
+-\tfrac{1}{2}\sigma_k^2\big)\Dt}{\sigma_k\sqrt{\Dt}},
+\end{equation}
+and \eqref{eq:sigdyn} then determines $\sigma_{k+1}$.
+The same statement holds under the risk-neutral measure with the
+risk-neutral drifts.
+\end{proposition}
+
+\begin{proof}
+Induction over $k$: given $\sigma_k>0$, equation \eqref{eq:filter} inverts
+\eqref{eq:Xdyn} for $z_{k+1}$, the size innovation $w_{k+1}$ is the
+deterministic transform \eqref{eq:w} of $z_{k+1}$, and \eqref{eq:sigdyn}
+delivers $\sigma_{k+1}$.
+\end{proof}
+
+\begin{remark}[Estimation]\label{rem:qmle}
+Proposition~\ref{prop:filter} makes estimation identical to threshold GARCH
+inference.
+The volatility $\sigma_k$ is predictable, so the return over
+$(t_k,t_{k+1}]$ is conditionally Gaussian with mean
+$(r+\gamma(\sigma_k)\sigma_k-\tfrac{1}{2}\sigma_k^2)\Dt$ and variance
+$\sigma_k^2\Dt$, and the sample likelihood is the prediction-error
+decomposition
+\begin{equation}\label{eq:qmle}
+\ell=-\frac{1}{2}\sum_{k=0}^{n-1}
+\Big(\ln\big(2\pi\sigma_k^2\Dt\big)+z_{k+1}^2\Big),
+\end{equation}
+with $z_{k+1}$ recovered by \eqref{eq:filter} and $\sigma_{k+1}$ updated by
+\eqref{eq:sigdyn} inside the same loop.
+The Sharpe function sits in the conditional mean, so $\gamma_1$ is
+estimated as an in-mean coefficient from returns alone, and it is the same
+constant that the kernel maps to the risk price $\bar\lambda_0$ in
+Section~\ref{sec:kernel}.
+The initial value $\sigma_0$ is a parameter or is set to $\theta$, with an
+influence that decays at the mean-reversion rate.
+Under Gaussian innovations \eqref{eq:qmle} is the exact likelihood, and
+otherwise it is a quasi-likelihood in the usual sense.
+\end{remark}
+
+\begin{remark}\label{rem:filtergap}
+The limit model does not share this property, because the size innovations
+$w_k$ aggregate into a Brownian motion $W^{(1)}$ independent of the return
+Brownian $W^{(0)}$, and the limit volatility is not spanned by returns.
+Exact filterability at every $\Dt$ and unspanned volatility in the limit
+are reconciled by the asymptotic filtering theory of Nelson and Foster
+(1994), and the reconciliation is quantitative.
+Applied to a path of the two-shock limit model, the filter of
+Proposition~\ref{prop:filter} corrects its own error at the data-driven
+rate
+\begin{equation}\label{eq:filterrate}
+g_\Dt=\kappa_{\mathrm{lin}}
++\frac{\varepsilon\,m_1}{s_1}\,\frac{1}{\sqrt{\Dt}},
+\qquad
+\kappa_{\mathrm{lin}}=\kappa_1+\kappa_2\theta,
+\end{equation}
+because an overestimated volatility shrinks the recovered residuals and
+the size channel pushes the estimate back down.
+Balancing this gain against the unspanned noise gives the steady-state
+error
+\begin{equation}\label{eq:filterrmse}
+\mathrm{RMSE}\;\approx\;\bar\sigma\,
+\sqrt{\varepsilon\, s_1/m_1}\;\Dt^{1/4},
+\end{equation}
+with $\bar\sigma$ the average volatility level, which is the
+Nelson--Foster rate with explicit constants.
+The companion simulation study confirms both
+formulas.\footnote{All simulation numbers quoted in this note are from the
+companion study (module \texttt{volatility\_book.ch\_discrete\_vol}). The
+full-budget clean rerun and closing diagnostics use tag
+\texttt{tgarch-study-round3-v1}; earlier inputs retain their producing tags.
+The file \texttt{cited\_numbers.json} maps every quoted value to its JSON
+pointer and producing tag, with seeds, package versions and hashes retained
+in the study archive.}
+Fitted error exponents are $0.249$ and $0.234$ at the two parameter sets
+against the predicted $1/4$, the gain slope matches
+$\varepsilon m_1/s_1$ within a tenth of a percent, and the level matches
+\eqref{eq:filterrmse} within ten percent using the realized average
+volatility.
+A pathwise log-decay regression measures the intercept as the
+Jensen-corrected value
+$\kappa_{\mathrm{lin}}+\tfrac{1}{2}(\varepsilon m_1/s_1)^2$, within about nine
+percent, because the multiplicative noise of the error accelerates the
+decay of its logarithm.
+\end{remark}
+
+\begin{table}[h]
+\centering
+\caption{Notation. Quantities carry units of inverse time where the
+continuous model requires it ($r$, $\kappa_1$, $\kappa_2\theta$, $d_i$),
+and $\Dt$ carries units of time.}
+\begin{tabular}{ll}
+\toprule
+$z,\,w$ & return innovation, size innovation \eqref{eq:w}\\
+$m_1,\,s_1$ & mean and standard deviation of $|z|$\\
+$\beta,\,\varepsilon,\,\vartheta$ & volatility beta ($\beta\in\R$),
+residual vol-of-vol, $\vartheta^2=\beta^2+\varepsilon^2$\\
+$b,\,\hat b$ & drift polynomials of $\sigma$ under $\Pm$ and $\Qm$\\
+$d_0,d_1,d_2$ and $\hat d_0,\hat d_1,\hat d_2$ & coefficients of the drift
+polynomials\\
+$\gamma(\sigma)=\gamma_0+\gamma_1\sigma$ & conditional Sharpe ratio\\
+$\eta(\sigma)=\eta_0+\eta_1\sigma$ & variance-preference loading\\
+$\Lambda(\sigma)=\Lambda_0+\Lambda_1\sigma$ & volatility risk adjustment
+(Proposition~\ref{prop:qmoments})\\
+$\kappa_1,\kappa_2,\theta$ and $\hat\kappa_1,\hat\kappa_2,\hat\theta$ &
+drift parameters under $\Pm$ and $\Qm$\\
+$\kappa_{\mathrm{lin}}=\kappa_1+\kappa_2\theta$ & linearized reversion
+speed \eqref{eq:filterrate}\\
+$\lambda_0(\sigma),\,\lambda_1(\sigma)$ & induced risk prices of the return
+and size channels\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Pricing kernels and the risk-neutral recursion}\label{sec:kernel}
+
+This section performs the change of measure and computes the risk-neutral
+drift of the volatility recursion.
+The measure change is specified through one-period kernels, and we first
+make precise in what sense this is a single change of measure rather than a
+new one at every step.
+Let $M_{k+1}$ be a positive $\mathcal{F}_{k+1}$-measurable variable with
+$\E_k[M_{k+1}]=1$, and define
+\begin{equation}\label{eq:product}
+\zeta_n=\prod_{k=0}^{n-1}M_{k+1},
+\qquad
+\frac{d\Qm}{d\Pm}\Big|_{\mathcal{F}_n}=\zeta_n .
+\end{equation}
+The process $\zeta$ is a positive $\Pm$-martingale by construction, the
+one-period kernels are its multiplicative increments, and \eqref{eq:product}
+is the discrete counterpart of the It\^{o} exponential that defines the
+measure change of the continuous model.
+The factorization into one-period kernels is not an extra assumption,
+because every positive martingale density factorizes this way.
+The one-period form is what makes the discounted price a $\Qm$-martingale
+over each step rather than only at the horizon, which is the discrete
+statement of dynamic no-arbitrage.
+The kernel class is exponential-quadratic in the return innovation, in the
+spirit of the variance-dependent kernel of Christoffersen, Heston and
+Jacobs (2013).
+Its loadings are affine in the volatility level,
+\begin{equation}\label{eq:kernel}
+M_{k+1}
+\;\propto\;
+\exp\!\big(a_k z_{k+1}+b_k z_{k+1}^2\big),
+\qquad
+b_k=\sqrt{\Dt}\,\eta(\sigma_k),\quad
+\eta(\sigma)=\eta_0+\eta_1\sigma ,
+\end{equation}
+normalized to unit conditional expectation, with $a_k$ determined below by
+the martingale condition and with $b_k<1/2$, which holds for all small
+$\Dt$ on compact volatility sets.
+The $\sqrt{\Dt}$ scaling of the loadings is a choice, and any convergence
+statement below is a statement about this scaling scheme, in line with the
+non-uniqueness results of Corradi (2000).
+We adopt it because it is the unique power scaling under which the risk
+adjustment neither vanishes nor explodes in the limit.
+
+\begin{lemma}\label{lem:qlaw}
+Under $\Qm$ the innovation $z_{k+1}$ given $\mathcal{F}_k$ is Gaussian with
+mean $\lambda_k=a_k\varsigma_k^2$ and variance
+$\varsigma_k^{2}=(1-2b_k)^{-1}$.
+\end{lemma}
+
+\begin{proof}
+The conditional $\Qm$-density is proportional to
+$\varphi(z)\exp(a_k z+b_k z^2)
+\propto\exp\{-\tfrac{1}{2}(1-2b_k)z^2+a_k z\}$, and completing the square
+gives the stated Gaussian law.
+\end{proof}
+
+\begin{proposition}\label{prop:pinned}
+For each $b_k<1/2$ there exists a unique $a_k$ such that the discounted
+price $e^{-r t_k+X_k}$ is a $\Qm$-martingale, and it satisfies
+\begin{equation}\label{eq:lambda}
+\lambda_k=-\sqrt{\Dt}\,\gamma(\sigma_k)
+-\tfrac{1}{2}\,\sigma_k\sqrt{\Dt}\,\big(\varsigma_k^{2}-1\big)
+=-\sqrt{\Dt}\,\gamma(\sigma_k)+O(\Dt),
+\end{equation}
+locally uniformly in $\sigma_k$.
+\end{proposition}
+
+\begin{proof}
+By Lemma~\ref{lem:qlaw} the martingale condition
+$\E^{\Qm}_k[e^{X_{k+1}-X_k}]=e^{r\Dt}$ reads
+$\gamma(\sigma)\sigma\Dt+\sigma\sqrt{\Dt}\,\lambda_k
++\tfrac{1}{2}\sigma^2\Dt(\varsigma_k^2-1)=0$, which solves to
+\eqref{eq:lambda}.
+The map $a\mapsto\lambda=a\varsigma_k^2$ is a strictly increasing bijection
+of $\R$ for fixed $b_k<1/2$, so $a_k$ exists and is unique.
+The remainder in \eqref{eq:lambda} is $O(\Dt)$ because
+$\varsigma_k^2-1=2b_k/(1-2b_k)=2\sqrt{\Dt}\,\eta(\sigma)+O(\Dt)$, with
+constants uniform on compact volatility sets since $\gamma$ and $\eta$ are
+affine.
+\end{proof}
+
+The martingale condition therefore pins the level loading to the Sharpe
+ratio, and the only free input of the kernel is the variance preference
+$\eta$.
+The proof also records a cancellation worth naming.
+The It\^{o} compensator $-\sigma^2/2$ of the log return cancels against the
+quadratic term of the risk-neutral moment generating function up to order
+$\Dt^{3/2}$, so the convexity of log returns leaves no trace in
+\eqref{eq:lambda} at the relevant order.
+The next step is the one place in the derivation where something can go
+wrong, so we spell out why it does not.
+The volatility innovation contains $|z|$, and a location shift of size
+$\sqrt{\Dt}$ in $z$ could in principle feed the Sharpe ratio into the size
+channel at order $\sqrt{\Dt}$, which would entangle the two risk prices in
+the drift.
+It cannot, because the first derivative of the absolute moment with respect
+to a location shift vanishes at zero for every symmetric law: with
+$h(x)=\E|z+x|$ one has $h'(0)=\E[\operatorname{sgn}(z)]=0$.
+Symmetry of the innovation law is load-bearing here, and the channels
+decouple at leading order precisely because of it.
+Under skewed innovations the decomposition below acquires a cross term
+proportional to $h'(0)$, which we leave to a skewed extension.
+
+\begin{proposition}\label{prop:qmoments}
+Let $h(x)=2\varphi(x)+x\,(2\Phi(x)-1)$ denote the absolute moment of a unit
+Gaussian shifted by $x$, with $\varphi$ and $\Phi$ the standard normal
+density and distribution function.
+Under the kernel \eqref{eq:kernel} with $a_k$ from
+Proposition~\ref{prop:pinned},
+\begin{equation}\label{eq:Lambda}
+\E^{\Qm}_k\big[\beta z_{k+1}+\varepsilon w_{k+1}\big]
+=\sqrt{\Dt}\,\Lambda(\sigma_k)+O(\Dt),
+\qquad
+\Lambda(\sigma)
+=-\beta\,\gamma(\sigma)+\varepsilon\,\frac{m_1}{s_1}\,\eta(\sigma),
+\end{equation}
+together with
+$\operatorname{Var}^{\Qm}_k(\beta z+\varepsilon w)
+=\vartheta^2+O(\sqrt{\Dt})$ and
+$\operatorname{Cov}^{\Qm}_k(z,\beta z+\varepsilon w)
+=\beta+O(\sqrt{\Dt})$,
+all locally uniformly in $\sigma_k$.
+\end{proposition}
+
+\begin{proof}
+By Lemma~\ref{lem:qlaw},
+$\E^{\Qm}_k|z|=\varsigma_k\,h(\lambda_k/\varsigma_k)$.
+Direct differentiation gives $h'(x)=2\Phi(x)-1$ and $h''(x)=2\varphi(x)$,
+so $h(x)=m_1+\varphi(0)x^2+O(x^4)$ and
+$\E^{\Qm}_k|z|=\varsigma_k m_1+O(\lambda_k^2)
+= m_1+\sqrt{\Dt}\,\eta(\sigma_k)\,m_1+O(\Dt)$.
+Combining with $\E^{\Qm}_k[z]=\lambda_k$ from \eqref{eq:lambda} inside
+\eqref{eq:w} yields \eqref{eq:Lambda}.
+The variance and covariance are smooth functions of
+$(\lambda_k,\varsigma_k)$ that equal $(\vartheta^2,\beta)$ at $(0,1)$, and
+$(\lambda_k,\varsigma_k)=(0,1)+O(\sqrt{\Dt})$, which gives the stated
+perturbations.
+Uniformity holds on compact volatility sets because the loadings are
+affine.
+\end{proof}
+
+\begin{theorem}\label{thm:main}
+Under the kernel \eqref{eq:kernel} the volatility recursion under $\Qm$
+takes the form
+\begin{equation}\label{eq:qrec}
+\sigma_{k+1}=\sigma_k+\hat b_{\Dt}(\sigma_k)\,\Dt
++\sigma_k\sqrt{\Dt}\,\bar{u}_{k+1},
+\qquad
+\bar{u}_{k+1}=\beta z_{k+1}+\varepsilon w_{k+1}
+-\E^{\Qm}_k\big[\beta z_{k+1}+\varepsilon w_{k+1}\big],
+\end{equation}
+where $\bar u$ has conditional mean zero, conditional variance
+$\vartheta^2+O(\sqrt{\Dt})$, conditional covariance $\beta+O(\sqrt{\Dt})$
+with the return innovation, and
+\begin{equation}\label{eq:driftmap}
+\hat b_{\Dt}(\sigma)\;\longrightarrow\;
+\hat b(\sigma)= d_0+\big(d_1+\Lambda_0\big)\sigma
++\big(d_2+\Lambda_1\big)\sigma^{2},
+\qquad
+\begin{aligned}
+\Lambda_0&=-\beta\gamma_0+\varepsilon\, m_1\eta_0/s_1,\\
+\Lambda_1&=-\beta\gamma_1+\varepsilon\, m_1\eta_1/s_1,
+\end{aligned}
+\end{equation}
+locally uniformly as $\Dt\to0$.
+In particular, the risk-neutral quadratic mean-reversion rate is
+\begin{equation}\label{eq:kappa2}
+\hat\kappa_2 \;=\; -\hat d_2
+\;=\; \kappa_2+\beta\,\gamma_1-\varepsilon\,\frac{m_1}{s_1}\,\eta_1 .
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Adding and subtracting the conditional mean in \eqref{eq:sigdyn} gives
+\eqref{eq:qrec} with the exact identity
+$\hat b_{\Dt}(\sigma)=b(\sigma)
++\sigma\,\E^{\Qm}_k[\beta z+\varepsilon w]/\sqrt{\Dt}$, and
+Proposition~\ref{prop:qmoments} gives
+$\E^{\Qm}_k[\beta z+\varepsilon w]
+=\sqrt{\Dt}\Lambda(\sigma)+O(\Dt)$ locally uniformly.
+Collecting powers of $\sigma$ in $b(\sigma)+\sigma\Lambda(\sigma)$ yields
+\eqref{eq:driftmap}, and \eqref{eq:kappa2} follows from $d_2=-\kappa_2$.
+\end{proof}
+
+\begin{remark}\label{rem:match}
+Theorem~\ref{thm:main} lands exactly on the continuous transformation of
+Sepp and Rakhmonov (2023, Section 2).
+Their Girsanov change with risk prices $\lambda_0(\sigma)$ and
+$\lambda_1(\sigma)$ shifts the volatility drift by
+$-\sigma\,(\beta\lambda_0(\sigma)+\varepsilon\lambda_1(\sigma))$, and
+comparison with \eqref{eq:Lambda} identifies the induced prices
+\begin{equation}\label{eq:prices}
+\lambda_0(\sigma)=\gamma(\sigma),
+\qquad
+\lambda_1(\sigma)=-\frac{m_1}{s_1}\,\eta(\sigma).
+\end{equation}
+Their proportional specification
+$\lambda_0=\bar\lambda_0\sigma$, $\lambda_1=\bar\lambda_1\sigma$
+corresponds to $\gamma_0=\eta_0=0$ with $\bar\lambda_0=\gamma_1$ and
+$\bar\lambda_1=-(m_1/s_1)\,\eta_1$, and then \eqref{eq:kappa2} reads
+$\hat\kappa_2=\kappa_2+\beta\bar\lambda_0+\varepsilon\bar\lambda_1$, which
+is their transformation verbatim.
+The constants gain discrete primitives: the equity risk price is the
+Sharpe-ratio slope, the volatility risk price is the variance-preference
+slope, and the conversion factor $m_1/s_1=\sqrt{2/\pi}/\sqrt{1-2/\pi}$ is a
+property of the absolute-value news-impact function.
+The intercepts $\gamma_0$ and $\eta_0$ move only the linear coefficient
+$\hat d_1$, which explains why the proportional specification of the
+published paper leaves $\kappa_1-\kappa_2\theta$ unchanged.
+\end{remark}
+
+\begin{remark}\label{rem:esscher}
+The variance loading is optional.
+With $\eta\equiv0$ the kernel is linear in the innovation, the minimal
+one-period martingale change, and the limit exists unchanged with
+$\bar\lambda_1=0$ and $\hat\kappa_2=\kappa_2+\beta\gamma_1$.
+The quadratic loading exists for one purpose only, which is to generate a
+nonzero price of the size channel, and it is not needed for the log-return
+limit.
+\end{remark}
+
+\begin{remark}\label{rem:ito}
+The quadratic term in \eqref{eq:kappa2} is a Girsanov product, not an
+It\^{o} correction.
+Setting $\gamma_1=\eta_1=0$ gives $\hat\kappa_2=\kappa_2$ exactly, although
+every convexity term of the model, including the log-return compensator
+$-\sigma^2/2$, remains in place, and the proof of
+Proposition~\ref{prop:pinned} shows that this compensator cancels at the
+relevant order.
+The shift $\hat\kappa_2-\kappa_2$ is the product of the level-proportional
+dispersion $\beta\sigma$ with the level-proportional risk price
+$\gamma_1\sigma$, plus the analogous product in the size channel, which is
+the same structure as the continuous Girsanov computation of the published
+paper.
+\end{remark}
+
+Two structural readings of \eqref{eq:driftmap} deserve emphasis.
+The intercepts $\gamma_0$ and $\eta_0$ move only the linear coefficient, so
+the quadratic coefficient is funded exclusively by the slopes of the two
+risk prices.
+The intercept $d_0$ does not move at all, and the next proposition shows
+that this invariance is a property of the recursion class rather than of
+the exponential-quadratic family.
+
+\begin{proposition}\label{prop:invariance}
+Let the pricing kernel be any positive $\mathcal{F}_{k+1}$-measurable
+random variable $M_{k+1}$ with $\E_k[M_{k+1}]=1$ and
+$\E_k[M_{k+1}(|z_{k+1}|+|w_{k+1}|)]<\infty$, and suppose the rescaled
+adjustment
+$\E_k[M_{k+1}(\beta z_{k+1}+\varepsilon w_{k+1})]/\sqrt{\Dt}$ converges
+locally uniformly to some function $\Lambda(\sigma)$.
+Then the risk-neutral drift satisfies
+$\hat b(\sigma)=b(\sigma)+\sigma\Lambda(\sigma)$, and in particular
+$\hat b(0)=b(0)=d_0$, equivalently
+$\hat\kappa_1\hat\theta=\kappa_1\theta$.
+\end{proposition}
+
+\begin{proof}
+The change of measure alters the drift of \eqref{eq:sigdyn} by
+$\sigma_k\sqrt{\Dt}\,\E_k[M_{k+1}(\beta z_{k+1}+\varepsilon w_{k+1})]$,
+which is proportional to $\sigma_k$ for every admissible kernel because the
+innovation enters the recursion only through the dispersion term.
+Kernels that load on shocks independent of $z$ multiply the adjustment by a
+factor with unit expectation and leave the conclusion unchanged.
+\end{proof}
+
+\begin{remark}
+Proposition~\ref{prop:invariance} is the discrete image of the Girsanov
+theorem for the limit diffusion: the drift adjustment is proportional to
+the dispersion, which vanishes linearly at zero volatility.
+In the published paper the equality $\kappa_1\theta=\hat\kappa_1\hat\theta$
+enters as the first of the parameter-matching equations, and the
+proposition shows that it is not a convention: no admissible kernel can
+break it, at any step size.
+\end{remark}
+
+\begin{corollary}\label{cor:theta}
+Write the risk-neutral drift as
+$\hat b(\sigma)=(\hat\kappa_1+\hat\kappa_2\sigma)(\hat\theta-\sigma)$ with
+$\hat\kappa_2>0$.
+Then the parameters are determined by the polynomial coefficients through
+\begin{equation}\label{eq:thetaQ}
+\hat\kappa_2=-\hat d_2,\qquad
+\hat\theta
+=\frac{\hat d_1+\sqrt{\hat d_1^{\,2}+4\,\hat\kappa_2\,d_0}}
+{2\,\hat\kappa_2},
+\qquad
+\hat\kappa_1=\frac{d_0}{\hat\theta},
+\end{equation}
+and with $\hat d_1=-(\kappa_1-\kappa_2\theta)$ these are the
+risk-transformed parameters of Sepp and Rakhmonov (2023, Section 2).
+The level $\hat\theta$ equals the physical level $\theta$ only on the
+one-parameter kernel set with $\Lambda_0=(\hat\kappa_2-\kappa_2)\theta$.
+\end{corollary}
+
+\begin{proof}
+Expanding the factorized form gives $d_0=\hat\kappa_1\hat\theta$,
+$\hat d_1=\hat\kappa_2\hat\theta-\hat\kappa_1$ and
+$\hat d_2=-\hat\kappa_2$.
+Eliminating $\hat\kappa_1$ yields
+$\hat\kappa_2\hat\theta^2-\hat d_1\hat\theta-d_0=0$, whose unique positive
+root is \eqref{eq:thetaQ} because $\hat\kappa_2>0$ and $d_0>0$.
+Setting $\hat\theta=\theta$ in the quadratic and using
+$\hat d_1=d_1+\Lambda_0$ with $d_0=\kappa_1\theta$ gives the stated
+restriction on $\Lambda_0$.
+\end{proof}
+
+Corollary~\ref{cor:theta} settles the parametrization question that
+motivated this note.
+The triple $(\hat\kappa_1,\hat\kappa_2,\hat\theta)$ obscures the measure
+change because all three parameters move together, while the polynomial
+coefficients separate cleanly: $\hat d_2$ carries the risk-price slopes,
+$\hat d_1$ carries the risk-price levels, and $d_0$ carries nothing.
+We therefore parametrize the discrete model, and its reference
+implementation, by $(d_0,d_1,d_2)$ with the cross-measure restriction
+$d_0^{\Pm}=d_0^{\Qm}$ imposed in any joint estimation from returns and
+options.\footnote{Reference implementation planned in the open-source
+\texttt{stochvolmodels} package,
+\texttt{github.com/ArturSepp/StochVolModels}.}
+
+The transformation formula has one falsifiable consequence worth stating.
+On the minimal kernel set of Remark~\ref{rem:esscher}, equation
+\eqref{eq:kappa2} reduces to $\hat\kappa_2=\kappa_2+\beta\gamma_1$.
+For assets with $\beta>0$, option surfaces must display
+$\hat\kappa_2>\kappa_2$ whenever the time-series Sharpe ratio increases in
+volatility, before any volatility risk premium is invoked.
+For assets with $\beta<0$ the level channel contributes
+$-|\beta|\gamma_1$, so an increase of the quadratic rate requires the size
+channel with $\eta_1<0$, equivalently $\bar\lambda_1>0$, or a Sharpe ratio
+that falls with volatility.
+Which channel funds the quadratic drift is an empirical question whose
+answer the model links, through \eqref{eq:kappa2}, to the sign of the
+volatility beta.
+
+\section{Diffusion limits}\label{sec:limit}
+
+We now state the convergence of the recursion to the continuous model, and
+we state it under both measures, because nothing in the argument prefers
+one of them.
+The physical recursion satisfies the convergence conditions directly, and
+the risk-neutral recursion satisfies them after the drift map of
+Theorem~\ref{thm:main}.
+The conditions are those of Nelson (1990), which descend from the
+Markov-chain convergence theory of Stroock and Varadhan, and the
+verification is a bookkeeping exercise given the moment expansions above.
+
+\begin{assumption}\label{ass:limit}
+The parameters satisfy $\kappa_1,\theta>0$, $\kappa_2\ge0$ and
+$\hat\kappa_2\ge0$, the initial values converge, and the recursion is
+modified by the localization device of Remark~\ref{rem:trunc}.
+\end{assumption}
+
+\begin{theorem}\label{thm:limit}
+Under Assumption~\ref{ass:limit} the interpolated processes
+$(X^{\Dt},\sigma^{\Dt})$ converge weakly, as $\Dt\to0$, to the unique
+solution of the log-normal beta SV model.
+Under $\Pm$ the limit is
+\begin{equation}\label{eq:limitP}
+dX_t=\Big(r+\gamma(\sigma_t)\sigma_t-\tfrac{1}{2}\sigma_t^2\Big)dt
++\sigma_t\,dW^{(0)}_t,
+\quad
+d\sigma_t=b(\sigma_t)\,dt
++\beta\sigma_t\,dW^{(0)}_t+\varepsilon\sigma_t\,dW^{(1)}_t,
+\end{equation}
+and under $\Qm$ the limit is the same system with drift
+$r-\sigma_t^2/2$ for the log price and
+$\hat b(\sigma_t)=(\hat\kappa_1+\hat\kappa_2\sigma_t)
+(\hat\theta-\sigma_t)$ for the volatility, with
+$W^{(0)}$ and $W^{(1)}$ independent Brownian motions under the respective
+measure and parameters given by Corollary~\ref{cor:theta}.
+\end{theorem}
+
+\begin{proof}
+Under $\Pm$ the per-unit-time conditional means of the increments equal the
+drifts of \eqref{eq:limitP} exactly, and under $\Qm$ they converge to the
+risk-neutral drifts locally uniformly by Proposition~\ref{prop:qmoments}
+and Theorem~\ref{thm:main}.
+The conditional covariance matrix of the pair converges to
+$\sigma^2\begin{pmatrix}1&\beta\\ \beta&\vartheta^2\end{pmatrix}$ under
+both measures, which is the covariance of
+$(\sigma dW^{(0)},\,\sigma(\beta dW^{(0)}+\varepsilon dW^{(1)}))$, because
+the vector $(z,w)$ is uncorrelated with unit variances and its partial
+sums aggregate into two independent Brownian motions.
+Fourth conditional moments of the increments are of order $\Dt^2$ times
+fourth innovation moments, which are finite for Gaussian innovations, so
+they vanish at the required rate on compact sets.
+The limit martingale problem is well posed: the volatility equation has a
+unique strong solution with values in $(0,\infty)$ despite the
+non-Lipschitz drift \cite{SeppRakhmonov2023}, and appending the log-price
+equation preserves uniqueness because its coefficients are Lipschitz given
+the volatility path.
+Convergence then follows from Theorem 2.1 of Nelson (1990).
+\end{proof}
+
+\begin{remark}\label{rem:trunc}
+Two localization devices make the recursion well defined for all states and
+change nothing in the limit.
+We truncate the innovation at $\pm\varepsilon_0/\sqrt{\Dt}$ for a small
+fixed $\varepsilon_0$, which alters each conditional moment by $o(\Dt)$
+under Gaussian tails, and we evaluate the quadratic drift term at
+$\sigma\wedge\Dt^{-1/2}$, which is invisible on compact sets.
+Weak convergence to a well-posed limit depends on the generator only
+through its values on compacts, so both devices are limit-invariant.
+The truncation also keeps the volatility strictly positive for small
+$\varepsilon_0$, because the drift at zero equals $d_0>0$ while the
+dispersion vanishes.
+\end{remark}
+
+\begin{remark}\label{rem:equiv}
+At every fixed $\Dt$ the one-period kernels define an equivalent measure
+change without further conditions.
+The equivalence condition of the continuous model, which requires
+$\hat\kappa_2\ge0$ in the notation of the published paper, reappears only
+through the well-posedness of the limit, so the discrete family
+regularizes the measure-equivalence boundary and the constraint binds in
+the limit alone.
+\end{remark}
+
+\begin{remark}\label{rem:gig}
+The stationary density of the limit volatility follows from the scale and
+speed measures,
+\begin{equation}\label{eq:gig}
+p(\sigma)\;\propto\;
+\sigma^{\,2\hat d_1/\vartheta^2-2}\,
+\exp\!\Big(-\frac{2d_0}{\vartheta^2\,\sigma}
+-\frac{2\hat\kappa_2}{\vartheta^2}\,\sigma\Big),
+\qquad \sigma>0,
+\end{equation}
+a generalized inverse Gaussian law, which degenerates to an inverse gamma
+law as $\hat\kappa_2\to0$.
+This matches the steady state derived by Carr and Willems (2019) for their
+quadratic-drift specification and provides a free numerical checkpoint: the
+ergodic distribution of the simulated recursion must converge to
+\eqref{eq:gig}.
+In the linear-drift case $\kappa_2=0$ the tails admit a sharper statement.
+At fixed $\Dt$ the recursion is a stochastic recurrence equation, and
+Kesten-type results give its stationary law a power tail with index
+$\chi_\Dt$ solving
+$\E\,|1+d_1\Dt+\sqrt{\Dt}\,(\beta z+\varepsilon w)|^{\chi}=1$.
+The limit law is itself power-tailed, an inverse gamma with survival index
+$1+2\kappa_1/\vartheta^2$, and $\chi_\Dt$ sits below this value and rises
+toward it as the step shrinks.
+The companion study confirms the gap and its closure, with
+$\chi_\Dt=2.68$, $2.76$ and $2.80$ at weekly, daily and finer steps
+against the limit index $2.85$.
+The discrete tails are therefore heavier than the limit tails at any
+fixed step, by a computable margin rather than by a change of tail class.
+\end{remark}
+
+\section{Verification, constraints, and the open problem}\label{sec:open}
+
+Three verification steps preceded this revision, and all three are now on
+record in the companion simulation study.
+The simulated risk-neutral recursion reproduces the affine-expansion
+prices of the continuous model, and the residual at the finest step
+measures the expansion itself.
+Mean absolute implied-volatility errors are 4 to 5 basis points at the
+equity-like parameter set.
+At the crypto-like set with $\vartheta=1.80$ they are 23 to 26 basis
+points, with a maximum of 58 basis points in the one-month wing.
+The full-budget clean-tag rerun reproduces every finest-step strike from the
+archived run exactly under the retained common seeds, so the quoted values
+are now the clean-tag manuscript numbers.
+The kernel algebra is validated end to end.
+Prices from the exact risk-neutral law and from likelihood-ratio
+reweighting of physical paths agree within Monte Carlo error at every
+step size, and the gap of the limit recursion closes at fitted rates of
+$0.48$ against the predicted $\sqrt{\Dt}$.
+The ergodic density of the simulated volatility matches \eqref{eq:gig}
+with relative sup-density errors of $5.63$ and $8.69$ percent at daily
+steps, falling to $2.95$ and $6.42$ percent at $\Dt=1/1008$.
+The remaining verification item is the cross-measure restriction
+$d_0^{\Pm}=d_0^{\Qm}$ on joint return and option data, where it supplies
+one overidentifying restriction and one stability diagnostic.
+
+The estimation experiment of Remark~\ref{rem:qmle} quantifies what the
+time series alone can deliver, and the answer motivates the
+parametrization adopted after Corollary~\ref{cor:theta}.
+Across 200 replications at daily steps, the Sharpe slope $\gamma_1$ does
+not reach a median absolute $t$-statistic of two even at forty years.
+At forty years, $\kappa_2$ carries relative root-mean-square errors of 56
+to 100 percent, while the relative errors of the total volatility of
+volatility $\vartheta$ and the linearized reversion speed
+$\kappa_{\mathrm{lin}}$ are about 4 and 13 percent.
+The speed direction aligns with the low-variance eigendirection of the
+$(\kappa_1,\kappa_2)$ estimates with cosines above $0.97$; this is a
+conditional local ridge diagnostic evaluated at the true $\theta$.
+The intercept $d_0$ has a forty-year relative error of 19 to 25 percent,
+and the split of the curvature between $\kappa_1$ and $\kappa_2$ is the
+ridge.
+An oracle ladder quantifies what two restrictions can add.
+At forty years, fixing physical $\kappa_2$ and $d_0$ at truth reduces the
+$\kappa_1$ RMSE by 79 to 80 percent relative to the unrestricted fit and
+by 67 to 69 percent relative to fixing $\kappa_2$ alone; the corresponding
+$\theta$ reductions are 10 to 14 percent and 6 to 7 percent.
+This is an oracle upper bound on what an option-implied
+$\hat\kappa_2$ plus the cross-measure $d_0$ restriction can add to the time
+series, not achieved identification from options.
+
+Two constraints bound what any convergence claim may assert.
+The $\sqrt{\Dt}$ scaling of the kernel loadings is a modeling choice, and
+alternative scalings produce different limits, so every statement above is
+relative to the stated scheme \cite{Corradi2000}.
+Statistical experiments generated by the recursion and by the diffusion are
+not equivalent \cite{Wang2002}, so no claim about transferring inference
+between the discrete and the continuous model is made here.
+
+The open problem is the convergence of call prices, and we state it as the
+central technical claim of the intended paper.
+Weak convergence yields prices of bounded continuous payoffs only.
+For $\hat\kappa_2=0$ and $\beta>0$ the discounted limiting stock-price
+process is a strict local martingale \cite{Sin1998,LionsMusiela2007}, and
+each discrete model prices calls perfectly well at fixed $\Dt$, so the
+price family cannot converge to the continuous prices, and the failure
+appears only in the limit.
+The companion study makes this failure quantitative at a fixed
+computational budget.
+Every recursion in the family has discounted-spot expectation exactly one
+at every step size.
+A Monte Carlo estimate with $2^{20}$ paths at one-year maturity
+nevertheless falls short of one by about $0.22$ at $\hat\kappa_2=0$ and by
+about $0.08$ at $\hat\kappa_2=1/2$, with weak dependence over the finest
+two step sizes.
+At $\Dt\le1/1008$, estimates for $\hat\kappa_2\ge2$ are statistically
+indistinguishable from zero.
+The shortfall is not a defect of any fixed-step model but the
+finite-budget face of the missing uniform integrability.
+Nested budgets from $2^{16}$ to $2^{22}$ paths leave the
+$\hat\kappa_2=0$ shortfall near $0.22$ and the largest-budget
+$\hat\kappa_2=1/2$ shortfall near $0.09$ at both finest steps.
+The latter curve is nonmonotone at the finest step because a rare-path
+overshoot at the smallest budget temporarily pushes the empirical mean
+above one, while every $\hat\kappa_2=2$ interval contains zero.
+This behavior is consistent with a compensating mean contribution lying
+in paths missed or irregularly represented at the chosen budget, but an
+ordinary bootstrap conditional on observed paths cannot measure unseen
+mass.
+The conjecture is that a uniform moment bound restores convergence: for
+every $\hat\kappa_2\ge\underline{\kappa}>0$ there exists $\varepsilon_1>0$
+with
+$\sup_{\Dt}\E^{\Qm}\big[(S_T^{\Dt})^{1+\varepsilon_1}\big]<\infty$, which
+implies uniform integrability and convergence of call prices.
+The corresponding continuous-time result is the true-martingale property
+established for the quadratic-drift model.
+The discrete conjecture is stronger because it requires a superlinear
+moment uniformly in $\Dt$.
+In this reading the quadratic rate is the price of admitting a continuum
+limit with positive volatility beta: the discrete family with
+$\hat\kappa_2=0$ hides the pathology at every fixed step and reveals it
+only in the limit.
+A second, smaller open item is a discrete moment-generating-function
+recursion closed under a quadratic-affine ansatz to the same order as the
+affine expansion of the continuous model, which would complete the analogy
+with Heston and Nandi (2000).
+
+\begin{thebibliography}{99}
+
+\bibitem[Carr and Willems(2019)]{CarrWillems2019}
+Carr, P. and S. Willems (2019).
+A lognormal type stochastic volatility model with quadratic drift.
+arXiv:1908.07417.
+
+\bibitem[Christoffersen et al.(2013)]{CHJ2013}
+Christoffersen, P., S. Heston and K. Jacobs (2013).
+Capturing option anomalies with a variance-dependent pricing kernel.
+\textit{Review of Financial Studies} 26, 1963--2006.
+
+\bibitem[Corradi(2000)]{Corradi2000}
+Corradi, V. (2000).
+Reconsidering the continuous time limit of the GARCH(1,1) process.
+\textit{Journal of Econometrics} 96, 145--153.
+% TODO: verify pages.
+
+\bibitem[Duan(1997)]{Duan1997}
+Duan, J.-C. (1997).
+Augmented GARCH(p,q) process and its diffusion limit.
+\textit{Journal of Econometrics} 79, 97--127.
+
+\bibitem[Heston and Nandi(2000)]{HestonNandi2000}
+Heston, S. and S. Nandi (2000).
+A closed-form GARCH option valuation model.
+\textit{Review of Financial Studies} 13, 585--625.
+
+\bibitem[Lions and Musiela(2007)]{LionsMusiela2007}
+Lions, P.-L. and M. Musiela (2007).
+Correlations and bounds for stochastic volatility models.
+\textit{Annales de l'Institut Henri Poincar\'e (C) Analyse Non Lin\'eaire}
+24, 1--16.
+
+\bibitem[Nelson(1990)]{Nelson1990}
+Nelson, D. B. (1990).
+ARCH models as diffusion approximations.
+\textit{Journal of Econometrics} 45, 7--38.
+
+\bibitem[Nelson and Foster(1994)]{NelsonFoster1994}
+Nelson, D. B. and D. P. Foster (1994).
+Asymptotic filtering theory for univariate ARCH models.
+\textit{Econometrica} 62, 1--41.
+
+\bibitem[Sepp and Rakhmonov(2023)]{SeppRakhmonov2023}
+Sepp, A. and P. Rakhmonov (2023).
+Log-normal stochastic volatility model with quadratic drift.
+\textit{International Journal of Theoretical and Applied Finance} 26(8),
+2450003.
+
+\bibitem[Sin(1998)]{Sin1998}
+Sin, C. A. (1998).
+Complications with stochastic volatility models.
+\textit{Advances in Applied Probability} 30, 256--268.
+
+\bibitem[Wang(2002)]{Wang2002}
+Wang, Y. (2002).
+Asymptotic nonequivalence of GARCH models and diffusions.
+\textit{Annals of Statistics} 30, 754--783.
+% TODO: verify pages.
+
+\bibitem[Zakoian(1994)]{Zakoian1994}
+Zakoian, J.-M. (1994).
+Threshold heteroskedastic models.
+\textit{Journal of Economic Dynamics and Control} 18, 931--955.
+
+\end{thebibliography}
+
+\end{document}
