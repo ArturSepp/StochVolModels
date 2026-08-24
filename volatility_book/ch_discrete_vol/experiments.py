@@ -27,11 +27,14 @@ from scipy.optimize import brentq, minimize
 from scipy.stats import gaussian_kde, geninvgauss, invgamma
 
 import stochvolmodels as svm
+from stochvolmodels.products.payoffs import EuropeanOptionPayoff
+from stochvolmodels.valuation import PathEstimator, PathValuationResult, value_paths
 from volatility_book.ch_discrete_vol.sim import (
     M1,
     S1,
     LimitParams,
     Measure,
+    SimulationResult,
     TgarchParams,
     derived_limit_params,
     filter_discrete_returns,
@@ -279,27 +282,43 @@ def _pair_arrays(values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return values[:half], values[half:]
 
 
+def _antithetic_group_ids(n_paths: int) -> np.ndarray:
+    """Declare the simulator's first-half/second-half antithetic provenance."""
+    if isinstance(n_paths, (bool, np.bool_)) or not isinstance(n_paths, (int, np.integer)):
+        raise ValueError("n_paths must be an integer")
+    if n_paths < 4 or n_paths % 2:
+        raise ValueError("antithetic valuation requires an even n_paths of at least four")
+    return np.tile(np.arange(n_paths // 2, dtype=np.int64), 2)
+
+
+def _discounted_pair_values(
+    values: np.ndarray,
+    discount: float,
+    weights: np.ndarray | None = None,
+) -> np.ndarray:
+    """Return discounted antithetic pair contributions, optionally raw-LR weighted."""
+    left, right = _pair_arrays(np.asarray(values, dtype=np.float64))
+    left = discount * left
+    right = discount * right
+    if weights is not None:
+        weight_left, weight_right = _pair_arrays(np.asarray(weights, dtype=np.float64))
+        if weight_left.shape != left.shape:
+            raise ValueError("weights must have the same length as values")
+        left = weight_left * left
+        right = weight_right * right
+    return 0.5 * (left + right)
+
+
 def _controlled_call_pair_values(
-    terminal_spot: np.ndarray,
-    strike: float,
+    call_values: np.ndarray,
+    spot_values: np.ndarray,
     discount: float,
     expected_discounted_spot: float,
     weights: np.ndarray | None = None,
 ) -> tuple[np.ndarray, float]:
     """Return antithetic pair contributions after the terminal-spot control variate."""
-    left, right = _pair_arrays(np.asarray(terminal_spot, dtype=np.float64))
-    payoff_left = discount * np.maximum(left - strike, 0.0)
-    payoff_right = discount * np.maximum(right - strike, 0.0)
-    spot_left = discount * left
-    spot_right = discount * right
-    if weights is not None:
-        weight_left, weight_right = _pair_arrays(np.asarray(weights, dtype=np.float64))
-        payoff_left = weight_left * payoff_left
-        payoff_right = weight_right * payoff_right
-        spot_left = weight_left * spot_left
-        spot_right = weight_right * spot_right
-    pair_payoff = 0.5 * (payoff_left + payoff_right)
-    pair_spot = 0.5 * (spot_left + spot_right)
+    pair_payoff = _discounted_pair_values(call_values, discount, weights)
+    pair_spot = _discounted_pair_values(spot_values, discount, weights)
     spot_variance = float(np.var(pair_spot, ddof=1))
     if spot_variance <= 1.0e-30:
         coefficient = 0.0
@@ -314,6 +333,104 @@ def _mean_and_se(pair_values: np.ndarray) -> tuple[float, float]:
     if values.ndim != 1 or values.size < 2:
         raise ValueError("at least two antithetic pair values are required")
     return float(np.mean(values)), float(np.std(values, ddof=1) / math.sqrt(values.size))
+
+
+def _assert_close(actual: float, expected: float, label: str) -> None:
+    """Enforce a tight machine-roundoff invariant between adopted and local estimators."""
+    if not math.isfinite(actual) or not math.isfinite(expected):
+        raise RuntimeError(f"{label} must be finite: actual={actual!r}, expected={expected!r}")
+    if not math.isclose(actual, expected, rel_tol=2.0e-13, abs_tol=2.0e-15):
+        raise RuntimeError(f"{label} mismatch: actual={actual!r}, expected={expected!r}")
+
+
+def _value_european_leg(
+    *,
+    simulated: SimulationResult,
+    payoff: EuropeanOptionPayoff,
+    discount: float,
+    independent_group_ids: np.ndarray,
+    expected_estimator: PathEstimator,
+) -> tuple[np.ndarray, PathValuationResult]:
+    """Evaluate one package-owned payoff and validate its raw valuation contract."""
+    payoff_values = payoff(simulated.paths)
+    result = value_paths(
+        paths=simulated.paths,
+        payoff=payoff,
+        discount_factor=discount,
+        independent_group_ids=independent_group_ids,
+    )
+    expected_groups = simulated.n_paths // 2
+    if result.estimator is not expected_estimator:
+        raise RuntimeError(
+            f"unexpected estimator: {result.estimator.value}, expected {expected_estimator.value}"
+        )
+    if result.standard_error_basis != "independent_groups":
+        raise RuntimeError("antithetic valuation must use independent-group standard errors")
+    if (
+        result.n_paths != simulated.n_paths
+        or result.n_independent_groups != expected_groups
+        or result.group_size != 2
+    ):
+        raise RuntimeError("valuation did not preserve the declared antithetic grouping")
+    if result.settlement_unit != payoff.settlement_unit:
+        raise RuntimeError("valuation settlement unit differs from the payoff unit")
+    if result.recenter_shift is not None:
+        raise RuntimeError("chapter valuations must not apply legacy forward recentering")
+    if expected_estimator is PathEstimator.MONTE_CARLO:
+        if result.mean_likelihood_ratio is not None or result.log_mean_likelihood_ratio is not None:
+            raise RuntimeError("direct Monte Carlo valuation unexpectedly used likelihood ratios")
+        _assert_close(result.path_effective_sample_size, float(simulated.n_paths), "path ESS")
+        _assert_close(result.group_effective_sample_size, float(expected_groups), "group ESS")
+    else:
+        if expected_estimator is not PathEstimator.RAW_LIKELIHOOD_RATIO:
+            raise RuntimeError("chapter valuation supports only raw likelihood-ratio weighting")
+        if result.mean_likelihood_ratio is None or result.log_mean_likelihood_ratio is None:
+            raise RuntimeError("raw likelihood-ratio diagnostics are missing")
+        if not (
+            0.0 < result.path_effective_sample_size <= simulated.n_paths * (1.0 + 1.0e-12)
+            and 0.0
+            < result.group_effective_sample_size
+            <= expected_groups * (1.0 + 1.0e-12)
+        ):
+            raise RuntimeError("raw likelihood-ratio ESS lies outside its valid range")
+    _assert_close(
+        result.path_ess_fraction,
+        result.path_effective_sample_size / simulated.n_paths,
+        "path ESS fraction",
+    )
+    _assert_close(
+        result.group_ess_fraction,
+        result.group_effective_sample_size / expected_groups,
+        "group ESS fraction",
+    )
+    return payoff_values, result
+
+
+def _assert_pair_valuation(
+    result: PathValuationResult,
+    pair_values: np.ndarray,
+    label: str,
+) -> None:
+    """Cross-check package value and grouped SE against chapter-local pair contributions."""
+    local_value, local_standard_error = _mean_and_se(pair_values)
+    _assert_close(result.value, local_value, f"{label} value")
+    _assert_close(result.standard_error, local_standard_error, f"{label} standard error")
+
+
+def _assert_control_identity(
+    *,
+    adjusted_value: float,
+    call_result: PathValuationResult,
+    spot_result: PathValuationResult,
+    coefficient: float,
+    expected_discounted_spot: float,
+    label: str,
+) -> None:
+    """Check the raw fitted-control identity without normalizing likelihood weights."""
+    expected = call_result.value - coefficient * (
+        spot_result.value - expected_discounted_spot
+    )
+    _assert_close(adjusted_value, expected, f"{label} controlled value")
 
 
 def _ivols_and_se(
@@ -403,6 +520,23 @@ def run_e1(
             )
             discount = math.exp(-params.r * maturity)
             forward = params.spot0 * math.exp(params.r * maturity)
+            spot_payoff = EuropeanOptionPayoff(
+                asset_id="spot",
+                expiry=maturity,
+                strike=0.0,
+                option_type="C",
+                unit="spot units",
+            )
+            call_payoffs = tuple(
+                EuropeanOptionPayoff(
+                    asset_id="spot",
+                    expiry=maturity,
+                    strike=float(strike),
+                    option_type="C",
+                    unit="spot units",
+                )
+                for strike in strikes
+            )
             for dt in config.dt_grid:
                 n_paths = config.pricing_paths(dt)
                 simulated = simulate_terminal(
@@ -413,20 +547,51 @@ def run_e1(
                     n_paths=n_paths,
                     seed=seed,
                 )
-                pair_values: list[np.ndarray] = []
+                group_ids = _antithetic_group_ids(n_paths)
+                spot_values, spot_result = _value_european_leg(
+                    simulated=simulated,
+                    payoff=spot_payoff,
+                    discount=discount,
+                    independent_group_ids=group_ids,
+                    expected_estimator=PathEstimator.MONTE_CARLO,
+                )
+                _assert_pair_valuation(
+                    spot_result,
+                    _discounted_pair_values(spot_values, discount),
+                    "E1 discounted spot",
+                )
                 coefficients: list[float] = []
                 prices = np.empty(strikes.size)
                 price_se = np.empty(strikes.size)
-                for index, strike in enumerate(strikes):
+                for index, call_payoff in enumerate(call_payoffs):
+                    call_values, call_result = _value_european_leg(
+                        simulated=simulated,
+                        payoff=call_payoff,
+                        discount=discount,
+                        independent_group_ids=group_ids,
+                        expected_estimator=PathEstimator.MONTE_CARLO,
+                    )
+                    _assert_pair_valuation(
+                        call_result,
+                        _discounted_pair_values(call_values, discount),
+                        "E1 call",
+                    )
                     adjusted, coefficient = _controlled_call_pair_values(
-                        terminal_spot=simulated.terminal_spot,
-                        strike=float(strike),
+                        call_values=call_values,
+                        spot_values=spot_values,
                         discount=discount,
                         expected_discounted_spot=params.spot0,
                     )
-                    pair_values.append(adjusted)
                     coefficients.append(coefficient)
                     prices[index], price_se[index] = _mean_and_se(adjusted)
+                    _assert_control_identity(
+                        adjusted_value=prices[index],
+                        call_result=call_result,
+                        spot_result=spot_result,
+                        coefficient=coefficient,
+                        expected_discounted_spot=params.spot0,
+                        label="E1",
+                    )
                 mc_ivols, mc_ivol_se = _ivols_and_se(
                     maturity=maturity,
                     forward=forward,
@@ -525,18 +690,17 @@ def run_e1(
     }
 
 
-def _stable_weights(log_weights: np.ndarray) -> tuple[np.ndarray, float, float]:
+def _raw_likelihood_weights(log_weights: np.ndarray | None) -> np.ndarray:
+    """Restore raw likelihood ratios for chapter-local paired-control contributions."""
+    if not isinstance(log_weights, np.ndarray):
+        raise ValueError("log_weights must be a NumPy array")
     logs = np.asarray(log_weights, dtype=np.float64)
     if logs.ndim != 1 or not np.all(np.isfinite(logs)):
         raise ValueError("log_weights must be a finite one-dimensional array")
     maximum = float(np.max(logs))
     scaled = np.exp(logs - maximum)
     scale = math.exp(maximum)
-    weights = scale * scaled
-    mean_weight = float(np.mean(weights))
-    total = float(np.sum(scaled))
-    ess = total * total / float(np.sum(np.square(scaled)))
-    return weights, mean_weight, ess
+    return scale * scaled
 
 
 def run_e2(
@@ -551,6 +715,20 @@ def run_e2(
         limit = derived_limit_params(params)
         strike = params.spot0
         discount = math.exp(-params.r * maturity)
+        call_payoff = EuropeanOptionPayoff(
+            asset_id="spot",
+            expiry=maturity,
+            strike=strike,
+            option_type="C",
+            unit="spot units",
+        )
+        spot_payoff = EuropeanOptionPayoff(
+            asset_id="spot",
+            expiry=maturity,
+            strike=0.0,
+            option_type="C",
+            unit="spot units",
+        )
         for dt in config.dt_grid:
             n_paths = config.pricing_paths(dt)
             exact = simulate_terminal(
@@ -579,23 +757,96 @@ def run_e2(
                 seed=seed,
                 limit_params=limit,
             )
-            weights, mean_weight, ess = _stable_weights(physical.log_weights)
+            group_ids = _antithetic_group_ids(n_paths)
+            weights = _raw_likelihood_weights(physical.log_weights)
+            exact_call_values, exact_call_result = _value_european_leg(
+                simulated=exact,
+                payoff=call_payoff,
+                discount=discount,
+                independent_group_ids=group_ids,
+                expected_estimator=PathEstimator.MONTE_CARLO,
+            )
+            exact_spot_values, exact_spot_result = _value_european_leg(
+                simulated=exact,
+                payoff=spot_payoff,
+                discount=discount,
+                independent_group_ids=group_ids,
+                expected_estimator=PathEstimator.MONTE_CARLO,
+            )
+            weighted_call_values, weighted_call_result = _value_european_leg(
+                simulated=physical,
+                payoff=call_payoff,
+                discount=discount,
+                independent_group_ids=group_ids,
+                expected_estimator=PathEstimator.RAW_LIKELIHOOD_RATIO,
+            )
+            weighted_spot_values, weighted_spot_result = _value_european_leg(
+                simulated=physical,
+                payoff=spot_payoff,
+                discount=discount,
+                independent_group_ids=group_ids,
+                expected_estimator=PathEstimator.RAW_LIKELIHOOD_RATIO,
+            )
+            limit_call_values, limit_call_result = _value_european_leg(
+                simulated=limit_sim,
+                payoff=call_payoff,
+                discount=discount,
+                independent_group_ids=group_ids,
+                expected_estimator=PathEstimator.MONTE_CARLO,
+            )
+            limit_spot_values, limit_spot_result = _value_european_leg(
+                simulated=limit_sim,
+                payoff=spot_payoff,
+                discount=discount,
+                independent_group_ids=group_ids,
+                expected_estimator=PathEstimator.MONTE_CARLO,
+            )
+            _assert_pair_valuation(
+                exact_call_result,
+                _discounted_pair_values(exact_call_values, discount),
+                "E2 exact call",
+            )
+            _assert_pair_valuation(
+                exact_spot_result,
+                _discounted_pair_values(exact_spot_values, discount),
+                "E2 exact spot",
+            )
+            _assert_pair_valuation(
+                weighted_call_result,
+                _discounted_pair_values(weighted_call_values, discount, weights),
+                "E2 weighted call",
+            )
+            _assert_pair_valuation(
+                weighted_spot_result,
+                _discounted_pair_values(weighted_spot_values, discount, weights),
+                "E2 weighted spot",
+            )
+            _assert_pair_valuation(
+                limit_call_result,
+                _discounted_pair_values(limit_call_values, discount),
+                "E2 limit call",
+            )
+            _assert_pair_valuation(
+                limit_spot_result,
+                _discounted_pair_values(limit_spot_values, discount),
+                "E2 limit spot",
+            )
             exact_pairs, exact_cv = _controlled_call_pair_values(
-                terminal_spot=exact.terminal_spot,
-                strike=strike,
+                call_values=exact_call_values,
+                spot_values=exact_spot_values,
                 discount=discount,
                 expected_discounted_spot=params.spot0,
             )
             weighted_pairs, weighted_cv = _controlled_call_pair_values(
-                terminal_spot=physical.terminal_spot,
-                strike=strike,
+                call_values=weighted_call_values,
+                spot_values=weighted_spot_values,
                 discount=discount,
                 expected_discounted_spot=params.spot0,
                 weights=weights,
             )
             limit_pairs, limit_cv = _controlled_call_pair_values(
-                terminal_spot=limit_sim.terminal_spot,
-                strike=strike,
+                call_values=limit_call_values,
+                spot_values=limit_spot_values,
                 discount=discount,
                 expected_discounted_spot=params.spot0,
             )
@@ -606,6 +857,49 @@ def run_e2(
             limit_minus_exact = limit_pairs - exact_pairs
             difference_ab, difference_ab_se = _mean_and_se(exact_minus_weighted)
             difference_ca, difference_ca_se = _mean_and_se(limit_minus_exact)
+            _assert_control_identity(
+                adjusted_value=exact_price,
+                call_result=exact_call_result,
+                spot_result=exact_spot_result,
+                coefficient=exact_cv,
+                expected_discounted_spot=params.spot0,
+                label="E2 exact",
+            )
+            _assert_control_identity(
+                adjusted_value=weighted_price,
+                call_result=weighted_call_result,
+                spot_result=weighted_spot_result,
+                coefficient=weighted_cv,
+                expected_discounted_spot=params.spot0,
+                label="E2 weighted raw-LR",
+            )
+            _assert_control_identity(
+                adjusted_value=limit_price,
+                call_result=limit_call_result,
+                spot_result=limit_spot_result,
+                coefficient=limit_cv,
+                expected_discounted_spot=params.spot0,
+                label="E2 limit",
+            )
+            mean_weight = weighted_call_result.mean_likelihood_ratio
+            spot_mean_weight = weighted_spot_result.mean_likelihood_ratio
+            if mean_weight is None or spot_mean_weight is None:
+                raise RuntimeError("E2 raw likelihood-ratio mean diagnostic is missing")
+            _assert_close(spot_mean_weight, mean_weight, "E2 call/spot mean likelihood ratio")
+            _assert_close(
+                weighted_spot_result.path_effective_sample_size,
+                weighted_call_result.path_effective_sample_size,
+                "E2 call/spot path ESS",
+            )
+            ess = weighted_call_result.path_effective_sample_size
+            if physical.effective_sample_size is None or physical.ess_fraction is None:
+                raise RuntimeError("E2 simulator likelihood-ratio diagnostics are missing")
+            _assert_close(ess, physical.effective_sample_size, "E2 valuation/simulator path ESS")
+            _assert_close(
+                weighted_call_result.path_ess_fraction,
+                physical.ess_fraction,
+                "E2 valuation/simulator ESS fraction",
+            )
             records.append(
                 {
                     "parameter_set": name,
@@ -867,6 +1161,14 @@ def run_e4(
     """
     seed = BASE_SEED + 4
     maturity = 1.0 / 4.0
+    discount = math.exp(-params.r * maturity)
+    spot_payoff = EuropeanOptionPayoff(
+        asset_id="spot",
+        expiry=maturity,
+        strike=0.0,
+        option_type="C",
+        unit="spot units",
+    )
     base = derived_limit_params(params)
     records: list[dict[str, Any]] = []
     for dt in config.dt_grid:
@@ -880,6 +1182,19 @@ def run_e4(
                 n_paths=config.e4_paths,
                 seed=seed,
                 limit_params=limit,
+            )
+            group_ids = _antithetic_group_ids(config.e4_paths)
+            spot_values, spot_result = _value_european_leg(
+                simulated=simulated,
+                payoff=spot_payoff,
+                discount=discount,
+                independent_group_ids=group_ids,
+                expected_estimator=PathEstimator.MONTE_CARLO,
+            )
+            _assert_pair_valuation(
+                spot_result,
+                _discounted_pair_values(spot_values, discount),
+                "E4 discounted spot diagnostic",
             )
             for power in MOMENT_POWERS:
                 pair_values, path_values = _power_pair_values(simulated.terminal_log_spot, power)

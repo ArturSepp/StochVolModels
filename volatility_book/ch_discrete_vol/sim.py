@@ -6,12 +6,10 @@ log return.  The discrete model uses one Gaussian return innovation ``z`` and th
 absolute-value innovation ``w = (abs(z) - M1) / S1``.  The two-shock limit-path helper instead
 uses genuinely independent Gaussian shocks for the return and residual volatility channels.
 
-The exact-Q simulator implements the finite-step Gaussian law from the working note, including
-the exact state-dependent mean and variance.  It does not replace them by their small-step
-expansions.  Euler updates are floored at ``SIGMA_FLOOR`` only after an update; every result
-records the number of floor hits so the localization can be audited.  Terminal simulations use
-``numpy.random.Generator(PCG64(seed))`` and antithetic standard-normal pairs while retaining only
-terminal state and, when requested under P, the accumulated P-to-Q log likelihood ratio.
+The package TGARCH model owns terminal simulation, including the exact finite-step Gaussian law,
+antithetic random ordering, volatility floor, and optional P-to-Q log likelihood ratio.  This
+module provides a compatibility view over that terminal result and retains the chapter-specific
+scalar, stored-path, filtering, and analytical-check helpers.
 """
 
 from __future__ import annotations
@@ -19,11 +17,18 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
-from enum import Enum
 from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
+from stochvolmodels.data.model_paths import ModelPaths
+from stochvolmodels.models.tgarch import (
+    TgarchLimitParams as LimitParams,
+    TgarchMeasure as Measure,
+    TgarchModel,
+    TgarchParams,
+    derive_tgarch_limit_params as derived_limit_params,
+)
 
 M1 = math.sqrt(2.0 / math.pi)
 S1 = math.sqrt(1.0 - 2.0 / math.pi)
@@ -34,18 +39,6 @@ _SQRT_TWO_PI = math.sqrt(2.0 * math.pi)
 _DEFAULT_CHUNK_STEPS = 8
 
 FloatArray = NDArray[np.float64]
-
-
-class Measure(str, Enum):
-    """Simulation law.
-
-    ``P`` and ``Q_EXACT`` retain the physical recursion maps and change the innovation law.
-    ``Q_LIMIT`` uses a standard innovation and the hatted limiting drift.
-    """
-
-    P = "P"
-    Q_EXACT = "Q_EXACT"
-    Q_LIMIT = "Q_LIMIT"
 
 
 def _finite_float(value: float, name: str) -> float:
@@ -117,287 +110,72 @@ def _readonly_vector(
 
 
 @dataclass(frozen=True, slots=True)
-class TgarchParams:
-    """Physical recursion and pricing-kernel parameters.
-
-    ``beta`` is signed, ``eps`` is residual volatility of volatility, and ``spot0`` is the
-    initial price level.  ``gamma0 + gamma1 * sigma`` is the conditional Sharpe ratio while
-    ``eta0 + eta1 * sigma`` is the finite-step variance-preference loading before multiplication
-    by ``sqrt(dt)``.
-    """
-
-    theta: float
-    kappa1: float
-    kappa2: float
-    beta: float
-    eps: float
-    sigma0: float
-    r: float = 0.0
-    gamma0: float = 0.0
-    gamma1: float = 0.0
-    eta0: float = 0.0
-    eta1: float = 0.0
-    spot0: float = 1.0
-
-    def __post_init__(self) -> None:
-        for name in ("theta", "kappa1", "eps", "sigma0", "spot0"):
-            object.__setattr__(self, name, _positive_float(getattr(self, name), name))
-        object.__setattr__(
-            self,
-            "kappa2",
-            _positive_float(self.kappa2, "kappa2", allow_zero=True),
-        )
-        for name in ("beta", "r", "gamma0", "gamma1", "eta0", "eta1"):
-            object.__setattr__(self, name, _finite_float(getattr(self, name), name))
-
-    @property
-    def vartheta(self) -> float:
-        """Total volatility of volatility ``sqrt(beta**2 + eps**2)``."""
-
-        return math.hypot(self.beta, self.eps)
-
-    @property
-    def d0(self) -> float:
-        return self.kappa1 * self.theta
-
-    @property
-    def d1(self) -> float:
-        return self.kappa2 * self.theta - self.kappa1
-
-    @property
-    def d2(self) -> float:
-        return -self.kappa2
-
-    @property
-    def s0(self) -> float:
-        """Alias for ``spot0`` used in some option-pricing notation."""
-
-        return self.spot0
-
-    @property
-    def epsilon(self) -> float:
-        """Alias for the residual volatility-of-volatility parameter ``eps``."""
-
-        return self.eps
-
-    def gamma(self, sigma: float | FloatArray) -> float | FloatArray:
-        return self.gamma0 + self.gamma1 * sigma
-
-    def eta(self, sigma: float | FloatArray) -> float | FloatArray:
-        return self.eta0 + self.eta1 * sigma
-
-    def drift(self, sigma: float | FloatArray) -> float | FloatArray:
-        return (self.kappa1 + self.kappa2 * sigma) * (self.theta - sigma)
-
-
-@dataclass(frozen=True, slots=True)
-class LimitParams:
-    """Validated hatted parameters and equivalent drift coefficients under limit Q."""
-
-    kappa1_hat: float
-    kappa2_hat: float
-    theta_hat: float
-    d0: float
-    d1_hat: float
-    lambda0_bar: float
-    lambda1_bar: float
-    vartheta: float
-
-    def __post_init__(self) -> None:
-        for name in ("kappa1_hat", "theta_hat", "d0", "vartheta"):
-            object.__setattr__(self, name, _positive_float(getattr(self, name), name))
-        object.__setattr__(
-            self,
-            "kappa2_hat",
-            _positive_float(self.kappa2_hat, "kappa2_hat", allow_zero=True),
-        )
-        for name in ("d1_hat", "lambda0_bar", "lambda1_bar"):
-            object.__setattr__(self, name, _finite_float(getattr(self, name), name))
-
-        implied_d0 = self.kappa1_hat * self.theta_hat
-        implied_d1 = self.kappa2_hat * self.theta_hat - self.kappa1_hat
-        d0_scale = max(1.0, abs(self.d0), abs(implied_d0))
-        d1_scale = max(1.0, abs(self.d1_hat), abs(implied_d1))
-        if abs(implied_d0 - self.d0) > 5.0e-11 * d0_scale:
-            raise ValueError("inconsistent limit parameters: d0 != kappa1_hat * theta_hat")
-        if abs(implied_d1 - self.d1_hat) > 5.0e-11 * d1_scale:
-            raise ValueError(
-                "inconsistent limit parameters: d1_hat != kappa2_hat * theta_hat - kappa1_hat"
-            )
-
-    @classmethod
-    def from_drift_coefficients(
-        cls,
-        *,
-        d0: float,
-        d1_hat: float,
-        kappa2_hat: float,
-        lambda0_bar: float,
-        lambda1_bar: float,
-        vartheta: float,
-    ) -> LimitParams:
-        """Construct the hatted factorization from its polynomial coefficients.
-
-        The zero-``kappa2_hat`` boundary is supported when ``d1_hat < 0``; it reduces to the
-        linear drift ``d0 - kappa1_hat * sigma``.
-        """
-
-        d0_value = _positive_float(d0, "d0")
-        d1_value = _finite_float(d1_hat, "d1_hat")
-        kappa2_value = _positive_float(kappa2_hat, "kappa2_hat", allow_zero=True)
-        if kappa2_value == 0.0:
-            if d1_value >= 0.0:
-                raise ValueError("kappa2_hat=0 requires d1_hat<0 for a mean-reverting limit")
-            kappa1_hat = -d1_value
-            theta_hat = d0_value / kappa1_hat
-        else:
-            discriminant = math.sqrt(d1_value * d1_value + 4.0 * kappa2_value * d0_value)
-            if d1_value >= 0.0:
-                theta_hat = (d1_value + discriminant) / (2.0 * kappa2_value)
-            else:
-                # Algebraically identical root without cancellation for a large negative d1.
-                theta_hat = 2.0 * d0_value / (discriminant - d1_value)
-            kappa1_hat = d0_value / theta_hat
-        return cls(
-            kappa1_hat=kappa1_hat,
-            kappa2_hat=kappa2_value,
-            theta_hat=theta_hat,
-            d0=d0_value,
-            d1_hat=d1_value,
-            lambda0_bar=lambda0_bar,
-            lambda1_bar=lambda1_bar,
-            vartheta=vartheta,
-        )
-
-    @property
-    def d2_hat(self) -> float:
-        return -self.kappa2_hat
-
-    def drift(self, sigma: float | FloatArray) -> float | FloatArray:
-        return self.d0 + self.d1_hat * sigma - self.kappa2_hat * sigma * sigma
-
-
-def derived_limit_params(params: TgarchParams) -> LimitParams:
-    """Apply the note's exact drift-coefficient map and Corollary-14 factorization."""
-
-    if not isinstance(params, TgarchParams):
-        raise ValueError("params must be a TgarchParams instance")
-    lambda0_bar = params.gamma1
-    lambda1_bar = -(M1 / S1) * params.eta1
-    lambda_intercept = -params.beta * params.gamma0 + params.eps * M1 * params.eta0 / S1
-    lambda_slope = -params.beta * params.gamma1 + params.eps * M1 * params.eta1 / S1
-    d1_hat = params.d1 + lambda_intercept
-    kappa2_hat = params.kappa2 - lambda_slope
-    if kappa2_hat < 0.0:
-        raise ValueError(
-            "derived kappa2_hat is negative; the requested Q limit is outside the "
-            f"well-posed parameter region (kappa2_hat={kappa2_hat:.12g})"
-        )
-    return LimitParams.from_drift_coefficients(
-        d0=params.d0,
-        d1_hat=d1_hat,
-        kappa2_hat=kappa2_hat,
-        lambda0_bar=lambda0_bar,
-        lambda1_bar=lambda1_bar,
-        vartheta=params.vartheta,
-    )
-
-
-@dataclass(frozen=True, slots=True)
 class SimulationResult:
-    """Terminal state from a streamed antithetic simulation."""
+    """Backward-compatible chapter view over package-owned TGARCH terminal paths."""
 
-    measure: Measure
-    maturity: float
-    dt: float
-    n_steps: int
-    terminal_spot: FloatArray
-    terminal_log_spot: FloatArray
-    terminal_sigma: FloatArray
-    floor_hits: int
-    spot_overflow_count: int = 0
-    log_weights: FloatArray | None = None
-    effective_sample_size: float | None = None
-    ess_fraction: float | None = None
-    low_ess: bool = False
+    paths: ModelPaths
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "measure", _as_measure(self.measure))
-        object.__setattr__(self, "maturity", _positive_float(self.maturity, "maturity"))
-        object.__setattr__(self, "dt", _positive_float(self.dt, "dt"))
-        object.__setattr__(self, "n_steps", _positive_int(self.n_steps, "n_steps"))
-        log_spot = _readonly_vector(self.terminal_log_spot, "terminal_log_spot")
-        n_paths = log_spot.size
-        if n_paths == 0:
-            raise ValueError("terminal arrays cannot be empty")
-        spot = _readonly_vector(
-            self.terminal_spot,
-            "terminal_spot",
-            length=n_paths,
-            allow_positive_infinity=True,
-        )
-        sigma = _readonly_vector(self.terminal_sigma, "terminal_sigma", length=n_paths)
-        if (spot < 0.0).any():
-            raise ValueError("terminal_spot must be non-negative")
-        if (sigma < SIGMA_FLOOR).any():
-            raise ValueError("terminal_sigma is below SIGMA_FLOOR")
-        object.__setattr__(self, "terminal_spot", spot)
-        object.__setattr__(self, "terminal_log_spot", log_spot)
-        object.__setattr__(self, "terminal_sigma", sigma)
-        object.__setattr__(
-            self, "floor_hits", _positive_int(self.floor_hits, "floor_hits", minimum=0)
-        )
-        object.__setattr__(
-            self,
-            "spot_overflow_count",
-            _positive_int(self.spot_overflow_count, "spot_overflow_count", minimum=0),
-        )
-        actual_overflows = int(np.isposinf(spot).sum())
-        if actual_overflows != self.spot_overflow_count:
-            raise ValueError("spot_overflow_count does not match terminal_spot")
-        if not math.isclose(self.dt * self.n_steps, self.maturity, rel_tol=2.0e-13, abs_tol=1e-15):
-            raise ValueError("dt * n_steps must equal maturity")
+        if not isinstance(self.paths, ModelPaths):
+            raise ValueError("paths must be a ModelPaths instance")
 
-        if self.log_weights is None:
-            if self.effective_sample_size is not None or self.ess_fraction is not None:
-                raise ValueError("ESS fields require log_weights")
-            if self.low_ess:
-                raise ValueError("low_ess cannot be true without log_weights")
-        else:
-            weights = _readonly_vector(self.log_weights, "log_weights", length=n_paths)
-            object.__setattr__(self, "log_weights", weights)
-            ess = _positive_float(self.effective_sample_size, "effective_sample_size")
-            fraction = _positive_float(self.ess_fraction, "ess_fraction")
-            if ess > n_paths * (1.0 + 1.0e-12):
-                raise ValueError("effective_sample_size cannot exceed n_paths")
-            if not math.isclose(fraction, ess / n_paths, rel_tol=2.0e-12, abs_tol=1e-15):
-                raise ValueError("ess_fraction must equal effective_sample_size / n_paths")
-            if self.low_ess != (fraction < 0.2):
-                raise ValueError("low_ess must flag ess_fraction < 0.2")
-            object.__setattr__(self, "effective_sample_size", ess)
-            object.__setattr__(self, "ess_fraction", fraction)
+    @property
+    def measure(self) -> Measure:
+        return Measure(self.paths.sampling_measure)
+
+    @property
+    def maturity(self) -> float:
+        return float(self.paths.observation_times[-1])
+
+    @property
+    def dt(self) -> float:
+        return float(self.paths.provenance["realized_dt"])
+
+    @property
+    def n_steps(self) -> int:
+        return int(self.paths.provenance["n_steps"])
+
+    @property
+    def terminal_spot(self) -> FloatArray:
+        return self.paths.assets[:, -1, 0]
+
+    @property
+    def terminal_log_spot(self) -> FloatArray:
+        return self.paths.states["log_spot"][:, -1]
+
+    @property
+    def terminal_sigma(self) -> FloatArray:
+        return self.paths.states["sigma"][:, -1]
+
+    @property
+    def floor_hits(self) -> int:
+        return int(self.paths.diagnostics["floor_hits"])
+
+    @property
+    def spot_overflow_count(self) -> int:
+        return int(self.paths.diagnostics["spot_overflow_count"])
+
+    @property
+    def log_weights(self) -> FloatArray | None:
+        return self.paths.log_likelihood_ratios
+
+    @property
+    def effective_sample_size(self) -> float | None:
+        value = self.paths.diagnostics["effective_sample_size"]
+        return None if value is None else float(value)
+
+    @property
+    def ess_fraction(self) -> float | None:
+        value = self.paths.diagnostics["ess_fraction"]
+        return None if value is None else float(value)
+
+    @property
+    def low_ess(self) -> bool:
+        return bool(self.paths.diagnostics["low_ess"])
 
     @property
     def n_paths(self) -> int:
-        return int(self.terminal_sigma.size)
-
-    def likelihood_weights(self, *, normalize_to_mean_one: bool = False) -> FloatArray:
-        """Exponentiate stored log weights stably.
-
-        Normalization to sample mean one is useful for diagnostics and ESS plots but changes the
-        raw likelihood-ratio estimator into a self-normalized estimator.
-        """
-
-        if self.log_weights is None:
-            raise ValueError("this result does not contain P-to-Q log weights")
-        shift = float(np.max(self.log_weights))
-        weights = np.exp(self.log_weights - shift)
-        if normalize_to_mean_one:
-            weights /= np.mean(weights)
-        else:
-            weights *= math.exp(shift)
-        weights.setflags(write=False)
-        return weights
+        return int(self.paths.assets.shape[0])
 
 
 @dataclass(frozen=True, slots=True)
@@ -534,24 +312,6 @@ def _resolve_limit_params(
     return result
 
 
-def _exact_q_law(
-    sigma: FloatArray,
-    dt: float,
-    params: TgarchParams,
-) -> tuple[FloatArray, FloatArray]:
-    sqrt_dt = math.sqrt(dt)
-    denominator = 1.0 - 2.0 * sqrt_dt * params.eta(sigma)
-    if np.any(denominator <= 0.0) or not np.isfinite(denominator).all():
-        worst = float(np.min(denominator))
-        raise ValueError(
-            "the exact-Q kernel is inadmissible: 1 - 2*sqrt(dt)*eta(sigma) "
-            f"must be positive on every path (minimum={worst:.12g})"
-        )
-    variance = 1.0 / denominator
-    mean = -sqrt_dt * params.gamma(sigma) - 0.5 * sigma * sqrt_dt * (variance - 1.0)
-    return np.asarray(mean, dtype=np.float64), np.asarray(variance, dtype=np.float64)
-
-
 def _exact_q_law_scalar(sigma: float, dt: float, params: TgarchParams) -> tuple[float, float]:
     sqrt_dt = math.sqrt(dt)
     denominator = 1.0 - 2.0 * sqrt_dt * float(params.eta(sigma))
@@ -565,35 +325,6 @@ def _exact_q_law_scalar(sigma: float, dt: float, params: TgarchParams) -> tuple[
     return mean, variance
 
 
-def _antithetic_normal_block(
-    rng: np.random.Generator,
-    *,
-    block_steps: int,
-    n_paths: int,
-) -> FloatArray:
-    pair_count = n_paths // 2
-    has_singleton = n_paths % 2
-    independent_count = pair_count + has_singleton
-    draws = rng.standard_normal((block_steps, independent_count), dtype=np.float64)
-    result = np.empty((block_steps, n_paths), dtype=np.float64)
-    if pair_count:
-        result[:, :pair_count] = draws[:, :pair_count]
-        result[:, pair_count : 2 * pair_count] = -draws[:, :pair_count]
-    if has_singleton:
-        result[:, -1] = draws[:, -1]
-    return result
-
-
-def _effective_sample_size(log_weights: FloatArray) -> float:
-    shift = float(np.max(log_weights))
-    scaled = np.exp(log_weights - shift)
-    numerator = float(np.sum(scaled)) ** 2
-    denominator = float(np.dot(scaled, scaled))
-    if denominator == 0.0 or not math.isfinite(numerator):
-        raise FloatingPointError("could not compute a finite effective sample size")
-    return numerator / denominator
-
-
 def simulate_terminal(
     params: TgarchParams,
     measure: Measure | str,
@@ -605,109 +336,23 @@ def simulate_terminal(
     track_log_weights: bool = False,
     chunk_steps: int = _DEFAULT_CHUNK_STEPS,
 ) -> SimulationResult:
-    """Stream a terminal simulation with antithetic PCG64 base normals.
+    """Adapt the package-owned terminal TGARCH simulation to the chapter result view.
 
-    ``max_dt`` is an upper bound: the function takes ``ceil(maturity / max_dt)`` equal steps so
-    that the final time is exactly ``maturity``.  P-to-Q likelihood ratios are available only on
-    P paths because they are the Radon--Nikodym weights used by the reweighting experiment.
+    The signature and legacy result attributes are retained for the chapter study.  Numerical
+    dynamics, random ordering, likelihood ratios, and diagnostics are owned by
+    :class:`stochvolmodels.models.tgarch.TgarchModel`.
     """
-
-    if not isinstance(params, TgarchParams):
-        raise ValueError("params must be a TgarchParams instance")
-    measure_value = _as_measure(measure)
-    maturity_value = _positive_float(maturity, "maturity")
-    n_paths_value = _positive_int(n_paths, "n_paths")
-    seed_value = _validated_seed(seed)
-    chunk_value = _positive_int(chunk_steps, "chunk_steps")
-    if not isinstance(track_log_weights, (bool, np.bool_)):
-        raise ValueError("track_log_weights must be bool")
-    if track_log_weights and measure_value is not Measure.P:
-        raise ValueError("P-to-Q log weights can only be accumulated on P simulations")
-    n_steps, dt = _step_grid(maturity_value, max_dt)
-    limit = _resolve_limit_params(params, measure_value, limit_params)
-
-    rng = np.random.Generator(np.random.PCG64(seed_value))
-    sigma = np.full(n_paths_value, params.sigma0, dtype=np.float64)
-    log_spot = np.full(n_paths_value, math.log(params.spot0), dtype=np.float64)
-    log_weights = np.zeros(n_paths_value, dtype=np.float64) if track_log_weights else None
-    sqrt_dt = math.sqrt(dt)
-    floor_hits = 0
-
-    for block_start in range(0, n_steps, chunk_value):
-        block_size = min(chunk_value, n_steps - block_start)
-        base_block = _antithetic_normal_block(
-            rng,
-            block_steps=block_size,
-            n_paths=n_paths_value,
-        )
-        for block_index in range(block_size):
-            base_z = base_block[block_index]
-            if measure_value is Measure.Q_EXACT:
-                q_mean, q_variance = _exact_q_law(sigma, dt, params)
-                z = q_mean + np.sqrt(q_variance) * base_z
-                log_drift = params.r + params.gamma(sigma) * sigma - 0.5 * sigma * sigma
-                sigma_drift = params.drift(sigma)
-            elif measure_value is Measure.P:
-                z = base_z
-                log_drift = params.r + params.gamma(sigma) * sigma - 0.5 * sigma * sigma
-                sigma_drift = params.drift(sigma)
-                if log_weights is not None:
-                    q_mean, q_variance = _exact_q_law(sigma, dt, params)
-                    log_weights += -0.5 * np.log(q_variance) - 0.5 * (
-                        (z - q_mean) * (z - q_mean) / q_variance - z * z
-                    )
-            else:
-                if limit is None:  # pragma: no cover - guarded by _resolve_limit_params
-                    raise RuntimeError("missing Q-limit parameters")
-                z = base_z
-                log_drift = params.r - 0.5 * sigma * sigma
-                sigma_drift = limit.drift(sigma)
-
-            log_spot += log_drift * dt + sigma * sqrt_dt * z
-            w = (np.abs(z) - M1) / S1
-            sigma_next = (
-                sigma + sigma_drift * dt + sigma * sqrt_dt * (params.beta * z + params.eps * w)
-            )
-            hit = sigma_next < SIGMA_FLOOR
-            floor_hits += int(np.count_nonzero(hit))
-            np.maximum(sigma_next, SIGMA_FLOOR, out=sigma_next)
-            sigma = sigma_next
-
-        if not np.isfinite(sigma).all() or not np.isfinite(log_spot).all():
-            step = block_start + block_size
-            raise FloatingPointError(f"non-finite state encountered after simulation step {step}")
-        if log_weights is not None and not np.isfinite(log_weights).all():
-            step = block_start + block_size
-            raise FloatingPointError(
-                f"non-finite log weight encountered after simulation step {step}"
-            )
-
-    with np.errstate(over="ignore", under="ignore"):
-        terminal_spot = np.exp(log_spot)
-    overflow_count = int(np.isposinf(terminal_spot).sum())
-    ess: float | None = None
-    ess_fraction: float | None = None
-    low_ess = False
-    if log_weights is not None:
-        ess = _effective_sample_size(log_weights)
-        ess_fraction = ess / n_paths_value
-        low_ess = ess_fraction < 0.2
-
-    return SimulationResult(
-        measure=measure_value,
-        maturity=maturity_value,
-        dt=dt,
-        n_steps=n_steps,
-        terminal_spot=terminal_spot,
-        terminal_log_spot=log_spot,
-        terminal_sigma=sigma,
-        floor_hits=floor_hits,
-        spot_overflow_count=overflow_count,
-        log_weights=log_weights,
-        effective_sample_size=ess,
-        ess_fraction=ess_fraction,
-        low_ess=low_ess,
+    paths = TgarchModel(params).simulate_paths(
+        measure=measure,
+        maturity=maturity,
+        max_dt=max_dt,
+        n_paths=n_paths,
+        seed=seed,
+        limit_params=limit_params,
+        track_log_weights=track_log_weights,
+        chunk_steps=chunk_steps,
     )
+    return SimulationResult(paths=paths)
 
 
 def _scalar_discrete_update(
@@ -1091,7 +736,9 @@ def validate_one_step_moments(
     sigma_value = params.sigma0 if sigma is None else _positive_float(sigma, "sigma")
     measure_value = _as_measure(measure)
     rng = np.random.Generator(np.random.PCG64(seed_value))
-    base = _antithetic_normal_block(rng, block_steps=1, n_paths=n_paths_value)[0]
+    pair_count = n_paths_value // 2
+    independent = rng.standard_normal(pair_count, dtype=np.float64)
+    base = np.concatenate((independent, -independent))
     if measure_value is Measure.Q_EXACT:
         mean, variance = _exact_q_law_scalar(sigma_value, dt_value, params)
         z = mean + math.sqrt(variance) * base
