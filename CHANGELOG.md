@@ -8,6 +8,9 @@ Entries start at 1.2.0. For earlier releases see the git log.
 - `ModelPaths` and the provisional `PathModel`, `TransformModel`,
   `TerminalDistributionModel`, `TerminalSmileModel`, and `Payoff` capability contracts establish
   the path, terminal-model, and pathwise-product boundaries for book analytics.
+- `stochvolmodels.models.tgarch` adds a distinct discrete TGARCH terminal path model with
+  physical, exact finite-step pricing, and limit-pricing measures, including raw
+  P-to-exact-Q likelihood ratios and simulation diagnostics.
 
 ## [2.3.0] - 2026-08-24
 
