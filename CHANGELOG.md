@@ -4,6 +4,11 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+### Added
+- `ModelPaths` and the provisional `PathModel`, `TransformModel`,
+  `TerminalDistributionModel`, `TerminalSmileModel`, and `Payoff` capability contracts establish
+  the path, terminal-model, and pathwise-product boundaries for book analytics.
+
 ## [2.3.0] - 2026-08-24
 
 ### Added
