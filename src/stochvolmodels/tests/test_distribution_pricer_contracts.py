@@ -6,8 +6,9 @@ import numpy as np
 import pytest
 from numba.typed import List
 from scipy.integrate import quad
-from scipy.stats import t as student_t
+from scipy.stats import norm, t as student_t
 
+import stochvolmodels
 import stochvolmodels.pricers.gmm_pricer as gmm_module
 import stochvolmodels.pricers.tdist_pricer as tdist_module
 import stochvolmodels.fitters.tdist as tdist_fitter
@@ -29,6 +30,7 @@ from stochvolmodels.models import (
     TransformModel,
 )
 from stochvolmodels.pricers.gmm_pricer import (
+    GmmTerminalModel,
     compute_gmm_vanilla_price,
     compute_gmm_vanilla_slice_prices,
     gmm_vanilla_chain_pricer,
@@ -59,6 +61,21 @@ _TDIST_BLACK_IVOLS = np.array(
         0.26544693479584630,
         0.26590566227895550,
     ]
+)
+
+_GMM_TTM = 0.75
+_GMM_FORWARD = 105.0
+_GMM_DISCOUNT_FACTOR = 0.96
+_GMM_WEIGHTS = np.array([0.4, 0.6])
+_GMM_MUS = np.array([-0.18, -0.004343311874409908])
+_GMM_VOLS = np.array([0.2, 0.45])
+_GMM_STRIKES = np.array([80.0, 105.0, 130.0])
+_GMM_OPTIONTYPES = np.array(["P", "C", "C"])
+_GMM_PRICES = np.array(
+    [2.779451417834116, 13.090788293511062, 6.651985427873406]
+)
+_GMM_BLACK_IVOLS = np.array(
+    [0.3552383594248255, 0.3775686095394237, 0.4102391784434851]
 )
 
 
@@ -176,6 +193,120 @@ def _integrated_tdist_prices(
 
     assert default_probability > 0.0
     return prices
+
+
+def _gmm_terminal_params(**overrides: object) -> GmmParams:
+    """Return a detached copy of the frozen martingale Gaussian-mixture fixture."""
+    values = {
+        "gmm_weights": _GMM_WEIGHTS.copy(),
+        "gmm_mus": _GMM_MUS.copy(),
+        "gmm_vols": _GMM_VOLS.copy(),
+        "ttm": _GMM_TTM,
+    }
+    values.update(overrides)
+    return GmmParams(**values)
+
+
+def _gmm_terminal_model(**overrides: object) -> GmmTerminalModel:
+    """Return the validated terminal adapter for the frozen GMM fixture."""
+    return GmmTerminalModel(params=_gmm_terminal_params(**overrides))
+
+
+def _gmm_terminal_slice(
+    *,
+    strikes: np.ndarray = _GMM_STRIKES,
+    optiontypes: np.ndarray = _GMM_OPTIONTYPES,
+    ttm: float = _GMM_TTM,
+    forward: float = _GMM_FORWARD,
+    discfactor: float = _GMM_DISCOUNT_FACTOR,
+) -> OptionSlice:
+    """Return one option slice under the frozen GMM forward convention."""
+    return OptionSlice(
+        ttm=ttm,
+        forward=forward,
+        strikes=strikes,
+        optiontypes=optiontypes,
+        id="gmm_reference",
+        discfactor=discfactor,
+    )
+
+
+def _integrated_gmm_prices(
+    model: GmmTerminalModel,
+    option_slice: OptionSlice,
+) -> np.ndarray:
+    """Integrate European payoffs directly against each Gaussian state density."""
+    params = model.params
+    prices = np.empty(option_slice.strikes.size, dtype=float)
+    for index, (strike, optiontype) in enumerate(
+        zip(option_slice.strikes, option_slice.optiontypes)
+    ):
+        exercise_boundary = np.log(strike / option_slice.forward)
+        undiscounted = 0.0
+        for weight, mu, vol in zip(
+            params.gmm_weights,
+            params.gmm_mus,
+            params.gmm_vols,
+        ):
+            law = norm(loc=mu * params.ttm, scale=vol * np.sqrt(params.ttm))
+            if optiontype == "C":
+                upper = max(
+                    exercise_boundary + 14.0 * law.std(),
+                    law.mean() + law.var() + 14.0 * law.std(),
+                )
+                component, _ = quad(
+                    lambda x: (option_slice.forward * np.exp(x) - strike) * law.pdf(x),
+                    exercise_boundary,
+                    upper,
+                    epsabs=1.0e-12,
+                    epsrel=1.0e-12,
+                    limit=200,
+                )
+            else:
+                lower = min(exercise_boundary - 14.0 * law.std(), law.mean() - 14.0 * law.std())
+                component, _ = quad(
+                    lambda x: (strike - option_slice.forward * np.exp(x)) * law.pdf(x),
+                    lower,
+                    exercise_boundary,
+                    epsabs=1.0e-12,
+                    epsrel=1.0e-12,
+                    limit=200,
+                )
+            undiscounted += weight * component
+        prices[index] = option_slice.discfactor * undiscounted
+    return prices
+
+
+def _integrated_gmm_mgf(model: GmmTerminalModel, phi: complex) -> complex:
+    """Numerically integrate one real or complex exponential moment."""
+    params = model.params
+    value = 0.0j
+    for weight, mu, vol in zip(
+        params.gmm_weights,
+        params.gmm_mus,
+        params.gmm_vols,
+    ):
+        law = norm(loc=mu * params.ttm, scale=vol * np.sqrt(params.ttm))
+        lower = law.mean() - 14.0 * law.std()
+        upper = law.mean() + 14.0 * law.std()
+        real_part, _ = quad(
+            lambda x: np.real(np.exp(phi * x)) * law.pdf(x),
+            lower,
+            upper,
+            epsabs=2.0e-13,
+            epsrel=2.0e-13,
+            limit=200,
+        )
+        imaginary_part, _ = quad(
+            lambda x: np.imag(np.exp(phi * x)) * law.pdf(x),
+            lower,
+            upper,
+            epsabs=2.0e-13,
+            epsrel=2.0e-13,
+            limit=200,
+        )
+        value += weight * complex(real_part, imaginary_part)
+    return value
 
 
 def _synthetic_gmm_slice(params: GmmParams) -> OptionChain:
@@ -348,6 +479,419 @@ def test_one_state_gmm_calibration_recovers_synthetic_surface() -> None:
     np.testing.assert_allclose(fitted.gmm_mus, -0.5 * fitted.gmm_vols**2, atol=1.0e-9)
     np.testing.assert_allclose(fitted.gmm_vols, true_vol, rtol=0.0, atol=2.0e-5)
     np.testing.assert_allclose(fitted_ivols, chain.get_mid_vols()[0], atol=1.5e-5)
+
+
+def test_gmm_terminal_model_matches_frozen_analytics_and_capabilities() -> None:
+    """The adapter preserves the captured law and exposes only proven capabilities."""
+    model = _gmm_terminal_model()
+    option_slice = _gmm_terminal_slice()
+
+    prices = model.price_european(option_slice)
+    ivols = model.implied_vols(option_slice)
+
+    assert isinstance(model, TerminalDistributionModel)
+    assert isinstance(model, TerminalSmileModel)
+    assert isinstance(model, TransformModel)
+    assert not isinstance(model, PathModel)
+    assert "GmmTerminalModel" not in stochvolmodels.__all__
+    assert model.ttm == _GMM_TTM
+    assert prices.shape == option_slice.strikes.shape
+    assert ivols.shape == option_slice.strikes.shape
+    assert np.issubdtype(prices.dtype, np.floating)
+    assert np.issubdtype(ivols.dtype, np.floating)
+    np.testing.assert_allclose(prices, _GMM_PRICES, rtol=0.0, atol=3.0e-13)
+    np.testing.assert_allclose(ivols, _GMM_BLACK_IVOLS, rtol=0.0, atol=5.0e-12)
+
+
+def test_gmm_terminal_prices_match_legacy_and_independent_density_quadrature() -> None:
+    """The bound facade delegates unchanged analytics that direct payoff integration confirms."""
+    model = _gmm_terminal_model()
+    option_slice = _gmm_terminal_slice()
+    chain = OptionChain.slice_to_chain(
+        ttm=option_slice.ttm,
+        forward=option_slice.forward,
+        strikes=option_slice.strikes,
+        optiontypes=option_slice.optiontypes,
+        discfactor=option_slice.discfactor,
+        id=option_slice.id,
+    )
+    legacy = np.asarray(GmmPricer().price_chain(chain, model.params)[0], dtype=float)
+
+    np.testing.assert_allclose(model.price_european(option_slice), legacy, rtol=0.0, atol=0.0)
+    np.testing.assert_allclose(
+        model.price_european(option_slice),
+        _integrated_gmm_prices(model, option_slice),
+        rtol=2.0e-12,
+        atol=3.0e-12,
+    )
+
+
+def test_gmm_terminal_prices_obey_parity_monotonicity_and_convexity() -> None:
+    """The martingale mixture produces an arbitrage-free standard-payoff strike slice."""
+    model = _gmm_terminal_model()
+    strikes = np.linspace(50.0, 160.0, 23)
+    calls = model.price_european(
+        _gmm_terminal_slice(strikes=strikes, optiontypes=np.array(["C"] * strikes.size))
+    )
+    puts = model.price_european(
+        _gmm_terminal_slice(strikes=strikes, optiontypes=np.array(["P"] * strikes.size))
+    )
+
+    np.testing.assert_allclose(
+        calls - puts,
+        _GMM_DISCOUNT_FACTOR * (_GMM_FORWARD - strikes),
+        rtol=0.0,
+        atol=3.0e-13,
+    )
+    roundoff_tolerance = 3.0e-13
+    assert np.max(np.diff(calls)) <= roundoff_tolerance
+    assert np.min(np.diff(puts)) >= -roundoff_tolerance
+    assert np.min(np.diff(calls, n=2)) >= -roundoff_tolerance
+    assert np.min(np.diff(puts, n=2)) >= -roundoff_tolerance
+
+
+def test_gmm_terminal_model_returns_float_arrays_for_integer_strikes() -> None:
+    """The adapter must bypass the legacy integer ``zeros_like`` truncation."""
+    model = _gmm_terminal_model()
+    integer_slice = _gmm_terminal_slice(
+        strikes=np.array([1, 2]),
+        optiontypes=np.array(["C", "C"]),
+        forward=1.0,
+    )
+    prices = model.price_european(integer_slice)
+    ivols = model.implied_vols(integer_slice)
+
+    assert np.issubdtype(prices.dtype, np.floating)
+    assert np.issubdtype(ivols.dtype, np.floating)
+    np.testing.assert_allclose(
+        prices,
+        np.array([0.12467417422391491, 0.00768647394089092]),
+        rtol=0.0,
+        atol=3.0e-14,
+    )
+
+
+def test_gmm_terminal_model_requires_exact_slice_maturity() -> None:
+    mismatched = np.nextafter(_GMM_TTM, np.inf)
+    with pytest.raises(ValueError, match="exactly match"):
+        _gmm_terminal_model().price_european(_gmm_terminal_slice(ttm=mismatched))
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("gmm_weights", np.array([]), "gmm_weights"),
+        ("gmm_weights", np.array([[0.4, 0.6]]), "gmm_weights"),
+        ("gmm_weights", np.array([0.4, -0.6]), "nonnegative"),
+        ("gmm_weights", np.array([0.3, 0.6]), "sum to one"),
+        ("gmm_weights", np.array([True, False]), "gmm_weights"),
+        ("gmm_weights", [0.4, True], "booleans"),
+        ("gmm_weights", np.array([0.4, np.nan]), "gmm_weights"),
+        ("gmm_mus", np.array([-0.18]), "same length"),
+        ("gmm_mus", np.array([-0.18, np.inf]), "gmm_mus"),
+        ("gmm_mus", np.array([-0.18 + 0.0j, 0.0j]), "gmm_mus"),
+        ("gmm_vols", np.array([0.2]), "same length"),
+        ("gmm_vols", np.array([0.2, 0.0]), "positive"),
+        ("gmm_vols", np.array([0.2, np.nan]), "gmm_vols"),
+        ("ttm", 0.0, "ttm"),
+        ("ttm", -1.0, "ttm"),
+        ("ttm", np.inf, "ttm"),
+        ("ttm", True, "ttm"),
+        ("gmm_mus", np.array([0.0, 0.0]), "martingale"),
+    ],
+)
+def test_gmm_terminal_model_rejects_invalid_parameters(
+    field: str,
+    value: object,
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        _gmm_terminal_model(**{field: value})
+
+
+def test_gmm_terminal_model_requires_gmm_params() -> None:
+    with pytest.raises(TypeError, match="GmmParams"):
+        GmmTerminalModel(params=object())
+
+
+def test_gmm_terminal_model_detaches_caller_and_returned_parameters() -> None:
+    """Neither legacy payload mutation route may alter the bound law."""
+    params = _gmm_terminal_params()
+    model = GmmTerminalModel(params=params)
+    option_slice = _gmm_terminal_slice()
+    prices = model.price_european(option_slice)
+
+    params.gmm_weights[:] = [1.0, 0.0]
+    params.gmm_mus[:] = 5.0
+    params.gmm_vols[:] = 2.0
+    params.ttm = 2.0
+    inspected = model.params
+    inspected.gmm_weights[:] = [1.0, 0.0]
+    inspected.gmm_mus[:] = 5.0
+    inspected.gmm_vols[:] = 2.0
+    inspected.ttm = 2.0
+
+    np.testing.assert_array_equal(model.params.gmm_weights, _GMM_WEIGHTS)
+    np.testing.assert_array_equal(model.params.gmm_mus, _GMM_MUS)
+    np.testing.assert_array_equal(model.params.gmm_vols, _GMM_VOLS)
+    assert model.params.ttm == _GMM_TTM
+    np.testing.assert_allclose(model.price_european(option_slice), prices, rtol=0.0, atol=0.0)
+
+
+@pytest.mark.parametrize("optiontype", ["IC", "IP"])
+def test_gmm_terminal_model_does_not_claim_inverse_payoff_support(optiontype: str) -> None:
+    with pytest.raises(NotImplementedError, match="inverse"):
+        _gmm_terminal_model().price_european(
+            _gmm_terminal_slice(
+                strikes=np.array([105.0]),
+                optiontypes=np.array([optiontype]),
+            )
+        )
+
+
+def test_gmm_terminal_log_mgf_matches_real_and_complex_density_quadrature() -> None:
+    """The closed-form transform agrees with integration independent of pricing kernels."""
+    model = _gmm_terminal_model()
+    real_grid = np.array([-0.5, 0.0, 0.4, 1.0, 2.0])
+    complex_grid = np.array([-0.25 + 0.7j, 0.5 + 1.2j, 1.0 - 0.8j])
+
+    real_values = model.log_mgf_grid(phi_grid=real_grid)
+    complex_values = model.log_mgf_grid(phi_grid=complex_grid)
+    integrated_real = np.array([np.log(_integrated_gmm_mgf(model, phi).real) for phi in real_grid])
+    integrated_complex = np.array(
+        [np.log(_integrated_gmm_mgf(model, phi)) for phi in complex_grid]
+    )
+
+    assert real_values.shape == real_grid.shape
+    assert complex_values.shape == complex_grid.shape
+    assert np.issubdtype(real_values.dtype, np.floating)
+    assert np.issubdtype(complex_values.dtype, np.complexfloating)
+    np.testing.assert_allclose(real_values, integrated_real, rtol=0.0, atol=3.0e-12)
+    np.testing.assert_allclose(complex_values, integrated_complex, rtol=0.0, atol=3.0e-12)
+    np.testing.assert_allclose(real_values[[1, 3]], 0.0, rtol=0.0, atol=5.0e-10)
+
+
+def test_gmm_terminal_log_mgf_is_stable_for_large_transform_arguments() -> None:
+    model = _gmm_terminal_model()
+    phi_grid = np.array([100.0 + 0.0j, -100.0 + 0.0j, 100.0 + 1.0j])
+    expected = np.array(
+        [
+            758.5384259856532 + 0.0j,
+            759.1899227668148 + 0.0j,
+            758.4624884856532 + 2.617871901735018j,
+        ]
+    )
+    np.testing.assert_allclose(
+        model.log_mgf_grid(phi_grid=phi_grid),
+        expected,
+        rtol=0.0,
+        atol=2.0e-13,
+    )
+
+
+def test_gmm_terminal_log_mgf_ignores_zero_weight_states_when_stabilizing() -> None:
+    """A numerically dominant zero-probability state cannot erase the active transform."""
+    ttm = 0.75
+    vol = 0.2
+    model = GmmTerminalModel(
+        GmmParams(
+            gmm_weights=np.array([1.0, 0.0]),
+            gmm_mus=np.array([-0.5 * vol**2, 1_000.0]),
+            gmm_vols=np.array([vol, 1_000.0]),
+            ttm=ttm,
+        )
+    )
+    phi_grid = np.array([100.0, -100.0])
+    expected = ttm * (-0.5 * vol**2 * phi_grid + 0.5 * vol**2 * phi_grid**2)
+    np.testing.assert_allclose(
+        model.log_mgf_grid(phi_grid=phi_grid),
+        expected,
+        rtol=0.0,
+        atol=2.0e-13,
+    )
+
+
+@pytest.mark.parametrize(
+    "phi_grid",
+    [
+        np.array([]),
+        np.array([True, False]),
+        np.array(["0", "1"]),
+        np.array([np.nan]),
+        np.array([1.0 + np.nan * 1.0j]),
+    ],
+)
+def test_gmm_terminal_log_mgf_rejects_invalid_grids(phi_grid: np.ndarray) -> None:
+    with pytest.raises(ValueError, match="phi_grid"):
+        _gmm_terminal_model().log_mgf_grid(phi_grid=phi_grid)
+
+
+def test_gmm_terminal_transform_reproduces_paper_risk_premium_algebra() -> None:
+    model = _gmm_terminal_model()
+    kappa = 3.0
+    log_moments = model.log_mgf_grid(phi_grid=np.array([kappa, kappa + 1.0]))
+    risk_premium = (np.exp(log_moments[1] - log_moments[0]) - 1.0) / model.ttm
+    np.testing.assert_allclose(risk_premium, 0.7287604830098268, rtol=0.0, atol=5.0e-14)
+
+
+def test_gmm_calibration_rejects_constraint_violating_success(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Optimizer success cannot override the probability and martingale constraints."""
+    invalid = np.array([0.5, 0.5, 0.0, 0.0, 0.2, 0.3])
+
+    def false_success(*args, **kwargs):
+        return SimpleNamespace(success=True, message="false success", x=invalid, fun=0.0)
+
+    monkeypatch.setattr(gmm_module, "minimize", false_success)
+    with pytest.raises(CalibrationError, match="martingale"):
+        GmmPricer().calibrate_model_params_to_chain_slice(
+            option_chain=_quoted_slice(),
+            n_mixtures=2,
+            is_vega_weighted=False,
+        )
+
+
+def test_gmm_scalar_calibration_rejects_nonfinite_reported_objective(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def false_success(*args, **kwargs):
+        return SimpleNamespace(success=True, message="false success", x=0.3, fun=np.nan)
+
+    monkeypatch.setattr(gmm_module, "minimize_scalar", false_success)
+    with pytest.raises(CalibrationError, match="objective"):
+        GmmPricer().calibrate_model_params_to_chain_slice(
+            option_chain=_quoted_slice(),
+            n_mixtures=1,
+            is_vega_weighted=False,
+        )
+
+
+def test_gmm_scalar_calibration_rejects_all_nan_repricing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pricer = GmmPricer()
+
+    def false_success(*args, **kwargs):
+        return SimpleNamespace(success=True, message="false success", x=0.3, fun=0.0)
+
+    def all_nan_ivols(*args, **kwargs):
+        return (np.full(3, np.nan),)
+
+    monkeypatch.setattr(gmm_module, "minimize_scalar", false_success)
+    monkeypatch.setattr(pricer, "compute_model_ivols_for_chain", all_nan_ivols)
+    with pytest.raises(CalibrationError, match="objective"):
+        pricer.calibrate_model_params_to_chain_slice(
+            option_chain=_quoted_slice(),
+            n_mixtures=1,
+            is_vega_weighted=False,
+        )
+
+
+def test_gmm_calibration_uses_only_finite_positive_weight_quotes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Inactive quote NaNs do not contaminate the finite calibration objective."""
+    chain = _quoted_slice()
+    pricer = GmmPricer()
+
+    monkeypatch.setattr(
+        chain,
+        "get_chain_data_as_xy",
+        lambda: (None, (np.array([np.nan, 0.23, 0.24]),)),
+    )
+    monkeypatch.setattr(
+        pricer,
+        "compute_model_ivols_for_chain",
+        lambda *args, **kwargs: (np.array([np.nan, 0.23, 0.24]),),
+    )
+    monkeypatch.setattr(
+        gmm_module,
+        "minimize_scalar",
+        lambda *args, **kwargs: SimpleNamespace(
+            success=True,
+            message="active quotes",
+            x=0.3,
+            fun=0.0,
+        ),
+    )
+
+    fitted = pricer.calibrate_model_params_to_chain_slice(
+        option_chain=chain,
+        n_mixtures=1,
+        is_vega_weighted=False,
+    )
+    np.testing.assert_allclose(fitted.gmm_vols, 0.3, rtol=0.0, atol=0.0)
+
+
+def test_gmm_calibration_rejects_no_active_quotes(monkeypatch: pytest.MonkeyPatch) -> None:
+    chain = _quoted_slice()
+    monkeypatch.setattr(
+        chain,
+        "get_chain_data_as_xy",
+        lambda: (None, (np.full(3, np.nan),)),
+    )
+    with pytest.raises(CalibrationError, match="no finite positive-weight quotes"):
+        GmmPricer().calibrate_model_params_to_chain_slice(
+            option_chain=chain,
+            n_mixtures=1,
+            is_vega_weighted=False,
+        )
+
+
+def test_gmm_calibration_rejects_invalid_vega_normalization(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    chain = _quoted_slice()
+    monkeypatch.setattr(chain, "get_chain_vegas", lambda **kwargs: (np.zeros(3),))
+    with pytest.raises(CalibrationError, match="invalid vega weights"):
+        GmmPricer().calibrate_model_params_to_chain_slice(
+            option_chain=chain,
+            n_mixtures=1,
+            is_vega_weighted=True,
+        )
+
+
+@pytest.mark.slow
+def test_two_state_gmm_calibration_reprices_synthetic_holdout_strikes() -> None:
+    """A valid multi-state fit retains the generating law away from calibration strikes."""
+    true_model = _gmm_terminal_model()
+    training_strikes = np.array([70.0, 85.0, 100.0, 115.0, 130.0, 145.0])
+    training_types = np.where(training_strikes < _GMM_FORWARD, "P", "C")
+    training_slice = _gmm_terminal_slice(
+        strikes=training_strikes,
+        optiontypes=training_types,
+    )
+    training_ivols = true_model.implied_vols(training_slice)
+    quoted_chain = OptionChain(
+        ttms=np.array([training_slice.ttm]),
+        forwards=np.array([training_slice.forward]),
+        strikes_ttms=List([training_strikes]),
+        optiontypes_ttms=List([training_types]),
+        ids=np.array([training_slice.id]),
+        discfactors=np.array([training_slice.discfactor]),
+        bid_ivs=List([training_ivols]),
+        ask_ivs=List([training_ivols]),
+    )
+
+    fitted = GmmPricer().calibrate_model_params_to_chain_slice(
+        option_chain=quoted_chain,
+        params0=true_model.params,
+        is_vega_weighted=False,
+    )
+    holdout_strikes = np.array([77.5, 92.5, 107.5, 122.5, 137.5])
+    holdout_types = np.where(holdout_strikes < _GMM_FORWARD, "P", "C")
+    holdout_slice = _gmm_terminal_slice(
+        strikes=holdout_strikes,
+        optiontypes=holdout_types,
+    )
+
+    np.testing.assert_allclose(
+        GmmTerminalModel(fitted).implied_vols(holdout_slice),
+        true_model.implied_vols(holdout_slice),
+        rtol=0.0,
+        atol=3.0e-7,
+    )
 
 
 def test_student_t_prices_satisfy_discounted_put_call_parity() -> None:
