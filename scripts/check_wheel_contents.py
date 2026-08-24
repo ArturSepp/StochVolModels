@@ -49,6 +49,8 @@ def check_wheel(wheel_path: Path) -> None:
         "stochvolmodels/models/logsv.py",
         "stochvolmodels/models/tgarch.py",
         "stochvolmodels/products/__init__.py",
+        "stochvolmodels/products/payoffs.py",
+        "stochvolmodels/valuation.py",
     }
     missing_runtime_files = required_runtime_files.difference(members)
     assert not missing_runtime_files, (
@@ -59,8 +61,8 @@ def check_wheel(wheel_path: Path) -> None:
         for member in members
         if member.startswith("stochvolmodels/tests/test_") and member.endswith(".py")
     }
-    assert len(test_modules) == 29, (
-        f"expected exactly 29 automated test modules, found {len(test_modules)}"
+    assert len(test_modules) == 30, (
+        f"expected exactly 30 automated test modules, found {len(test_modules)}"
     )
     assert not any(member.endswith("_test.py") for member in members), (
         "automated tests must use the test_*.py form"

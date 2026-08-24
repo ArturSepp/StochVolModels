@@ -21,6 +21,9 @@ Entries start at 1.2.0. For earlier releases see the git log.
   continuous LogSV simulation under money-market-account and inverse measures, returning raw
   zero-drift price, volatility, and quadratic-variation paths through the unchanged legacy
   simulation kernel.
+- `stochvolmodels.products.payoffs` and `stochvolmodels.valuation` add explicit European and
+  integrated-variance path payoffs, raw and self-normalized likelihood-ratio valuation, optional
+  legacy additive forward recentering, independent-group standard errors, and ESS diagnostics.
 
 ## [2.3.0] - 2026-08-24
 
