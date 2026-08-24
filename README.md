@@ -102,7 +102,7 @@ because Numba compiles the numerical kernels. See the
 
 | Extra | Installs | Needed for |
 |---|---|---|
-| `research` | `qis >= 3.5.7`, `option-chain-analytics[cboe] >= 5.0.0` | option-chain calibration, local Parquet data, and scripts in `papers/` |
+| `research` | `qis >= 5.11.0`, `option-chain-analytics[cboe] >= 5.2.0` | option-chain calibration, local Parquet data, and scripts in `papers/` |
 | `visualization` | `plotly >= 5.0.0` | interactive figures |
 | `numerical` | `scikit-learn >= 1.3.0`, `statsmodels >= 0.14.0` | statistical fits |
 | `jupyter` | `jupyter`, `notebook`, `jupyterlab`, `ipykernel`, `ipywidgets` | notebooks |

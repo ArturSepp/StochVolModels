@@ -4,7 +4,7 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
-## [2.3.0] - 2026-08-23
+## [2.3.0] - 2026-08-24
 
 ### Added
 - `stochvolmodels.estimation` now owns the Parkinson, Garman-Klass,
@@ -29,8 +29,8 @@ Entries start at 1.2.0. For earlier releases see the git log.
   wrapper around the fitter adapter.
 - `load_price_data` now delegates to the OCA chain object's linked underlying-data loader and is
   retained only as a deprecated compatibility wrapper.
-- The `research` extra now installs `option-chain-analytics[cboe]`, including PyArrow support
-  required by the local Parquet-backed option-data examples.
+- The `research` extra now requires `option-chain-analytics[cboe]>=5.2.0` and `qis>=5.11.0`,
+  including PyArrow support required by the local Parquet-backed option-data examples.
 
 ### Removed
 - The legacy `dev` extra has been retired; contributor test dependencies now live in the

@@ -23,7 +23,7 @@ provider workflow requires them:
 
 ```python
 pip install yfinance                              # volatility_models, jump-risk-premia code
-pip install "option-chain-analytics[cboe]>=5.0.0" # local CBOE provider workflows
+pip install "option-chain-analytics[cboe]>=5.2.0" # local CBOE provider workflows
 ```
 
 The base `option-chain-analytics` package from `[research]` is needed by option-chain workflows in

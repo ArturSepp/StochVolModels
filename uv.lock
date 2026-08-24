@@ -2595,7 +2595,7 @@ wheels = [
 
 [[package]]
 name = "option-chain-analytics"
-version = "5.0.0"
+version = "5.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -2613,9 +2613,9 @@ dependencies = [
     { name = "seaborn" },
     { name = "vanilla-option-pricers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/39/b1/97565074c457908936be2cb139e8d61e05a8c1871a1e516caffc8685bf11/option_chain_analytics-5.0.0.tar.gz", hash = "sha256:c72f9e0ab921b72d089d376ff1f054a059a10e19244246ed92c587c1dda6ddfd", size = 119605, upload-time = "2026-08-20T15:52:16.992Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/9f/f59ac8df6843a44ccbfe83658addcbd6ca9ecc96b84bd900a0e93cfbc316/option_chain_analytics-5.2.0.tar.gz", hash = "sha256:6ce63214233ad3cf96f5beb021b9a7a30f0ab19bc4aa15d0c7e76600e0384339", size = 121962, upload-time = "2026-08-24T05:12:54.347Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/28/46/208bb1f12cd3505f4ee3d458a192a6d75ccab1cacfe565591576f3ca66b5/option_chain_analytics-5.0.0-py3-none-any.whl", hash = "sha256:645ce5096743906aabf8d6a5953b6fd0192ce2258ec83e4b28437c4de19fed5c", size = 81656, upload-time = "2026-08-20T15:52:15.721Z" },
+    { url = "https://files.pythonhosted.org/packages/e0/ab/c60fce900988404d44ae5c7e255fe1441d765f6eda3aaa4c9c1055f729ad/option_chain_analytics-5.2.0-py3-none-any.whl", hash = "sha256:3511aa896d1a62a56c997b44794d6f1637b4c3e933dd7c633c0185e0b63e5660", size = 79471, upload-time = "2026-08-24T05:12:53.161Z" },
 ]
 
 [package.optional-dependencies]
@@ -4501,10 +4501,10 @@ requires-dist = [
     { name = "notebook", marker = "extra == 'jupyter'", specifier = ">=6.5.0" },
     { name = "numba", specifier = ">=0.60.0" },
     { name = "numpy", specifier = ">=2.0" },
-    { name = "option-chain-analytics", extras = ["cboe"], marker = "extra == 'research'", specifier = ">=5.0.0" },
+    { name = "option-chain-analytics", extras = ["cboe"], marker = "extra == 'research'", specifier = ">=5.2.0" },
     { name = "pandas", specifier = ">=2.2.0" },
     { name = "plotly", marker = "extra == 'visualization'", specifier = ">=5.0.0" },
-    { name = "qis", marker = "extra == 'research'", specifier = ">=3.5.7" },
+    { name = "qis", marker = "extra == 'research'", specifier = ">=5.11.0" },
     { name = "scikit-learn", marker = "extra == 'numerical'", specifier = ">=1.3.0" },
     { name = "scipy", specifier = ">=1.12.0" },
     { name = "seaborn", specifier = ">=0.13.0" },
