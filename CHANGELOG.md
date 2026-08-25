@@ -5,6 +5,11 @@ Entries start at 1.2.0. For earlier releases see the git log.
 ## [Unreleased]
 
 ### Added
+- `stochvolmodels.models.regime_logsv`, `stochvolmodels.models.regime_logsv_simulation`, and
+  `stochvolmodels.pricers.regime_switch_logsv_pricer` add a provisional two-state
+  regime-switching LogSV equilibrium, its consistently induced risk-neutral dynamics, coupled
+  Fourier pricing, state-conditional implied volatilities, and an independent fixed-seed Monte
+  Carlo implementation for European calls and puts.
 - `ModelPaths` and the provisional `PathModel`, `TransformModel`,
   `TerminalDistributionModel`, `TerminalSmileModel`, and `Payoff` capability contracts establish
   the path, terminal-model, and pathwise-product boundaries for book analytics.
