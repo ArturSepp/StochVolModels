@@ -7,6 +7,7 @@ import pytest
 from numba.typed import List
 from scipy.linalg import expm
 
+import stochvolmodels.models.regime_logsv as regime_model
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.pricers.logsv import affine_expansion as scalar_afe
 from stochvolmodels.models.regime_logsv import (
@@ -110,6 +111,261 @@ def test_regime_switch_params_encode_paper_jumps_and_copy_nested_specs() -> None
                 RegimeTransition(0.1, 0.01),
                 params.transitions[Regime.STRESS],
             ),
+        )
+
+
+def test_regime_risk_premia_scales_are_strict_frozen_diagnostics() -> None:
+    scales = regime_model.RegimeRiskPremiaScales()
+
+    assert scales.equity_brownian == 1.0
+    assert scales.orthogonal_brownian == 1.0
+    assert scales.timing == 1.0
+    assert scales.tail == 1.0
+    assert scales.is_full_equilibrium
+    with pytest.raises(FrozenInstanceError):
+        scales.tail = 0.0
+
+    for name in ("equity_brownian", "orthogonal_brownian", "timing", "tail"):
+        for invalid in (True, np.inf, np.nan, "1"):
+            with pytest.raises(ValueError, match="finite"):
+                replace(scales, **{name: invalid})
+
+    unrestricted = regime_model.RegimeRiskPremiaScales(-1.0, 2.0, -3.0, 4.0)
+    assert not unrestricted.is_full_equilibrium
+
+
+def test_full_regime_risk_premia_scales_preserve_default_transform_exactly() -> None:
+    params = _equity_params()
+    equilibrium = solve_regime_switch_equilibrium(params)
+    phi_grid = np.array([0.0, -1.0, 0.2 + 0.7j, -0.5 + 1.3j])
+
+    default = compute_regime_switch_log_mgf_grid(
+        params,
+        ttm=0.25,
+        phi_grid=phi_grid,
+        equilibrium=equilibrium,
+    )
+    explicit = compute_regime_switch_log_mgf_grid(
+        params,
+        ttm=0.25,
+        phi_grid=phi_grid,
+        equilibrium=equilibrium,
+        scales=regime_model.RegimeRiskPremiaScales(),
+    )
+
+    np.testing.assert_array_equal(explicit, default)
+    for regime in Regime:
+        default_state = evaluate_risk_neutral_state(
+            params,
+            equilibrium,
+            horizon=1.2,
+            sigma=0.19,
+            regime=regime,
+        )
+        explicit_state = evaluate_risk_neutral_state(
+            params,
+            equilibrium,
+            horizon=1.2,
+            sigma=0.19,
+            regime=regime,
+            scales=regime_model.RegimeRiskPremiaScales(),
+        )
+        assert explicit_state == default_state
+    with pytest.raises(TypeError, match="RegimeRiskPremiaScales"):
+        compute_regime_switch_log_mgf_grid(
+            params,
+            ttm=0.25,
+            phi_grid=phi_grid,
+            equilibrium=equilibrium,
+            scales=None,
+        )
+
+
+def test_regime_risk_premia_scales_match_hand_derived_q_state_decomposition() -> None:
+    params = _equity_params()
+    equilibrium = solve_regime_switch_equilibrium(params)
+    scales = regime_model.RegimeRiskPremiaScales(0.3, 0.7, 0.4, 0.2)
+    horizon = 1.2
+    sigma = 0.19
+    regime = Regime.GROWTH
+    dynamics = params.regimes[regime]
+    loading = equilibrium.volatility_loading(horizon, sigma, regime)
+    log_ratio = equilibrium.log_timing_ratio(horizon, sigma, regime)
+    tail_tilt = scales.tail * (params.risk_premia.utility_power - 1.0)
+    ell_tilt = params.jump_mgf(regime, tail_tilt)
+    expected_drift = (dynamics.kappa1 + dynamics.kappa2 * sigma) * (dynamics.theta - sigma)
+    expected_drift -= (
+        scales.equity_brownian
+        * dynamics.beta
+        * params.risk_premia.relative_risk_aversion
+        * sigma**2
+    )
+    expected_drift += (
+        (
+            scales.equity_brownian * dynamics.beta**2
+            + scales.orthogonal_brownian * dynamics.volvol**2
+        )
+        * loading
+        * sigma**2
+    )
+    expected_intensity = params.transitions[regime].intensity
+    expected_intensity *= np.exp(scales.timing * log_ratio) * ell_tilt
+    expected_jump_mean = params.transitions[regime].mean_log_jump
+    expected_jump_mean /= 1.0 - expected_jump_mean * tail_tilt
+    expected_arithmetic_mean = params.jump_mgf(regime, tail_tilt + 1.0) / ell_tilt - 1.0
+
+    state = evaluate_risk_neutral_state(
+        params,
+        equilibrium,
+        horizon,
+        sigma,
+        regime,
+        scales=scales,
+    )
+
+    np.testing.assert_allclose(
+        (
+            state.volatility_drift,
+            state.transition_intensity,
+            state.mean_log_jump,
+            state.arithmetic_jump_mean,
+            state.volatility_loading,
+            state.log_timing_ratio,
+        ),
+        (
+            expected_drift,
+            expected_intensity,
+            expected_jump_mean,
+            expected_arithmetic_mean,
+            loading,
+            log_ratio,
+        ),
+        rtol=0.0,
+        atol=2.0e-15,
+    )
+
+
+def test_analytic_regime_risk_premia_channels_match_frozen_chapter_oracle() -> None:
+    log_moneyness = np.linspace(-0.30, 0.20, 31)
+    strikes = np.exp(log_moneyness)
+    optiontypes = np.where(strikes < 1.0, "P", "C")
+    chain = OptionChain.slice_to_chain(
+        ttm=0.25,
+        forward=1.0,
+        strikes=strikes,
+        optiontypes=optiontypes,
+        id="3m",
+    )
+    params = _equity_params()
+    equilibrium = solve_regime_switch_equilibrium(params)
+    pricer = RegimeSwitchLogSVPricer()
+    selected = np.array([0, 6, 12, 18, 24, 30])
+    scenarios = (
+        (
+            regime_model.RegimeRiskPremiaScales(0.0, 0.0, 0.0, 0.0),
+            [
+                34.799145449632,
+                28.762816043292,
+                22.534731212228,
+                16.242068479341,
+                10.582902544890,
+                13.592731914187,
+            ],
+            [
+                -0.019344416231497248 - 0.004650502361071163j,
+                -0.03751125270880886 + 0.0020582735401356088j,
+            ],
+        ),
+        (
+            regime_model.RegimeRiskPremiaScales(1.0, 1.0, 0.0, 0.0),
+            [
+                35.191913150100,
+                29.271264409580,
+                23.089002999124,
+                16.712030832712,
+                10.913737351373,
+                13.605481975684,
+            ],
+            [
+                -0.02038517727598558 - 0.0048845276238280505j,
+                -0.03909450899480648 + 0.001638838458468522j,
+            ],
+        ),
+        (
+            regime_model.RegimeRiskPremiaScales(0.0, 0.0, 1.0, 0.0),
+            [
+                34.799446638392,
+                28.763167873213,
+                22.535123687118,
+                16.242473551049,
+                10.583168808267,
+                13.592785371068,
+            ],
+            [
+                -0.01934522939884087 - 0.004650684817072648j,
+                -0.03751212788443771 + 0.002057660901379376j,
+            ],
+        ),
+        (
+            regime_model.RegimeRiskPremiaScales(0.0, 0.0, 0.0, 1.0),
+            [
+                47.176385634239,
+                38.563317155283,
+                29.472817366671,
+                20.385313375699,
+                12.446937125298,
+                13.021095772689,
+            ],
+            [
+                -0.03486054914022379 - 0.022361192892172848j,
+                -0.031762131135938995 - 0.0015712614346930682j,
+            ],
+        ),
+        (
+            regime_model.RegimeRiskPremiaScales(),
+            [
+                47.359678403215,
+                38.863951473492,
+                29.906520899408,
+                20.859939639867,
+                12.828313462224,
+                13.043665846078,
+            ],
+            [
+                -0.035904056514211774 - 0.02259830761030641j,
+                -0.033356228072906245 - 0.001990430276935223j,
+            ],
+        ),
+    )
+
+    for scales, expected_percent, expected_log_mgf in scenarios:
+        conditional = pricer.compute_state_conditional_prices_with_vols(
+            chain,
+            params,
+            equilibrium=equilibrium,
+            scales=scales,
+            max_phi=1_601,
+        )
+        _, implied_vols = conditional.for_regime(Regime.GROWTH)
+        np.testing.assert_allclose(
+            100.0 * np.asarray(implied_vols[0])[selected],
+            expected_percent,
+            rtol=1.0e-7,
+            atol=5.0e-10,
+        )
+        roots = compute_regime_switch_log_mgf_grid(
+            params,
+            ttm=0.25,
+            phi_grid=np.array([0.0, -1.0, -0.5 + 2.0j]),
+            equilibrium=equilibrium,
+            scales=scales,
+        )
+        np.testing.assert_allclose(roots[:, :2], 0.0, rtol=0.0, atol=2.0e-11)
+        np.testing.assert_allclose(
+            roots[:, 2],
+            expected_log_mgf,
+            rtol=1.0e-7,
+            atol=5.0e-12,
         )
 
 

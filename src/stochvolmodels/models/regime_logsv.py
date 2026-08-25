@@ -75,6 +75,51 @@ class EquilibriumClosure(Enum):
 
 
 @dataclass(frozen=True, slots=True)
+class RegimeRiskPremiaScales:
+    """Diagnostic multipliers for analytic risk-premium attribution.
+
+    All four values equal to one recover the equilibrium measure. Other values
+    produce explicitly non-equilibrium counterfactuals used to attribute the
+    model's analytic smile to its Brownian, transition-timing, and jump-tail
+    channels. The scales are deliberately not part of
+    :class:`RegimeSwitchLogSvParams`: they do not alter physical parameters or
+    re-solve the representative-agent equilibrium, and they are not supported
+    by the Monte Carlo simulator.
+
+    Parameters
+    ----------
+    equity_brownian : float, default 1.0
+        Multiplier for the return-Brownian risk-premium terms.
+    orthogonal_brownian : float, default 1.0
+        Multiplier for the orthogonal volatility-Brownian loading term.
+    timing : float, default 1.0
+        Multiplier for the log value-coefficient ratio in transition intensity.
+    tail : float, default 1.0
+        Multiplier for the equilibrium Esscher jump-tail exponent.
+    """
+
+    equity_brownian: float = 1.0
+    orthogonal_brownian: float = 1.0
+    timing: float = 1.0
+    tail: float = 1.0
+
+    def __post_init__(self) -> None:
+        for name in ("equity_brownian", "orthogonal_brownian", "timing", "tail"):
+            object.__setattr__(self, name, _finite_float(getattr(self, name), name))
+
+    @property
+    def is_full_equilibrium(self) -> bool:
+        """Whether all channels retain their equilibrium values."""
+
+        return (
+            self.equity_brownian == 1.0
+            and self.orthogonal_brownian == 1.0
+            and self.timing == 1.0
+            and self.tail == 1.0
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class RegimeLogSvDynamics:
     """Physical LogSV coefficients within one regime.
 
@@ -593,6 +638,8 @@ def _risk_neutral_drift_polynomial(
     params: RegimeSwitchLogSvParams,
     regime: Regime,
     degree: int,
+    *,
+    scales: RegimeRiskPremiaScales = RegimeRiskPremiaScales(),
 ) -> np.ndarray:
     """Polynomial of the consistently induced risk-neutral volatility drift.
 
@@ -604,8 +651,19 @@ def _risk_neutral_drift_polynomial(
     sigma2 = _sigma2_polynomial(dynamics.theta, degree, equilibrium_coefficients.dtype)
     loading = _poly_derivative(equilibrium_coefficients[regime], degree)
     output = _physical_drift_polynomial(dynamics, degree, equilibrium_coefficients.dtype)
-    output -= dynamics.beta * params.risk_premia.relative_risk_aversion * sigma2
-    output += dynamics.vartheta2 * _poly_mul(sigma2, loading, degree)
+    if scales.is_full_equilibrium:
+        output -= dynamics.beta * params.risk_premia.relative_risk_aversion * sigma2
+        output += dynamics.vartheta2 * _poly_mul(sigma2, loading, degree)
+    else:
+        output -= (
+            scales.equity_brownian
+            * dynamics.beta
+            * params.risk_premia.relative_risk_aversion
+            * sigma2
+        )
+        loading_scale = scales.equity_brownian * dynamics.beta**2
+        loading_scale += scales.orthogonal_brownian * dynamics.volvol**2
+        output += loading_scale * _poly_mul(sigma2, loading, degree)
     return output
 
 
@@ -662,7 +720,7 @@ def _validate_continuous_boundary_admissibility(
 
 @dataclass(frozen=True)
 class RiskNeutralState:
-    """Derived risk-neutral dynamics at one horizon, volatility, and source state."""
+    """Derived full-equilibrium or diagnostic-Q state at one horizon and volatility."""
 
     volatility_drift: float | np.ndarray
     transition_intensity: float | np.ndarray
@@ -678,6 +736,8 @@ def evaluate_risk_neutral_state(
     horizon: float,
     sigma: float | np.ndarray,
     regime: Regime | int,
+    *,
+    scales: RegimeRiskPremiaScales = RegimeRiskPremiaScales(),
 ) -> RiskNeutralState:
     """Evaluate the exact dynamics induced by the selected equilibrium closure.
 
@@ -685,10 +745,14 @@ def evaluate_risk_neutral_state(
     makes the loading affine in volatility and retains the resulting cubic term.
     The continuous drift follows published LogSV equations (3.5)--(3.10), while
     the state-dependent transition clock is the fixed-horizon regime synthesis.
+    Non-unit ``scales`` return a non-equilibrium analytic attribution state and
+    are not supported by the Monte Carlo simulator.
     """
 
     if equilibrium.params != params:
         raise ValueError("equilibrium solution was built for different parameters")
+    if not isinstance(scales, RegimeRiskPremiaScales):
+        raise TypeError("scales must be a RegimeRiskPremiaScales object")
     state = _as_regime(regime)
     sigma_values = np.asarray(sigma, dtype=float)
     if np.any(~np.isfinite(sigma_values)) or np.any(sigma_values <= 0.0):
@@ -697,15 +761,31 @@ def evaluate_risk_neutral_state(
     loading = equilibrium.volatility_loading(horizon, sigma_values, state)
     log_ratio = equilibrium.log_timing_ratio(horizon, sigma_values, state)
     drift = (dynamics.kappa1 + dynamics.kappa2 * sigma_values) * (dynamics.theta - sigma_values)
-    drift -= dynamics.beta * params.risk_premia.relative_risk_aversion * sigma_values**2
-    drift += dynamics.vartheta2 * loading * sigma_values**2
+    if scales.is_full_equilibrium:
+        drift -= dynamics.beta * params.risk_premia.relative_risk_aversion * sigma_values**2
+        drift += dynamics.vartheta2 * loading * sigma_values**2
+        tail_tilt = params.risk_premia.utility_power - 1.0
+        timing_log_ratio = log_ratio
+    else:
+        drift -= (
+            scales.equity_brownian
+            * dynamics.beta
+            * params.risk_premia.relative_risk_aversion
+            * sigma_values**2
+        )
+        loading_scale = scales.equity_brownian * dynamics.beta**2
+        loading_scale += scales.orthogonal_brownian * dynamics.volvol**2
+        drift += loading_scale * loading * sigma_values**2
+        tail_tilt = scales.tail * (params.risk_premia.utility_power - 1.0)
+        timing_log_ratio = scales.timing * log_ratio
 
-    tail_tilt = params.risk_premia.utility_power - 1.0
+    params.validate_jump_moment(state, tail_tilt)
+    params.validate_jump_moment(state, tail_tilt + 1.0)
     ell_tilt = float(params.jump_mgf(state, tail_tilt))
     physical_mean = params.transitions[state].mean_log_jump
     tilted_mean = physical_mean / (1.0 - physical_mean * tail_tilt)
     arithmetic_mean = float(params.jump_mgf(state, tail_tilt + 1.0) / ell_tilt - 1.0)
-    timing_ratio = np.exp(log_ratio)
+    timing_ratio = np.exp(timing_log_ratio)
     intensity = params.transitions[state].intensity * timing_ratio * ell_tilt
     if np.any(~np.isfinite(drift)) or np.any(~np.isfinite(intensity)):
         raise FloatingPointError("non-finite induced risk-neutral state")

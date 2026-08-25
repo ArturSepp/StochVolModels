@@ -19,6 +19,7 @@ from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.models.regime_logsv import (
     EquilibriumSolution,
     Regime,
+    RegimeRiskPremiaScales,
     RegimeSwitchLogSvParams,
     _poly_derivative,
     _poly_exp,
@@ -51,6 +52,7 @@ def _option_rhs(
     ttm: float,
     phi_grid: np.ndarray,
     degree: int,
+    scales: RegimeRiskPremiaScales = RegimeRiskPremiaScales(),
 ) -> np.ndarray:
     """Projected coupled option-transform PDE.
 
@@ -65,7 +67,11 @@ def _option_rhs(
     equilibrium_horizon = params.risk_premia.agent_horizon - ttm + backward_time
     equilibrium_coefficients = equilibrium.coefficients(equilibrium_horizon)
     phi = phi_grid[:, None]
-    tail_tilt = params.risk_premia.utility_power - 1.0
+    tail_tilt = (
+        params.risk_premia.utility_power - 1.0
+        if scales.is_full_equilibrium
+        else scales.tail * (params.risk_premia.utility_power - 1.0)
+    )
 
     for regime in Regime:
         dynamics = params.regimes[regime]
@@ -73,7 +79,13 @@ def _option_rhs(
         first = _poly_derivative(coefficients[:, regime, :], degree)
         second = _poly_derivative(first, degree)
         local = _poly_mul(
-            _risk_neutral_drift_polynomial(equilibrium_coefficients, params, regime, degree),
+            _risk_neutral_drift_polynomial(
+                equilibrium_coefficients,
+                params,
+                regime,
+                degree,
+                scales=scales,
+            ),
             first,
             degree,
         )
@@ -86,6 +98,8 @@ def _option_rhs(
         local += 0.5 * phi * (phi + 1.0) * sigma2
 
         timing_difference = _regime_difference(equilibrium_coefficients, params, regime, degree)
+        if not scales.is_full_equilibrium:
+            timing_difference *= scales.timing
         timing_ratio = _poly_exp(timing_difference, degree)
         price_difference = _regime_difference(coefficients, params, regime, degree)
         price_ratio = _poly_exp(price_difference, degree)
@@ -116,6 +130,7 @@ def compute_regime_switch_log_mgf_grid(
     phi_grid: np.ndarray,
     *,
     equilibrium: EquilibriumSolution | None = None,
+    scales: RegimeRiskPremiaScales = RegimeRiskPremiaScales(),
     expansion_order: ExpansionOrder = ExpansionOrder.SECOND,
     rtol: float = 2.0e-7,
     atol: float = 2.0e-9,
@@ -129,11 +144,15 @@ def compute_regime_switch_log_mgf_grid(
     The common projection uses the published LogSV FIRST equations
     (4.13)--(4.22) or SECOND equations (4.23)--(4.25). The coupled two-state
     transform itself is a new synthesis rather than a published equation.
+    Non-unit ``scales`` define analytic attribution counterfactuals rather than
+    separately solved equilibrium measures.
     """
 
     maximum = params.risk_premia.agent_horizon
     if not np.isfinite(ttm) or ttm <= 0.0 or ttm > maximum:
         raise ValueError("ttm must lie in (0, agent_horizon]")
+    if not isinstance(scales, RegimeRiskPremiaScales):
+        raise TypeError("scales must be a RegimeRiskPremiaScales object")
     if equilibrium is None:
         equilibrium = solve_regime_switch_equilibrium(params)
     if equilibrium.params != params:
@@ -144,7 +163,11 @@ def compute_regime_switch_log_mgf_grid(
         raise ValueError("phi_grid must be a non-empty one-dimensional array")
     if not np.all(np.isfinite(phi_grid)):
         raise ValueError("phi_grid must be finite")
-    tail_tilt = params.risk_premia.utility_power - 1.0
+    tail_tilt = (
+        params.risk_premia.utility_power - 1.0
+        if scales.is_full_equilibrium
+        else scales.tail * (params.risk_premia.utility_power - 1.0)
+    )
     for regime in Regime:
         params.validate_jump_moment(regime, tail_tilt)
         params.validate_jump_moment(regime, tail_tilt + 1.0)
@@ -160,6 +183,7 @@ def compute_regime_switch_log_mgf_grid(
             ttm=ttm,
             phi_grid=phi_grid,
             degree=degree,
+            scales=scales,
         ),
         (0.0, ttm),
         initial,
@@ -264,6 +288,7 @@ def regime_switch_logsv_chain_pricer(
     optiontypes_ttms,
     *,
     equilibrium: EquilibriumSolution | None = None,
+    scales: RegimeRiskPremiaScales = RegimeRiskPremiaScales(),
     expansion_order: ExpansionOrder = ExpansionOrder.SECOND,
     max_phi: int = 1_601,
     vol_scaler: float | None = None,
@@ -277,9 +302,16 @@ def regime_switch_logsv_chain_pricer(
     tuple[list[numpy.ndarray], list[numpy.ndarray]]
         Growth-conditioned and stress-conditioned prices.  Each list contains
         one array per maturity in the input chain.
+
+    Notes
+    -----
+    Non-unit ``scales`` are analytic channel-attribution counterfactuals. They
+    are intentionally unavailable from the Monte Carlo pricing path.
     """
 
     _validate_pricing_mode(variable_type=variable_type, is_spot_measure=is_spot_measure)
+    if not isinstance(scales, RegimeRiskPremiaScales):
+        raise TypeError("scales must be a RegimeRiskPremiaScales object")
     ttms = _validate_chain_inputs(params, ttms, strikes_ttms, optiontypes_ttms)
     forwards, discfactors = _validate_market_vectors(ttms, forwards, discfactors)
     if not isinstance(max_phi, (int, np.integer)) or max_phi < 3 or max_phi % 2 == 0:
@@ -312,6 +344,7 @@ def regime_switch_logsv_chain_pricer(
             equilibrium=equilibrium,
             ttm=float(ttm),
             phi_grid=phi_grid,
+            scales=scales,
             expansion_order=expansion_order,
         )
         for regime in Regime:

@@ -9,7 +9,9 @@ Entries start at 1.2.0. For earlier releases see the git log.
   `stochvolmodels.pricers.regime_switch_logsv_pricer` add a provisional two-state
   regime-switching LogSV equilibrium, its consistently induced risk-neutral dynamics, coupled
   Fourier pricing, state-conditional implied volatilities, and an independent fixed-seed Monte
-  Carlo implementation for European calls and puts.
+  Carlo implementation for European calls and puts. The model-specific
+  `RegimeRiskPremiaScales` provides analytic, explicitly non-equilibrium channel counterfactuals
+  for the volatility-book attribution study without changing the physical model or equilibrium.
 - `ModelPaths` and the provisional `PathModel`, `TransformModel`,
   `TerminalDistributionModel`, `TerminalSmileModel`, and `Payoff` capability contracts establish
   the path, terminal-model, and pathwise-product boundaries for book analytics.
