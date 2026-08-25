@@ -7,11 +7,11 @@
 % chapter ValuationUnderSV.tex. Blocks are marked as follows:
 %   %% [CORRECTED vs chapter Eq (...)] - fixes an error in the draft
 %   %% [NEW] - content added beyond the draft
-% All equations were verified symbolically and numerically
-% (verify_valuation_under_sv.py in this folder).
+% The tracked source snapshot does not contain verify_valuation_under_sv.py or
+% verify_hawkes_equilibrium.py.  References to those maintainer working files are
+% historical provenance, not claims that executable verification is present here.
 % v2 (2026-08-23): added Section on the Hawkes-model equilibrium (companion to
-% Liu-Packham-Sepp) verified in verify_hawkes_equilibrium.py, and the discussion
-% subsection on variance versus skew premia.
+% Liu-Packham-Sepp) and the discussion subsection on variance versus skew premia.
 % v3 (2026-08-23): added Section on the regime-switching log-normal SV model
 % (synthesis with the transition-tied jumps of the goal-based-allocation paper),
 % derived and benchmarked in verify_regime_sv_equilibrium.py.
@@ -32,7 +32,10 @@
 \usepackage{booktabs,float,graphicx}
 \usepackage[round]{natbib}
 \usepackage[colorlinks=true, linkcolor=blue, citecolor=blue]{hyperref}
-\graphicspath{{figures/}}
+% The default is relative to this tracked notes directory.  A parent book build
+% may define \RegimeSvArtifactRoot before including this source.
+\providecommand{\RegimeSvArtifactRoot}{../../../outputs/volatility_book/ch_lognormal_sv_risk_premia/canonical}
+\graphicspath{{\RegimeSvArtifactRoot/figures/}}
 
 \newtheorem{theorem}{Theorem}
 \newtheorem{proposition}{Proposition}
@@ -326,9 +329,9 @@ so that the $\QQ$-dynamics are $d\sigma_{t} = (\hat\kappa_{1}+\hat\kappa_{2}\sig
 \section{Equilibrium jump risk premia in the Hawkes model}\label{sec:hawkes}
 
 %% [NEW] companion section: makes the correspondence with the jump-premia paper precise.
-%% Verified end-to-end in verify_hawkes_equilibrium.py: the PIDE residual of the
-%% exponential-affine ansatz is machine zero (the ansatz is exact here), the kernel
-%% satisfies E[M_T]=1 in Monte Carlo, and x*=1 maximizes expected utility.
+%% Historical working notes named verify_hawkes_equilibrium.py, but that script is
+%% not part of the tracked source snapshot.  This section therefore records the
+%% derivation without claiming an executable Hawkes verification artifact here.
 We extend the equilibrium derivation to the bivariate Hawkes jump model of \cite{LiuPackhamSepp2026}, where the jump risk premia are specified through a parametric change of measure with two external tilt parameters $\chi^{+}$ and $\chi^{-}$ calibrated to option prices. We show that the CRRA equilibrium generates exactly this family and restricts the direct jump tilts to a common value set by the risk aversion.
 
 \subsection{Model and economy}
@@ -730,8 +733,8 @@ Direct collection of the corresponding full generator gives
 +\Phi\Delta_i-\ell^{[i]}(\gamma-1)\right\}\Big],
 \end{split}
 \end{equation}
-where $\sigma=\theta^{[i]}+v_i$.  We use $m=4$, the published-SECOND degree-four
-log transform, with either equilibrium closure.  The identities
+where $\sigma=\theta^{[i]}+v_i$.  We use $m=4$, the degree-four SECOND log
+transform of \cite{SeppRakhmonov2024}, with either equilibrium closure.  The identities
 $C_i(\Phi=0)=C_i(\Phi=-1)=0$ verify normalization and the discounted-stock
 martingale.  Fourier inversion uses the line $\Phi=-1/2+iy$.  The implementation
 collects \eqref{eq:regime_option_ode} directly as polynomials.  Under closure
@@ -744,9 +747,10 @@ $\mathrm L$, the exact quadratic $\QQ$ drift enters the same degree-four transfo
 Table \ref{tab:regime_calibration} uses the transition intensities and jump sizes
 from the equity illustration of \cite{Sepp2026gba}.  The reported $-25\%$ crash and
 $+15\%$ recovery are expected arithmetic transition returns, implying
-$\eta^{[1]}=1/3$ and $\eta^{[2]}=3/23$.  The remaining response coefficients are
-the SPY LogSV illustration distributed with the package, combined with the paper's
-growth/stress volatility levels.  This hybrid is an illustration, not a calibration.
+$\eta^{[1]}=1/3$ and $\eta^{[2]}=3/23$.  The remaining response coefficients come
+from the maintained SPY LogSV illustration identified by the chapter's source
+provenance, combined with the paper's growth/stress volatility levels.  They are
+not distributed as a package calibration.  This hybrid is an illustration, not a calibration.
 \begin{table}[htbp]
 \centering
 \small
@@ -782,9 +786,11 @@ resulting implied-volatility skews.  Higher risk aversion raises and steepens th
 left wing because it makes crash marks more severe under $\QQ$.  The channel
 experiment shows that the Esscher tail tilt is the dominant left-wing premium in
 this calibration; diffusive and timing premia mainly shift the center and term
-structure.  These channel-isolation curves are martingale counterfactuals, not
-separate equilibria.  Starting in stress raises the right wing through the recovery
-transition, while starting in growth produces the familiar index downside skew.
+structure.  The package implements these channel scales as analytic,
+non-equilibrium diagnostics.  The channel-isolation curves are martingale
+counterfactuals, not separate equilibria, and non-unit scales do not define a
+package Monte Carlo measure.  Starting in stress raises the right wing through the
+recovery transition, while starting in growth produces the familiar index downside skew.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{regime_sv_smiles}
@@ -834,48 +840,67 @@ degree-four option transform are identical.}
 \begin{table}[H]
 \centering
 \small
-\input{regime_sv_closure_comparison_table.tex}
+\input{\RegimeSvArtifactRoot/tables/regime_sv_closure_comparison_table.tex}
 \caption{Fixed-moneyness implied-volatility skew comparison.  The skew columns are
 percentage-volatility points; the last column is full cubic minus
 quadratic-preserving in volatility basis points.}
 \label{tab:regime_closure_skews}
 \end{table}
-The replication performs six independent checks: the explicit degree-one ODE
-identity; the exact quadratic and derived cubic drift coefficients; the scalar
-Riccati residual;
-an exact frozen-volatility two-state matrix exponential; physical-measure Monte
-Carlo of \eqref{eq:regime_FK}; and full-$\QQ$ Monte Carlo of
-\eqref{eq:regime_Q_dynamics} for both closures and both initial regimes.  Following the event semantics
-of the GoalBasedAllocation implementation, a regime jump changes the price and the
-parameter state simultaneously.  Under $\QQ$ the event probability is evaluated
-pathwise as $1-e^{-q_{ij}^{\QQ,H}(t,\sigma)\,dt}$ because the equilibrium clock is
-state- and time-dependent.  The simulation preserves the common Brownian increment
-in price and volatility.  It uses the exact quadratic drift under closure
-$\mathrm L$ and retains the exact induced cubic under closure $\mathrm F$.  For both,
-the 1,601-point Fourier grid is checked against a 3,201-point refinement.  The
+The adopted replication separates production analytics from the independent
+oracle.  The provisional package deep modules solve both equilibrium closures,
+derive the induced $\QQ$ state, compute the option transforms, and run the
+full-equilibrium $\QQ$ Monte Carlo for both initial regimes.  The frozen chapter
+monolith and verifier supply the scalar Riccati residual, the exact
+frozen-volatility matrix benchmark, and the independent physical-measure
+Feynman--Kac Monte Carlo of \eqref{eq:regime_FK}.  The package checks the explicit
+degree-one ODE identity and the exact quadratic and derived cubic drift
+coefficients.  Following the event semantics of the GoalBasedAllocation
+implementation, a regime jump changes the price and parameter state
+simultaneously.  Under $\QQ$ the event probability is evaluated pathwise as
+$1-e^{-q_{ij}^{\QQ,H}(t,\sigma)\,dt}$ because the equilibrium clock is state- and
+time-dependent.  Package $\QQ$ Monte Carlo preserves the common Brownian increment
+in price and volatility, uses the exact quadratic drift under closure $\mathrm L$,
+and retains the exact induced cubic under closure $\mathrm F$.  For both, the
+1,601-point Fourier grid is checked against a 3,201-point refinement.  The frozen
 physical-measure comparison quantifies each polynomial-closure error rather than
-mistaking it for Monte Carlo sampling error.  Option prices under each measure
-generated by its own approximate coefficient agree with their corresponding
-full-dynamics Monte Carlo within the stated confidence tolerance.
+mistaking it for Monte Carlo sampling error; package transform prices agree with
+package $\QQ$ Monte Carlo within the stated confidence tolerance.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{regime_sv_validation}
-\caption{Independent Monte Carlo checks of both equilibrium closures and their
-degree-four option transforms.  Each analytic option curve is compared with Monte
-Carlo under its own induced measure.  Error bars are 95\% Monte Carlo intervals.}
+\caption{Validation of both equilibrium closures and their degree-four option
+transforms.  Panels A and B compare package $\QQ$ analytics with package $\QQ$
+Monte Carlo; Panels C and D compare package equilibrium coefficients with the
+frozen physical-measure Feynman--Kac oracle.  Error bars are 95\% Monte Carlo
+intervals.}
 \label{fig:regime_validation}
 \end{figure}
 \begin{table}[H]
 \centering
 \small
-\input{regime_sv_validation_table.tex}
-\caption{Selected report-quality Monte Carlo checks.}
+\input{\RegimeSvArtifactRoot/tables/regime_sv_validation_table.tex}
+\caption{Selected report-quality package-$\QQ$ and frozen-physical-measure Monte
+Carlo checks.}
 \label{tab:regime_validation}
 \end{table}
-The book-local scripts \texttt{regime\_switch\_logsv.py},
-\texttt{verify\_regime\_sv\_equilibrium.py}, and
-\texttt{generate\_regime\_sv\_figures.py} reproduce the dynamics, checks, figures,
-and table without changing the public pricing library.
+Production equilibrium, transform, and $\QQ$ Monte Carlo analytics are provided by
+the provisional deep modules
+\path{stochvolmodels.models.regime_logsv},
+\path{stochvolmodels.models.regime_logsv_simulation}, and
+\path{stochvolmodels.pricers.regime_switch_logsv_pricer}.  The frozen
+\path{regime_switch_logsv.py} monolith and
+\path{verify_regime_sv_equilibrium.py} remain independent oracles, not the
+production pricing path.  Their immutable source hashes and the package adoption
+commits are recorded in \path{source_provenance.json} and
+\path{acceptance_manifest.json}.  From the repository root, the exact canonical
+regeneration command is
+{\scriptsize
+\begin{verbatim}
+python -m volatility_book.ch_lognormal_sv_risk_premia.generate_regime_sv_figures --profile canonical
+\end{verbatim}
+}
+It writes the numerical payload, artifact manifest, figures, and tables beneath
+the ignored canonical artifact root selected above.
 
 \section{Discussion}\label{sec:discussion}
 
@@ -896,6 +921,10 @@ $H$ finite so this horizon convention remains explicit.
 %% [AI-DRAFTED SKETCH - to be rewritten by the author per the project drafting rule:
 %% the economic-mechanism passage is drafted by the author without AI assistance.]
 For an equity index we have $\beta<0$ and $0<\gamma<1$, and Remark \ref{rem:branch} gives $a^{(1)}(\tau)>0$ for $\tau > 0$. Three consequences follow. First, the equity premium $\left[(1-\gamma) - \beta a^{(1)}\right]\sigma^{2}$ exceeds its constant-volatility value $(1-\gamma)\sigma^{2}$: the agent demands extra compensation for holding an asset whose volatility rises when its price falls, similar to being short a put option on the index. Second, $\bar\lambda_{1} = -\varepsilon a^{(1)}<0$, so volatility shocks orthogonal to returns carry a negative price of risk. Third, $\varphi<0$ implies that the volatility drifts higher under $\QQ$ than under $\PP$ through $\hat\kappa_{2} < \kappa_{2}$, which reproduces the negative variance risk premium documented by \cite{BakshiKapadia2003}.
+
+\noindent\emph{Scope note.}  The preceding sign discussion assumes
+$0<\gamma<1$.  It is not a description of the plotted regime illustration, whose
+baseline is $\gamma=-0.5$ and whose displayed sensitivity values are non-positive.
 
 \subsection{Variance premia versus skew premia}
 %% [NEW] scope discussion: what diffusive premia can and cannot price.
@@ -937,7 +966,7 @@ The closed-form expansion \eqref{eq:affine} has log degree one and leaves powers
 
 \bibitem[Sepp(2026)]{Sepp2026gba} Sepp, A. (2026). Dynamic mean--variance portfolio allocation under regime-switching jump-diffusions with absorbing barriers and distribution matching. Working paper.
 
-\bibitem[Sepp and Rakhmonov(2024)]{SeppRakhmonov2024} Sepp, A. and Rakhmonov, P. (2024). Log-normal stochastic volatility model with quadratic drift. \textit{International Journal of Theoretical and Applied Finance}, 27(1), 2450003.
+\bibitem[Sepp and Rakhmonov(2024)]{SeppRakhmonov2024} Sepp, A. and Rakhmonov, P. (2024). Log-normal stochastic volatility model with quadratic drift. \textit{International Journal of Theoretical and Applied Finance}, 26(8), 2450003.
 
 \end{thebibliography}
 
