@@ -5,6 +5,10 @@ Entries start at 1.2.0. For earlier releases see the git log.
 ## [Unreleased]
 
 ### Added
+- `stochvolmodels.models.inverse_gamma_normal` adds a provisional, maturity-specific
+  inverse-gamma/normal terminal distribution and Black-smile model for the volatility-book
+  risk-premia study. It uses prepaid-forward normalization, supports skew conditional means,
+  and keeps physical-to-pricing risk-premium mappings outside package core.
 - `stochvolmodels.models.regime_logsv`, `stochvolmodels.models.regime_logsv_simulation`, and
   `stochvolmodels.pricers.regime_switch_logsv_pricer` add a provisional two-state
   regime-switching LogSV equilibrium, its consistently induced risk-neutral dynamics, coupled
