@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "contract_version": "B1A",
+  "contract_id": "stochvolmodels.volatility_book.book_production_smoke",
+  "profile": "smoke",
+  "purpose": "Deterministic fresh-clone smoke rollup of the three accepted volatility-book chapter pipelines.",
+  "hash_policy": {
+    "algorithm": "sha256",
+    "scope": "UTF-8 text with CRLF and CR normalized to LF",
+    "hex_encoding": "lowercase"
+  },
+  "pinned_inputs": [
+    {
+      "id": "discrete_acceptance_manifest",
+      "role": "chapter_acceptance_manifest",
+      "path": "volatility_book/ch_discrete_vol/acceptance_manifest.json",
+      "sha256": "5f3a85e65e9930dc58c68c36803662a99de8a451a6e34f7ffacac20f40403734"
+    },
+    {
+      "id": "regime_acceptance_manifest",
+      "role": "chapter_acceptance_manifest",
+      "path": "volatility_book/ch_lognormal_sv_risk_premia/acceptance_manifest.json",
+      "sha256": "cf0dbf0ba371be6ed38ba294edafb09adea58fba848767b46ab500acb801339b"
+    },
+    {
+      "id": "student_acceptance_manifest",
+      "role": "chapter_acceptance_manifest",
+      "path": "volatility_book/ch_tdist_risk_premia/acceptance_manifest.json",
+      "sha256": "21a4bebc80378982c44ff71734cc99fa5c0b1083ab5904d60c6d34f2fd7ea6a3"
+    },
+    {
+      "id": "python_lockfile",
+      "role": "environment_lockfile",
+      "path": "uv.lock",
+      "sha256": "943e1c85864a18330d01a0c89234278055d39415ee7f8d6ad5c2ca4bf007063a"
+    }
+  ],
+  "locked_environment": {
+    "lockfile": "uv.lock",
+    "required_packages": {
+      "option-chain-analytics": "5.2.0"
+    },
+    "network_or_licensed_analytics_inputs": false
+  },
+  "execution": {
+    "runner_module": "volatility_book.run_book_production",
+    "verifier_module": "volatility_book.verify_book_production",
+    "runner_command_argv": [
+      "python",
+      "-m",
+      "volatility_book.run_book_production",
+      "--profile",
+      "smoke"
+    ],
+    "verifier_command_argv": [
+      "python",
+      "-m",
+      "volatility_book.verify_book_production",
+      "--profile",
+      "smoke"
+    ],
+    "deterministic_stage_order": [
+      "discrete_d3_smoke",
+      "regime_t3_smoke",
+      "student_t3_canonical"
+    ],
+    "default_behavior": {
+      "missing_output": "compute",
+      "valid_output": "reuse",
+      "invalid_or_incomplete_output": "recompute_only_that_stage"
+    },
+    "force_flag": "--force",
+    "force_behavior": "replace only the declared contract-owned output directories after path and symlink checks",
+    "recompute_guard": {
+      "environment_variable": "STOCHVOLMODELS_BOOK_FORBID_RECOMPUTE",
+      "guard_value": "1",
+      "contract": "A run that would execute numerical analytics fails before analytics-artifact mutation; declared advisory-lock metadata may be created or reused, and complete validated outputs may still be reused."
+    }
+  },
+  "output_contract": {
+    "allowed_repository_output_root": "outputs/volatility_book",
+    "gitignore_rule": "/outputs/",
+    "generated_artifacts_are_tracked": false,
+    "central_profile_directory": "outputs/volatility_book/book_production/smoke",
+    "run_lock": "outputs/volatility_book/book_production/smoke/.run.lock",
+    "runtime_cache_directory": "outputs/volatility_book/book_production/smoke/.runtime_cache",
+    "execution_manifest": "outputs/volatility_book/book_production/smoke/execution_manifest.json",
+    "contract_snapshot": "outputs/volatility_book/book_production/smoke/book_production_contract.json",
+    "execution_manifest_schema_version": 1,
+    "execution_manifest_modes": [
+      "computed",
+      "reused",
+      "mixed"
+    ],
+    "artifact_paths_are_repository_relative": true,
+    "absolute_paths_forbidden": true,
+    "symlinks_forbidden": true
+  },
+  "dag": [
+    {
+      "id": "discrete_d3_smoke",
+      "order": 1,
+      "depends_on": [],
+      "profile": "smoke",
+      "acceptance_manifest": "discrete_acceptance_manifest",
+      "command_argv": [
+        "python",
+        "-m",
+        "volatility_book.ch_discrete_vol.run_study",
+        "--profile",
+        "smoke",
+        "--output-dir",
+        "outputs/volatility_book/ch_discrete_vol/book_production/smoke"
+      ],
+      "output_directory": "outputs/volatility_book/ch_discrete_vol/book_production/smoke",
+      "required_outputs": [
+        "figures.pdf",
+        "results.json",
+        "results.md"
+      ]
+    },
+    {
+      "id": "regime_t3_smoke",
+      "order": 2,
+      "depends_on": [],
+      "profile": "smoke",
+      "acceptance_manifest": "regime_acceptance_manifest",
+      "command_argv": [
+        "python",
+        "-m",
+        "volatility_book.ch_lognormal_sv_risk_premia.generate_regime_sv_figures",
+        "--profile",
+        "smoke",
+        "--output-dir",
+        "outputs/volatility_book/ch_lognormal_sv_risk_premia/book_production/smoke"
+      ],
+      "output_directory": "outputs/volatility_book/ch_lognormal_sv_risk_premia/book_production/smoke",
+      "required_outputs": [
+        "artifact_manifest.json",
+        "figures/regime_sv_closure_comparison.pdf",
+        "figures/regime_sv_closure_comparison.png",
+        "figures/regime_sv_premia.pdf",
+        "figures/regime_sv_premia.png",
+        "figures/regime_sv_smiles.pdf",
+        "figures/regime_sv_smiles.png",
+        "figures/regime_sv_validation.pdf",
+        "figures/regime_sv_validation.png",
+        "numerical_payload.json",
+        "tables/regime_sv_closure_comparison_table.tex",
+        "tables/regime_sv_validation_table.tex"
+      ]
+    },
+    {
+      "id": "student_t3_canonical",
+      "order": 3,
+      "depends_on": [],
+      "profile": "canonical",
+      "acceptance_manifest": "student_acceptance_manifest",
+      "command_argv": [
+        "python",
+        "-m",
+        "volatility_book.ch_tdist_risk_premia.generate_tdist_risk_premia_figures",
+        "--profile",
+        "canonical",
+        "--output-dir",
+        "outputs/volatility_book/ch_tdist_risk_premia/book_production/smoke"
+      ],
+      "output_directory": "outputs/volatility_book/ch_tdist_risk_premia/book_production/smoke",
+      "required_outputs": [
+        "artifact_manifest.json",
+        "figures/p_tail_premium_fixed_variance.pdf",
+        "figures/p_tail_premium_fixed_variance.png",
+        "figures/risk_premium_smiles.pdf",
+        "figures/risk_premium_smiles.png",
+        "numerical_payload.json",
+        "tables/risk_premium_comparative_statics_table.tex"
+      ]
+    }
+  ],
+  "scope": {
+    "no_cross_chapter_numerical_dependencies": true,
+    "included": [
+      "discrete chapter D3.1 smoke acceptance workload",
+      "regime-switching LogSV T3 smoke artifact pipeline",
+      "Student risk-premia T3 deterministic canonical artifact pipeline"
+    ],
+    "excluded": [
+      "discrete Round 2 and Round 3 provenance chains",
+      "regime-switching LogSV canonical workload",
+      "master-book TeX or PDF assembly",
+      "external market data, calibration, or licensed inputs",
+      "package APIs, chapter analytics, or numerical baseline changes",
+      "version bumps, tags, releases, publication, or deployment"
+    ]
+  }
+}
