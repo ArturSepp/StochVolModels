@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "manifest_id": "stochvolmodels.tdist_risk_premia_chapter.acceptance",
+  "acceptance_status": "T3T_ADOPTION_CONTRACT",
+  "chapter": "volatility_book/ch_tdist_risk_premia",
+  "provenance": {
+    "hash_algorithm": "sha256",
+    "commits": {
+      "frozen_chapter_snapshot": "3d5d848340cd14a37a596269dd99e7014cc76fd7",
+      "package_terminal_law_baseline": "e616e3844d7532a992c69b219b5a59e678e140ce"
+    },
+    "files": [
+      {
+        "role": "verification_only_frozen_oracle",
+        "path": "volatility_book/ch_tdist_risk_premia/risk_premium_smile_examples.py",
+        "sha256": "4e6f4a6700c3d63ed4981be962ce3fa73a09475607ea7aaeb5457cbb2f3b6533",
+        "hash_scope": "raw bytes at frozen_chapter_snapshot"
+      },
+      {
+        "role": "source_provenance_ledger",
+        "path": "volatility_book/ch_tdist_risk_premia/source_provenance.json",
+        "sha256": "22bd1a21b3b3852f11577b5a8596ab3393cca4b2f3e11e22404a55ac606521a5",
+        "hash_scope": "raw tracked bytes at package_terminal_law_baseline"
+      },
+      {
+        "role": "pre_adoption_note",
+        "path": "volatility_book/ch_tdist_risk_premia/notes/tdist_risk_premia_note.tex",
+        "sha256": "49d2cd1182727675e79facbaca5e4bba8721e3af4a2177e264a72305079e169a",
+        "hash_scope": "raw bytes at frozen_chapter_snapshot; adopted note is expected to differ"
+      }
+    ]
+  },
+  "ownership": {
+    "production_terminal_law": "stochvolmodels.models.inverse_gamma_normal.InverseGammaNormalTerminalModel",
+    "symmetric_reference": "stochvolmodels.pricers.tdist_pricer.TdistTerminalModel",
+    "chapter_owned": [
+      "physical inverse-gamma parameters",
+      "p eta q pricing-kernel mapping",
+      "scenario construction and economic interpretation",
+      "smile summary diagnostics",
+      "payload table and figure rendering"
+    ],
+    "frozen_oracle_policy": "The pre-adoption script is hash-checked and imported only by the verifier; production modules must not import or reference it."
+  },
+  "execution": {
+    "module": "volatility_book.ch_tdist_risk_premia.generate_tdist_risk_premia_figures",
+    "profile": "canonical",
+    "output_directory": "outputs/volatility_book/ch_tdist_risk_premia/canonical",
+    "commands": {
+      "canonical_regeneration": [
+        "python",
+        "-m",
+        "volatility_book.ch_tdist_risk_premia.generate_tdist_risk_premia_figures",
+        "--profile",
+        "canonical"
+      ],
+      "payload_only_rerender": [
+        "python",
+        "-m",
+        "volatility_book.ch_tdist_risk_premia.generate_tdist_risk_premia_figures",
+        "--payload",
+        "outputs/volatility_book/ch_tdist_risk_premia/canonical/numerical_payload.json",
+        "--output-dir",
+        "outputs/volatility_book/ch_tdist_risk_premia/canonical_rerender"
+      ],
+      "package_adoption_verification": [
+        "python",
+        "-m",
+        "volatility_book.ch_tdist_risk_premia.verify_tdist_risk_premia_package_adoption"
+      ]
+    },
+    "payload_rerender_guard": {
+      "environment_variable": "STOCHVOLMODELS_TDIST_RISK_PREMIA_FORBID_RECOMPUTE",
+      "guard_value": "1",
+      "contract": "Numerical construction fails when set to 1, while validated --payload rendering still succeeds."
+    }
+  },
+  "output_contract": {
+    "default_root": "outputs/volatility_book/ch_tdist_risk_premia",
+    "gitignore_rule": "/outputs/",
+    "generated_artifacts_are_tracked": false,
+    "network_or_licensed_inputs": false,
+    "artifact_manifest_paths_are_output_relative": true,
+    "artifacts_relative_to_profile_directory": [
+      "numerical_payload.json",
+      "artifact_manifest.json",
+      "figures/risk_premium_smiles.pdf",
+      "figures/risk_premium_smiles.png",
+      "figures/p_tail_premium_fixed_variance.pdf",
+      "figures/p_tail_premium_fixed_variance.png",
+      "tables/risk_premium_comparative_statics_table.tex"
+    ]
+  },
+  "numerical_contract": {
+    "scenario_ids": [
+      "p_minus",
+      "baseline_p",
+      "p_plus",
+      "eta_minus",
+      "baseline_eta",
+      "eta_plus",
+      "q_minus",
+      "baseline_q",
+      "q_plus",
+      "p_fixed_minus",
+      "baseline_fixed",
+      "p_fixed_plus"
+    ],
+    "log_moneyness": {
+      "minimum": -0.35,
+      "maximum": 0.35,
+      "count": 29
+    },
+    "portable_curve_capture": {
+      "sha256": "2f78c1e678774f692946fc37f97496c754a0f306604af136d5800a342fbefeae",
+      "recipe": "Round log-moneyness to 8 decimals; alpha, beta, q, shift and default probability to 12; calls and Black IVs to 10; encode sorted compact finite JSON."
+    },
+    "frozen_validation_dictionary": {
+      "sha256": "5a6fa80531840bd19ac6f1c4276bc6dea47682ffa3c159a622f69ddc0b1b447e",
+      "recipe": "Encode the frozen validation dictionary as sorted compact finite JSON without numeric normalization."
+    },
+    "package_vs_frozen_absolute_tolerances": {
+      "law_parameters_and_mean_v": 1e-15,
+      "shift_and_default_probability": 5e-13,
+      "call_prices": 5e-12,
+      "black_implied_volatilities": 5e-11,
+      "summary_statistics": 1e-9
+    },
+    "frozen_independent_validation_limits": {
+      "max_martingale_error": 1e-10,
+      "max_independent_martingale_error": 1e-7,
+      "max_put_call_parity_error": 1e-10,
+      "max_symmetric_closed_form_error": 5e-8,
+      "max_adaptive_integration_error": 5e-8,
+      "max_marginal_density_integration_error": 1e-7,
+      "max_black_round_trip_error": 1e-10,
+      "max_128_vs_256_node_error": 3e-7,
+      "max_call_monotonicity_violation": 1e-12,
+      "max_call_convexity_violation": 1e-12,
+      "max_variance_neutral_mean_v_error": 1e-13,
+      "max_duplicate_baseline_curve_error": 1e-13
+    },
+    "nonunit_discount_probe": {
+      "ttm": 0.75,
+      "discfactor": 0.96,
+      "forward": 105.0,
+      "price_absolute_tolerance": 4e-6,
+      "purpose": "Detect confusion between prepaid-forward B=D*F and undiscounted forward F."
+    }
+  },
+  "verification": {
+    "required": [
+      "frozen oracle and source-ledger hashes before import",
+      "all 12 by 29 unrounded package-versus-frozen curves",
+      "portable curve and frozen-validation hashes",
+      "symmetric Student and nonunit-discount references",
+      "strict finite payload schema and safe output paths",
+      "guarded payload-only rerender with identical payload and table",
+      "three-pass chapter build and complete rendered-page inspection"
+    ],
+    "portable_golden_policy": "Numerical payload hashes and tolerances are portable; PDF and PNG hashes are per-run provenance only."
+  },
+  "deferred": {
+    "cum_mean_tdist_nonzero_location": "The legacy helper omits ttm from its nonzero-mu location term. T2 and T3T pricing use mu=0, so this requires a separate numerical change."
+  }
+}

@@ -5,7 +5,10 @@
 \usepackage{graphicx}
 \usepackage[margin=2.7cm]{geometry}
 \usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
-\graphicspath{{../figures/}}
+% The default is relative to this tracked notes directory.  A parent book build
+% can override the command before inputting the chapter.
+\providecommand{\TdistRiskPremiaArtifactRoot}{../../../outputs/volatility_book/ch_tdist_risk_premia/canonical}
+\graphicspath{{\TdistRiskPremiaArtifactRoot/figures/}}
 \hypersetup{
   pdftitle={Static Inverse-Gamma Variance Mixtures, Student-t Option Valuation,
     Risk Premia, and Stationary Laws of Stochastic-Volatility Diffusions},
@@ -47,11 +50,12 @@ physical-to-pricing measure change.  A power--precision kernel preserves the
 inverse-gamma family, while a conditionally compensated Gaussian kernel
 introduces asymmetric return risk without relying on the nonexistent Student
 moment-generating function.  The three parameters have interpretable smile
-effects: variance level, tail curvature, and skew.  The notation is chosen to
-match the symmetric implementation in
-\texttt{stochvolmodels.fitters.tdist}; the accompanying
-\texttt{risk\_premium\_smile\_examples.py} implements the $p,\eta,q$
-extension.  A separate section derives the stationary laws of the
+effects: variance level, tail curvature, and skew.  The symmetric law is exposed
+by \texttt{TdistTerminalModel}, while the all-$q$ pricing law is exposed by
+\texttt{InverseGammaNormalTerminalModel}.  The chapter-owned
+\texttt{tdist\_risk\_premia\_chapter.py} maps $p,\eta,q$ into those risk-neutral
+law inputs and the artifact generator writes one portable numerical payload.
+A separate section derives the stationary laws of the
 multiplicative-variance, $3/2$, and Heston/CIR variance diffusions.  The
 stationary laws motivate static return mixtures, but they are not identified
 with the finite-horizon return laws of the continuous-time diffusions.
@@ -669,8 +673,9 @@ The numerical illustration uses
   \E_{\mathbb P}[V]=0.04.
   \label{eq:risk_premium_baseline}
 \end{equation}
-For every curve, $A_T$ is re-solved from
-\eqref{eq:skew_martingale_location}.  The baseline
+For each distinct pricing law, $A_T$ is solved from
+\eqref{eq:skew_martingale_location}; duplicate baseline presentations reuse
+the same law and numerical curve.  The baseline
 $(p,\eta,q)=(0,0,0)$ has an unconditional shock standard deviation of
 $20\%$.  Its Black implied-volatility curve is nevertheless not flat:
 arithmetic returns, log-moneyness quotation, heavy tails, and the lower
@@ -684,8 +689,8 @@ floor already produce a modest negative Black-volatility skew.
   thickness and mean variance move together.  The middle panel varies
   $\eta$ at fixed $p=0$ and predominantly shifts the variance level.  The
   right panel varies $q$: negative $q$ couples high variance to negative
-  returns and steepens the left skew.  The martingale location is re-solved
-  for every curve.}
+  returns and steepens the left skew.  Each plotted curve uses the martingale
+  location solved for its distinct pricing law.}
   \label{fig:risk_premium_smiles}
 \end{figure}
 
@@ -744,36 +749,9 @@ These are fixed-log-moneyness diagnostics, not $25$-delta market quotes.
 \begin{table}[htbp]
 \centering
 \small
-\begin{tabular}{@{}lrrrr@{}}
-\toprule
-Scenario
-& ATM IV
-& ATM slope
-& $\operatorname{RR}^{(k)}_{0.25}$
-& $\operatorname{BF}^{(k)}_{0.25}$ \\
-\midrule
-Baseline
-& 0.1921 & -0.0961 & -0.0456 & 0.0123 \\
-$p=-0.75$, $\eta=0$
-& 0.1732 & -0.0867 & -0.0412 & 0.0112 \\
-$p=+0.75$, $\eta=0$
-& 0.2188 & -0.1089 & -0.0517 & 0.0138 \\
-$p=-0.75$, $\eta=+0.030$, fixed $\E_{\mathbb Q}[V]$
-& 0.1937 & -0.0970 & -0.0465 & 0.0103 \\
-$p=+0.75$, $\eta=-0.030$, fixed $\E_{\mathbb Q}[V]$
-& 0.1895 & -0.0945 & -0.0442 & 0.0153 \\
-$\eta=-0.024$
-& 0.1718 & -0.0859 & -0.0404 & 0.0133 \\
-$\eta=+0.024$
-& 0.2105 & -0.1052 & -0.0503 & 0.0115 \\
-$q=-2$
-& 0.1974 & -0.1612 & -0.0764 & 0.0122 \\
-$q=+2$
-& 0.1977 & -0.0354 & -0.0169 & 0.0120 \\
-\bottomrule
-\end{tabular}
+\input{\TdistRiskPremiaArtifactRoot/tables/risk_premium_comparative_statics_table.tex}
 \caption{Deterministic-quadrature comparative statics.  All volatilities are
-in decimal units and $A_T$ is re-solved in every scenario.}
+in decimal units and $A_T$ is solved for every distinct pricing law.}
 \label{tab:risk_premium_comparative_statics}
 \end{table}
 
@@ -1302,12 +1280,21 @@ independent draw from its stationary marginal.
 
 \section{Correspondence with the implementation}
 
-The existing library pricer implements the symmetric $q=0$ formulation.
-The chapter script \texttt{risk\_premium\_smile\_examples.py} implements the
-new $p,\eta,q$ extension through conditional-normal quadrature and generates
-Figures~\ref{fig:risk_premium_smiles}--\ref{fig:p_fixed_variance}.  The
-following table records the symmetric formulation adopted by the existing
-library code.
+The package separates two terminal-law capabilities.  The accepted
+\texttt{TdistTerminalModel} implements the symmetric $q=0$ formulation, and
+\texttt{InverseGammaNormalTerminalModel} implements the inverse-gamma/normal
+law for all admissible $q$.  The chapter retains the physical parameters and
+the economic mapping
+$(\alpha_{\mathbb Q},\beta_{\mathbb Q},q)
+=(\alpha_{\mathbb P}-p,\beta_{\mathbb P}+\eta,q)$, then passes only the
+resulting risk-neutral law to the package model.  The hash-pinned
+\path{risk_premium_smile_examples.py} is retained solely as an independent
+pre-adoption oracle; production figures and the cited table are rendered from
+the package-owned payload by
+\path{generate_tdist_risk_premia_figures.py}.
+
+The following table records the symmetric correspondence used for the
+independent $q=0$ comparison.
 \begin{center}
 \begin{tabular}{@{}ll@{}}
 \toprule
@@ -1347,16 +1334,16 @@ to every maturity and does not enforce that match.  The standalone function
 \texttt{spot} as the actual cash spot only when carry is absent or separately
 embedded; the chain wrapper removes the ambiguity by passing $D_TF_T$.
 
-The valuation core already implements the centered call and put formulas in
-this note.  Full code adoption nevertheless requires the following corrections
-and guardrails.
+The adopted all-$q$ model binds one exact maturity, uses prepaid-forward
+normalization, solves the martingale shift for each discount factor, and accepts
+only standard calls and puts.  The following guardrails also clarify the legacy
+symmetric helpers and the limits of a static terminal interpretation.
 \begin{enumerate}
   \item The model shock is an arithmetic relative-return shock, not a log
   return or a Black--Scholes volatility.  Student exponential moments do not
   exist, which is precisely why \eqref{eq:terminal_asset} is used instead of an
-  exponential price map.  The existing ``terminal log-returns'' descriptions
-  should be corrected, as should the ``normal implied vol'' description of the
-  Student-$t$ inversion routine.
+  exponential price map.  Implied volatilities in the adopted payload are Black
+  volatilities inferred from present-value option prices.
   \item The public density helpers accept a non-zero location parameter.  The
   terminal pricer always calls the CDF and partial-moment helpers with location
   zero and applies $\mu_T$ externally.  That centered route is exact.  For a
@@ -1368,20 +1355,18 @@ and guardrails.
   \texttt{mu*ttm*cdf}; this latent helper bug does not affect centered pricing.
   \item The quantity $\mu_T=(A_T-1)/T$ is a maturity-specific additive
   location compensation, not the drift coefficient of a continuous-time
-  return process.  A different maturity generally requires a different root.
+  return process.  A different maturity generally requires a different root;
+  both terminal adapters enforce the maturity bound in their parameters.
   \item Calling \texttt{compute\_vanilla\_price\_tdist} with
   \texttt{is\_compute\_risk\_neutral\_mu=False} and no explicit drift sets
   $\mu_T$ equal to the risk-free rate.  Because the floor itself has value,
   that fallback does not satisfy \eqref{eq:martingale_A} and should be rejected
   or clearly marked non-risk-neutral.
-  \item The raw pricer currently treats option types \texttt{IC} and
-  \texttt{IP} as ordinary calls and puts.  Elsewhere those labels denote
-  inverse payoffs.  The inverse put genuinely diverges at the
-  positive-probability atom $S_T=0$.  For $K>0$, the inverse call has a
-  removable $0/0$ value and continuous extension zero there, but it still
-  requires an explicit zero-state convention and an implementation guard.
-  The model should accept only \texttt{C}/\texttt{P} until those contracts are
-  defined separately.
+  \item The terminal adapters accept only \texttt{C}/\texttt{P}.  Legacy raw
+  kernels are not used to infer inverse \texttt{IC}/\texttt{IP} settlement.
+  The inverse put diverges at the positive-probability atom $S_T=0$, while the
+  inverse call still requires an explicit zero-state convention; those products
+  therefore remain outside this chapter.
   \item Calibration is performed one maturity at a time.  A stationary SDE
   interpretation would impose cross-maturity parameter restrictions that the
   current calibrator does not impose.
@@ -1449,6 +1434,20 @@ Duplicate-baseline curve error & $0$ \\
 \end{center}
 The comparisons use different numerical representations, rather than merely
 re-evaluating the same quadrature formula.
+
+From the repository root, the cited numerical payload, table, and two figures
+are regenerated with
+\begin{flushleft}\footnotesize
+\texttt{python -m }
+\path{volatility_book.ch_tdist_risk_premia.generate_tdist_risk_premia_figures}\\
+\hspace*{1em}\texttt{--profile canonical}
+\end{flushleft}
+The generator writes only below the ignored
+\path{outputs/volatility_book/ch_tdist_risk_premia/canonical} directory.
+Rendering an already validated payload is a separate guarded path and does not
+invoke pricing analytics.  The adoption verifier hash-checks the frozen oracle,
+compares all 12 scenarios and 29 strikes with the package model, and proves the
+payload-only rerender contract.
 
 \section{Conclusion}
 
