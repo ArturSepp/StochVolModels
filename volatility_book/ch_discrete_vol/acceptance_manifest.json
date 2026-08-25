@@ -1,0 +1,380 @@
+{
+  "schema_version": 1,
+  "manifest_id": "stochvolmodels.discrete_volatility_chapter.acceptance",
+  "acceptance_status": "D3.1_VERIFIED_LOCAL",
+  "scope": {
+    "chapter": "volatility_book/ch_discrete_vol",
+    "purpose": "Static reproducibility and acceptance contract for the repository-only discrete-volatility chapter.",
+    "numerical_baseline": "D3.1 package adoption at commit e8872ccf8d1635be80b124baad928873e9f36941",
+    "network_or_licensed_inputs": false,
+    "generated_artifacts_are_tracked": false,
+    "runtime_cited_numbers_manifest": "A separate generated cited_numbers*.json artifact produced by Round 3; it is not this static acceptance manifest."
+  },
+  "path_contract": {
+    "repository_relative_output_root": "outputs/volatility_book/ch_discrete_vol",
+    "gitignore_rule": "/outputs/",
+    "tracked_background_note": "volatility_book/ch_discrete_vol/notes/tgarch_quadratic_drift_note.tex",
+    "default_upstream_full_results": {
+      "round1": "outputs/volatility_book/ch_discrete_vol/round1/results.json",
+      "round2": "outputs/volatility_book/ch_discrete_vol/round2/round2_results.json"
+    },
+    "stage_output_directories": {
+      "round1": {
+        "full": "outputs/volatility_book/ch_discrete_vol/round1",
+        "reference": "outputs/volatility_book/ch_discrete_vol/round1_reference",
+        "smoke": "outputs/volatility_book/ch_discrete_vol/round1_smoke"
+      },
+      "round2": {
+        "full": "outputs/volatility_book/ch_discrete_vol/round2",
+        "reference": "outputs/volatility_book/ch_discrete_vol/round2_reference",
+        "smoke": "outputs/volatility_book/ch_discrete_vol/round2_smoke"
+      },
+      "round3": {
+        "full": "outputs/volatility_book/ch_discrete_vol/round3",
+        "reference": "outputs/volatility_book/ch_discrete_vol/round3_reference",
+        "smoke": "outputs/volatility_book/ch_discrete_vol/round3_smoke"
+      }
+    },
+    "round2_reference_upstream": "outputs/volatility_book/ch_discrete_vol/round1_reference/results.json",
+    "default_round3_outputs": {
+      "full": "outputs/volatility_book/ch_discrete_vol/round3",
+      "reference": "outputs/volatility_book/ch_discrete_vol/round3_reference",
+      "smoke": "outputs/volatility_book/ch_discrete_vol/round3_smoke"
+    },
+    "round3_profiles_consume_full_upstream_results": true,
+    "explicit_cli_overrides_preserved": {
+      "round1": [
+        "--output-dir"
+      ],
+      "round2": [
+        "--output-dir",
+        "--round1-json",
+        "--r1-json",
+        "--background-note"
+      ],
+      "round3": [
+        "--output-dir",
+        "--round1-json",
+        "--round2-json",
+        "--background-note"
+      ]
+    }
+  },
+  "generated_dependency_chain": [
+    {
+      "order": 1,
+      "stage": "round1_full",
+      "command_argv": [
+        "python",
+        "-m",
+        "volatility_book.ch_discrete_vol.run_study",
+        "--profile",
+        "full",
+        "--output-dir",
+        "outputs/volatility_book/ch_discrete_vol/round1"
+      ],
+      "inputs": [
+        "tracked chapter sources and embedded synthetic parameter sets"
+      ],
+      "outputs": [
+        "outputs/volatility_book/ch_discrete_vol/round1/results.json",
+        "outputs/volatility_book/ch_discrete_vol/round1/results.md",
+        "outputs/volatility_book/ch_discrete_vol/round1/figures.pdf"
+      ]
+    },
+    {
+      "order": 2,
+      "stage": "round1_clean_reference",
+      "command_argv": [
+        "python",
+        "-m",
+        "volatility_book.ch_discrete_vol.run_study",
+        "--profile",
+        "reference",
+        "--output-dir",
+        "outputs/volatility_book/ch_discrete_vol/round1_reference"
+      ],
+      "inputs": [
+        "tracked chapter sources and embedded synthetic parameter sets"
+      ],
+      "outputs": [
+        "outputs/volatility_book/ch_discrete_vol/round1_reference/results.json",
+        "outputs/volatility_book/ch_discrete_vol/round1_reference/results.md",
+        "outputs/volatility_book/ch_discrete_vol/round1_reference/figures.pdf"
+      ]
+    },
+    {
+      "order": 3,
+      "stage": "round2_full",
+      "command_argv": [
+        "python",
+        "-m",
+        "volatility_book.ch_discrete_vol.round2",
+        "--profile",
+        "full",
+        "--output-dir",
+        "outputs/volatility_book/ch_discrete_vol/round2",
+        "--round1-json",
+        "outputs/volatility_book/ch_discrete_vol/round1/results.json",
+        "--r1-json",
+        "outputs/volatility_book/ch_discrete_vol/round1_reference/results.json",
+        "--background-note",
+        "volatility_book/ch_discrete_vol/notes/tgarch_quadratic_drift_note.tex"
+      ],
+      "inputs": [
+        "outputs/volatility_book/ch_discrete_vol/round1/results.json",
+        "outputs/volatility_book/ch_discrete_vol/round1_reference/results.json",
+        "volatility_book/ch_discrete_vol/notes/tgarch_quadratic_drift_note.tex"
+      ],
+      "outputs": [
+        "outputs/volatility_book/ch_discrete_vol/round2/round2_results.json",
+        "outputs/volatility_book/ch_discrete_vol/round2/round2_results.md",
+        "outputs/volatility_book/ch_discrete_vol/round2/round2_figures.pdf"
+      ],
+      "execution_precondition": "The FULL profile requires a clean worktree at an exact tag."
+    },
+    {
+      "order": 4,
+      "stage": "round3_full",
+      "command_argv": [
+        "python",
+        "-m",
+        "volatility_book.ch_discrete_vol.round3",
+        "--profile",
+        "full"
+      ],
+      "inputs": [
+        "outputs/volatility_book/ch_discrete_vol/round1/results.json",
+        "outputs/volatility_book/ch_discrete_vol/round2/round2_results.json",
+        "volatility_book/ch_discrete_vol/notes/tgarch_quadratic_drift_note.tex"
+      ],
+      "outputs": [
+        "outputs/volatility_book/ch_discrete_vol/round3/round3_results.json",
+        "outputs/volatility_book/ch_discrete_vol/round3/round3_results.md",
+        "outputs/volatility_book/ch_discrete_vol/round3/round3_figures.pdf",
+        "outputs/volatility_book/ch_discrete_vol/round3/e3_stationary_samples_round3.npz",
+        "outputs/volatility_book/ch_discrete_vol/round3/cited_numbers.json"
+      ],
+      "execution_precondition": "The FULL profile requires a clean worktree at an exact tag."
+    }
+  ],
+  "verification_commands": {
+    "manifest_json": [
+      "python",
+      "-m",
+      "json.tool",
+      "volatility_book/ch_discrete_vol/acceptance_manifest.json"
+    ],
+    "path_and_provenance_contract": [
+      "python",
+      "-c",
+      "import hashlib; from volatility_book.ch_discrete_vol import round3 as r; from volatility_book.ch_discrete_vol.experiments import StudyProfile; root=r._repo_root(); assert r.DEFAULT_BACKGROUND_NOTE==r.TRACKED_NOTE and r.TRACKED_NOTE.is_file(); assert r.DEFAULT_OUTPUT_ROOT==root/'outputs'/'volatility_book'/'ch_discrete_vol'; assert r.DEFAULT_ROUND1_JSON==r.DEFAULT_OUTPUT_ROOT/'round1'/'results.json'; assert r.DEFAULT_ROUND2_JSON==r.DEFAULT_OUTPUT_ROOT/'round2'/'round2_results.json'; assert r._default_output_dir(StudyProfile.FULL)==r.DEFAULT_OUTPUT_ROOT/'round3'; assert r._default_output_dir(StudyProfile.REFERENCE)==r.DEFAULT_OUTPUT_ROOT/'round3_reference'; assert r._default_output_dir(StudyProfile.SMOKE)==r.DEFAULT_OUTPUT_ROOT/'round3_smoke'; expected=hashlib.sha256(r.ACCEPTANCE_MANIFEST.read_bytes()).hexdigest(); provenance=r._execution_provenance(profile=StudyProfile.SMOKE,background_note=r.TRACKED_NOTE); assert provenance['acceptance_manifest']=={'path':'volatility_book/ch_discrete_vol/acceptance_manifest.json','sha256':expected}"
+    ],
+    "critical_lint": [
+      "ruff",
+      "check",
+      "--select",
+      "E9,F63,F7,F82,F811",
+      "volatility_book/ch_discrete_vol/round3.py"
+    ],
+    "d3_1_acceptance_smoke": [
+      "python",
+      "-m",
+      "volatility_book.ch_discrete_vol.run_study",
+      "--profile",
+      "smoke",
+      "--output-dir",
+      "outputs/volatility_book/ch_discrete_vol/acceptance_smoke"
+    ]
+  },
+  "stable_hash_policy": {
+    "raw_json_or_pdf_sha256_is_a_portable_golden": false,
+    "reason": "Raw artifacts contain runtime, repository revision/status, absolute paths, package versions, platform details, or PDF metadata.",
+    "canonical_json_v1": {
+      "source": "the D3.1 smoke results.json",
+      "delete_rules": [
+        "remove the top-level provenance member",
+        "remove runtime_seconds from every object under experiments"
+      ],
+      "serialization": {
+        "format": "UTF-8 JSON",
+        "sort_keys": true,
+        "separators": [
+          ",",
+          ":"
+        ],
+        "allow_nan": false,
+        "terminal_newline": false
+      }
+    },
+    "projection_v1": {
+      "contract_id": "d3_adoption_audit_v1",
+      "classification": "accepted audit-record hashes",
+      "projection_recipe_embedded": false,
+      "recomputable_from_this_manifest_alone": false,
+      "blocking": false,
+      "serialization": "The audited table or figure-data projection is serialized with the canonical_json_v1 JSON settings before SHA-256.",
+      "scope": "Projection hashes record independently audited table and figure-related inputs. Historical broad selectors can include corroborating non-plotted diagnostics; entry-specific caveats identify them. The tracked manifest does not invent the audit's field selectors, so these hashes are corroborating records rather than self-contained gates."
+    },
+    "tracked_text_sha256": {
+      "policy": "Hash canonical Git blob content, or explicitly normalize text to LF, rather than hashing a text=auto Windows working copy.",
+      "principal_brief_canonical_lf_sha256": "ae82dda4dda826dc199707a2f0aeef117195fd083815738c5248b50b3a0ff814",
+      "round3_brief_canonical_lf_sha256": "66f466de95cab34079635f17afc2163a74290f38ad26017abf8c52f439400a3b",
+      "tracked_note_canonical_lf_sha256": "f8b951c8b9c02ba819eb54595de9fbdcdc328e4a85621b72a7373877860dd1c1"
+    }
+  },
+  "accepted_d3_1_smoke": {
+    "canonical_payload": {
+      "sha256": "02443b3bf27e357a049b41320840f9adfb8bf6215557eb77369977047e096e98",
+      "byte_length": 193875,
+      "recomputable_from_this_manifest": true,
+      "blocking": true
+    },
+    "table_projection": {
+      "sha256": "4ac37f97539137d6dead2c403bcdae262f04b2e3ab2ab31d66fd88d8294511e2"
+    },
+    "figure_data_projection": {
+      "sha256": "c50a09a758166a4d2016a34ef6cffb7377c8d66d8d08759bcd079b3d69718d7b",
+      "classification": "historical D3.0 broad figure-audit projection",
+      "blocking": false,
+      "caveat": "The historical selector also included six non-plotted E2 likelihood-weight and ESS diagnostics. Restoring only their D3.0 roundoff values reproduces this hash; it is not a direct golden for the current D3.1 payload."
+    },
+    "plotted_fields_projection": {
+      "sha256": "1ef975ae1796a2d9a0945a50a9fbfd13de66e83a560321db78d5d3bc8d1d15a3",
+      "classification": "independently audited fields consumed by the plotting functions",
+      "d3_0_and_d3_1_identical": true,
+      "blocking": false
+    },
+    "e1_table_projection": {
+      "sha256": "be00595a73ccbecf737592c16f725ce67f9c3de8091b52b014d94777a03ac59a"
+    },
+    "e2_table_projection": {
+      "sha256": "0b820124665bc4a7a2f697822a2d59ffe22094c26679f96deecad145f830bf04"
+    },
+    "expected_verdicts": {
+      "mandatory_checks": true,
+      "E1": true,
+      "E2": true,
+      "E3": true,
+      "E4": false,
+      "E4_interpretation": "expected documented negative finding",
+      "E5_brief_claim": false,
+      "E5_corrected_claim": true,
+      "E6": false,
+      "E6_interpretation": "expected documented negative finding",
+      "E7": "measurement_only"
+    },
+    "pdf_structure": {
+      "pages": 8,
+      "ordered_experiment_titles": [
+        "E1 - Option prices versus the continuous affine pricer",
+        "E2 - Exact-Q, reweighted-P, and limit-Q kernel consistency",
+        "E3 - Stationary recursion versus the GIG law",
+        "E4 - Spot moments near the sufficient martingale boundary",
+        "E5 - Fixed-step Kesten tails versus the inverse-gamma limit",
+        "E6 - Filtering across observation scales",
+        "E7 - QMLE recovery and identification"
+      ]
+    },
+    "deterministic_contract": {
+      "base_seed": 20260823,
+      "experiment_seeds": {
+        "E1": 20260824,
+        "E2": 20260825,
+        "E3": 20260826,
+        "E4": 20260827,
+        "E5": 20260828,
+        "E6": 20260829,
+        "E7": 20260830
+      },
+      "pricing_paths": 2048,
+      "mandatory_check_paths": 1024,
+      "dt": [
+        "1/52",
+        "1/1008"
+      ],
+      "maturity_years": 0.25,
+      "generator": "numpy.random.Generator(PCG64)",
+      "antithetic_layout": "first-half draws, then their negatives"
+    },
+    "cross_round_blocking_gates": [
+      {
+        "stage": "round2",
+        "gate": "R1",
+        "blocking": true,
+        "accepted_value": true,
+        "historical_full_archive_passed": true,
+        "field": "R1.blocking_gate_passed",
+        "requirement": "The full Round-1 archive and clean reference rerun must pass the R1 stability comparison before R2--R6 start."
+      },
+      {
+        "stage": "round3",
+        "gate": "R6",
+        "blocking": true,
+        "accepted_value": true,
+        "historical_full_archive_passed": true,
+        "field": "R6.blocking_requirement_satisfied",
+        "requirement": "At FULL profile, the complete E1 stability comparison and clean E3 acceptance/sample archive obligation must pass before R7--R9 close."
+      }
+    ]
+  },
+  "archived_provenance_only_hashes": {
+    "classification": "Historical execution evidence; not portable numerical goldens and not fresh-checkout dependencies.",
+    "instability_sources": [
+      "repository revision and status",
+      "absolute execution paths",
+      "package and platform versions",
+      "runtime duration",
+      "PDF metadata where applicable"
+    ],
+    "artifacts": [
+      {
+        "name": "archived round-one results.json",
+        "sha256": "f4c08fe9a5df7b1967a57155d93762ff78d87463f3d774223427a21705629196",
+        "portable_acceptance": false,
+        "blocking": false
+      },
+      {
+        "name": "archived round-two results.json",
+        "sha256": "81533986fc77e6458077109c665ed09f4f236edfb6dd4ce4b75ad4d2d49d18f5",
+        "portable_acceptance": false,
+        "blocking": false
+      },
+      {
+        "name": "archived round-three results.json",
+        "sha256": "bb7ce225f674ef9be313c08c8ed765a0a4e2bd4adda1084c68dbb4430df81091",
+        "portable_acceptance": false,
+        "blocking": false,
+        "caveat": "This archive predates report-only source corrections, so its executed-input ledger is not the current tracked ledger."
+      },
+      {
+        "name": "archived Round-3 stationary samples NPZ",
+        "sha256": "81e3f26d301e1a08dc4716c4b4fca97a2e03e5304ee4658c86b93e5644867de1",
+        "portable_acceptance": false,
+        "blocking": false
+      },
+      {
+        "name": "archived generated cited-number manifest",
+        "sha256": "5a317c7ae4eaa23a2a5f43ffec5301e65ccc89643160632d05f3c44c33a69127",
+        "portable_acceptance": false,
+        "blocking": false,
+        "archived_checks": {
+          "cited_values": 40,
+          "prose_checks": 24,
+          "all_passed": true
+        }
+      }
+    ]
+  },
+  "artifact_policy": {
+    "allowed_tracked_outputs": [],
+    "generated_extensions": [
+      ".json",
+      ".md",
+      ".pdf",
+      ".npz"
+    ],
+    "generated_location": "By default and recommendation, beneath the ignored repository output root. An explicit --output-dir override remains supported and is the caller's responsibility.",
+    "regeneration_policy": "Do not silently replace an accepted portable hash or an archived provenance hash. Record and review any intentional baseline change."
+  }
+}
