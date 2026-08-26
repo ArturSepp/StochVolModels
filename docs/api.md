@@ -7,6 +7,37 @@ LogSV deep-module paths are experimental research APIs.
 The installed release string is `stochvolmodels.__version__`. The API contract test resolves every
 name below and fails if `__all__`, the documented maturity boundary, or a stable docstring drifts.
 
+## Provisional book-analytics capabilities
+
+The following direct-module APIs ship in the wheel but are intentionally absent from the stable
+package-root `__all__`. They support the repository's volatility-book analytics and may be refined
+after validation across additional model implementations:
+
+- `stochvolmodels.data.model_paths.ModelPaths` is the validated path payload.
+
+- `stochvolmodels.models.PathModel` and `TransformModel` describe independent dynamic
+  capabilities. `stochvolmodels.models.logsv.LogSvModel` and
+  `stochvolmodels.models.tgarch.TgarchModel` are the first path implementations.
+
+- `stochvolmodels.models.TerminalDistributionModel` and `TerminalSmileModel` describe
+  one-maturity laws and smiles separately from path models. Implementations are
+  `stochvolmodels.pricers.tdist_pricer.TdistTerminalModel`,
+  `stochvolmodels.pricers.gmm_pricer.GmmTerminalModel`, and
+  `stochvolmodels.models.inverse_gamma_normal.InverseGammaNormalTerminalModel`.
+
+- `stochvolmodels.products.payoffs` provides `EuropeanOptionPayoff` and
+  `IntegratedVarianceOptionPayoff`. `stochvolmodels.valuation` provides raw and self-normalized
+  path valuation with explicit measure, likelihood-weight, recentering, standard-error, and ESS
+  policies.
+
+- `stochvolmodels.models.regime_logsv`, `stochvolmodels.models.regime_logsv_simulation`, and
+  `stochvolmodels.pricers.regime_switch_logsv_pricer` provide the provisional regime-switching
+  LogSV equilibrium, transform, Fourier, and independent Monte Carlo stack.
+
+Student-t and GMM validate the terminal boundary without being made into artificial path models.
+Root aliases and protocol stabilization are deferred until the same contracts have been exercised
+by another dynamic model.
+
 ## Data and model classes
 
 ```{eval-rst}
