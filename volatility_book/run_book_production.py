@@ -869,10 +869,18 @@ def _validate_discrete_output(output: Path, acceptance_manifest_path: Path) -> N
         raise BookProductionError("discrete portable canonical payload is not a blocking golden")
     digest = hashlib.sha256(encoded).hexdigest()
     if len(encoded) != expected.get("byte_length") or digest != expected.get("sha256"):
+        e7_payload = json.dumps(
+            experiments.get("E7"),
+            allow_nan=False,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
         raise BookProductionError(
             "discrete smoke canonical payload differs: "
             f"bytes={len(encoded)}, sha256={digest}, "
-            f"rounded_float_fingerprints={_rounded_float_fingerprints(canonical)}"
+            f"rounded_float_fingerprints={_rounded_float_fingerprints(canonical)}, "
+            f"e7_payload={e7_payload}"
         )
     markdown = output / "results.md"
     pdf = output / "figures.pdf"
