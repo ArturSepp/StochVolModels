@@ -788,13 +788,18 @@ def _actual_output_files(output: Path) -> set[str]:
 
 
 def _rounded_float_fingerprints(value: Mapping[str, Any]) -> str:
-    def rounded(item: Any, significant_digits: int) -> Any:
+    def rounded(item: Any, significant_digits: int, zero_floor: float) -> Any:
         if type(item) is float:
+            if abs(item) <= zero_floor:
+                return "0"
             return format(item, f".{significant_digits}g")
         if isinstance(item, list):
-            return [rounded(child, significant_digits) for child in item]
+            return [rounded(child, significant_digits, zero_floor) for child in item]
         if isinstance(item, dict):
-            return {key: rounded(child, significant_digits) for key, child in item.items()}
+            return {
+                key: rounded(child, significant_digits, zero_floor)
+                for key, child in item.items()
+            }
         return item
 
     def fingerprint(item: Any) -> list[int | str]:
@@ -811,16 +816,22 @@ def _rounded_float_fingerprints(value: Mapping[str, Any]) -> str:
     if not isinstance(experiments, dict):
         return "unavailable"
     diagnostics: dict[str, Any] = {}
-    for significant_digits in range(8, 18):
-        rounded_payload = rounded(value, significant_digits)
-        rounded_experiments = rounded_payload["experiments"]
-        diagnostics[str(significant_digits)] = {
-            "payload": fingerprint(rounded_payload),
-            "experiments": {
-                identifier: fingerprint(record)
-                for identifier, record in rounded_experiments.items()
-            },
-        }
+    for significant_digits in (8, 10, 12, 13, 14, 15):
+        for zero_floor in (0.0, 1.0e-300, 1.0e-100, 1.0e-30, 1.0e-16, 1.0e-14):
+            rounded_payload = rounded(value, significant_digits, zero_floor)
+            rounded_experiments = rounded_payload["experiments"]
+            key = f"{significant_digits}g@{zero_floor:.0e}"
+            diagnostics[key] = {
+                "payload": fingerprint(rounded_payload),
+                "top_level": {
+                    identifier: fingerprint(record)
+                    for identifier, record in rounded_payload.items()
+                },
+                "experiments": {
+                    identifier: fingerprint(record)
+                    for identifier, record in rounded_experiments.items()
+                },
+            }
     return json.dumps(diagnostics, separators=(",", ":"), sort_keys=True)
 
 
