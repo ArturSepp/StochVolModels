@@ -24,8 +24,9 @@ Please open an issue before implementing any of the following:
 - a feature that belongs in a sibling package such as `vanilla-option-pricers`, `qis`, or
   `optimalportfolios`.
 
-American, exotic, and path-dependent payoffs are outside this package's intended scope. Examples
-that require a paid data subscription cannot be reviewer or CI gates.
+New American or general exotic/path-dependent product families are outside this package's intended
+scope. The narrowly characterized book-analytics layer includes European and integrated-variance
+payoffs. Examples that require a paid data subscription cannot be reviewer or CI gates.
 
 ## Reporting a bug
 
@@ -50,12 +51,12 @@ offer private support or a guaranteed response time.
 ```console
 git clone https://github.com/ArturSepp/StochVolModels.git
 cd StochVolModels
-python -m pip install -e ".[dev,docs]"
-python -m pytest -m "not slow"
-python -m pytest -m slow
-ruff check --select E9,F63,F7,F82,F811 src
-python -m sphinx -W --keep-going -b html docs docs/_build/html
-python examples/getting_started/quickstart.py
+uv sync --locked --group test --group lint --extra docs
+uv run --no-sync pytest -m "not slow"
+uv run --no-sync pytest -m slow
+uv run --no-sync ruff check --select E9,F63,F7,F82,F811 src
+uv run --no-sync python -m sphinx -W --keep-going -b html docs docs/_build/html
+uv run --no-sync python examples/getting_started/quickstart.py
 ```
 
 Tests live in `src/stochvolmodels/tests/`. Unmarked fast tests cover core contracts and

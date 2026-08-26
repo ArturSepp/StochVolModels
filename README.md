@@ -43,7 +43,12 @@ The same analytics power the research: the repository's `papers/` directory repr
 
 Use `stochvolmodels` for European vanilla pricing and implied-volatility analytics under stochastic volatility, for model calibration to option chains (a calibration example to Bitcoin options data is included), and for replicating the papers above.
 
-It is not a general derivatives platform: no American or path-dependent payoffs, no local-volatility or term-structure models. Black-Scholes-Merton and absolute-normal Bachelier analytics are provided by the required [`vanilla-option-pricers`](https://github.com/ArturSepp/VanillaOptionPricers) package and re-exported from `stochvolmodels`; for strategy backtesting and reporting, use [`qis`](https://github.com/ArturSepp/QuantInvestStrats).
+It is not a general derivatives platform: there is no American-option, local-volatility, or
+term-structure framework. Black-Scholes-Merton and absolute-normal Bachelier analytics are
+provided by the required
+[`vanilla-option-pricers`](https://github.com/ArturSepp/VanillaOptionPricers) package and
+re-exported from `stochvolmodels`; for strategy backtesting and reporting, use
+[`qis`](https://github.com/ArturSepp/QuantInvestStrats).
 
 ## Installation
 Install using
@@ -71,14 +76,15 @@ python examples/getting_started/quickstart.py
 From a source checkout, verify the complete public artifact and documentation path with:
 
 ```console
-python -m pip install -e ".[dev,docs]"
-python -m pytest -m "not slow"
-python -m pytest -m slow
-python -m pytest --cov=stochvolmodels --cov-report=json
-python scripts/check_coverage_scopes.py coverage.json
-python -m sphinx -W --keep-going -b html docs docs/_build/html
-python -m build
-python scripts/check_wheel_contents.py dist/*.whl
+uv sync --locked --group test --extra docs
+uv run --no-sync pytest -m "not slow"
+uv run --no-sync pytest -m slow
+uv run --no-sync pytest --cov=stochvolmodels --cov-report=json
+uv run --no-sync python scripts/check_coverage_scopes.py coverage.json
+uv run --no-sync python -m sphinx -W --keep-going -b html docs docs/_build/html
+uv build
+uv run --no-project python scripts/check_sdist_contents.py dist/*.tar.gz
+uv run --no-project python scripts/check_wheel_contents.py dist/*.whl
 ```
 
 The v2.3.0 quickstart prints two five-strike slices and deterministic reference values including
@@ -106,7 +112,6 @@ because Numba compiles the numerical kernels. See the
 | `visualization` | `plotly >= 5.0.0` | interactive figures |
 | `numerical` | `scikit-learn >= 1.3.0`, `statsmodels >= 0.14.0` | statistical fits |
 | `jupyter` | `jupyter`, `notebook`, `jupyterlab`, `ipykernel`, `ipywidgets` | notebooks |
-| `dev` | `pytest`, `pytest-cov`, `pytest-regressions` | automated tests and coverage |
 
 Install an extra using
 ```python
@@ -121,6 +126,34 @@ the [testing and coverage guide](https://stochvolmodels.readthedocs.io/en/latest
 The names listed by `stochvolmodels.__all__` are the stable high-level API. Historical package-root
 names remain available lazily for compatibility, but names not in `__all__` should be treated as
 advanced interfaces.
+
+The book-analytics work adds a deliberately provisional direct-import surface without expanding
+the stable package root:
+
+- `ModelPaths`, `PathModel`, and `TransformModel` separate path simulation from transform
+  capabilities. `LogSvModel` and `TgarchModel` are the first path implementations.
+
+- `TerminalDistributionModel` and `TerminalSmileModel` are separate one-maturity capabilities.
+  `TdistTerminalModel`, `GmmTerminalModel`, and `InverseGammaNormalTerminalModel` implement this
+  boundary without pretending to be dynamic path models.
+
+- `EuropeanOptionPayoff`, `IntegratedVarianceOptionPayoff`, `value_paths`, and
+  `value_paths_self_normalized` provide explicit payoff, measure, weighting, recentering, standard
+  error, and effective-sample-size conventions.
+
+- The regime-switching LogSV modules provide equilibrium, transform, Fourier, Monte Carlo, and
+  risk-premium attribution analytics used by the book chapters.
+
+These names ship in the wheel and are documented in the
+[API guide](https://stochvolmodels.readthedocs.io/en/latest/api.html), but remain outside
+`stochvolmodels.__all__` until their contracts are stabilized across another dynamic model. The
+repository-only chapter pipelines and their ignored artifacts live under `volatility_book/`. A
+locked, deterministic smoke rollup uses OCA 5.2.0 exactly:
+
+```console
+uv sync --locked --extra research
+python -m volatility_book.run_book_production --profile smoke
+```
 
 The rough-LogSV Monte Carlo and Factor HJM implementations are experimental research surfaces.
 Their characterized pricing paths are tested, but deep imports under

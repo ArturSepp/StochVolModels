@@ -15,11 +15,11 @@ python -m pip install stochvolmodels
 For a source checkout, create an environment and install the project in editable mode:
 
 ```console
-python -m pip install -e ".[dev]"
+uv sync --locked --group test
 ```
 
 Optional research, plotting, numerical-fit, notebook, and documentation tools are separated from
-the core runtime. For example, `python -m pip install ".[docs]"` installs the documentation stack.
+the core runtime. For example, `uv sync --locked --extra docs` installs the documentation stack.
 
 ## Run the authoritative quickstart
 
@@ -35,10 +35,10 @@ The source is included here mechanically, so the documentation and CI execute th
 :language: python
 ```
 
-On the reference Windows/Python 3.12 run, version 2.2.0 produced vanilla price `0.197331`, vanilla
-implied volatility `0.999577`, and six-month at-the-money price/volatility `0.275202`/`0.995757` in
-19.95 seconds. Values are deterministic; elapsed time is machine-dependent. The first process pays
-Numba compilation cost, so later calls are usually faster.
+The deterministic reference run produces vanilla price `0.197331`, vanilla implied volatility
+`0.999577`, and six-month at-the-money price/volatility `0.275202`/`0.995757`. Elapsed time is
+machine-dependent. The first process pays Numba compilation cost, so later calls are usually
+faster.
 
 Change `sigma0` and `theta` first to move the current and long-run volatility levels. Then change
 `beta` for return/volatility dependence and `volvol` for volatility-of-volatility. See the
@@ -50,8 +50,8 @@ guide](calibration.md) before fitting market data.
 - A `ValueError` normally indicates inconsistent maturities, forwards, strikes, quote arrays, or
   unsupported option codes.
 - A slow first call is expected JIT compilation, not network activity.
-- This quickstart does not validate a trading convention, calibrate to live quotes, or support
-  American/path-dependent payoffs.
+- This quickstart does not validate a trading convention, calibrate to live quotes, or provide an
+  American/general path-dependent pricing workflow.
 
 ## Optional Colab trial
 
