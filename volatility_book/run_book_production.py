@@ -787,6 +787,43 @@ def _actual_output_files(output: Path) -> set[str]:
     return files
 
 
+def _rounded_float_fingerprints(value: Mapping[str, Any]) -> str:
+    def rounded(item: Any, significant_digits: int) -> Any:
+        if type(item) is float:
+            return format(item, f".{significant_digits}g")
+        if isinstance(item, list):
+            return [rounded(child, significant_digits) for child in item]
+        if isinstance(item, dict):
+            return {key: rounded(child, significant_digits) for key, child in item.items()}
+        return item
+
+    def fingerprint(item: Any) -> list[int | str]:
+        encoded = json.dumps(
+            item,
+            allow_nan=False,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+        return [len(encoded), hashlib.sha256(encoded).hexdigest()]
+
+    experiments = value.get("experiments")
+    if not isinstance(experiments, dict):
+        return "unavailable"
+    diagnostics: dict[str, Any] = {}
+    for significant_digits in range(8, 18):
+        rounded_payload = rounded(value, significant_digits)
+        rounded_experiments = rounded_payload["experiments"]
+        diagnostics[str(significant_digits)] = {
+            "payload": fingerprint(rounded_payload),
+            "experiments": {
+                identifier: fingerprint(record)
+                for identifier, record in rounded_experiments.items()
+            },
+        }
+    return json.dumps(diagnostics, separators=(",", ":"), sort_keys=True)
+
+
 def _validate_discrete_output(output: Path, acceptance_manifest_path: Path) -> None:
     acceptance = _load_json_object(acceptance_manifest_path, label="discrete acceptance manifest")
     payload = _load_json_object(output / "results.json", label="discrete smoke results")
@@ -823,7 +860,8 @@ def _validate_discrete_output(output: Path, acceptance_manifest_path: Path) -> N
     if len(encoded) != expected.get("byte_length") or digest != expected.get("sha256"):
         raise BookProductionError(
             "discrete smoke canonical payload differs: "
-            f"bytes={len(encoded)}, sha256={digest}"
+            f"bytes={len(encoded)}, sha256={digest}, "
+            f"rounded_float_fingerprints={_rounded_float_fingerprints(canonical)}"
         )
     markdown = output / "results.md"
     pdf = output / "figures.pdf"
