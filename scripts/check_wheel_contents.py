@@ -7,6 +7,22 @@ from pathlib import Path
 from zipfile import ZipFile
 
 
+REQUIRED_RUNTIME_FILES = {
+    "stochvolmodels/__init__.py",
+    "stochvolmodels/data/model_paths.py",
+    "stochvolmodels/models/__init__.py",
+    "stochvolmodels/models/inverse_gamma_normal.py",
+    "stochvolmodels/models/logsv.py",
+    "stochvolmodels/models/regime_logsv.py",
+    "stochvolmodels/models/regime_logsv_simulation.py",
+    "stochvolmodels/models/tgarch.py",
+    "stochvolmodels/pricers/regime_switch_logsv_pricer.py",
+    "stochvolmodels/products/__init__.py",
+    "stochvolmodels/products/payoffs.py",
+    "stochvolmodels/valuation.py",
+}
+
+
 def check_wheel(wheel_path: Path) -> None:
     """Raise ``AssertionError`` when *wheel_path* violates the artifact contract."""
     with ZipFile(wheel_path) as wheel:
@@ -29,6 +45,7 @@ def check_wheel(wheel_path: Path) -> None:
         "stochvolmodels/examples/",
         "examples/",
         "papers/",
+        "volatility_book/",
         "docs/",
         "resources/",
         "stochvolmodels/pde_solvers/",
@@ -42,21 +59,7 @@ def check_wheel(wheel_path: Path) -> None:
     assert "stochvolmodels/settings.yaml" not in members, (
         "machine-local settings.yaml entered the wheel"
     )
-    required_runtime_files = {
-        "stochvolmodels/__init__.py",
-        "stochvolmodels/data/model_paths.py",
-        "stochvolmodels/models/__init__.py",
-        "stochvolmodels/models/inverse_gamma_normal.py",
-        "stochvolmodels/models/logsv.py",
-        "stochvolmodels/models/regime_logsv.py",
-        "stochvolmodels/models/regime_logsv_simulation.py",
-        "stochvolmodels/models/tgarch.py",
-        "stochvolmodels/pricers/regime_switch_logsv_pricer.py",
-        "stochvolmodels/products/__init__.py",
-        "stochvolmodels/products/payoffs.py",
-        "stochvolmodels/valuation.py",
-    }
-    missing_runtime_files = required_runtime_files.difference(members)
+    missing_runtime_files = REQUIRED_RUNTIME_FILES.difference(members)
     assert not missing_runtime_files, (
         f"required runtime files missing from wheel: {sorted(missing_runtime_files)}"
     )

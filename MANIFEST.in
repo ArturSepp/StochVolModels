@@ -20,9 +20,11 @@ recursive-include src/stochvolmodels *.npz *.yml *.yaml *.json *.txt *.md
 include src/stochvolmodels/settings.yaml.example
 exclude src/stochvolmodels/settings.yaml
 
-# Explicitly exclude repository-only examples, papers, figures, notebooks, and image files
+# Explicitly exclude repository-only examples, papers, book analytics, figures, notebooks, and
+# image files.
 recursive-exclude examples *
 recursive-exclude papers *
+recursive-exclude volatility_book *
 recursive-exclude docs *
 recursive-exclude resources *
 recursive-exclude src/stochvolmodels/pde_solvers *
