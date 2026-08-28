@@ -122,7 +122,7 @@ uv run --no-project python scripts/check_sdist_contents.py dist/*.tar.gz
 uv run --no-project python scripts/check_wheel_contents.py dist/*.whl
 ```
 
-The v2.3.0 quickstart prints two five-strike slices and deterministic reference values including
+The v2.4.0 quickstart prints two five-strike slices and deterministic reference values including
 `vanilla_price=0.197331` and `six_month_atm_price=0.275202`. The first call normally takes seconds
 because Numba compiles the numerical kernels. See the
 [full verification guide](https://stochvolmodels.readthedocs.io/en/latest/getting_started.html) and
@@ -680,7 +680,7 @@ metadata is available in [`CITATION.cff`](CITATION.cff).
   title={StochVolModels: Python Implementation of Stochastic Volatility Models},
   author={Sepp, Artur},
   year={2026},
-  version={2.3.0},
+  version={2.4.0},
   howpublished={\url{https://github.com/ArturSepp/StochVolModels}},
   note={Python package for pricing analytics and Monte Carlo simulations}
 }

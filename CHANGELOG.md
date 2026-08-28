@@ -4,6 +4,8 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-08-28
+
 ### Added
 - `stochvolmodels.models.inverse_gamma_normal` adds a provisional, maturity-specific
   inverse-gamma/normal terminal distribution and Black-smile model for the volatility-book
