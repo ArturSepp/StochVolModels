@@ -1,20 +1,22 @@
-# StochVolModels (`stochvolmodels`)
+# stochvolmodels
+
+**Fourier-transform pricing, Monte Carlo validation, and calibration of European options under
+stochastic-volatility models in Python.**
+
+The stable workflows cover European vanilla and related variance analytics under Heston and the
+Karasinski-Sepp log-normal stochastic-volatility model; experimental research modules are labelled
+separately rather than presented as stable derivatives infrastructure.
+
+**Install:** `pip install stochvolmodels` · **Import:** `stochvolmodels` · **Status:** Stable
 
 [![PyPI](https://img.shields.io/pypi/v/stochvolmodels?style=flat-square)](https://pypi.org/project/stochvolmodels/)
 [![Python](https://img.shields.io/pypi/pyversions/stochvolmodels?style=flat-square)](https://pypi.org/project/stochvolmodels/)
-[![License](https://img.shields.io/github/license/ArturSepp/StochVolModels.svg?style=flat-square)](LICENSE.txt)
 [![CI](https://github.com/ArturSepp/StochVolModels/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ArturSepp/StochVolModels/actions/workflows/ci.yml)
 [![Docs](https://readthedocs.org/projects/stochvolmodels/badge/?version=latest)](https://stochvolmodels.readthedocs.io/en/latest/)
+[![License](https://img.shields.io/github/license/ArturSepp/StochVolModels.svg?style=flat-square)](LICENSE.txt)
 [![Downloads](https://static.pepy.tech/badge/stochvolmodels)](https://pepy.tech/project/stochvolmodels)
 [![Monthly](https://static.pepy.tech/badge/stochvolmodels/month)](https://pepy.tech/project/stochvolmodels)
 [![Open LogSV quickstart in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ArturSepp/StochVolModels/blob/main/examples/getting_started/quickstart_colab.ipynb)
-
-`stochvolmodels` provides Fourier-transform pricing, Monte Carlo validation, and calibration of
-European options under stochastic-volatility models in Python.
-
-It is a focused research and practitioner library, not a general derivatives platform: the stable
-workflows cover European vanilla and related variance analytics under Heston and the
-Karasinski-Sepp log-normal stochastic-volatility model.
 
 **Paper:** Sepp, A. and Rakhmonov, P. (2023), *Log-normal stochastic volatility model with quadratic drift*, [International Journal of Theoretical and Applied Finance, 26(8)](https://www.worldscientific.com/doi/10.1142/S0219024924500031). See [Citation](#citation) for the full BibTeX list.
 
@@ -52,26 +54,59 @@ re-exported from `stochvolmodels`; for strategy backtesting and reporting, use
 
 ## Installation
 Install using
-```python 
+```bash
 pip install stochvolmodels
 ```
 Upgrade using
-```python 
+```bash
 pip install --upgrade stochvolmodels
 ```
 Clone using
-```python 
+```bash
 git clone https://github.com/ArturSepp/StochVolModels.git
 ```
 
-### Reviewer verification
+## Five-minute quickstart
 
-The first result is offline and needs no credentials, local YAML, `qis`, OCA, or data download:
+This first result runs from the installed package and needs no credentials, local YAML, `qis`,
+OptionChainAnalytics, or data download:
+
+```python
+import stochvolmodels as svm
+
+params = svm.LogSvParams(
+    sigma0=1.0,
+    theta=1.0,
+    kappa1=5.0,
+    kappa2=5.0,
+    beta=0.2,
+    volvol=2.0,
+)
+price, implied_vol = svm.LogSVPricer().price_vanilla(
+    params=params,
+    ttm=0.25,
+    forward=1.0,
+    strike=1.0,
+    optiontype="C",
+)
+print(f"price={price:.6f}, implied_vol={implied_vol:.6f}")
+```
+
+Expected output after the initial Numba compilation:
+
+```text
+price=0.197331, implied_vol=0.999577
+```
+
+The fuller [repository quickstart](examples/getting_started/quickstart.py) prices a two-maturity
+synthetic chain. Repository examples are not included in the wheel, so clone the repository before
+running them:
 
 ```console
-python -m pip install stochvolmodels
 python examples/getting_started/quickstart.py
 ```
+
+### Reviewer verification
 
 From a source checkout, verify the complete public artifact and documentation path with:
 
@@ -114,7 +149,7 @@ because Numba compiles the numerical kernels. See the
 | `jupyter` | `jupyter`, `notebook`, `jupyterlab`, `ipykernel`, `ipywidgets` | notebooks |
 
 Install an extra using
-```python
+```bash
 pip install stochvolmodels[research]
 ```
 The library itself imports none of these: `import stochvolmodels` needs the core dependencies only.
@@ -158,7 +193,7 @@ minor releases. The legacy `Gaussian_interval` quadrature path requires unsuppor
 `NotImplementedError` until a characterized Mittag-Leffler backend is provided.
 
 
-# Table of contents
+## Table of contents
 1. [Model Interface](#introduction)
     1. [Adding a new model engine](#newmodel)
     2. [Log-normal stochastic volatility model](#logsv)
@@ -547,7 +582,7 @@ papers/il_hedging
 
 5) "Stochastic Volatility for Factor Heath-Jarrow-Morton Framework" by Artur Sepp and Parviz Rakhmonov,
 Review of Derivatives Research, 2025, 28(3), article 12: https://doi.org/10.1007/s11147-025-09217-4
-(preprint: http://ssrn.com/abstract=4646925)
+(preprint: https://ssrn.com/abstract=4646925)
 ```python 
 papers/sv_for_factor_hjm
 ```
@@ -614,18 +649,22 @@ This package is part of an open-source Python stack for quantitative finance —
 | [`optimalportfolios`](https://github.com/ArturSepp/OptimalPortfolios) | Portfolio construction and backtesting |
 | [`factorlasso`](https://github.com/ArturSepp/factorlasso) | Sparse factor models and factor covariance estimation |
 | [`bbg-fetch`](https://github.com/ArturSepp/BloombergFetch) | Bloomberg data fetching |
+| [`option-chain-analytics`](https://github.com/ArturSepp/OptionChainAnalytics) | Point-in-time option-chain normalisation and reconstruction |
 | [`trendfollowing`](https://github.com/ArturSepp/TrendFollowingSystems) | Trend-following systems: closed-form theory and replication |
-| [`privateassets`](https://github.com/ArturSepp/PrivateAssets) | Private-assets analytics |
+| [`privateassets`](https://github.com/ArturSepp/privateassets) | Private-assets analytics |
 | [`goal-based-allocation`](https://github.com/ArturSepp/GoalBasedAllocation) | Dynamic MV allocation under regime-switching jump-diffusions |
 | [`stochvolmodels`](https://github.com/ArturSepp/StochVolModels) *(this package)* | Stochastic volatility pricing analytics |
 | [`vanilla-option-pricers`](https://github.com/ArturSepp/VanillaOptionPricers) | Vectorised vanilla option pricers and implied volatility fitters |
 
-Dependency links within the stack: `optimalportfolios` builds on `qis` and `factorlasso`; `trendfollowing` and `privateassets` build on `qis`.
+For this package, `vanilla-option-pricers` is a runtime dependency; the `research` extra adds `qis`
+and `option-chain-analytics`. The [ArturSepp profile](https://github.com/ArturSepp) is the
+canonical ten-package catalogue.
 
-## Contributing
+## Feedback & contributing
 
-See [CONTRIBUTING.md](https://github.com/ArturSepp/StochVolModels/blob/main/CONTRIBUTING.md) for project scope, development commands, numerical-change
-rules, bug reports, questions/support, pull requests, conduct, and contribution licensing.
+- [Report a reproducible bug](https://github.com/ArturSepp/StochVolModels/issues/new?template=bug_report.yml), including the package version, Python/platform, inputs, and expected versus actual result.
+- [Request a feature](https://github.com/ArturSepp/StochVolModels/issues/new?template=feature_request.yml), describing the payoff, quote convention, or model edge case, the current workaround, and the smallest useful API.
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) for scope, development commands, numerical-change rules, and pull-request guidance.
 
 ## License
 
@@ -633,7 +672,8 @@ This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.t
 
 ## Citation
 
-If you use this package in your research, please cite the relevant papers:
+If you use this package in your research, please cite the relevant papers. Machine-readable
+metadata is available in [`CITATION.cff`](CITATION.cff).
 
 ```bibtex
 @misc{sepp2026stochvolmodels,
@@ -660,7 +700,7 @@ title={What is a robust stochastic volatility model},
 author={Sepp, Artur and Rakhmonov, Parviz},
 year={2023},
 note={Working paper},
-url={http://ssrn.com/abstract=4647027}
+url={https://ssrn.com/abstract=4647027}
 }
 
 @article{lucicsepp2024,
@@ -683,7 +723,7 @@ pages={12},
 year={2025},
 journal={Review of Derivatives Research},
 doi={10.1007/s11147-025-09217-4},
-note={Preprint: http://ssrn.com/abstract=4646925}
+note={Preprint: https://ssrn.com/abstract=4646925}
 }
 ```
 
