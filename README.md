@@ -146,14 +146,9 @@ the stable package root:
 
 These names ship in the wheel and are documented in the
 [API guide](https://stochvolmodels.readthedocs.io/en/latest/api.html), but remain outside
-`stochvolmodels.__all__` until their contracts are stabilized across another dynamic model. The
-repository-only chapter pipelines and their ignored artifacts live under `volatility_book/`. A
-locked, deterministic smoke rollup uses OCA 5.2.0 exactly:
-
-```console
-uv sync --locked --extra research
-python -m volatility_book.run_book_production --profile smoke
-```
+`stochvolmodels.__all__` until their contracts are stabilized across another dynamic model.
+Private chapter-production pipelines and generated book artifacts are maintained outside version
+control; the reusable analytics and their package-level tests remain in this repository.
 
 The rough-LogSV Monte Carlo and Factor HJM implementations are experimental research surfaces.
 Their characterized pricing paths are tested, but deep imports under
