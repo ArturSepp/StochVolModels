@@ -1,3 +1,13 @@
+## Python environment (mandatory)
+
+- Never create, use, or install packages into a Python virtual environment anywhere under `C:\Users\artur\OneDrive`.
+- Keep this repository's environment outside OneDrive at `C:\Python\StochVolModels312`.
+- Use `C:\Python\StochVolModels312\Scripts\python.exe` for Python, tests, linters, and package installation.
+- If it is missing, create it with `py -3.12 -m venv C:\Python\StochVolModels312`.
+- Never run plain `uv sync` or plain `uv run` from this checkout: uv otherwise creates `<repo>\.venv` even when uv was launched through a Python executable under `C:\Python`.
+- If a uv project operation is required, first set `UV_PROJECT_ENVIRONMENT=C:\Python\StochVolModels312`; for pip-style operations prefer `uv pip ... --python C:\Python\StochVolModels312\Scripts\python.exe`.
+- If any OneDrive-local environment already exists, do not use it; report it for removal.
+
 # AGENTS.md
 
 Guidance for AI coding agents working in the **StochVolModels** repository.
@@ -254,11 +264,3 @@ publish without the maintainer explicitly asking for a release.
   compatibility helper. Changing that numerical path requires separate baseline approval.
 - The `rtol=1e-7` regression tolerance has roughly 7x headroom over the observed
   Linux-versus-Windows deviation.
-
-## Python environment
-
-- Keep this repository's Python environment outside OneDrive at `C:\Python\StochVolModels312`.
-- Never create, use, or install packages into a repository-local `.venv`.
-- Use `C:\Python\StochVolModels312\Scripts\python.exe` for all Python commands.
-- Run tools through that interpreter, for example `C:\Python\StochVolModels312\Scripts\python.exe -m pytest` and `C:\Python\StochVolModels312\Scripts\python.exe -m pip`.
-- If the environment is missing, create it with `py -3.12 -m venv C:\Python\StochVolModels312`; do not create `.venv` under the repository.
