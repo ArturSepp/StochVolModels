@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata from this file."
 type: software
-title: "StochVolModels: stochastic-volatility option pricing and calibration in Python"
+title: "stochvolmodels: Fourier-transform pricing, Monte Carlo validation, and calibration of European options under stochastic-volatility models in Python"
 abstract: >-
   Fourier-transform pricing, Monte Carlo validation, and calibration of European options under
   stochastic-volatility models in Python.
