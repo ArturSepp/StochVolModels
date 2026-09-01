@@ -33,7 +33,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 html_theme = "furo"
 html_baseurl = "https://stochvolmodels.readthedocs.io/en/latest/"
-html_title = "stochvolmodels - stochastic-volatility option analytics"
+html_title = "stochvolmodels - stochastic-volatility pricing and calibration"
 html_short_title = "stochvolmodels"
 html_theme_options = {
     "source_repository": "https://github.com/ArturSepp/StochVolModels/",
