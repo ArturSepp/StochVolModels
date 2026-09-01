@@ -1,7 +1,7 @@
 # stochvolmodels
 
 **Fourier-transform pricing, Monte Carlo validation, and calibration of European options under
-stochastic-volatility models in Python.**
+stochastic-volatility models in Python**
 
 The stable workflows cover European vanilla and related variance analytics under Heston and the
 Karasinski-Sepp log-normal stochastic-volatility model; experimental research modules are labelled
@@ -30,6 +30,8 @@ separately rather than presented as stable derivatives infrastructure.
 ## Statement of need
 
 `stochvolmodels` is the reference implementation of the Karasinski-Sepp log-normal stochastic volatility model, maintained by one of the model's originators, with the Heston model implemented alongside as a benchmark. The design goal is a single generic interface for a stochastic volatility model — a closed-form moment generating function for Fourier-transform pricing on one side, Monte Carlo dynamics on the other — so that analytic prices, simulated prices, and calibrated implied volatilities are directly comparable model to model.
+
+### Key differentiators
 
 Researchers and quantitative practitioners need more than a standalone pricing formula when they
 evaluate a stochastic-volatility specification: market quotes must share explicit forward,
