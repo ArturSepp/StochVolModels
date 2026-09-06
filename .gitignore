@@ -138,3 +138,4 @@ dmypy.json
 /agents/
 /papers/sv_for_factor_hjm/empirics/xml/
 /src/stochvolmodels/pde_solvers/
+/papers/sv_for_factor_hjm/.private
