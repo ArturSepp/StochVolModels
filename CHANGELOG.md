@@ -4,6 +4,11 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+### Fixed
+- Read the Docs builds now use the service-provided canonical base URL, normalize index-page
+  canonicals to trailing-slash URLs, and publish a canonical-only sitemap so `latest`/`stable`
+  aliases do not compete in search indexing.
+
 ## [2.4.0] - 2026-08-28
 
 ### Added
