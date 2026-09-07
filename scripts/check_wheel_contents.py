@@ -68,8 +68,8 @@ def check_wheel(wheel_path: Path) -> None:
         for member in members
         if member.startswith("stochvolmodels/tests/test_") and member.endswith(".py")
     }
-    assert len(test_modules) == 32, (
-        f"expected exactly 32 automated test modules, found {len(test_modules)}"
+    assert len(test_modules) == 33, (
+        f"expected exactly 33 automated test modules, found {len(test_modules)}"
     )
     assert not any(member.endswith("_test.py") for member in members), (
         "automated tests must use the test_*.py form"

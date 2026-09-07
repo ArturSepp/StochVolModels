@@ -24,6 +24,8 @@ pytestmark = pytest.mark.repository_only
 def _load_docs_conf():
     if REPOSITORY_ROOT is None:
         pytest.skip("documentation sources are absent from an installed wheel")
+    if importlib.util.find_spec("tomllib") is None:
+        pytest.skip("documentation builds use Python 3.11 or newer")
     config_path = REPOSITORY_ROOT / "docs" / "conf.py"
     spec = importlib.util.spec_from_file_location("stochvolmodels_docs_conf", config_path)
     assert spec is not None and spec.loader is not None
