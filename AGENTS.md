@@ -28,29 +28,34 @@ Distribution and import name `stochvolmodels`. Licensed MIT (`LICENSE.txt`).
 
 ## Ecosystem position
 
-This package is one of nine open-source Python libraries maintained at
-[github.com/ArturSepp](https://github.com/ArturSepp). Before implementing anything
-non-trivial, check whether it already exists in one of these:
+This package is one of ten public Python libraries maintained at
+[github.com/ArturSepp](https://github.com/ArturSepp). Check the owning package before
+adding a capability or copying code between repositories.
 
 | Package | Repository | Purpose |
 |---|---|---|
-| `qis` | QuantInvestStrats | Performance analytics, factsheets, visualisation |
-| `optimalportfolios` | OptimalPortfolios | Portfolio construction and backtesting |
-| `factorlasso` | factorlasso | Sparse factor models and factor covariance estimation |
-| `bbg-fetch` | BloombergFetch | Bloomberg data fetching |
-| `trendfollowing` | TrendFollowingSystems | Trend-following systems: closed-form theory and replication |
-| `privateassets` | PrivateAssets | Private-assets analytics |
-| `goal-based-allocation` | GoalBasedAllocation | Dynamic MV allocation under regime-switching jump-diffusions |
-| `stochvolmodels` | StochVolModels | Stochastic volatility pricing analytics |
-| `vanilla-option-pricers` | VanillaOptionPricers | Vanilla option pricers and implied volatility fitters |
+| `qis` | QuantInvestStrats | performance analytics, backtesting, and factsheet reporting |
+| `optimalportfolios` | OptimalPortfolios | portfolio construction and rolling backtesting |
+| `factorlasso` | FactorLasso | sparse factor-model estimation |
+| `bbg-fetch` | BloombergFetch | Bloomberg data in pandas DataFrames |
+| `stochvolmodels` | StochVolModels | stochastic-volatility pricing and calibration |
+| `trendfollowing` | TrendFollowingSystems | closed-form trend-following analytics |
+| `privateassets` | PrivateAssets | multi-factor PME for private assets |
+| `goal-based-allocation` | GoalBasedAllocation | goal-based allocation under regime-switching jump-diffusions |
+| `vanilla-option-pricers` | VanillaOptionPricers | Numba-vectorised BSM and Bachelier pricing |
+| `option-chain-analytics` | OptionChainAnalytics | point-in-time option-chain data and queries |
 
-Actual package dependencies within the stack: `optimalportfolios` depends on `qis`
-and `factorlasso`; `trendfollowing` and `privateassets` depend on `qis`; `stochvolmodels`
-depends on `vanilla-option-pricers` and has an optional `research` extra that pulls in
-`qis`. The others are independent.
+Core dependency edges: `optimalportfolios` consumes `qis` and `factorlasso`;
+`trendfollowing` and `privateassets` consume `qis`; `stochvolmodels` consumes
+`vanilla-option-pricers`; `option-chain-analytics` consumes `qis` and
+`vanilla-option-pricers`. The remaining packages have no core stack dependencies.
 
-Do not vendor or copy code between these packages. If functionality belongs in a
-sibling package, say so rather than reimplementing it here.
+Optional edges: PrivateAssets' `factors` extra adds `factorlasso`; StochVolModels'
+`research` extra adds `qis` and `option-chain-analytics`; OCA's `bloomberg` and `all`
+extras add `bbg-fetch`. Core imports must work without optional dependencies.
+OCA never imports StochVolModels or the private SigmaStrats consumer. Exact
+maintainer-tool exceptions are recorded in `.github/stack-policy.json`; they do
+not authorise adding those dependencies to core or importing them at package root.
 
 ## Repository layout
 
@@ -173,7 +178,7 @@ location inside the generated shared-agent block below; do not edit that generat
 <!-- ===== SHARED AGENT CORE (standalone variant) — begin =====
      Generated from SHARED_AGENT_CORE.md in the maintainer's project knowledge. Do not hand-edit
      between these markers — propose the change to the maintainer instead. Variants: builder
-     (qis) / consumer / standalone. Last synced 2026-08-08, agent core v1.2. -->
+     (qis) / consumer / standalone. Last synced 2026-09-08, agent core v1.5 -->
 
 ## Domain invariants
 
@@ -187,8 +192,9 @@ location inside the generated shared-agent block below; do not edit that generat
 ## Dependency surface
 
 This package depends on the lower-level `vanilla-option-pricers` package for Black-Scholes-Merton
-and Bachelier analytics. Nothing else from the stack is a runtime dependency — `qis` enters only
-via the optional `research` extra used by `papers/`. Ask before adding any dependency.
+and Bachelier analytics. `qis` and `option-chain-analytics` enter only via the optional
+`research` extra used by isolated research adapters and `papers/`. Ask before adding any
+dependency.
 
 **Never invent a symbol.** If a function, class, or keyword argument is not in the export
 surface of this package or of a dependency, it does not exist. Check in one line —
@@ -250,9 +256,11 @@ verified against these before being proposed.
 3. the software BibTeX entry in `README.md` (if it pins a version)
 4. `CITATION.cff` version, release date, and preferred-citation metadata
 
-Then: commit, tag `v<version>`, build and publish to PyPI, and cut a GitHub Release
-with the same tag. Do not bump versions as part of an unrelated change, and do not
-publish without the maintainer explicitly asking for a release.
+For an authorized publication: commit, tag that exact main-reachable commit as
+`v<version>`, then build, verify and publish its artifacts. Frequent PyPI updates are
+supported. A GitHub Release page is optional and created only when requested; it is not
+required for a local build, pip installation or routine package publication. Development
+versions on main may be ahead of PyPI. Do not publish or bump a version for unrelated work.
 
 ## Known issues
 

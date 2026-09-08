@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stochvolmodels"
-version = "2.4.0"
+version = "2.4.1"
 description = "Fourier-transform pricing, Monte Carlo validation, and calibration of European options under stochastic-volatility models in Python"
 readme = "README.md"
 license = "MIT"
@@ -155,6 +155,7 @@ extend-select = ["TID251", "TID253", "ICN"]
 "trendfollowing".msg = "Subject packages must not depend on each other."
 "privateassets".msg = "Subject packages must not depend on each other."
 "goal_based_allocation".msg = "Subject packages must not depend on each other."
+"bbg_fetch".msg = "A1: stochvolmodels has no declared dependency on bbg_fetch."
 
 [tool.ruff.lint.flake8-tidy-imports]
 banned-module-level-imports = [

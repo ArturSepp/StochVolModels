@@ -1,7 +1,7 @@
 # stochvolmodels
 
-`stochvolmodels` provides Fourier-transform pricing, Monte Carlo validation, and calibration of
-European options under stochastic-volatility models in Python.
+Fourier-transform pricing, Monte Carlo validation, and calibration of European options under
+stochastic-volatility models in Python.
 
 The package connects one option-chain representation to Heston and Karasinski-Sepp log-normal SV
 pricing, implied-volatility inversion, constrained calibration, Monte Carlo checks, and the

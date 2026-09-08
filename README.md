@@ -293,14 +293,14 @@ code does not depend on the original provider:
 | Data route | Local data needed | SVM entry point | Example |
 |---|---|---|---|
 | Bundled OCA-generated chain | No | `get_oca_simulated_chain_data()` | `run_logsv_smile_fitter.py` |
-| Any normalized OCA panel | No for OCA's simulator | `load_option_chain()` | `run_oca_logsv_calibration.py` |
+| Any normalised OCA panel | No for OCA's simulator | `load_option_chain()` | `run_oca_logsv_calibration.py` |
 | OCA CBOE cache | Yes | `load_cboe_option_chain()` | `load_cboe_option_chain.py` |
 | OCA ThetaData EOD cache | Yes | `load_thetadata_option_chain()` | `run_spy_thetadata_month.py` |
 | OCA Tardis hourly archive | Yes | `load_tardis_hourly_option_chain()` | clustered-jump paper workflows |
 | OCA Tardis 08:00 UTC EOD cache | Yes | `load_tardis_eod_option_chain()` | clustered-jump chain calibration |
 
 The repository does not redistribute CBOE, ThetaData, or Tardis records. OCA owns provider access,
-normalization, and caches; SVM receives only the strikes, option types, forwards, discounts, and
+normalisation, and caches; SVM receives only the strikes, option types, forwards, discounts, and
 bid/ask quotes required for an illustration or calibration.
 
 #### Ready chain: no credentials and no OCA runtime dependency
@@ -335,9 +335,9 @@ a substitute for calibrating the full term-structure model.
 
 ### Loading cached SPX/VIX chains for experiments
 
-Empirical CBOE chains remain owned and normalized by OptionChainAnalytics. Install the optional
+Empirical CBOE chains remain owned and normalised by OptionChainAnalytics. Install the optional
 packages separately, configure `RESOURCE_PATH` in `src/stochvolmodels/settings.yaml`, place the
-normalized cache under its `cboe_options/` subdirectory, and request only the observation window
+normalised cache under its `cboe_options/` subdirectory, and request only the observation window
 needed by the experiment:
 
 ```bash
@@ -367,7 +367,7 @@ For a credential-free end-to-end OCA 5 conversion and LogSV calibration, run:
 python examples/calibration/run_oca_logsv_calibration.py
 ```
 
-The example uses OCA's deterministic simulated panel. Replace its loader with any normalized OCA
+The example uses OCA's deterministic simulated panel. Replace its loader with any normalised OCA
 `OptionsDataDFs` source while keeping the same `load_option_chain` and LogSV calibration calls.
 Select `LocalTests.CONVERT_CHAIN` or `LocalTests.CALIBRATE_LOGSV` in the script's main guard.
 
@@ -641,6 +641,15 @@ StochVolModels/
 └── README.md
 ```
 
+## Acknowledgments
+
+Special thanks to co-authors and collaborators:
+- Parviz Rakhmonov
+- Vladimir Lucic
+- Alexander Lipton
+
+For additional research and advanced analytics, see the companion modules and papers included in this package.
+
 ## Ecosystem
 
 This package is part of an open-source Python stack for quantitative finance — full catalogue at [github.com/ArturSepp](https://github.com/ArturSepp):
@@ -668,10 +677,6 @@ canonical ten-package catalogue.
 - [Request a feature](https://github.com/ArturSepp/StochVolModels/issues/new?template=feature_request.yml), describing the payoff, quote convention, or model edge case, the current workaround, and the smallest useful API.
 - Read [CONTRIBUTING.md](CONTRIBUTING.md) for scope, development commands, numerical-change rules, and pull-request guidance.
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.txt) file for details.
-
 ## Citation
 
 If you use this package in your research, please cite the relevant papers. Machine-readable
@@ -682,7 +687,7 @@ metadata is available in [`CITATION.cff`](CITATION.cff).
   title={StochVolModels: Python Implementation of Stochastic Volatility Models},
   author={Sepp, Artur},
   year={2026},
-  version={2.4.0},
+  version={2.4.1},
   howpublished={\url{https://github.com/ArturSepp/StochVolModels}},
   note={Python package for pricing analytics and Monte Carlo simulations}
 }
@@ -729,11 +734,6 @@ note={Preprint: https://ssrn.com/abstract=4646925}
 }
 ```
 
-## Acknowledgments
+## License
 
-Special thanks to co-authors and collaborators:
-- Parviz Rakhmonov  
-- Vladimir Lucic
-- Alexander Lipton
-
-For additional research and advanced analytics, see the companion modules and papers included in this package.
+This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.txt) file for details.

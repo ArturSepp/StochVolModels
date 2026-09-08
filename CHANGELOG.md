@@ -4,7 +4,26 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-09-08
+
+### Added
+
+- Added explicit stack dependency and optional-import boundary checks, including
+  isolated maintainer adapters, plus a fresh Python 3.10 lowest-direct dependency CI lane.
+
+- Added tag-driven PyPI Trusted Publishing with release-identity and distribution
+  validation; creating a GitHub Release remains optional.
+
+- Added a separate lowest-dependency CI variant for the `research` extra and checks
+  that core imports do not load optional research dependencies.
+
+### Changed
+
+- Aligned package summaries, software citations, README navigation, and documentation
+  landing pages with the canonical package identity and Read the Docs documentation.
+
 ### Fixed
+
 - Read the Docs builds now use the service-provided canonical base URL, normalize index-page
   canonicals to trailing-slash URLs, and publish a canonical-only sitemap so `latest`/`stable`
   aliases do not compete in search indexing.
