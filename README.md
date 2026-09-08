@@ -133,7 +133,7 @@ because Numba compiles the numerical kernels. See the
 
 ### Core Dependencies
 - `python >= 3.10`
-- `vanilla-option-pricers >= 2.0.0`
+- `vanilla-option-pricers >= 2.1.0`
 - `numba >= 0.60.0`
 - `numpy >= 2.0`
 - `scipy >= 1.12.0`
@@ -147,7 +147,7 @@ because Numba compiles the numerical kernels. See the
 |---|---|---|
 | `research` | `qis >= 5.11.0`, `option-chain-analytics[cboe] >= 5.2.0` | option-chain calibration, local Parquet data, and scripts in `papers/` |
 | `visualization` | `plotly >= 5.0.0` | interactive figures |
-| `numerical` | `scikit-learn >= 1.3.0`, `statsmodels >= 0.14.0` | statistical fits |
+| `numerical` | `scikit-learn >= 1.3.0`, `statsmodels >= 0.14.2` | statistical fits |
 | `jupyter` | `jupyter`, `notebook`, `jupyterlab`, `ipykernel`, `ipywidgets` | notebooks |
 
 Install an extra using

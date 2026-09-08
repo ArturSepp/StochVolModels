@@ -24,8 +24,12 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Fixed
 
-- Raised the optional research statsmodels floor to 0.14.2 after the fresh Python 3.10
-  research CI environment reproduced a NumPy 2.0 ABI failure in the 0.14.0 wheel.
+- Raised the core vanilla-option-pricers floor to 2.1.0, whose stable normal CDF and
+  inverse-CDF implementation meets the existing pricing and implied-volatility accuracy
+  checks; the previously allowed 2.0.0 approximation fails those unchanged checks.
+
+- Raised the optional numerical statsmodels floor to 0.14.2 to exclude the NumPy 2.0
+  ABI failure in the 0.14.0 wheel exposed by the fresh Python 3.10 research CI environment.
 
 - Read the Docs builds now use the service-provided canonical base URL, normalize index-page
   canonicals to trailing-slash URLs, and publish a canonical-only sitemap so `latest`/`stable`

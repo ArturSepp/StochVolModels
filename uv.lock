@@ -4511,7 +4511,7 @@ requires-dist = [
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=8.0,<10.0" },
     { name = "statsmodels", marker = "extra == 'numerical'", specifier = ">=0.14.2" },
     { name = "stochvolmodels", extras = ["research", "visualization", "numerical", "jupyter"], marker = "extra == 'all'" },
-    { name = "vanilla-option-pricers", specifier = ">=2.0.0" },
+    { name = "vanilla-option-pricers", specifier = ">=2.1.0" },
 ]
 provides-extras = ["research", "visualization", "numerical", "jupyter", "docs", "all"]
 
