@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "source_registry": "ArturSepp/scripts/public_registry.json",
+  "import": "stochvolmodels",
+  "core": [
+    "vanilla_option_pricers"
+  ],
+  "optional": [
+    "option_chain_analytics",
+    "qis"
+  ],
+  "forbidden": [
+    "bbg_fetch",
+    "factorlasso",
+    "goal_based_allocation",
+    "optimalportfolios",
+    "privateassets",
+    "trendfollowing"
+  ],
+  "optional_adapters": [
+    {
+      "path": "src/stochvolmodels/data/fetch_option_chain.py",
+      "modules": [
+        "option_chain_analytics",
+        "qis"
+      ],
+      "reason": "Dedicated optional-data leaf, excluded from package-root reachability."
+    },
+    {
+      "path": "src/stochvolmodels/pricers/factor_hjm/**",
+      "modules": [
+        "option_chain_analytics",
+        "qis"
+      ],
+      "reason": "Existing isolated experimental HJM research modules."
+    },
+    {
+      "path": "src/stochvolmodels/**/run_local/*_run.py",
+      "modules": [
+        "option_chain_analytics",
+        "qis"
+      ],
+      "reason": "Source-only development entry points excluded from distributions."
+    }
+  ],
+  "development_imports": []
+}

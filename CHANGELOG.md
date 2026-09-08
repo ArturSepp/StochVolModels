@@ -4,7 +4,33 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-09-08
+
+### Added
+
+- Added explicit stack dependency and optional-import boundary checks, including
+  isolated maintainer adapters, plus a fresh Python 3.10 lowest-direct dependency CI lane.
+
+- Added tag-driven PyPI Trusted Publishing with release-identity and distribution
+  validation; creating a GitHub Release remains optional.
+
+- Added a separate lowest-dependency CI variant for the `research` extra and checks
+  that core imports do not load optional research dependencies.
+
+### Changed
+
+- Aligned package summaries, software citations, README navigation, and documentation
+  landing pages with the canonical package identity and Read the Docs documentation.
+
 ### Fixed
+
+- Raised the core vanilla-option-pricers floor to 2.1.0, whose stable normal CDF and
+  inverse-CDF implementation meets the existing pricing and implied-volatility accuracy
+  checks; the previously allowed 2.0.0 approximation fails those unchanged checks.
+
+- Raised the optional numerical statsmodels floor to 0.14.2 to exclude the NumPy 2.0
+  ABI failure in the 0.14.0 wheel exposed by the fresh Python 3.10 research CI environment.
+
 - Read the Docs builds now use the service-provided canonical base URL, normalize index-page
   canonicals to trailing-slash URLs, and publish a canonical-only sitemap so `latest`/`stable`
   aliases do not compete in search indexing.
