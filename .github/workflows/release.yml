@@ -53,7 +53,7 @@ jobs:
       - name: Run the tagged source test suite
         run: |
           uv sync --locked --group test
-          uv run --no-sync pytest
+          uv run --no-sync pytest -m "not slow"
       - name: Build the tagged documentation with warnings as errors
         run: |
           uv sync --locked --extra docs
@@ -95,8 +95,27 @@ jobs:
           path: ${{ runner.temp }}/pending-upload/
           if-no-files-found: error
           retention-days: 30
-  publish:
+  windows-numerical:
+    name: Tagged Windows numerical regressions
     needs: validate
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: "3.12"
+      - name: Sync the tagged locked test environment
+        run: uv sync --locked --group test
+      - name: Run the tagged numerical regression suite
+        run: uv run --no-sync pytest -m slow -v
+  publish:
+    needs: [validate, windows-numerical]
     if: needs.validate.outputs.publish == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -115,8 +134,8 @@ jobs:
         with:
           skip-existing: false
   release-page:
-    needs: [validate, publish]
-    if: always() && inputs.github_release && needs.validate.result == 'success' && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+    needs: [validate, windows-numerical, publish]
+    if: always() && inputs.github_release && needs.validate.result == 'success' && needs.windows-numerical.result == 'success' && (needs.publish.result == 'success' || needs.publish.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

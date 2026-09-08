@@ -24,6 +24,9 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Fixed
 
+- Raised the optional research statsmodels floor to 0.14.2 after the fresh Python 3.10
+  research CI environment reproduced a NumPy 2.0 ABI failure in the 0.14.0 wheel.
+
 - Read the Docs builds now use the service-provided canonical base URL, normalize index-page
   canonicals to trailing-slash URLs, and publish a canonical-only sitemap so `latest`/`stable`
   aliases do not compete in search indexing.
