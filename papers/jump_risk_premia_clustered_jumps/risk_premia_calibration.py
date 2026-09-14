@@ -97,12 +97,12 @@ def calibrate_risk_premia_at_dates(options_data_dfs: OptionsDataDFs,
     return fitted_state_params, fitted_params_ts, plot_figs
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     INFER_PARAMS = 1
     CALIBRATE_RISK_PREMIA = 2
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -129,7 +129,7 @@ def run_local_test(local_test: LocalTests):
         calibration_dates = {f"{k:%d-%b-%Y}": k for k in schedule_at_8h}
         print(f"calibration_dates={calibration_dates}")
 
-    if local_test == LocalTests.INFER_PARAMS:
+    if local == Locals.INFER_PARAMS:
         price = options_data_dfs.get_spot_price()
         daily_schedule_at_8h = qis.generate_dates_schedule(time_period=qis.get_time_period(df=price),
                                                            freq='D',
@@ -140,7 +140,7 @@ def run_local_test(local_test: LocalTests):
         model_params.print()
         he.illustrate_hawkes_jd_joint(price=sample, model_params=model_params, af=365)
 
-    elif local_test == LocalTests.CALIBRATE_RISK_PREMIA:
+    elif local == Locals.CALIBRATE_RISK_PREMIA:
         fitted_state_params, fitted_params_ts, plot_figs = calibrate_risk_premia_at_dates(
             options_data_dfs=options_data_dfs,
             calibration_dates=calibration_dates,
@@ -162,4 +162,4 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.CALIBRATE_RISK_PREMIA)
+    run_local(local=Locals.CALIBRATE_RISK_PREMIA)

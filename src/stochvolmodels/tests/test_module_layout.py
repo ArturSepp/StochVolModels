@@ -177,6 +177,57 @@ def test_development_runner_layout() -> None:
 
 @pytest.mark.repository_only
 @pytest.mark.skipif(
+    REPOSITORY_ROOT is None, reason="examples and papers are absent from installed wheels"
+)
+def test_repository_plural_dispatchers_use_current_api() -> None:
+    """Plural example and paper dispatchers use ``Locals`` and ``run_local(local=...)``."""
+    assert REPOSITORY_ROOT is not None
+    failures: list[str] = []
+    search_roots = (REPOSITORY_ROOT / "examples", REPOSITORY_ROOT / "papers")
+
+    for search_root in search_roots:
+        for path in sorted(search_root.rglob("*.py")):
+            relative = path.relative_to(REPOSITORY_ROOT).as_posix()
+            tree = _tree(path)
+            classes = {
+                node.name
+                for node in tree.body
+                if isinstance(node, ast.ClassDef)
+            }
+            functions = {
+                node.name: node
+                for node in tree.body
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            }
+            names = {
+                node.id
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Name)
+            }
+            if {"LocalTests", "local_test"} & names or "run_local_test" in functions:
+                failures.append(f"{relative}: retains the old plural dispatcher API")
+            if "Locals" not in classes:
+                continue
+
+            dispatcher = functions.get("run_local")
+            if dispatcher is None:
+                failures.append(f"{relative}: Locals enum requires run_local")
+                continue
+            args = dispatcher.args.args
+            annotation = args[0].annotation if args else None
+            if (
+                not args
+                or args[0].arg != "local"
+                or not isinstance(annotation, ast.Name)
+                or annotation.id != "Locals"
+            ):
+                failures.append(f"{relative}: expected run_local(local: Locals, ...)")
+
+    assert not failures, "repository dispatcher violations:\n" + "\n".join(failures)
+
+
+@pytest.mark.repository_only
+@pytest.mark.skipif(
     REPOSITORY_ROOT is None, reason="source checkout is absent from installed wheel"
 )
 def test_production_modules_do_not_own_or_import_development_dispatchers() -> None:

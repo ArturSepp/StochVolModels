@@ -73,7 +73,7 @@ python -m papers.jump_risk_premia_clustered_jumps.hawkes_estimator
 python -m papers.jump_risk_premia_clustered_jumps.risk_premia_mc
 ```
 
-These are development entry points selected through each module's `LocalTests` enum. All
+These are development entry points selected through each module's `Locals` enum. All
 `OptionsDataDFs` consumers in this project now use the centralized current-OCA adapters, but the
 local data files are still required. Full-history calibration and simulation cases can be
 computationally expensive and are not part of the package wheel or the CI replication gate.

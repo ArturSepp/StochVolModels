@@ -7,14 +7,14 @@ from enum import Enum
 from stochvolmodels import HestonPricer, HestonParams, OptionChain
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     SLICES_IN_PARAMS = 1
 
 
-def run_local_test(local_test: LocalTests) -> None:
+def run_local(local: Locals) -> None:
     """Run local tests for development and debugging purposes."""
 
-    if local_test == LocalTests.SLICES_IN_PARAMS:
+    if local == Locals.SLICES_IN_PARAMS:
         # define parameters for bootstrap
         params_dict = {'rho=0.0': HestonParams(v0=0.2**2, theta=0.2**2, kappa=4.0, volvol=0.75, rho=0.0),
                        'rho=-0.4': HestonParams(v0=0.2**2, theta=0.2**2, kappa=4.0, volvol=0.75, rho=-0.4),
@@ -33,4 +33,4 @@ def run_local_test(local_test: LocalTests) -> None:
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.SLICES_IN_PARAMS)
+    run_local(local=Locals.SLICES_IN_PARAMS)

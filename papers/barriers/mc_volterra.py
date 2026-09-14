@@ -360,13 +360,13 @@ def plot_heston_barrier_path(t: float,
                   ax=axs[2])
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     PLOT_ANALYTIC_ZERO_CORR = 1
     PLOT_HESTON_BARRIER = 2
     PLOT_HESTON_BARRIER_PATH = 3
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -375,7 +375,7 @@ def run_local_test(local_test: LocalTests):
 
     t = 1.0
 
-    if local_test == LocalTests.PLOT_ANALYTIC_ZERO_CORR:
+    if local == Locals.PLOT_ANALYTIC_ZERO_CORR:
         sigma0 = 0.2
         plot_heston_zero_corr(t=t,
                               x0=0.25,
@@ -386,7 +386,7 @@ def run_local_test(local_test: LocalTests):
                               steps_per_day=1,
                               nb_path=100000)
 
-    elif local_test == LocalTests.PLOT_HESTON_BARRIER:
+    elif local == Locals.PLOT_HESTON_BARRIER:
         sigma0 = 0.2
         plot_heston_barrier(t=t,
                             x0=0.25,
@@ -397,7 +397,7 @@ def run_local_test(local_test: LocalTests):
                             volvol=0.25,
                             nb_path=500)
 
-    elif local_test == LocalTests.PLOT_HESTON_BARRIER_PATH:
+    elif local == Locals.PLOT_HESTON_BARRIER_PATH:
         sigma0 = 0.2
         plot_heston_barrier_path(t=t,
                                  x0=0.25,
@@ -419,6 +419,6 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    local_test = LocalTests.PLOT_HESTON_BARRIER
+    local = Locals.PLOT_HESTON_BARRIER
 
-    run_local_test(local_test=local_test)
+    run_local(local=local)

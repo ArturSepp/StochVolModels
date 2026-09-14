@@ -310,23 +310,23 @@ def plot_delta_comps():
     print(deltas)
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     PLOT_DELTAS = 1
     CHAIN_ANALYSIS = 2
     DELTA_TIME_SERIES = 3
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
     Use for quick verification during development.
     """
 
-    if local_test == LocalTests.PLOT_DELTAS:
+    if local == Locals.PLOT_DELTAS:
         plot_deltas()
 
-    elif local_test == LocalTests.CHAIN_ANALYSIS:
+    elif local == Locals.CHAIN_ANALYSIS:
         timestamp = pd.Timestamp('2022-10-07 08:00:00+00:00')
         options_data_dfs = load_tardis_hourly_options_data(ticker='BTC')
         chain = create_chain_at_time(options_data=options_data_dfs, value_time=timestamp)
@@ -349,7 +349,7 @@ def run_local_test(local_test: LocalTests):
         put.subplot_border(fig1, nrows=2, ncols=1)
         put.subplot_border(fig2, nrows=2, ncols=1)
 
-    elif local_test == LocalTests.DELTA_TIME_SERIES:
+    elif local == Locals.DELTA_TIME_SERIES:
         plot_delta_comps()
 
     plt.show()
@@ -357,4 +357,4 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.PLOT_DELTAS)
+    run_local(local=Locals.PLOT_DELTAS)

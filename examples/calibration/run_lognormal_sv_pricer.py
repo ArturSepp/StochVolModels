@@ -13,7 +13,7 @@ from stochvolmodels.utils import plots as plot
 from stochvolmodels import LogSVPricer, LogSvParams, OptionChain, LogsvModelCalibrationType
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     COMPUTE_MODEL_PRICES = 1
     PLOT_MODEL_IMPLIED_VOLS = 2
     PLOT_MODEL_VOLS_IN_PARAMS = 3
@@ -27,7 +27,7 @@ class LocalTests(Enum):
 
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -40,7 +40,7 @@ def run_local_test(local_test: LocalTests):
     # define model params    
     params = LogSvParams(sigma0=1.0, theta=1.0, kappa1=5.0, kappa2=5.0, beta=0.2, volvol=2.0)
 
-    if local_test == LocalTests.COMPUTE_MODEL_PRICES:
+    if local == Locals.COMPUTE_MODEL_PRICES:
         # 1. one price
         model_price, vol = logsv_pricer.price_vanilla(params=params,
                                                       ttm=0.25,
@@ -65,7 +65,7 @@ def run_local_test(local_test: LocalTests):
         print(model_prices)
         print(vols)
 
-    elif local_test == LocalTests.PLOT_MODEL_IMPLIED_VOLS:
+    elif local == Locals.PLOT_MODEL_IMPLIED_VOLS:
         # define uniform option chain
         option_chain = OptionChain.get_uniform_chain(ttms=np.array([0.083, 0.25]),
                                                      ids=np.array(['1m', '3m']),
@@ -73,7 +73,7 @@ def run_local_test(local_test: LocalTests):
         logsv_pricer.plot_model_ivols(option_chain=option_chain,
                                       params=params)
 
-    elif local_test == LocalTests.PLOT_MODEL_VOLS_IN_PARAMS:
+    elif local == Locals.PLOT_MODEL_VOLS_IN_PARAMS:
 
         # define uniform option chain
         option_chain = OptionChain.get_uniform_chain(ttms=np.array([0.083, 0.25]),
@@ -89,7 +89,7 @@ def run_local_test(local_test: LocalTests):
         logsv_pricer.plot_model_slices_in_params(option_slice=option_slice,
                                                  params_dict=params_dict)
 
-    elif local_test == LocalTests.COMPARE_MODEL_VOLS_TO_MC:
+    elif local == Locals.COMPARE_MODEL_VOLS_TO_MC:
         btc_option_chain = sv.get_btc_test_chain_data()
         uniform_chain_data = OptionChain.to_uniform_strikes(obj=btc_option_chain, num_strikes=31)
         btc_calibrated_params = LogSvParams(sigma0=0.8327, theta=1.0139, kappa1=4.8609, kappa2=4.7940, beta=0.1988, volvol=2.3694)
@@ -102,13 +102,13 @@ def run_local_test(local_test: LocalTests):
                                                            params=btc_calibrated_params,
                                                            nb_path=100000)
 
-    elif local_test == LocalTests.PLOT_FIT_TO_BITCOIN_OPTION_CHAIN:
+    elif local == Locals.PLOT_FIT_TO_BITCOIN_OPTION_CHAIN:
         btc_option_chain = sv.get_btc_test_chain_data()
         btc_calibrated_params = LogSvParams(sigma0=0.8327, theta=1.0139, kappa1=4.8609, kappa2=4.7940, beta=0.1988, volvol=2.3694)
         logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=btc_option_chain,
                                                  params=btc_calibrated_params)
 
-    elif local_test == LocalTests.MC_WITH_FIXED_RANDOMS:
+    elif local == Locals.MC_WITH_FIXED_RANDOMS:
         btc_option_chain = sv.get_btc_test_chain_data()
         W0s, W1s, dts = sv.get_randoms_for_chain_valuation(ttms=btc_option_chain.ttms,
                                                            nb_path=10000,
@@ -136,7 +136,7 @@ def run_local_test(local_test: LocalTests):
         print(option_prices_ttm)
 
 
-    elif local_test == LocalTests.ROUGH_MC_WITH_FIXED_RANDOMS:
+    elif local == Locals.ROUGH_MC_WITH_FIXED_RANDOMS:
         btc_option_chain = sv.get_btc_test_chain_data()
         Z0, Z1, grid_ttms = sv.get_randoms_for_rough_vol_chain_valuation(ttms=btc_option_chain.ttms,
                                                                              nb_path=10000,
@@ -164,7 +164,7 @@ def run_local_test(local_test: LocalTests):
                                                                                          timegrids=grid_ttms)
         print(option_prices_ttm)
 
-    elif local_test == LocalTests.BENCHM_ROUGH_PRICER:
+    elif local == Locals.BENCHM_ROUGH_PRICER:
         btc_option_chain = sv.get_btc_test_chain_data()
         # params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=1.0, beta=0.15, volvol=1.0)
         params0 = LogSvParams(sigma0=0.377, theta=0.347, kappa1=1.29, kappa2=1.93, beta=2.45, volvol=1.81)
@@ -254,7 +254,7 @@ def run_local_test(local_test: LocalTests):
                      color = "darkblue", fontsize = 14)
 
 
-    elif local_test == LocalTests.CALIBRATE_MODEL_TO_BTC_OPTIONS:
+    elif local == Locals.CALIBRATE_MODEL_TO_BTC_OPTIONS:
         btc_option_chain = sv.get_btc_test_chain_data()
         params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=2.18, beta=0.15, volvol=2.0)
         btc_calibrated_params = logsv_pricer.calibrate_model_params_to_chain(option_chain=btc_option_chain,
@@ -265,7 +265,7 @@ def run_local_test(local_test: LocalTests):
         logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=btc_option_chain,
                                                  params=btc_calibrated_params)
 
-    elif local_test == LocalTests.CALIBRATE_MODEL_TO_BTC_OPTIONS_WITH_MC:
+    elif local == Locals.CALIBRATE_MODEL_TO_BTC_OPTIONS_WITH_MC:
         btc_option_chain = sv.get_btc_test_chain_data()
         params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=2.18, beta=0.15, volvol=2.0)
         params0.H = 0.2
@@ -293,4 +293,4 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.ROUGH_MC_WITH_FIXED_RANDOMS)
+    run_local(local=Locals.ROUGH_MC_WITH_FIXED_RANDOMS)

@@ -82,11 +82,11 @@ def illustrate_with_implieds(ticker: str,
                              **kwargs)
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     PLOT_WITH_IMPLIEDS = 1
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -103,7 +103,7 @@ def run_local_test(local_test: LocalTests):
         freq='D',
     )
 
-    if local_test == LocalTests.PLOT_WITH_IMPLIEDS:
+    if local == Locals.PLOT_WITH_IMPLIEDS:
         time_period = da.TimePeriod(pd.Timestamp('2021-09-05'), pd.Timestamp('2022-11-19'), tz='UTC')
         illustrate_with_implieds(
             ticker=ticker,
@@ -119,4 +119,4 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.PLOT_WITH_IMPLIEDS)
+    run_local(local=Locals.PLOT_WITH_IMPLIEDS)

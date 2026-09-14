@@ -125,14 +125,14 @@ def load_price_data(ticker: str = 'BTC',
     return spot_price
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     PRINT_CHAIN_DATA = 1
     PLOT_SLICE_DATA = 2
     RUN_CHAIN_REPORT = 3
     GENERATE_VOL_CHAIN_NP = 4
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -150,23 +150,23 @@ def run_local_test(local_test: LocalTests):
     )
     chain = create_chain_at_time(options_data=options_data_dfs, value_time=value_time)
 
-    if local_test == LocalTests.PRINT_CHAIN_DATA:
+    if local == Locals.PRINT_CHAIN_DATA:
         for expiry, eslice in chain.expiry_slices.items():
             eslice.print()
 
-    elif local_test == LocalTests.PLOT_SLICE_DATA:
+    elif local == Locals.PLOT_SLICE_DATA:
         eslice = chain.expiry_slices['31MAR23']
         plot_slice_vols(eslice=eslice)
         plot_slice_open_interest(eslice=eslice)
 
-    elif local_test == LocalTests.RUN_CHAIN_REPORT:
+    elif local == Locals.RUN_CHAIN_REPORT:
         figs = run_chain_report(chain=chain)
         qis.save_figs_to_pdf(figs=figs,
                              file_name=f"chain_report_{value_time:%Y%m%dT%H%M%S}",
                              orientation='landscape',
                              local_path=lp.get_output_path())
 
-    elif local_test == LocalTests.GENERATE_VOL_CHAIN_NP:
+    elif local == Locals.GENERATE_VOL_CHAIN_NP:
         option_chain = generate_vol_chain_np(chain=chain,
                                              value_time=value_time,
                                              days_map={'1w': 7, '1m': 30},
@@ -181,4 +181,4 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.PRINT_CHAIN_DATA)
+    run_local(local=Locals.PRINT_CHAIN_DATA)

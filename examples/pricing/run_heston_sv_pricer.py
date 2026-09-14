@@ -9,14 +9,14 @@ import stochvolmodels as sv
 from stochvolmodels import HestonPricer, HestonParams, OptionChain, BTC_HESTON_PARAMS
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     HESTON_WALKTHROUGH = 1
 
 
-def run_local_test(local_test: LocalTests) -> None:
+def run_local(local: Locals) -> None:
     """Run local tests for development and debugging purposes."""
 
-    if local_test == LocalTests.HESTON_WALKTHROUGH:
+    if local == Locals.HESTON_WALKTHROUGH:
         pricer = HestonPricer()
 
         # define model params
@@ -85,4 +85,4 @@ def run_local_test(local_test: LocalTests) -> None:
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.HESTON_WALKTHROUGH)
+    run_local(local=Locals.HESTON_WALKTHROUGH)

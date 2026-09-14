@@ -149,13 +149,13 @@ def compute_analytic_f(upsilon_k: float, y: np.ndarray, x0: float, omega: float)
     return f
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     PLOT_SOLUTION = 1
     PLOT_SOLUTION_F = 2
     SOLVE_BARRIER = 3
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -177,7 +177,7 @@ def run_local_test(local_test: LocalTests):
                           x0=x0,
                           barrier_dt_k=barrier_dt_k)
 
-    if local_test == LocalTests.PLOT_SOLUTION:
+    if local == Locals.PLOT_SOLUTION:
         numeric = pd.Series(nu_k, index=upsilon_k, name='numeric')
         analytic = compute_analytic(upsilon_k=upsilon_k, x0=x0, omega=omega)
         analytic = pd.Series(analytic, index=upsilon_k, name='analytic')
@@ -192,7 +192,7 @@ def run_local_test(local_test: LocalTests):
             axs[1].set_xlabel('t')
             axs[1].set_ylabel('f')
 
-    elif local_test == LocalTests.PLOT_SOLUTION_F:
+    elif local == Locals.PLOT_SOLUTION_F:
 
         y = np.linspace(0.0, 5.0, 1000)
         f = compute_f(upsilon_k=upsilon_k,
@@ -213,7 +213,7 @@ def run_local_test(local_test: LocalTests):
             axs[1].set_xlabel('t')
             axs[1].set_ylabel('f')
 
-    elif local_test == LocalTests.SOLVE_BARRIER:
+    elif local == Locals.SOLVE_BARRIER:
         y = np.linspace(0.0, 5.0, 1000)
         f = compute_f(upsilon_k=upsilon_k,
                       barrier_k=barrier_k,
@@ -243,6 +243,6 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    local_test = LocalTests.PLOT_SOLUTION_F
+    local = Locals.PLOT_SOLUTION_F
 
-    run_local_test(local_test=local_test)
+    run_local(local=local)

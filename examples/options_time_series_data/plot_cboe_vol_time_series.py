@@ -102,14 +102,14 @@ def plot_skew(
     return fig
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     PLOT_ATM_VOLS = 1
     PLOT_SKEW = 2
     PLOT_BOTH = 3
 
 
-def run_local_test(
-    local_test: LocalTests,
+def run_local(
+    local: Locals,
     ticker: Ticker = 'SPX',
     start: pd.Timestamp = DEFAULT_START,
     end: pd.Timestamp = DEFAULT_END,
@@ -132,7 +132,7 @@ def run_local_test(
         options_data_dfs=options_data_dfs,
         days_before_roll=days_before_roll,
     )
-    if local_test == LocalTests.PLOT_ATM_VOLS:
+    if local == Locals.PLOT_ATM_VOLS:
         return (
             plot_atm_vols(
                 vol_data=vol_data,
@@ -140,7 +140,7 @@ def run_local_test(
                 days_before_roll=days_before_roll,
             ),
         )
-    if local_test == LocalTests.PLOT_SKEW:
+    if local == Locals.PLOT_SKEW:
         return (
             plot_skew(
                 vol_data=vol_data,
@@ -148,7 +148,7 @@ def run_local_test(
                 days_before_roll=days_before_roll,
             ),
         )
-    if local_test == LocalTests.PLOT_BOTH:
+    if local == Locals.PLOT_BOTH:
         return (
             plot_atm_vols(
                 vol_data=vol_data,
@@ -161,9 +161,9 @@ def run_local_test(
                 days_before_roll=days_before_roll,
             ),
         )
-    raise NotImplementedError(local_test)
+    raise NotImplementedError(local)
 
 
 if __name__ == '__main__':
-    run_local_test(local_test=LocalTests.PLOT_BOTH)
+    run_local(local=Locals.PLOT_BOTH)
     plt.show()

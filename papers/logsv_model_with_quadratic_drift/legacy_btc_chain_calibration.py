@@ -13,13 +13,13 @@ from stochvolmodels import LogSvParams
 from stochvolmodels.utils.funcs import set_seed
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     CHAIN_DATA = 1
     CALIBRATE_CHAIN = 2
     CALIBRATE_CHAIN2 = 3
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -36,7 +36,7 @@ def run_local_test(local_test: LocalTests):
     logsv_pricer = LogSVPricer()
     set_seed(40)
 
-    if local_test == LocalTests.CHAIN_DATA:
+    if local == Locals.CHAIN_DATA:
         btc_option_chain = load_option_chain(
             options_data_dfs=options_data_dfs,
             value_time=value_time,
@@ -48,7 +48,7 @@ def run_local_test(local_test: LocalTests):
         logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=btc_option_chain,
                                                  params=btc_calibrated_params)
 
-    elif local_test == LocalTests.CALIBRATE_CHAIN:
+    elif local == Locals.CALIBRATE_CHAIN:
         value_time = pd.Timestamp('2021-10-20 08:00:00+00:00')
         value_time = pd.Timestamp('2021-10-19 08:00:00+00:00')
         btc_option_chain = load_option_chain(
@@ -65,7 +65,7 @@ def run_local_test(local_test: LocalTests):
                                                            params=btc_calibrated_params,
                                                            nb_path=100000)
 
-    elif local_test == LocalTests.CALIBRATE_CHAIN2:
+    elif local == Locals.CALIBRATE_CHAIN2:
         value_time = pd.Timestamp('2022-11-10 08:00:00+00:00')
         value_time = pd.Timestamp('2022-11-09 08:00:00+00:00')
         btc_option_chain = load_option_chain(
@@ -88,4 +88,4 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.CALIBRATE_CHAIN2)
+    run_local(local=Locals.CALIBRATE_CHAIN2)

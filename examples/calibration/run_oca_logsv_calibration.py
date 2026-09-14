@@ -7,7 +7,7 @@ This deterministic example needs no credentials or market-data cache::
 
 Replace ``generate_simulated_options_data`` with any OCA ``OptionsDataDFs``
 loader to use the same bridge with a normalized provider dataset. Select the case in the
-``LocalTests`` call under the main guard.
+``Locals`` call under the main guard.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from stochvolmodels import (
 from stochvolmodels.data.fetch_option_chain import load_option_chain
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     """Available OCA-to-SVM illustration cases."""
 
     CONVERT_CHAIN = 1
@@ -80,18 +80,18 @@ def calibrate_logsv(option_chain: OptionChain) -> LogSvParams:
     return fitted
 
 
-def run_local_test(local_test: LocalTests) -> None:
+def run_local(local: Locals) -> None:
     """Run the selected OCA-to-SVM integration case."""
     option_chain = create_svm_chain_from_oca()
     print(f'maturities={option_chain.ids.tolist()}')
     print(f'discount_factors={option_chain.discfactors.tolist()}')
-    if local_test == LocalTests.CONVERT_CHAIN:
+    if local == Locals.CONVERT_CHAIN:
         option_chain.print()
-    elif local_test == LocalTests.CALIBRATE_LOGSV:
+    elif local == Locals.CALIBRATE_LOGSV:
         print(f'calibrated_logsv={calibrate_logsv(option_chain)}')
     else:
-        raise NotImplementedError(f'unsupported local test: {local_test}')
+        raise NotImplementedError(f'unsupported local test: {local}')
 
 
 if __name__ == '__main__':
-    run_local_test(local_test=LocalTests.CALIBRATE_LOGSV)
+    run_local(local=Locals.CALIBRATE_LOGSV)

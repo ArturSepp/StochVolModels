@@ -259,20 +259,20 @@ def plot_vix_atm_vol_time_series(
     return figure
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     PLOT_VIX_1M_ATM_VOL = 1
 
 
-def run_local_test(
-    local_test: LocalTests,
+def run_local(
+    local: Locals,
     cache_root: str | Path | None = None,
     output_dir: str | Path | None = None,
     target_days: float = 30.0,
     show: bool = True,
 ) -> tuple[pd.DataFrame, plt.Figure]:
     """Run the VIX constant-maturity ATM extraction and plot example."""
-    if local_test != LocalTests.PLOT_VIX_1M_ATM_VOL:
-        raise NotImplementedError(local_test)
+    if local != Locals.PLOT_VIX_1M_ATM_VOL:
+        raise NotImplementedError(local)
 
     root = _validate_cache_root(cache_root or _default_cache_root())
     output = Path(output_dir or _get_local_path().get_output_path()).expanduser().resolve()
@@ -335,8 +335,8 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     """Parse command-line arguments and run the example."""
     args = _parse_args()
-    run_local_test(
-        local_test=LocalTests.PLOT_VIX_1M_ATM_VOL,
+    run_local(
+        local=Locals.PLOT_VIX_1M_ATM_VOL,
         cache_root=args.cache_root,
         output_dir=args.output_dir,
         target_days=args.target_days,

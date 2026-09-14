@@ -41,7 +41,7 @@ from stochvolmodels.fitters import calc_logsv_ivols, fit_logsv_ivols
 THETADATA_LOCAL_PATH = f'{lp.get_resource_path()}thetadata_options{os.sep}'
 
 
-class LocalTests(str, Enum):
+class Locals(str, Enum):
     PLOT_TIME_SERIES = 'timeseries'
     FIT_APPROXIMATE_SMILE = 'smile'
     CALIBRATE_LOGSV = 'calibrate'
@@ -165,8 +165,8 @@ def _save_or_show(figures: dict[str, plt.Figure], output_dir: Path | None) -> No
     plt.close('all')
 
 
-def run_local_test(
-    local_test: LocalTests,
+def run_local(
+    local: Locals,
     *,
     cache_root: Path,
     ticker: str,
@@ -195,20 +195,20 @@ def run_local_test(
         raise RuntimeError(f'no OCA observation at or before {value_time}')
 
     selected = (
-        set(LocalTests) - {LocalTests.RUN_ALL}
-        if local_test == LocalTests.RUN_ALL
-        else {local_test}
+        set(Locals) - {Locals.RUN_ALL}
+        if local == Locals.RUN_ALL
+        else {local}
     )
     figures = {}
-    if LocalTests.PLOT_TIME_SERIES in selected:
+    if Locals.PLOT_TIME_SERIES in selected:
         analytics, figures['spy_atm_skew_july_2026'] = plot_monthly_atm_skew(options_data)
         print(analytics.to_string(float_format=lambda value: f'{value:.6f}'))
-    if LocalTests.FIT_APPROXIMATE_SMILE in selected:
+    if Locals.FIT_APPROXIMATE_SMILE in selected:
         fit_params, figures['spy_approximate_logsv_smile'] = fit_and_plot_approximate_smile(
             option_chain
         )
         print(f'approximate_logsv={fit_params}')
-    if LocalTests.CALIBRATE_LOGSV in selected:
+    if Locals.CALIBRATE_LOGSV in selected:
         fitted, figures['spy_calibrated_logsv'] = calibrate_and_plot_logsv(option_chain)
         print(f'calibrated_logsv={fitted}')
 
@@ -222,7 +222,7 @@ def run_local_test(
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--case', choices=[case.value for case in LocalTests], default='all')
+    parser.add_argument('--case', choices=[case.value for case in Locals], default='all')
     parser.add_argument('--ticker', default='SPY')
     parser.add_argument('--start-date', type=date.fromisoformat, default=date(2026, 7, 1))
     parser.add_argument('--end-date', type=date.fromisoformat, default=date(2026, 7, 31))
@@ -244,8 +244,8 @@ def main() -> None:
             f'no OCA ThetaData cache at {cache_root}; run '
             '`OptionChainAnalytics/examples/build_thetadata_eod_cache.py` first'
         )
-    run_local_test(
-        LocalTests(args.case),
+    run_local(
+        Locals(args.case),
         cache_root=cache_root,
         ticker=args.ticker,
         start_date=args.start_date,

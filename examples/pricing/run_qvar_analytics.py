@@ -26,12 +26,12 @@ SPY_PARAMS = LogSvParams(sigma0=0.2297, theta=0.2692, kappa1=2.6949, kappa2=10.0
 # BSM_PARAMS = LogSvParams(sigma0=1.0, theta=1.0, kappa1=0.0, kappa2=0.0, beta=0.0, volvol=0.0)
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     QV_SLICE_PRICER = 1
     COMPARE_WITH_MC = 2
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -47,7 +47,7 @@ def run_local_test(local_test: LocalTests):
     variable_type = VariableType.Q_VAR
     phi_grid, psi_grid, theta_grid = mgfp.get_transform_var_grid(variable_type=variable_type, is_spot_measure=True)
 
-    if local_test == LocalTests.QV_SLICE_PRICER:
+    if local == Locals.QV_SLICE_PRICER:
         ttm = 1.0
         forward = compute_analytic_qvar(params=params, ttm=ttm)
         print(forward)
@@ -78,7 +78,7 @@ def run_local_test(local_test: LocalTests):
         print(qvar_options)
         print(bsm_ivols)
 
-    elif local_test == LocalTests.COMPARE_WITH_MC:
+    elif local == Locals.COMPARE_WITH_MC:
         set_seed(24)  # 17
         option_chain = chains.get_qv_options_test_chain_data()
         option_chain = OptionChain.get_slices_as_chain(option_chain, ids=['1m', '6m'])
@@ -96,4 +96,4 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.QV_SLICE_PRICER)
+    run_local(local=Locals.QV_SLICE_PRICER)

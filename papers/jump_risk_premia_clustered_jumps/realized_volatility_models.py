@@ -127,12 +127,12 @@ class HAWKES_RV_MODEL(RV_MODEL):
         return model_price, vol
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     EWMA_RV = 1
     ILLUSTRATE_HAWKES_VOLS = 2
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -149,7 +149,7 @@ def run_local_test(local_test: LocalTests):
         freq='D',
     )
 
-    if local_test == LocalTests.EWMA_RV:
+    if local == Locals.EWMA_RV:
         rv_model = EWMA_RV_MODEL(price=price)
 
         value_time = pd.Timestamp('2022-10-02 08:00:00+00:00')
@@ -159,4 +159,4 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.ILLUSTRATE_HAWKES_VOLS)
+    run_local(local=Locals.ILLUSTRATE_HAWKES_VOLS)

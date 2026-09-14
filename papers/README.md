@@ -62,7 +62,7 @@ python -m papers.volatility_models.article_figures
 
 The original replication modules use a `UnitTests` enum with a `run_unit_test(unit_test)` dispatcher under
 `if __name__ == '__main__':`. Select the figure by editing the enum member passed at the bottom of
-the file. The jump-risk-premia development modules instead use `LocalTests` and `run_local_test`,
+the file. The jump-risk-premia development modules instead use `Locals` and `run_local`,
 the same pattern as root `examples/`.
 
 ## Paths

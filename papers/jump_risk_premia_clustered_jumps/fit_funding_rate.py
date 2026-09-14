@@ -270,14 +270,14 @@ def plot_rate_ou_hawkes(ticker: str = 'BTC', time_period: TimePeriod = None):
                          ax=axs[2])
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     SPOT_DATA = 1
     FIT_OU = 2
     FIT_OU_HAWKES = 3
     PLOT = 4
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -287,18 +287,18 @@ def run_local_test(local_test: LocalTests):
     ticker = 'ETH'
     time_period = TimePeriod(start='30Apr2019', end='19Jan2023')
 
-    if local_test == LocalTests.SPOT_DATA:
+    if local == Locals.SPOT_DATA:
         rate, perp = get_funding_rate(ticker=ticker, time_period=time_period)
         qis.plot_time_series(df=rate, legend_stats=qis.LegendStats.AVG_MEDIAN_STD_NONNAN_LAST, var_format='{:,.2%}')
         print(rate)
 
-    elif local_test == LocalTests.FIT_OU:
+    elif local == Locals.FIT_OU:
         fit_rate_ou(ticker=ticker, time_period=time_period)
 
-    elif local_test == LocalTests.FIT_OU_HAWKES:
+    elif local == Locals.FIT_OU_HAWKES:
         fit_rate_ou_hawkes(ticker=ticker, time_period=time_period)
 
-    elif local_test == LocalTests.PLOT:
+    elif local == Locals.PLOT:
         plot_rate_ou_hawkes(ticker=ticker, time_period=time_period)
 
     plt.show()
@@ -306,4 +306,4 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.FIT_OU)
+    run_local(local=Locals.FIT_OU)

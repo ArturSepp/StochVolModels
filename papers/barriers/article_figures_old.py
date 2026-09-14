@@ -410,13 +410,13 @@ def plot_drift_vol(t: float,
     return fig1, fig2, fig3
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     PLOT_DRIFT_VAR = 1
     PLOT_HESTON_BARRIER_GREEN = 2
     PLOT_HESTON_BARRIER_CALL = 3
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -433,7 +433,7 @@ def run_local_test(local_test: LocalTests):
     volvol = 0.4
     psi0 = -1.0  # log(B/S)
 
-    if local_test == LocalTests.PLOT_DRIFT_VAR:
+    if local == Locals.PLOT_DRIFT_VAR:
         fig1, fig2, fig3 = plot_drift_vol(t=t,
                                           x0=x0,
                                           psi0=psi0,
@@ -448,7 +448,7 @@ def run_local_test(local_test: LocalTests):
         fu.save_fig(fig=fig2, local_path=local_path, file_name='UpsilonLambda')
         fu.save_fig(fig=fig3, local_path=local_path, file_name='PathSolution')
 
-    elif local_test == LocalTests.PLOT_HESTON_BARRIER_GREEN:
+    elif local == Locals.PLOT_HESTON_BARRIER_GREEN:
         fig = plot_heston_barrier_green(t=t,
                                         psi0=psi0,
                                         x0=x0,
@@ -465,7 +465,7 @@ def run_local_test(local_test: LocalTests):
 
         fu.save_fig(fig=fig, local_path=local_path, file_name='GreenSolution')
 
-    elif local_test == LocalTests.PLOT_HESTON_BARRIER_CALL:
+    elif local == Locals.PLOT_HESTON_BARRIER_CALL:
 
         strikes = np.linspace(0.9, 1.2, 7)
         log_strikes = np.log(strikes)
@@ -493,6 +493,6 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    local_test = LocalTests.PLOT_DRIFT_VAR
+    local = Locals.PLOT_DRIFT_VAR
 
-    run_local_test(local_test=local_test)
+    run_local(local=local)

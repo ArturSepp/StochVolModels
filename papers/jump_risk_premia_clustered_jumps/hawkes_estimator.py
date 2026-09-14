@@ -638,13 +638,13 @@ def infer_lambdas_hawkes_jd_joint(price: pd.Series, af: float = 365.0):
     return lambda_p, lambda_m
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     ESTIMATE_JOINT_MODEL = 1
     ESTIMATE_INDEPENDENT_MODEL = 2
     COMPARE = 3
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -665,7 +665,7 @@ def run_local_test(local_test: LocalTests):
     price = load_price_data(options_data_dfs=options_data_dfs, time_period=time_period, freq='D')
     print(price)
 
-    if local_test == LocalTests.ESTIMATE_JOINT_MODEL:
+    if local == Locals.ESTIMATE_JOINT_MODEL:
         model_params = estimate_hawkes_jd_joint(price=price,  af=af)
         model_params.print()
         fig = illustrate_hawkes_jd_joint(price=price, model_params=model_params, af=af)
@@ -675,12 +675,12 @@ def run_local_test(local_test: LocalTests):
             local_path=lp.get_output_path(),
         )
 
-    if local_test == LocalTests.ESTIMATE_INDEPENDENT_MODEL:
+    if local == Locals.ESTIMATE_INDEPENDENT_MODEL:
         model_params = estimate_hawkes_jd_independent(price=price, af=af)
         model_params.print()
         illustrate_hawkes_jd_independent(price=price, model_params=model_params, af=af)
 
-    elif local_test == LocalTests.COMPARE:
+    elif local == Locals.COMPARE:
         model_params0 = estimate_hawkes_jd_independent(price=price[: '2021'], af=af)
         model_params0.print()
 
@@ -703,4 +703,4 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.ESTIMATE_JOINT_MODEL)
+    run_local(local=Locals.ESTIMATE_JOINT_MODEL)

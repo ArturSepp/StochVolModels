@@ -196,7 +196,7 @@ def calibrate_risk_premia():
                                        xvar_format='{:0,.2f}')
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     IMPLIED_VOL_SIMULATIONS = 1
     FORWARD_CURVE = 2
     COMPUTE_IMPLIED_VOLS = 3
@@ -205,33 +205,33 @@ class LocalTests(Enum):
     CALIBRATE_RISK_PREMIA = 6
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
     Use for quick verification during development.
     """
 
-    if local_test == LocalTests.IMPLIED_VOL_SIMULATIONS:
+    if local == Locals.IMPLIED_VOL_SIMULATIONS:
         implied_vol_simulations()
 
-    elif local_test == LocalTests.FORWARD_CURVE:
+    elif local == Locals.FORWARD_CURVE:
         compute_forward_curve()
 
-    elif local_test == LocalTests.COMPUTE_IMPLIED_VOLS:
+    elif local == Locals.COMPUTE_IMPLIED_VOLS:
         compute_implied_vols()
 
-    elif local_test == LocalTests.PLOT_IMPLIED_VOL:
+    elif local == Locals.PLOT_IMPLIED_VOL:
         plot_implied_vols()
 
-    elif local_test == LocalTests.PLOT_BTC_IMPLIED_VOL:
+    elif local == Locals.PLOT_BTC_IMPLIED_VOL:
         plot_btc_implied_vols()
 
-    elif local_test == LocalTests.CALIBRATE_RISK_PREMIA:
+    elif local == Locals.CALIBRATE_RISK_PREMIA:
         calibrate_risk_premia()
     plt.show()
 
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.CALIBRATE_RISK_PREMIA)
+    run_local(local=Locals.CALIBRATE_RISK_PREMIA)

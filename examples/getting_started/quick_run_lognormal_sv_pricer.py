@@ -7,14 +7,14 @@ from enum import Enum
 from stochvolmodels import LogSVPricer, LogSvParams, LogsvModelCalibrationType, ConstraintsType, get_btc_test_chain_data
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     QUICK_RUN = 1
 
 
-def run_local_test(local_test: LocalTests) -> None:
+def run_local(local: Locals) -> None:
     """Run local tests for development and debugging purposes."""
 
-    if local_test == LocalTests.QUICK_RUN:
+    if local == Locals.QUICK_RUN:
         # 1. create instance of pricer
         logsv_pricer = LogSVPricer()
 
@@ -46,4 +46,4 @@ def run_local_test(local_test: LocalTests) -> None:
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.QUICK_RUN)
+    run_local(local=Locals.QUICK_RUN)

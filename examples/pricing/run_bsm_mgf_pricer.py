@@ -131,20 +131,20 @@ def compare_spot_and_inverse_qvar_options():
         sns.lineplot(data=prices, ax=ax)
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     BSM_SLICE_PRICER = 1
     SPOT_INVERSE_COMP = 2
     SPOT_INVERSE_QVAR_COMP = 3
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
     Use for quick verification during development.
     """
 
-    if local_test == LocalTests.BSM_SLICE_PRICER:
+    if local == Locals.BSM_SLICE_PRICER:
         ttm = 1.0
         forward = 1.0
         vol = 1.0
@@ -154,10 +154,10 @@ def run_local_test(local_test: LocalTests):
         print(bsm_prices)
         print(bsm_ivols)
 
-    elif local_test == LocalTests.SPOT_INVERSE_COMP:
+    elif local == Locals.SPOT_INVERSE_COMP:
         compare_spot_and_inverse_options()
 
-    elif local_test == LocalTests.SPOT_INVERSE_QVAR_COMP:
+    elif local == Locals.SPOT_INVERSE_QVAR_COMP:
         compare_spot_and_inverse_qvar_options()
 
     plt.show()
@@ -165,4 +165,4 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.BSM_SLICE_PRICER)
+    run_local(local=Locals.BSM_SLICE_PRICER)

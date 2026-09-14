@@ -271,13 +271,13 @@ def plot_weekly_rvol(ticker: str):
                              **kwargs)
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     GENERATE_VOL_DATA_TS = 1
     PLOT_VOL_DATA_TS = 2
     PLOT_WEEKLY_RVOLS = 3
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -286,7 +286,7 @@ def run_local_test(local_test: LocalTests):
 
     ticker = 'BTC'
 
-    if local_test == LocalTests.GENERATE_VOL_DATA_TS:
+    if local == Locals.GENERATE_VOL_DATA_TS:
         vols, strikes, options, index_prices = load_tardis_vol_delta_ts(
             ticker=ticker,
             days_map={'1w': 7, '1m': 30},
@@ -294,10 +294,10 @@ def run_local_test(local_test: LocalTests):
         vol_data = {'vols': vols, 'strikes': strikes, 'options': options, 'index_prices': index_prices}
         fu.save_df_to_excel(vol_data, file_name=f"{ticker}_vol_data")
 
-    elif local_test == LocalTests.PLOT_VOL_DATA_TS:
+    elif local == Locals.PLOT_VOL_DATA_TS:
         plot_vol_data(ticker=ticker)
 
-    elif local_test == LocalTests.PLOT_WEEKLY_RVOLS:
+    elif local == Locals.PLOT_WEEKLY_RVOLS:
         plot_weekly_rvol(ticker=ticker)
 
     plt.show()
@@ -305,4 +305,4 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.PLOT_VOL_DATA_TS)
+    run_local(local=Locals.PLOT_VOL_DATA_TS)

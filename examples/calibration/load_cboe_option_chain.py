@@ -14,13 +14,13 @@ import pandas as pd
 from stochvolmodels.data.fetch_option_chain import load_cboe_option_chain
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     LOAD_SPX = 1
     LOAD_VIX = 2
 
 
-def run_local_test(local_test: LocalTests) -> None:
-    if local_test == LocalTests.LOAD_SPX:
+def run_local(local: Locals) -> None:
+    if local == Locals.LOAD_SPX:
         ticker = 'SPX'
         value_time = pd.Timestamp('2023-11-08 22:00:00+00:00')
     else:
@@ -42,4 +42,4 @@ def run_local_test(local_test: LocalTests) -> None:
 
 
 if __name__ == '__main__':
-    run_local_test(local_test=LocalTests.LOAD_SPX)
+    run_local(local=Locals.LOAD_SPX)

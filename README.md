@@ -369,7 +369,7 @@ python examples/calibration/run_oca_logsv_calibration.py
 
 The example uses OCA's deterministic simulated panel. Replace its loader with any normalised OCA
 `OptionsDataDFs` source while keeping the same `load_option_chain` and LogSV calibration calls.
-Select `LocalTests.CONVERT_CHAIN` or `LocalTests.CALIBRATE_LOGSV` in the script's main guard.
+Select `Locals.CONVERT_CHAIN` or `Locals.CALIBRATE_LOGSV` in the script's main guard.
 
 ### Running the cache-first SPY monthly prototype
 

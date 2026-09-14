@@ -276,11 +276,11 @@ def simulate_heston_iv_jv(t: float,
     return vt, iv, jv
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     PLOT_HESTON_DECOMPOSITION = 1
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -289,7 +289,7 @@ def run_local_test(local_test: LocalTests):
 
     t = 1.0
 
-    if local_test == LocalTests.PLOT_HESTON_DECOMPOSITION:
+    if local == Locals.PLOT_HESTON_DECOMPOSITION:
         plot_heston_decomposition_pdfs(t=t,
                                        x0=0.5,
                                        sigma0=0.2,
@@ -304,6 +304,6 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    local_test = LocalTests.PLOT_HESTON_DECOMPOSITION
+    local = Locals.PLOT_HESTON_DECOMPOSITION
 
-    run_local_test(local_test=local_test)
+    run_local(local=local)

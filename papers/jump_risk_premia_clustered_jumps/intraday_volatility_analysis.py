@@ -145,12 +145,12 @@ def plot_intraday_vol(ticker: str, ax1: plt.Subplot = None):
                                  title=f"{ticker}", order=2, ax=ax1, **kwargs)
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     PLOT_VOL_DATA_TS = 1
     JOINT = 2
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -159,10 +159,10 @@ def run_local_test(local_test: LocalTests):
 
     ticker = 'BTC'
 
-    if local_test == LocalTests.PLOT_VOL_DATA_TS:
+    if local == Locals.PLOT_VOL_DATA_TS:
         plot_intraday_vol(ticker=ticker)
 
-    elif local_test == LocalTests.JOINT:
+    elif local == Locals.JOINT:
         tickers = ['BTC', 'ETH']
         time_period = da.TimePeriod(pd.Timestamp('2022-10-15 00:00:00+00:00'),
                                          pd.Timestamp('2022-11-15 00:00:00+00:00'))
@@ -177,4 +177,4 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.JOINT)
+    run_local(local=Locals.JOINT)

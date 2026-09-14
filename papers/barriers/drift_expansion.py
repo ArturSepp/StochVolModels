@@ -102,18 +102,18 @@ def compute_barrier_1st_path_solutions(it: np.ndarray,
     return avg_green
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     SOLUTION = 1
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
     Use for quick verification during development.
     """
 
-    if local_test == LocalTests.SOLUTION:
+    if local == Locals.SOLUTION:
         te = 1.0
         n = 1000
         x0 = 1.0
@@ -139,5 +139,5 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    local_test = LocalTests.SOLUTION
-    run_local_test(local_test=local_test)
+    local = Locals.SOLUTION
+    run_local(local=local)

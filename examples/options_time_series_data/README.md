@@ -54,7 +54,7 @@ It reads only 2--31 October 2023 by default:
 python examples/options_time_series_data/plot_cboe_vol_time_series.py
 ```
 
-Change `ticker` to `"VIX"`, the date window, or `local_path` through `run_local_test`. The path
+Change `ticker` to `"VIX"`, the date window, or `local_path` through `run_local`. The path
 override is the directory containing `spx_options_oca.parquet` and/or
 `vix_options_oca.parquet`; no absolute data location is hardcoded in the example. Configure the
 shared resource root in `src/stochvolmodels/settings.yaml`, for example:

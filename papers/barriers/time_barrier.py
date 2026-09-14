@@ -116,11 +116,11 @@ def plot_time_barrier(t: float,
                   **kwargs)
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     PLOT_TIME_BARRIER = 1
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -129,7 +129,7 @@ def run_local_test(local_test: LocalTests):
 
     t = 1.0
 
-    if local_test == LocalTests.PLOT_TIME_BARRIER:
+    if local == Locals.PLOT_TIME_BARRIER:
         plot_time_barrier(t=t,
                           x0=0.0,
                           v0=0.2**2,
@@ -142,6 +142,6 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    local_test = LocalTests.PLOT_TIME_BARRIER
+    local = Locals.PLOT_TIME_BARRIER
 
-    run_local_test(local_test=local_test)
+    run_local(local=local)

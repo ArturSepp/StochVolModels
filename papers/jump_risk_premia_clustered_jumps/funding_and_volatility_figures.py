@@ -193,11 +193,11 @@ def plot_vol_data_with_funding(ticker: str = 'BTC',
     return fig
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     PLOT_VOL_DATA_TS = 1
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -206,7 +206,7 @@ def run_local_test(local_test: LocalTests):
 
     output_path = lp.get_output_path()
 
-    if local_test == LocalTests.PLOT_VOL_DATA_TS:
+    if local == Locals.PLOT_VOL_DATA_TS:
         time_period = TimePeriod('02Sep2021', '10Nov2022')
 
         with sns.axes_style('darkgrid'):
@@ -231,4 +231,4 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.PLOT_VOL_DATA_TS)
+    run_local(local=Locals.PLOT_VOL_DATA_TS)

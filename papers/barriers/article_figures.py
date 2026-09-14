@@ -627,14 +627,14 @@ def plot_drift_vol(t: float,
     return fig1, fig2, fig3
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     PLOT_DRIFT_VAR = 1
     PLOT_HESTON_BARRIER_GREEN = 2
     PLOT_HESTON_SURVIVAL = 3
     PLOT_HESTON_BARRIER_CALL = 4
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -653,7 +653,7 @@ def run_local_test(local_test: LocalTests):
     xmax = 2.0
     rfrate = 0.03
 
-    if local_test == LocalTests.PLOT_DRIFT_VAR:
+    if local == Locals.PLOT_DRIFT_VAR:
         fig1, fig2, fig3 = plot_drift_vol(t=t,
                                           x0=x0,
                                           v0=v0,
@@ -669,7 +669,7 @@ def run_local_test(local_test: LocalTests):
         fu.save_fig(fig=fig2, local_path=local_path, file_name='Fig3')
         fu.save_fig(fig=fig3, local_path=local_path, file_name='Fig4')
 
-    elif local_test == LocalTests.PLOT_HESTON_BARRIER_GREEN:
+    elif local == Locals.PLOT_HESTON_BARRIER_GREEN:
         fig1, fig2 = plot_heston_barrier_green(t=t,
                                                psi0=psi0,  # log(B/S)
                                                x0=x0,
@@ -688,7 +688,7 @@ def run_local_test(local_test: LocalTests):
         fu.save_fig(fig=fig1, local_path=local_path, file_name='Fig9a')
         fu.save_fig(fig=fig2, local_path=local_path, file_name='Fig9b')
 
-    elif local_test == LocalTests.PLOT_HESTON_SURVIVAL:
+    elif local == Locals.PLOT_HESTON_SURVIVAL:
 
         psi0 = -0.5
         fig1, fig2 = plot_heston_barrier_survival(t=t,
@@ -710,7 +710,7 @@ def run_local_test(local_test: LocalTests):
         fu.save_fig(fig=fig1, local_path=local_path, file_name='Fig10a')
         fu.save_fig(fig=fig2, local_path=local_path, file_name='Fig10b')
 
-    elif local_test == LocalTests.PLOT_HESTON_BARRIER_CALL:
+    elif local == Locals.PLOT_HESTON_BARRIER_CALL:
 
         strikes = np.linspace(0.9, 1.5, 13)
         log_strikes = np.log(strikes)
@@ -741,6 +741,6 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    local_test = LocalTests.PLOT_HESTON_BARRIER_CALL
+    local = Locals.PLOT_HESTON_BARRIER_CALL
 
-    run_local_test(local_test=local_test)
+    run_local(local=local)

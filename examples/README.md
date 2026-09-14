@@ -12,7 +12,7 @@ python -m pip install -e ".[dev]"
 The core examples use packaged or generated sample data and make no network request. Empirical
 examples read explicitly installed local OCA caches: CBOE SPX/VIX under
 `options_time_series_data/` and ThetaData SPY under `calibration/`. Most examples open Matplotlib
-windows; use a non-interactive backend in automation. Runtime depends on the selected `LocalTests`
+windows; use a non-interactive backend in automation. Runtime depends on the selected `Locals`
 enum case and includes Numba compilation on first use.
 
 ## Lanes
@@ -85,7 +85,7 @@ python examples/calibration/run_oca_logsv_calibration.py
 
 `load_option_chain()` accepts an OCA `OptionsDataDFs` object. Replace OCA's simulator in that
 example with any normalized OCA loader; the downstream SVM code remains unchanged. Choose
-`LocalTests.CONVERT_CHAIN` or `LocalTests.CALIBRATE_LOGSV` in the script's main guard.
+`Locals.CONVERT_CHAIN` or `Locals.CALIBRATE_LOGSV` in the script's main guard.
 
 ### 3. Local ThetaData cache
 
@@ -136,7 +136,7 @@ examples. They deliberately expose separate raw-hourly and exact-08:00-UTC EOD r
 
 ## Conventions
 
-- Choose a case in each script's `LocalTests` enum and run the file directly.
+- Choose a case in each script's `Locals` enum and run the file directly.
 - Stable user-facing examples should import the package-root public API.
 - Files that import `stochvolmodels.pricers` or `stochvolmodels.utils` internals are advanced or
   contributor references, not public-API guarantees.

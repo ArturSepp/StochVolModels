@@ -73,18 +73,18 @@ def plot_green_x(ttm: float = 1.0,
                       ax=ax)
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     ANALYTIC = 1
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
     Use for quick verification during development.
     """
 
-    if local_test == LocalTests.ANALYTIC:
+    if local == Locals.ANALYTIC:
         plot_green_x()
 
     plt.show()
@@ -92,5 +92,5 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    local_test = LocalTests.ANALYTIC
-    run_local_test(local_test=local_test)
+    local = Locals.ANALYTIC
+    run_local(local=local)

@@ -10,14 +10,14 @@ from stochvolmodels import (LogSVPricer, LogSvParams, compute_analytic_qvar, Opt
                             VariableType, HestonPricer, HestonParams)
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     QVAR_OPTIONS = 1
 
 
-def run_local_test(local_test: LocalTests) -> None:
+def run_local(local: Locals) -> None:
     """Run local tests for development and debugging purposes."""
 
-    if local_test == LocalTests.QVAR_OPTIONS:
+    if local == Locals.QVAR_OPTIONS:
         # these params are calibrated to the same BTC option chain
         # v0=theta=1 to have flat vol term structure
         LOGSV_BTC_PARAMS = LogSvParams(sigma0=1.0, theta=1.0, kappa1=3.1844, kappa2=3.058, beta=0.1514, volvol=1.8458)
@@ -62,4 +62,4 @@ def run_local_test(local_test: LocalTests) -> None:
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.QVAR_OPTIONS)
+    run_local(local=Locals.QVAR_OPTIONS)

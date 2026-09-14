@@ -10,14 +10,14 @@ from enum import Enum
 from stochvolmodels import OptionChain, HawkesJDPricer, HawkesJDParams
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     MODEL_IVOLS = 1
 
 
-def run_local_test(local_test: LocalTests) -> None:
+def run_local(local: Locals) -> None:
     """Run local tests for development and debugging purposes."""
 
-    if local_test == LocalTests.MODEL_IVOLS:
+    if local == Locals.MODEL_IVOLS:
         pricer = HawkesJDPricer()
 
         params = HawkesJDParams(sigma=0.1,
@@ -49,4 +49,4 @@ def run_local_test(local_test: LocalTests) -> None:
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.MODEL_IVOLS)
+    run_local(local=Locals.MODEL_IVOLS)

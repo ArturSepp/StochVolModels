@@ -50,12 +50,12 @@ def calibrate_risk_premia(option_chain: OptionChain) -> None:
 
 
 
-class LocalTests(Enum):
+class Locals(Enum):
     CALIBRATE_PARAMS = 1
     CALIBRATE_RISK_PREMIA = 2
 
 
-def run_local_test(local_test: LocalTests):
+def run_local(local: Locals):
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -67,7 +67,7 @@ def run_local_test(local_test: LocalTests):
     # value_time = pd.Timestamp('2023-02-06 08:00:00+00:00')  # 0.004790984073729326
     # value_time = pd.Timestamp('2022-11-15 08:00:00+00:00')  # -2.1054741773198336
 
-    if local_test == LocalTests.CALIBRATE_PARAMS:
+    if local == Locals.CALIBRATE_PARAMS:
         option_chain = load_option_chain(ticker=ticker,
                                          value_time=value_time,
                                          days_map={'1m': 30},
@@ -75,7 +75,7 @@ def run_local_test(local_test: LocalTests):
         option_chain.print()
         calibrate_params(option_chain=option_chain)
 
-    elif local_test == LocalTests.CALIBRATE_RISK_PREMIA:
+    elif local == Locals.CALIBRATE_RISK_PREMIA:
         option_chain = load_option_chain(ticker=ticker,
                                          value_time=value_time,
                                          days_map={'1m': 30},
@@ -88,4 +88,4 @@ def run_local_test(local_test: LocalTests):
 
 if __name__ == '__main__':
 
-    run_local_test(local_test=LocalTests.CALIBRATE_PARAMS)
+    run_local(local=Locals.CALIBRATE_PARAMS)
