@@ -7,6 +7,9 @@ from pathlib import Path
 from zipfile import ZipFile
 
 
+SOURCE_TEST_ROOT = Path(__file__).resolve().parents[1] / "src/stochvolmodels/tests"
+
+
 REQUIRED_RUNTIME_FILES = {
     "stochvolmodels/__init__.py",
     "stochvolmodels/data/model_paths.py",
@@ -68,8 +71,14 @@ def check_wheel(wheel_path: Path) -> None:
         for member in members
         if member.startswith("stochvolmodels/tests/test_") and member.endswith(".py")
     }
-    assert len(test_modules) == 33, (
-        f"expected exactly 33 automated test modules, found {len(test_modules)}"
+    expected_test_modules = {
+        f"stochvolmodels/tests/{path.name}" for path in SOURCE_TEST_ROOT.glob("test_*.py")
+    }
+    assert expected_test_modules, "source test module inventory is empty"
+    assert test_modules == expected_test_modules, (
+        "wheel test module inventory differs from source: "
+        f"missing={sorted(expected_test_modules - test_modules)}, "
+        f"unexpected={sorted(test_modules - expected_test_modules)}"
     )
     assert not any(member.endswith("_test.py") for member in members), (
         "automated tests must use the test_*.py form"
