@@ -2,28 +2,15 @@
 name: Documentation
 
 on:
-  push:
-    paths:
-      - docs/**
-      - src/stochvolmodels/**
-      - pyproject.toml
-      - uv.lock
-      - .github/workflows/docs.yml
-  pull_request:
-    paths:
-      - docs/**
-      - src/stochvolmodels/**
-      - pyproject.toml
-      - uv.lock
-      - .github/workflows/docs.yml
+  workflow_call:
+    inputs:
+      online:
+        type: boolean
+        default: false
   workflow_dispatch:
 
 permissions:
   contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -41,9 +28,10 @@ jobs:
           python-version: "3.12"
       - name: Sync documentation environment
         run: uv sync --locked --extra docs
-      - name: Build HTML with warnings as errors
-        run: uv run --no-sync python -m sphinx -E -W --keep-going -b html docs docs/_build/html
-      - name: Run documentation examples
-        run: uv run --no-sync python -m sphinx -E -W -b doctest docs docs/_build/doctest
+      - name: Build documentation with the shared profile
+        run: uv run --no-sync python .github/oss_checks.py docs --working-tree --output-dir "$RUNNER_TEMP/oss-docs"
+
       - name: Check documentation links
+
+        if: inputs.online || github.event_name == 'workflow_dispatch'
         run: uv run --no-sync python -m sphinx -E -W -b linkcheck docs docs/_build/linkcheck
