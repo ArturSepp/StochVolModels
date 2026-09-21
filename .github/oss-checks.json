@@ -1,0 +1,163 @@
+{
+  "version": "1.0.0",
+  "repository": "StochVolModels",
+  "package": "stochvolmodels",
+  "python_environment": "StochVolModels312",
+  "lint_paths": [
+    "src/stochvolmodels/*.py"
+  ],
+  "preflight": [
+    {
+      "paths": [
+        "notebooks/*",
+        "examples/getting_started/*",
+        "scripts/check_quickstart_notebook.py"
+      ],
+      "command": [
+        "scripts/check_quickstart_notebook.py"
+      ]
+    }
+  ],
+  "docs": [
+    [
+      "-m",
+      "sphinx",
+      "-E",
+      "-W",
+      "--keep-going",
+      "-b",
+      "html",
+      "docs",
+      "{output}/html"
+    ],
+    [
+      "-m",
+      "sphinx",
+      "-E",
+      "-W",
+      "-b",
+      "doctest",
+      "docs",
+      "{output}/doctest"
+    ]
+  ],
+  "tests": [
+    [
+      "-m",
+      "pytest",
+      "-o",
+      "cache_dir={output}/pytest",
+      "-m",
+      "not slow"
+    ]
+  ],
+  "remote_only": [
+    "supported Python/OS matrix",
+    "clean core/extras environments",
+    "wheel and sdist",
+    "coverage gates",
+    "dependency floors and live compatibility",
+    "online link and security health"
+  ],
+  "lint_select": "F,TID251,TID253,ICN",
+  "required_jobs": [
+    "preflight",
+    "ci",
+    "docs",
+    "static",
+    "examples",
+    "replication"
+  ],
+  "workflow_inventory": {
+    "ci": {
+      "linux-source": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "Install uv and Python ${{ matrix.python-version }}",
+        "Sync locked primary environment",
+        "Resolve current compatibility environment",
+        "Run fast source tests",
+        "Run authoritative source tests with coverage",
+        "Enforce stable coverage scope",
+        "Upload coverage diagnostics"
+      ],
+      "windows-numerical-regression": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "Install uv and Python 3.12",
+        "Sync locked test environment",
+        "Run fast source tests",
+        "Run numerical regressions"
+      ],
+      "macos-source-smoke": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "Install uv and Python 3.12",
+        "Sync locked test environment",
+        "Run fast source tests"
+      ],
+      "wheel": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "Install uv and Python 3.12",
+        "Build the wheel from the source distribution",
+        "Assert wheel contents",
+        "Install core wheel and test tools in a clean environment",
+        "Run complete installed-package suite outside the checkout",
+        "Verify installed metadata and quickstart"
+      ],
+      "stack-policy": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d",
+        "Exercise policy regressions",
+        "Check stack imports and optional adapter isolation"
+      ],
+      "lowest-dependencies": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d",
+        "Keep the test environment outside the checkout",
+        "Resolve a fresh lowest-direct test environment",
+        "Record installed versions",
+        "Check optional dependencies stay outside package-root import",
+        "Test declared dependency floors without live provider credentials"
+      ]
+    },
+    "docs": {
+      "docs": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "Install uv and Python",
+        "Sync documentation environment",
+        "Build HTML with warnings as errors",
+        "Run documentation examples",
+        "Check documentation links"
+      ]
+    },
+    "static": {
+      "static": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "Install uv",
+        "Check correctness and dependency boundaries",
+        "Check stable docstring coverage"
+      ]
+    },
+    "examples": {
+      "quickstart": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "Install uv and Python",
+        "Sync core environment",
+        "Validate Colab mirror",
+        "Run canonical offline example"
+      ],
+      "oca-synthetic": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "Install uv and Python",
+        "Sync research integration environment",
+        "Run deterministic OCA contracts"
+      ]
+    },
+    "replication": {
+      "logsv-paper-contracts": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "Install uv and Python",
+        "Sync locked test environment",
+        "Run committed-input LogSV replication contracts"
+      ]
+    }
+  }
+}

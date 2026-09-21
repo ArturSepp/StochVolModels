@@ -13,3 +13,4 @@
 *.pdf   binary
 *.png   binary
 *.PNG   binary
+.githooks/* text eol=lf

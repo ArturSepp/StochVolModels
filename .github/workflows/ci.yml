@@ -1,18 +1,15 @@
 # SHARED CI CORE v1.0 — T2 — synced 2026-08-22
 name: CI
+run-name: ${{ github.event_name == 'schedule' && 'Dependency compatibility (live resolution)' || 'CI' }}
 
 permissions:
   contents: read
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  workflow_call:
+  schedule:
+    - cron: "37 3 * * *"
+  workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -53,7 +50,7 @@ jobs:
         shell: bash
         run: |
           for attempt in 1 2 3; do
-            if uv sync --group test --upgrade; then exit 0; fi
+            if uv sync --group test ${{ github.event_name == 'schedule' && '--upgrade' || '--locked' }}; then exit 0; fi
             if [ "$attempt" -eq 3 ]; then echo "::error::uv sync failed after 3 attempts"; exit 1; fi
             delay=$((attempt * 30 - 15))
             echo "::warning::uv sync attempt $attempt failed; retrying in ${delay}s"
@@ -168,6 +165,8 @@ jobs:
         run: python .github/scripts/check_stack_imports.py
 
   lowest-dependencies:
+    # Floor resolution is compatibility maintenance, not a verdict on an unrelated edit.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     name: lowest direct dependencies (Python 3.10, ${{ matrix.extras || 'core' }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
