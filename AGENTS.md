@@ -16,6 +16,18 @@
 
 Guidance for AI coding agents working in the **StochVolModels** repository.
 
+## OSS documentation standard
+
+- Before creating or substantively revising reader-facing documentation, read the
+  [shared OSS documentation standard](https://github.com/ArturSepp/ArturSepp/blob/main/docs/documentation_standard.md).
+  It owns the common layout, author/date attribution, portable Markdown mathematics,
+  references, reproducible figures, and review requirements.
+- Apply this repository's API, docstring, data, build, and validation conventions alongside
+  that guide. Keep package-specific procedures here or in the local documentation supplement;
+  update common rules in the shared guide instead of maintaining another copy.
+- Linking the standard does not mark legacy pages migrated or reviewed. Preserve explicit
+  pending work and record checks actually performed.
+
 ## Project overview
 
 `stochvolmodels` implements pricing analytics and Monte Carlo simulation for stochastic
