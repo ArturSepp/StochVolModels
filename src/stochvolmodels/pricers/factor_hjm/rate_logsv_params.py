@@ -424,7 +424,7 @@ class MultiFactRateLogSvParams(ModelParams):
         loga_der = np.ones((t_grid.size, self.basis.nb_factors)) * np.nan
         for idx, (t, mx, my) in enumerate(zip(t_grid, mx_grid, my_grid)):
             swap_grad[idx, :] = self.basis.swap_rate(t, ts_sw, mx, my, ccy=self.ccy)[1]
-            ann[idx] = self.basis.annuity(t, ts_sw, mx, my, m=0, ccy=self.ccy)
+            ann[idx] = np.asarray(self.basis.annuity(t, ts_sw, mx, my, m=0, ccy=self.ccy)).item()
             ann_der1 = self.basis.annuity(t, ts_sw, mx, my, m=1, ccy=self.ccy)
             loga_der[idx, :] = ann_der1 / ann[idx]
 
@@ -531,7 +531,7 @@ class MultiFactRateLogSvParams(ModelParams):
         """restrict the term structure or parameter set to a subset of tenors."""
         ttms = [MultiFactRateLogSvParams.get_frac(id) for id in ids]
         assert set(ttms) <= set(self.ts)
-        indices = np.in1d(self.ts, ttms).nonzero()[0] - 1
+        indices = np.isin(self.ts, ttms).nonzero()[0] - 1
         ts_indices = np.concatenate(([0], indices+1))
         assert np.all(indices >= 0)
 

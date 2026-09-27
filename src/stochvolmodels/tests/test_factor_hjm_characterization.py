@@ -113,3 +113,83 @@ def test_factor_hjm_normal_volatility_uses_absolute_rate_units() -> None:
 
     np.testing.assert_allclose(price, expected, rtol=0.0, atol=1.0e-14)
     np.testing.assert_allclose(inferred, normal_vol, rtol=0.0, atol=1.0e-12)
+
+
+def _swaption_params():
+    from stochvolmodels.pricers.factor_hjm.rate_factor_basis import NelsonSiegel
+    from stochvolmodels.pricers.factor_hjm.rate_logsv_params import (
+        MultiFactRateLogSvParams,
+        TermStructure,
+    )
+
+    times = np.array([0.0, 1.0, 2.0])
+    return MultiFactRateLogSvParams(
+        sigma0=1.0,
+        theta=1.0,
+        kappa1=0.25,
+        kappa2=0.5,
+        beta=TermStructure.create_multi_fact_from_vec(times, np.full(3, 0.2)),
+        volvol=TermStructure.create_from_scalar(times, 0.2),
+        A=np.full(3, 0.01),
+        R=np.array([[1.0, 0.99, 0.97], [0.99, 1.0, 0.98], [0.97, 0.98, 1.0]]),
+        basis=NelsonSiegel(meanrev=0.55, key_terms=np.array([2.0, 5.0, 10.0])),
+        ccy="USD",
+        vol_interpolation="BY_YIELD",
+    )
+
+
+def test_factor_hjm_annuity_measure_coefficients_are_finite() -> None:
+    """The annuity-measure transform stores a scalar annuity per date (NumPy 2.5)."""
+    from stochvolmodels.utils.rate_core import generate_ttms_grid
+
+    params = _swaption_params()
+    coefficients = params.transform_QA_params(
+        expiry=1.0, tenor=2.0, t_grid=generate_ttms_grid(np.array([1.0]))
+    )
+    assert all(np.all(np.isfinite(values)) for values in coefficients[:6])
+    assert params.check_QA_kappa2(expiry=1.0, tenor=2.0)
+
+
+def test_factor_hjm_reduce_keeps_the_selected_expiries() -> None:
+    params = _swaption_params()
+    reduced = params.reduce(["2y"])
+    np.testing.assert_array_equal(reduced.ts, [0.0, 2.0])
+    np.testing.assert_array_equal(reduced.beta.xs, params.beta.xs[1:])
+
+
+def test_factor_hjm_monte_carlo_inverts_each_tenor_at_its_forward() -> None:
+    from stochvolmodels.pricers.factor_hjm.factor_hjm_pricer import calc_mc_vols
+
+    params = _swaption_params()
+    forwards = [np.array([0.0439]), np.array([0.0439])]
+    strikes = [[np.array([0.04, 0.0439, 0.048])], [np.array([0.04, 0.0439, 0.048])]]
+    _, mid, up, down = calc_mc_vols(
+        basis_type="NELSON-SIEGEL",
+        params=params,
+        ttm=1.0,
+        tenors=np.array([2.0, 5.0]),
+        forwards=forwards,
+        strikes_ttms=strikes,
+        optiontypes=np.repeat("C", 3),
+        is_annuity_measure=False,
+        nb_path=200,
+    )
+    for low, centre, high in zip(down, mid, up):
+        assert np.all(np.isfinite(centre)) and np.all(low <= centre) and np.all(centre <= high)
+
+
+def test_factor_hjm_strikes_from_deltas_straddle_the_forward() -> None:
+    """Before the fix a swallowed TypeError set every strike to the forward."""
+    from stochvolmodels.pricers.factor_hjm.rate_logsv_ivols import infer_strikes_from_deltas
+
+    strikes = infer_strikes_from_deltas(
+        deltas=np.array([-0.25, 0.25]),
+        f0=0.04,
+        ttm=0.25,
+        sigma0=0.01,
+        rho=0.0,
+        total_vol=0.5,
+        beta=0.0,
+        shift=0.0,
+    ).values
+    assert strikes[0] < 0.04 < strikes[1]

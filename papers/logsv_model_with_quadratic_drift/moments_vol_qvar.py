@@ -101,7 +101,7 @@ def plot_qvar_vs_mc(params: Dict[str, LogSvParams] = TEST_PARAMS,
             mc_mean = np.mean(sigma_t, axis=1)
             mc_std = 2.0*1.96 * np.std(sigma_t, axis=1) / np.sqrt(nb_path)
         else:
-            q_var = pd.DataFrame(np.square(sigma_t)).expanding(axis=0).mean().to_numpy()
+            q_var = pd.DataFrame(np.square(sigma_t)).expanding().mean().to_numpy()
             mc_mean = np.mean(q_var, axis=1)
             mc_std = 2.0*1.96*np.std(q_var, axis=1) / np.sqrt(nb_path)
 

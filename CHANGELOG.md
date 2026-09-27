@@ -4,6 +4,20 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+### Fixed
+
+- `papers/logsv_model_with_quadratic_drift/moments_vol_qvar.py` no longer passes the `axis`
+  keyword to `DataFrame.expanding`, which pandas 3 removed, so IJTAF Fig. 3 can be regenerated.
+
+- The experimental `stochvolmodels.pricers.factor_hjm` pricers run with NumPy 2.5 and
+  vanilla-option-pricers 2.1: `MultiFactRateLogSvParams.transform_QA_params` stores the annuity as
+  a scalar, so `logsv_chain_de_pricer` and `check_QA_kappa2` no longer raise for swaptions;
+  `MultiFactRateLogSvParams.reduce` uses `np.isin` instead of the removed `np.in1d`;
+  `calc_mc_vols` passes each tenor's forward to the normal-volatility inverter instead of the
+  list of all forwards; and `infer_strikes_from_deltas` evaluates the smile at a scalar strike,
+  so it no longer sets every strike to the forward after a swallowed error. Regression tests
+  cover each case.
+
 ## [2.4.1] - 2026-09-08
 
 ### Added

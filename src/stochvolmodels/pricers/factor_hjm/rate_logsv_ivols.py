@@ -210,8 +210,8 @@ def infer_strikes_from_deltas(deltas: np.ndarray,
     def func(strike: float, given_delta: float) -> float:
         """objective evaluated by the optimizer."""
         moneyness = f0-strike
-        vol_st = st * calc_logsv_ivols(strikes=strike, f0=f0, ttm=ttm, alpha=sigma0, rho=rho, total_vol=total_vol,
-                                       beta=beta, shift=shift)
+        vol_st = st * np.ravel(calc_logsv_ivols(strikes=strike, f0=f0, ttm=ttm, alpha=sigma0, rho=rho,
+                                                total_vol=total_vol, beta=beta, shift=shift))[0]
         if given_delta >= 0.0:
             target = norm.ppf(given_delta)
         else:

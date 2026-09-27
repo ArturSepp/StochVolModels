@@ -178,19 +178,19 @@ def calc_mc_vols(basis_type: str,
         option_down = np.maximum(option_mean - std_factor * option_std, 0.0)
 
         mc_ivols_mid = bachel.infer_normal_ivols_from_chain_prices(ttms=ttms,
-                                                                   forwards=forwards,
+                                                                   forwards=forwards[idx_tenor],
                                                                    discfactors=np.ones_like(ttms),
                                                                    strikes_ttms=[strikes_ttm],
                                                                    optiontypes_ttms=[optiontypes],
                                                                    model_prices_ttms=[option_mean])
         mc_ivols_up = bachel.infer_normal_ivols_from_chain_prices(ttms=ttms,
-                                                                  forwards=forwards,
+                                                                  forwards=forwards[idx_tenor],
                                                                   discfactors=np.ones_like(ttms),
                                                                   strikes_ttms=[strikes_ttm],
                                                                   optiontypes_ttms=[optiontypes],
                                                                   model_prices_ttms=[option_up])
         mc_ivols_down = bachel.infer_normal_ivols_from_chain_prices(ttms=ttms,
-                                                                    forwards=forwards,
+                                                                    forwards=forwards[idx_tenor],
                                                                     discfactors=np.ones_like(ttms),
                                                                     strikes_ttms=[strikes_ttm],
                                                                     optiontypes_ttms=[optiontypes],
