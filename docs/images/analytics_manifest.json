@@ -1,0 +1,1380 @@
+{
+  "complete": true,
+  "environment": {
+    "dependencies": {
+      "matplotlib": "3.11.1",
+      "numba": "0.67.0",
+      "numpy": "2.5.2",
+      "pandas": "3.0.5",
+      "scipy": "1.18.0",
+      "stochvolmodels": "2.4.1",
+      "vanilla-option-pricers": "2.1.0"
+    },
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.14"
+  },
+  "exhibits": {
+    "analytic_vs_mc_btc.png": {
+      "checks": {
+        "first_three_slices_inside": true,
+        "last_slice_separates": true
+      },
+      "class": "bundled_snapshot",
+      "conventions": {
+        "data": "Historical snapshot bundled with the package (21 October 2021)",
+        "intervals": "95% Monte Carlo intervals of the price, inverted to implied volatility",
+        "measure": "MMA"
+      },
+      "function": "produce_analytic_vs_mc_btc",
+      "pages": [
+        "docs/analytic_vs_monte_carlo.md",
+        "docs/analytics_gallery.md"
+      ],
+      "parameters": {
+        "chain": "get_btc_test_chain_data maturities and forwards, 33 strikes within four standard deviations of the at-the-money volatility",
+        "nb_path": 400000,
+        "nb_steps": 1440,
+        "params": "FITTED of the canonical script, the Bitcoin case study's fit"
+      },
+      "producer": "scripts.docs_analytics.transforms",
+      "question": "Where on the smile do transform and Monte Carlo implied volatilities separate?",
+      "script": "examples/docs/analytic_vs_monte_carlo.py",
+      "seed": 7,
+      "sha256": "d76db47ea0685af878f183d91264d88b334cf18a2b39fcb9345d595e69e49ab8",
+      "tables": {
+        "analytic_vs_mc_btc__comparison.csv": "cec864f7ec5c41bb825804193e4db115832854d76fa9aad12c1858356010cb82"
+      }
+    },
+    "btc_case_fit.png": {
+      "checks": {
+        "first_three_slices_inside_spread": true
+      },
+      "class": "bundled_snapshot",
+      "conventions": {
+        "data": "Historical snapshot bundled with the package",
+        "error": "Root-mean-square difference to mid implied volatility, labelled mse in the legend",
+        "measure": "MMA"
+      },
+      "function": "produce_btc_case_fit",
+      "pages": [
+        "docs/app_bitcoin_options.md",
+        "docs/calibration.md",
+        "docs/analytics_gallery.md"
+      ],
+      "parameters": {
+        "chain": "get_btc_test_chain_data: Bitcoin implied volatilities of 21 October 2021",
+        "expansion": "second order",
+        "params": "FITTED of the canonical script"
+      },
+      "producer": "scripts.docs_analytics.calibration",
+      "question": "Does the paper's calibration configuration fit the bundled Bitcoin chain within its bid-ask spread?",
+      "script": "examples/docs/app_bitcoin_options.py",
+      "seed": null,
+      "sha256": "dc09eb558827a48f58ce123c114c392a975a175c13e6511e3fd9af02563c7440",
+      "tables": {
+        "btc_case_fit__fit_quality.csv": "9c92c30d8916bc3cb6429035ebca6d5d4a5491d48d210b0d26874f9ca139a54a"
+      }
+    },
+    "btc_case_measures.png": {
+      "checks": {
+        "mc_within_two_standard_errors": true
+      },
+      "class": "bundled_snapshot",
+      "conventions": {
+        "data": "Historical snapshot bundled with the package",
+        "error": "Root-mean-square difference to the Monte Carlo implied volatility, labelled mse in the legend",
+        "intervals": "95% Monte Carlo confidence intervals of implied volatility",
+        "measure": "MMA and inverse"
+      },
+      "function": "produce_btc_case_measures",
+      "pages": [
+        "docs/app_bitcoin_options.md",
+        "docs/inverse_options.md",
+        "docs/analytics_gallery.md"
+      ],
+      "parameters": {
+        "chain": "get_btc_test_chain_data: Bitcoin implied volatilities of 21 October 2021",
+        "nb_path": 400000,
+        "nb_steps": 360,
+        "params": "FITTED of the canonical script"
+      },
+      "producer": "scripts.docs_analytics.calibration",
+      "question": "Do the MMA and inverse valuations agree with each other and with Monte Carlo simulation on the bundled chain?",
+      "script": "examples/docs/app_bitcoin_options.py",
+      "seed": 7,
+      "sha256": "aa49e541b34ef99232b7ea6161ac30bbde06357243bf259e27e844cebde02da1",
+      "tables": {
+        "btc_case_measures__prices.csv": "b8417ea789125ceaf98a4e2205b5d8dec63c45b39deda1dbe06c546d30b3facb"
+      }
+    },
+    "calibration_objective_profiles.png": {
+      "checks": {
+        "minimum_at_the_fit_in_every_profile": true
+      },
+      "class": "bundled_snapshot",
+      "conventions": {
+        "data": "Historical snapshot bundled with the package",
+        "measure": "MMA",
+        "objective": "Eq. (6.3) with Black-Scholes vegas normalised within each slice, as calibrate_model_params_to_chain"
+      },
+      "function": "produce_calibration_objective_profiles",
+      "pages": [
+        "docs/calibration.md",
+        "docs/analytics_gallery.md"
+      ],
+      "parameters": {
+        "chain": "get_btc_test_chain_data: Bitcoin implied volatilities of 21 October 2021",
+        "grids": "sigma0 and theta from 70% to 130% of the fit, beta within 0.6 of it, volvol from 50% to 150%",
+        "params": "FITTED of the canonical script"
+      },
+      "producer": "scripts.docs_analytics.calibration",
+      "question": "How sharply does the calibration objective identify each fitted parameter?",
+      "script": "examples/docs/calibration.py",
+      "seed": null,
+      "sha256": "50ff77d10ec3548ea80ea087ece03c8034846abb71276c6f3d7881f8101dda37",
+      "tables": {
+        "calibration_objective_profiles__beta.csv": "8d8f5f7ea3207e244ea9b1a4ea1b436147888405d9356c4f8f8884a0452ddeee",
+        "calibration_objective_profiles__sigma0.csv": "b6bb54f5623daefdf908961b129d147943ae02b7bfd41ba14a993aac28cb0bb4",
+        "calibration_objective_profiles__theta.csv": "9d22e81db231cad6a33f062da34ae7e90b9db4dbb30f344f82dc9287dfeca177",
+        "calibration_objective_profiles__volvol.csv": "1b46ecd353f97a57409b708f8c20884ad2a5df6dfc71ad69e821a5f98e1fc776"
+      }
+    },
+    "cross_asset_calibrations.png": {
+      "checks": {
+        "beta_negative_only_for_spy": true,
+        "parameters_match_paper_module": true
+      },
+      "class": "bundled_snapshot",
+      "conventions": {
+        "data": "Historical snapshots bundled with the package (15 July 2022; Bitcoin 21 October 2021)",
+        "measure": "MMA"
+      },
+      "function": "produce_cross_asset_calibrations",
+      "pages": [
+        "docs/app_positive_and_negative_skews.md",
+        "docs/analytics_gallery.md"
+      ],
+      "parameters": {
+        "chains": "get_spy_test_chain_data, get_gld_test_chain_data, get_btc_test_chain_data, get_sqqq_test_chain_data, get_vix_test_chain_data",
+        "params": "FITTED of the canonical script, recorded in papers/logsv_model_with_quadratic_drift/calibrations.py",
+        "slice": "2m"
+      },
+      "producer": "scripts.docs_analytics.calibration",
+      "question": "Does one parameterisation fit equity, VIX, gold and inverse-ETF skews?",
+      "script": "examples/docs/app_positive_and_negative_skews.py",
+      "seed": null,
+      "sha256": "46e8b5e9a7e3bf1dfccf29a4bfe8fab3885b816fa9386e6d49adb89c17956064",
+      "tables": {
+        "cross_asset_calibrations__fits.csv": "6504ec7de4b92f542651c52df83646c09702f514b7e2a3a4d0989fda04cfdc60"
+      }
+    },
+    "expansion_pdfs_vs_mc.png": {
+      "checks": {
+        "log_return_distances_match_canonical_script": true,
+        "masses_match_mc": true,
+        "script_parameters_used": true
+      },
+      "class": "paper_replication",
+      "conventions": {
+        "data": "Model-driven; no market data",
+        "grids": "X and sigma on the package's default transform grids; I / tau on 5,001 points of [0, 1000] instead of the default 40,000 points of [0, 4000], within 0.019 in total absolute probability of 10,001 points of [0, 2000]",
+        "measure": "MMA",
+        "parameters": "Those of the paper's figure code: Eq. (6.4) with the vol-of-vol scaled by 0.6; the published caption cites Eq. (6.4)",
+        "phi_grid_scale": "Default set_vol_scaler(sigma0, ttm) instead of the scale of the Tardis chain in the paper code",
+        "reimplementation": "article_figures.plot_var_pdfs draws through qis, which is not a dependency; the producer computes the same densities with LogSVPricer.logsv_pdfs and simulate_terminal_values and draws them with matplotlib",
+        "simulation": "simulate_terminal_values with 360 steps per year, the numba generator seeded by set_seed(37)"
+      },
+      "function": "produce_expansion_pdfs_vs_mc",
+      "pages": [
+        "docs/affine_expansion.md",
+        "docs/analytics_gallery.md"
+      ],
+      "paper_module": "papers/logsv_model_with_quadratic_drift/article_figures.py",
+      "parameters": {
+        "figure": "IJTAF Fig. 6",
+        "n": 200,
+        "nb_path": 400000,
+        "params": {
+          "beta": 0.501,
+          "kappa1": 2.21,
+          "kappa2": 2.18,
+          "sigma0": 0.4083,
+          "theta": 0.3789,
+          "volvol": 1.83798
+        },
+        "psi_max": 1000.0,
+        "psi_points": 5001,
+        "ttm": 0.08333333333333333
+      },
+      "producer": "scripts.docs_analytics.transforms",
+      "question": "How close are the densities from the first- and second-order expansions to simulation?",
+      "script": "examples/docs/affine_expansion.py",
+      "seed": 37,
+      "sha256": "64551e20f96686d8ac2bf6d03c9b2e36a2ba62f0a9da43997636966d699949e1",
+      "tables": {
+        "expansion_pdfs_vs_mc__log_return.csv": "90b3cd499a54ef21c52a4670ba0a58aff5e72e21a50423a430854dded14e662b",
+        "expansion_pdfs_vs_mc__q_var.csv": "f0ee3377e98ce876f864285ee80c4588f18ce934fb42f997255b3125780fb428",
+        "expansion_pdfs_vs_mc__sigma.csv": "f9e74d784a639e27961c01097ad55645eeb42abb34ca456ec071936d368e9338",
+        "expansion_pdfs_vs_mc__summary.csv": "cb0eb9a789036c3fc5544cb206c551645f54489e63b9762ab4192c912fe890e8"
+      }
+    },
+    "expected_qvar_vs_mc.png": {
+      "checks": {
+        "paper_cases_match_canonical_script": true
+      },
+      "class": "paper_replication",
+      "conventions": {
+        "data": "Model-driven; no market data",
+        "error_bars": "The paper module draws plus or minus 2 x 1.96 standard errors; the published caption states 95% intervals",
+        "measure": "MMA",
+        "paths": "25,000 paths instead of the paper's 100,000, to fit the memory available at generation; the analytic curves are unaffected and the error bars are twice as wide",
+        "seed": "37 for numba's and NumPy's generators",
+        "simulation": "The paper module passes ceil(360 * ttm) = 720 as steps per year"
+      },
+      "function": "produce_expected_qvar_vs_mc",
+      "pages": [
+        "docs/volatility_distribution_and_moments.md",
+        "docs/analytics_gallery.md"
+      ],
+      "paper_module": "papers/logsv_model_with_quadratic_drift/moments_vol_qvar.py",
+      "parameters": {
+        "cases": "TEST_PARAMS and TEST_PARAMS2 of moments_vol_qvar.py: sigma0 1.5 and 0.5; kappa1 4; kappa2 0, 4, 8; theta 1; volvol 1.5; beta 0",
+        "figure": "IJTAF Fig. 3",
+        "n_terms": 4,
+        "nb_path": 25000,
+        "ttm": 2.0
+      },
+      "producer": "scripts.docs_analytics.logsv_model",
+      "question": "How does the expected quadratic variance evolve from a high and a low initial volatility, and does the truncated system agree with simulation?",
+      "script": "examples/docs/volatility_distribution_and_moments.py",
+      "seed": 37,
+      "sha256": "ffb0b7c9a433eb1cf617d92ff5f25c06a79049fc81b225ef467d17dcf0d09f54",
+      "tables": {
+        "expected_qvar_vs_mc__expected_qvar.csv": "1c257cf337c26f985c24c91a709e353974877fa950a48ef325fa36ac977f3efd"
+      }
+    },
+    "fhjm_swaption_skews.png": {
+      "checks": {
+        "base_scenario_inside_monte_carlo": true,
+        "skew_sign_follows_beta": true,
+        "symmetric_without_beta": true
+      },
+      "class": "synthetic",
+      "conventions": {
+        "data": "Synthetic: the module's flat 4.3% curve, no market data",
+        "measure": "Annuity measure with drift freezing for the expansion; risk-neutral simulation of the full dynamics",
+        "simulation": "calc_mc_vols, 360 steps per year; it seeds NumPy with 16 whatever its seed argument",
+        "units": "Strikes and normal volatilities in bp"
+      },
+      "function": "produce_fhjm_swaption_skews",
+      "pages": [
+        "docs/factor_hjm_stochastic_volatility.md",
+        "docs/analytics_gallery.md"
+      ],
+      "parameters": {
+        "beta_scales": [
+          -2.0,
+          0.0,
+          1.0
+        ],
+        "expiry": "2y",
+        "nb_path": 20000,
+        "params": "model_params of the canonical script: RDR Table 2 base scenario",
+        "strikes": "seven, 150 bp either side of the forward"
+      },
+      "producer": "scripts.docs_analytics.rates",
+      "question": "How does the volatility beta shape swaption skews?",
+      "script": "examples/docs/factor_hjm_stochastic_volatility.py",
+      "seed": 16,
+      "sha256": "29d42b8b5229117d84702eaa7c2ca92980050571dc1b753c42c8265816d2672a",
+      "tables": {
+        "fhjm_swaption_skews__smiles.csv": "74817008c5d02ccd70c64d590c956ca78a9b828a8e322005d9926bfce5cc0d5e"
+      }
+    },
+    "first_order_odes.png": {
+      "checks": {
+        "a0_matches_published_figure_reading": true,
+        "terminal_coefficients_match_canonical_script": true
+      },
+      "class": "paper_replication",
+      "conventions": {
+        "data": "Model-driven; no market data",
+        "layout": "Panels A and B side by side and panel C below, instead of one row of three",
+        "measure": "MMA (p = 1)",
+        "parameters": "Those of the paper's figure code, article_figures.py; the published caption cites Eq. (6.4), with which A0(1) = -0.3482 + 0.0517i instead of the published value of about -1.9",
+        "solver": "solve_ode_for_a with the stiff BDF solver and dense output, as ode_sol_in_time.plot_ode_solutions"
+      },
+      "function": "produce_expansion_odes",
+      "pages": [
+        "docs/affine_expansion.md",
+        "docs/analytics_gallery.md"
+      ],
+      "paper_module": "papers/logsv_model_with_quadratic_drift/ode_sol_in_time.py",
+      "parameters": {
+        "figure": "IJTAF Fig. 4",
+        "order": "FIRST",
+        "params": {
+          "beta": 0.1985,
+          "kappa1": 4.8606,
+          "kappa2": 4.7938,
+          "sigma0": 0.8327,
+          "theta": 1.0139,
+          "volvol": 2.369
+        },
+        "phi": [
+          -0.5,
+          2.0
+        ],
+        "published_re_a0_at_1": -1.89,
+        "ttm": 1.0
+      },
+      "producer": "scripts.docs_analytics.transforms",
+      "question": "How do the first-order expansion coefficients and the leading term evolve with maturity?",
+      "script": "examples/docs/affine_expansion.py",
+      "seed": null,
+      "sha256": "6f3318f8a35426704e83918833d802bcc01487ca930748461e4ee4e3b9c483d7",
+      "tables": {
+        "first_order_odes__coefficients.csv": "2c171daab4348b96eafaf915c44906e1264d3fb7919a58311c53e630e7e03165"
+      }
+    },
+    "fourier_vs_bsm.png": {
+      "checks": {
+        "default_grid_error_below_2e-7": true,
+        "default_grid_matches_canonical_script": true
+      },
+      "class": "synthetic",
+      "conventions": {
+        "data": "Synthetic teaching exhibit; no market data",
+        "grid": "get_phi_grid with the scale of set_vol_scaler(sigma0, ttm) and n_points points",
+        "measure": "MMA"
+      },
+      "function": "produce_fourier_vs_bsm",
+      "pages": [
+        "docs/european_option_pricing.md",
+        "docs/analytics_gallery.md"
+      ],
+      "parameters": {
+        "n_points": [
+          100,
+          150,
+          200,
+          300,
+          400,
+          600,
+          800,
+          1000,
+          1500,
+          2000
+        ],
+        "params": "FLAT_PARAMS of the script: sigma0 = theta = 0.4, beta = volvol = 0",
+        "ttms": [
+          "1 week",
+          "1 month",
+          "1 year"
+        ]
+      },
+      "producer": "scripts.docs_analytics.transforms",
+      "question": "Does the Fourier pricer reproduce Black-Scholes at zero vol-of-vol, and how does the error fall with the grid?",
+      "script": "examples/docs/european_option_pricing.py",
+      "seed": null,
+      "sha256": "d54b4dc1faf5b8eadacc7706f9cca5040fd64bb62ef12b23cf353c931d533dab",
+      "tables": {
+        "fourier_vs_bsm__grid_errors.csv": "a43c7e96f8813d996f08d7f1e01848a0bcf836519f6181a636074b6fab90b317"
+      }
+    },
+    "hawkes_smiles.png": {
+      "checks": {
+        "agreement_up_to_moderate_clustering": true,
+        "strong_clustering_separates_at_six_months": true
+      },
+      "class": "synthetic",
+      "conventions": {
+        "data": "Synthetic: no market data",
+        "measure": "MMA",
+        "simulation": "model_mc_price_chain in 20 batches of 10,000 paths, 1,800 steps a year, NumPy's global generator seeded once"
+      },
+      "function": "produce_hawkes_smiles",
+      "pages": [
+        "docs/hawkes_jump_diffusion.md",
+        "docs/analytics_gallery.md"
+      ],
+      "parameters": {
+        "branching": [
+          0.0,
+          0.35,
+          0.7
+        ],
+        "nb_path": 200000,
+        "params": "HawkesJDParams defaults with self-excitation of branching ratio n and theta = lambda0 (1 - n)",
+        "strikes": "exp(z 0.6 sqrt(T)), z from -2 to 2",
+        "ttms": "one and six months"
+      },
+      "producer": "scripts.docs_analytics.other_models",
+      "question": "What smile does jump clustering produce at the same mean jump intensity?",
+      "script": "examples/docs/hawkes_jump_diffusion.py",
+      "seed": 2026,
+      "sha256": "eff4d1393e7359b9450d7c349c257195d954d2be26dfbf9afcb47d7fea0ba6cb",
+      "tables": {
+        "hawkes_smiles__smiles.csv": "1e8f402683d70e24f276eb0271bdddc21fbda83b3db92f9e2384abc6e62371dd"
+      }
+    },
+    "heston_vs_logsv.png": {
+      "checks": {
+        "at_the_money_matched_at_one_and_two_years": true,
+        "logsv_right_tail_heavier": true,
+        "same_stationary_moments": true,
+        "symmetric_without_correlation": true
+      },
+      "class": "synthetic",
+      "conventions": {
+        "data": "Synthetic: no market data",
+        "densities": "Heston: density of sqrt(V) with V gamma; log-normal SV: inverse gamma (IJTAF Eq. (3.38) with kappa2 = 0)",
+        "measure": "MMA"
+      },
+      "function": "produce_heston_vs_logsv",
+      "pages": [
+        "docs/heston_model.md",
+        "docs/analytics_gallery.md"
+      ],
+      "parameters": {
+        "heston": "BASE of the canonical script: v0 = theta = 0.04, kappa = 4, volvol = 0.4",
+        "logsv": "matched_logsv: same initial volatility, correlation, relative vol-of-vol at 20% and stationary mean and variance of volatility; kappa2 = 0",
+        "rho": -0.5,
+        "rhos": [
+          -0.5,
+          0.0,
+          0.5
+        ],
+        "ttms": [
+          0.25,
+          1.0,
+          2.0
+        ]
+      },
+      "producer": "scripts.docs_analytics.other_models",
+      "question": "How do the two models differ in volatility distribution and in smile at matched dynamics?",
+      "script": "examples/docs/heston_model.py",
+      "seed": null,
+      "sha256": "75855107039c627b401ce8b98df1cafd43a48d79c965a99ad6260318043aee74",
+      "tables": {
+        "heston_vs_logsv__gaps.csv": "3b26a5bb8ce77b3814eaeabf239826e47dab1760f4ae4dbe26dd0f35a413062f",
+        "heston_vs_logsv__smiles.csv": "16da467a3f7cd4601ff9b4a3c2f71b1ca4f9b9e8852368798925f2d5d8b1ca72"
+      }
+    },
+    "ijtaf_fig7_btc_calibrations.png": {
+      "checks": {
+        "crop_inside_text_block": true
+      },
+      "class": "paper_reproduction",
+      "conventions": {
+        "changes": "Cropped from the article PDF; sub-captions removed; the two rows stacked",
+        "data": "Deribit Bitcoin options, weekly, April 2019 to October 2023; not distributable",
+        "licence": "CC BY 4.0",
+        "producer_of_original": "papers/logsv_model_with_quadratic_drift/article_figures.py FIGURE7_BTC_CALIBRATIONS"
+      },
+      "function": "produce_pdf_crop",
+      "pages": [
+        "docs/app_bitcoin_options.md",
+        "docs/analytics_gallery.md"
+      ],
+      "paper_module": "papers/logsv_model_with_quadratic_drift/paper/log-normal-stochastic-volatility-model-with-quadratic-drift.pdf",
+      "parameters": {
+        "boxes_pt": [
+          [
+            132,
+            368,
+            336,
+            91
+          ],
+          [
+            132,
+            501,
+            336,
+            89
+          ]
+        ],
+        "dpi": 220,
+        "figure": "IJTAF Fig. 7",
+        "gap_pt": 8,
+        "page": 45
+      },
+      "producer": "scripts.docs_analytics.paper_pdf",
+      "question": "How well did weekly calibrations fit Bitcoin options from April 2019 to October 2023, and how did the fitted parameters move?",
+      "seed": null,
+      "sha256": "a2724fe05f3c053ea3f4d1aba6e6b29fffee31b35c5c94bd9d903d3dea0a26bb",
+      "tables": {
+        "ijtaf_fig7_btc_calibrations__crop_boxes.csv": "d08b022c85d15174b84f85f6c2897661ffb9d9714f691696a184aae2e6f83745"
+      }
+    },
+    "ijtaf_fig8_btc_fit.png": {
+      "checks": {
+        "crop_inside_text_block": true
+      },
+      "class": "paper_reproduction",
+      "conventions": {
+        "changes": "Cropped from the article PDF; caption omitted",
+        "data": "Deribit Bitcoin options; not distributable",
+        "licence": "CC BY 4.0",
+        "producer_of_original": "papers/logsv_model_with_quadratic_drift/article_figures.py FIGURE8_9_FITTED_MODEL"
+      },
+      "function": "produce_pdf_crop",
+      "pages": [
+        "docs/app_bitcoin_options.md",
+        "docs/analytics_gallery.md"
+      ],
+      "paper_module": "papers/logsv_model_with_quadratic_drift/paper/log-normal-stochastic-volatility-model-with-quadratic-drift.pdf",
+      "parameters": {
+        "boxes_pt": [
+          [
+            122,
+            150,
+            361,
+            464
+          ]
+        ],
+        "dpi": 220,
+        "figure": "IJTAF Fig. 8",
+        "gap_pt": 0,
+        "page": 47
+      },
+      "producer": "scripts.docs_analytics.paper_pdf",
+      "question": "How closely does the calibrated model match the bid and ask quotes of the three most liquid Bitcoin slices?",
+      "seed": null,
+      "sha256": "89cd9793d190e7e613bb69d9b910ce94bd76d6be90f9a413314ea59f3e7b60f6",
+      "tables": {
+        "ijtaf_fig8_btc_fit__crop_boxes.csv": "d283413997ef72b6cfcb8cbf1d75915b6adb2c3881c69fcb275deaa76f1266e4"
+      }
+    },
+    "il_replication.png": {
+      "checks": {
+        "replication_exact": true,
+        "script_matches_paper_module": true
+      },
+      "class": "synthetic",
+      "conventions": {
+        "data": "Synthetic: the parameters of the module's example, no market data",
+        "measure": "MMA",
+        "units": "Loss in % of the initial position value in both panels"
+      },
+      "function": "produce_il_replication",
+      "pages": [
+        "docs/app_impermanent_loss_hedging.md",
+        "docs/analytics_gallery.md"
+      ],
+      "parameters": {
+        "betas": [
+          -1.0,
+          -0.2692,
+          1.0
+        ],
+        "params": "PARAMS of the canonical script, the example of papers/il_hedging/run_logsv_for_il_payoff.py",
+        "range": "P0 = 2200, PA = 2000, PB = 2400, TTM = 10 / 365",
+        "volvols": [
+          0.5,
+          1.0,
+          1.5,
+          2.0,
+          2.5,
+          3.0,
+          3.5,
+          4.0
+        ]
+      },
+      "producer": "scripts.docs_analytics.applications",
+      "question": "Do European payoffs replicate the impermanent loss, and how does its value depend on vol-of-vol?",
+      "script": "examples/docs/app_impermanent_loss_hedging.py",
+      "seed": null,
+      "sha256": "6a325c476a6d4b7fd00ed5f901b498ac0e421fb854929667f5640f00655e0cc9",
+      "tables": {
+        "il_replication__expected_loss_pct.csv": "4a1b20f4f592a440a49919871b8b6bd854a40f6e7a89f5d3190ccfb1b1bde284"
+      }
+    },
+    "inverse_net_delta.png": {
+      "checks": {
+        "at_the_money_values_match_canonical_script": true
+      },
+      "class": "synthetic",
+      "conventions": {
+        "data": "Synthetic teaching exhibit; no market data",
+        "measure": "Black model",
+        "reimplementation": "compare_net_delta.py draws through qis, which is not a dependency; the producer computes the same deltas with compute_bsm_forward_grid_prices and compute_bsm_vanilla_grid_deltas"
+      },
+      "function": "produce_inverse_net_delta",
+      "pages": [
+        "docs/inverse_options.md",
+        "docs/analytics_gallery.md"
+      ],
+      "parameters": {
+        "forward": 50000.0,
+        "source": "the DELTA_COMP case of papers/inverse_options/compare_net_delta.py",
+        "ttm": 0.019178082191780823,
+        "vol": 0.6
+      },
+      "producer": "scripts.docs_analytics.transforms",
+      "question": "How does the net delta of an inverse option differ from its Black delta?",
+      "script": "examples/docs/inverse_options.py",
+      "seed": null,
+      "sha256": "105d47bde1a1fe440ef343fa7b9c9157add9e54e35b6aa15cbb93193057faa68",
+      "tables": {
+        "inverse_net_delta__call.csv": "962db7bddf99e9024eb1fb962b41adce5b0231fefd760012b7cbe54af8561d11",
+        "inverse_net_delta__put.csv": "7995068af89e3d009988dcde2e18830f028abe2a1e4c362bea1fe8849645e3ae"
+      }
+    },
+    "logsv_drift_and_paths.png": {
+      "checks": {
+        "tail_falls_with_kappa2": true,
+        "terminal_quantiles_match_canonical_script": true
+      },
+      "class": "synthetic",
+      "conventions": {
+        "data": "Synthetic teaching exhibit; no market data",
+        "drift_units": "Panels A and B show the annual drift divided by 260, per day, as the paper module plots it",
+        "measure": "MMA",
+        "paths": "Daily steps; the same increments from numpy.random.default_rng(7) for all three rates"
+      },
+      "function": "produce_logsv_drift_and_paths",
+      "pages": [
+        "docs/logsv_model.md",
+        "docs/analytics_gallery.md"
+      ],
+      "paper_module": "papers/logsv_model_with_quadratic_drift/vol_drift.py",
+      "parameters": {
+        "kappa1": 4.0,
+        "kappa2s": [
+          0.0,
+          4.0,
+          8.0
+        ],
+        "nb_path": 20000,
+        "theta": 1.0,
+        "ttm": 1.0,
+        "volvol": 1.75
+      },
+      "producer": "scripts.docs_analytics.logsv_model",
+      "question": "How does the quadratic drift pull high volatility back faster, and what does that do to the paths of volatility?",
+      "script": "examples/docs/logsv_model.py",
+      "seed": 7,
+      "sha256": "6c9400e828088431d53ccc506408e3b7e510a51ec26d5430e7907244055dc6ed",
+      "tables": {
+        "logsv_drift_and_paths__quantiles.csv": "8bfa2947424bbff0fcd6b68f383d1b8e759b2609854d45df1d640a8f1f7f12c2"
+      }
+    },
+    "martingale_test.png": {
+      "checks": {
+        "far_inside_within_three_standard_errors": true,
+        "far_outside_below_095": true
+      },
+      "class": "synthetic",
+      "conventions": {
+        "data": "Synthetic teaching exhibit; no market data",
+        "intervals": "95% intervals from the sample standard error, which understates the uncertainty near the boundary where Z_T is heavy-tailed",
+        "measure": "MMA",
+        "simulation": "simulate_terminal_values with the numba generator seeded by set_seed(5) for each point"
+      },
+      "function": "produce_martingale_test",
+      "pages": [
+        "docs/martingale_conditions_and_skews.md",
+        "docs/analytics_gallery.md"
+      ],
+      "parameters": {
+        "betas": [
+          -1.0,
+          -0.5,
+          0.0,
+          0.5,
+          0.9,
+          1.2,
+          1.4
+        ],
+        "kappa2s": [
+          0.0,
+          1.0
+        ],
+        "nb_path": 200000,
+        "params": "test_params of the script: kappa1 = 2, theta = sigma0 = 1, total vol-of-vol 1.5",
+        "ttm": 1.0
+      },
+      "producer": "scripts.docs_analytics.logsv_model",
+      "question": "Does the simulated expected price stay at its initial value inside the region of Theorem 3.7 and fall below it outside?",
+      "script": "examples/docs/martingale_conditions_and_skews.py",
+      "seed": 5,
+      "sha256": "843929d6fa0e0146d585cbb8ca1d32a5282c04c6dc8205b4e7f99de76bb9ab3d",
+      "tables": {
+        "martingale_test__expected_price_ratio.csv": "949fa94c4d8f8ede7843c28939d793c45f3c408a9af2e6cda992a91e3926563a"
+      }
+    },
+    "mc_convergence.png": {
+      "checks": {
+        "errors_match_canonical_script": true,
+        "log_vol_order_near_one": true
+      },
+      "class": "synthetic",
+      "conventions": {
+        "data": "Synthetic teaching exhibit; no market data",
+        "measure": "MMA",
+        "simulation": "simulate_logsv_x_vol_terminal with given increments; coarse increments are sums of the 3,072-step increments, from numpy.random.default_rng(3)"
+      },
+      "function": "produce_mc_convergence",
+      "pages": [
+        "docs/monte_carlo_simulation.md",
+        "docs/analytics_gallery.md"
+      ],
+      "parameters": {
+        "nb_path": 20000,
+        "params": "LOGSV_BTC_PARAMS",
+        "steps": [
+          12,
+          24,
+          48,
+          96,
+          192,
+          384,
+          3072
+        ],
+        "ttm": 1.0
+      },
+      "producer": "scripts.docs_analytics.logsv_model",
+      "question": "How do the strong and weak errors of the simulation scheme fall with the time step?",
+      "script": "examples/docs/monte_carlo_simulation.py",
+      "seed": 3,
+      "sha256": "7c111e37651be4decaca26c44604c7b7db2c7f674337c1e3d1e6a550838c90cd",
+      "tables": {
+        "mc_convergence__errors.csv": "25d6f8bd48e20f6696076c95b22a4cfa871ef0e7d0d6052b599de96836be8c4a"
+      }
+    },
+    "qvar_option_smiles.png": {
+      "checks": {
+        "every_strike_inside_mc_interval": true,
+        "mma_and_inverse_agree_within_5e-4": true,
+        "one_week_smile_from_344_to_368pct": true
+      },
+      "class": "paper_replication",
+      "conventions": {
+        "data": "Packaged QV chain get_qv_options_test_chain_data; forwards set to the expected QV and strikes to 75% to 150% of it, as plot_qvar_figure",
+        "error": "Root-mean-square difference to the Monte Carlo implied volatility, labelled mse in the legend",
+        "existence": "Theorem 4.3 guarantees the QV transform on Re(Psi) = -1/2 when kappa2 > vartheta; Eq. (6.4) has vartheta = 3.10 above kappa2 = 2.18",
+        "measure": "MMA and inverse; Monte Carlo under MMA",
+        "reimplementation": "article_figures.py imports qis, which is not a dependency; the producer computes the quantities of LogSVPricer.plot_comp_mma_inverse_options_with_mc and draws them with vol_slice_fit in two rows",
+        "simulation": "400,000 paths with 5,760 steps per year, seed 13 for the numba generator, through qv_option_mc_vols of the canonical script. The paper code uses 200,000 paths and seed 20 and passes no step count; with the current package the pricer then takes int(360 T) + 1 = 31 steps per year, and its Monte Carlo intervals (one week: 302% to 385%) match neither the transform values nor the published figure, whose intervals resemble the fine-step ones"
+      },
+      "function": "produce_qvar_option_smiles",
+      "pages": [
+        "docs/quadratic_variance_options.md",
+        "docs/analytics_gallery.md"
+      ],
+      "paper_module": "papers/logsv_model_with_quadratic_drift/article_figures.py",
+      "parameters": {
+        "figure": "IJTAF Fig. 10",
+        "ids": [
+          "1w",
+          "2w",
+          "1m"
+        ],
+        "nb_path": 400000,
+        "nb_steps": 5760,
+        "params": {
+          "beta": 0.501,
+          "kappa1": 2.21,
+          "kappa2": 2.18,
+          "sigma0": 0.4083,
+          "theta": 0.3789,
+          "volvol": 3.0633
+        }
+      },
+      "producer": "scripts.docs_analytics.transforms",
+      "question": "What skew do call options on quadratic variance have, and do the MMA and inverse valuations agree with simulation?",
+      "script": "examples/docs/quadratic_variance_options.py",
+      "seed": 13,
+      "sha256": "911ac63ec68b8fa97a6cef176bcaea04c0c8ee424f42f39a117e377d2f2c915b",
+      "tables": {
+        "qvar_option_smiles__implied_vols.csv": "be52b6cbf7ec1783ccd73ed344f7e8d2ced5bed156ec57e313ca8f034d528974"
+      }
+    },
+    "rdr_fig5_swaption_fit.png": {
+      "checks": {
+        "kappa2_condition_holds": true,
+        "module_kappas_differ_from_article": true,
+        "rms_as_quoted": true
+      },
+      "class": "paper_replication",
+      "conventions": {
+        "data": "Market snapshot hard-coded in the paper module",
+        "measure": "Annuity measure with drift freezing",
+        "parameters": "The module's recorded parameters, which differ from the published tables; the A3 page compares both",
+        "reimplementation": "plot_mkt_model_joint_smile_MF calls np.in1d, removed from NumPy; the producer prices the same slices with logsv_chain_de_pricer and draws them itself",
+        "units": "Strikes and normal volatilities in bp"
+      },
+      "function": "produce_rdr_fig5_swaption_fit",
+      "pages": [
+        "docs/app_swaptions_and_sofr_options.md",
+        "docs/analytics_gallery.md"
+      ],
+      "paper_module": "papers/sv_for_factor_hjm/calibration_fig_5_6_7.py",
+      "parameters": {
+        "chain": "get_swaption_data: USD swaptions of 18 August 2023, expiries 1y to 5y, five strikes per slice",
+        "expansion": "first order",
+        "figure": "RDR Fig. 5",
+        "params": "getCalibRateLogSVParams()['USD']"
+      },
+      "producer": "scripts.docs_analytics.rates",
+      "question": "Does one set of parameters per expiry fit the swaption smiles of three tenors?",
+      "script": "examples/docs/app_swaptions_and_sofr_options.py",
+      "seed": null,
+      "sha256": "e813e8a9cd9e07d832831b856f5f0a860b3326337686ab0647fbe0655e1deaf8",
+      "tables": {
+        "rdr_fig5_swaption_fit__fit.csv": "b02fe7e6fd5d659223f70d5e0d3e46c24ff4b0f5e73c9bb201689921e13afc00",
+        "rdr_fig5_swaption_fit__rms_bp.csv": "f96b33812ccb755d94438c80598c7087acb56bab33aedbede7a66c9be1ad2532"
+      }
+    },
+    "rdr_fig6_swaption_mc.png": {
+      "checks": {
+        "forward_shortfall_under_one_bp": true,
+        "inside_as_quoted": true
+      },
+      "class": "paper_replication",
+      "conventions": {
+        "data": "Market snapshot hard-coded in the paper module",
+        "expiry": "5y as in the caption and the module; the text of the article says 10y",
+        "measure": "Annuity measure with drift freezing for the expansion; risk-neutral simulation",
+        "parameters": "The module's recorded parameters, which differ from the published tables; the A3 page compares both",
+        "simulation": "pooled_mc_vols of the canonical script: calc_mc_vols in 20 batches of 10,000 paths with seeds 1 to 20, 360 steps per year; the article states 200,000 paths",
+        "units": "Strikes and normal volatilities in bp"
+      },
+      "function": "produce_rdr_fig6_swaption_mc",
+      "pages": [
+        "docs/app_swaptions_and_sofr_options.md",
+        "docs/analytics_gallery.md"
+      ],
+      "paper_module": "papers/sv_for_factor_hjm/calibration_fig_5_6_7.py",
+      "parameters": {
+        "expiry": 5.0,
+        "figure": "RDR Fig. 6",
+        "nb_batch": 20,
+        "nb_path_batch": 10000,
+        "params": "getCalibRateLogSVParams()['USD']",
+        "strikes": "21 across each tenor's market range"
+      },
+      "producer": "scripts.docs_analytics.rates",
+      "question": "Is the first-order expansion accurate against Monte Carlo at the 5y expiry?",
+      "script": "examples/docs/app_swaptions_and_sofr_options.py",
+      "seed": null,
+      "sha256": "d7520f2da12a5e0c7e430981970e8dfcf821fcc2d6e4841df3993ba82a3323bf",
+      "tables": {
+        "rdr_fig6_swaption_mc__comparison.csv": "bfe32f1994bd3cad68591f0bab0a354996865a7b4b2adf655166acb3b61dabac",
+        "rdr_fig6_swaption_mc__summary.csv": "f3d5c1d06605426e7a243ab0b7d61ecd3b2e1d5273ad96f5b7711c886c9b4e5a"
+      }
+    },
+    "rdr_fig7_shock_scenarios.png": {
+      "checks": {
+        "inside_as_quoted": true
+      },
+      "class": "paper_replication",
+      "conventions": {
+        "data": "Model-driven: get_scenarios of the paper module, strikes from the market snapshot",
+        "expiry": "2y as in the module and the published strike axes; the caption says 5y",
+        "measure": "Annuity measure with drift freezing for the expansion; risk-neutral simulation",
+        "scenarios": "Arguments of get_scenarios: beta multiplier, vol-of-vol multiplier, shift of the yield volatilities",
+        "simulation": "pooled_mc_vols, 20 batches of 10,000 paths with seeds 1 to 20",
+        "units": "Strikes and normal volatilities in bp"
+      },
+      "function": "produce_rdr_fig7_shock_scenarios",
+      "pages": [
+        "docs/app_swaptions_and_sofr_options.md",
+        "docs/analytics_gallery.md"
+      ],
+      "paper_module": "papers/sv_for_factor_hjm/calibration_fig_5_6_7.py",
+      "parameters": {
+        "expiry": 2.0,
+        "figure": "RDR Fig. 7",
+        "nb_batch": 20,
+        "nb_path_batch": 10000,
+        "scenarios": [
+          [
+            1.0,
+            1.0,
+            0.0
+          ],
+          [
+            1.0,
+            1.0,
+            0.02
+          ],
+          [
+            1.0,
+            4.0,
+            0.0
+          ],
+          [
+            -2.0,
+            1.0,
+            0.0
+          ]
+        ]
+      },
+      "producer": "scripts.docs_analytics.rates",
+      "question": "Does the first-order expansion stay accurate under the parameter shocks of Table 2?",
+      "script": "examples/docs/app_swaptions_and_sofr_options.py",
+      "seed": null,
+      "sha256": "f587c82b1a3214cd2c3ab67827c4d0cb1e6fce989fa4f1f80bd70ed50282cc7f",
+      "tables": {
+        "rdr_fig7_shock_scenarios__comparison.csv": "9ce47a52d1fd623dba1be52324e69e172f4e863c96116260a377a00f1ae10ec6",
+        "rdr_fig7_shock_scenarios__inside.csv": "205627b2337c7e42a8601e4a72d20c55c54b5934e479cc3acaf52a5945812959"
+      }
+    },
+    "rdr_fig8_sofr_fit.png": {
+      "checks": {
+        "refit_inside_one_tick": true
+      },
+      "class": "paper_replication",
+      "conventions": {
+        "axes": "Against strike; the module plots against delta",
+        "bands": "Normal volatilities of option prices one tick (0.25 bp) above and below the SABR refit",
+        "data": "Market snapshot hard-coded in the paper module",
+        "measure": "Forward measure of the futures pricer",
+        "parameters": "The module's recorded parameters, which differ from the published tables; the A3 page compares both",
+        "units": "Strikes and normal volatilities in bp"
+      },
+      "function": "produce_rdr_fig8_sofr_fit",
+      "pages": [
+        "docs/app_swaptions_and_sofr_options.md",
+        "docs/analytics_gallery.md"
+      ],
+      "paper_module": "papers/sv_for_factor_hjm/calibration_fig_8_9.py",
+      "parameters": {
+        "chain": "get_futures_data and refit_to_sabr: 3M SOFR options at 75 and 103 days",
+        "expansion": "first order",
+        "figure": "RDR Fig. 8",
+        "params": "getFutCalibRateLogSVParams()['USD'].reduce(['75d', '103d'])"
+      },
+      "producer": "scripts.docs_analytics.rates",
+      "question": "Does the model fit the smiles of short-dated SOFR futures options?",
+      "script": "examples/docs/app_swaptions_and_sofr_options.py",
+      "seed": null,
+      "sha256": "33958d5fd33f1efaef7b0122fddaffbda82949ca6067409c7a42e0881c09b4f6",
+      "tables": {
+        "rdr_fig8_sofr_fit__fit.csv": "3c367ed98ac65cb40dc90e6bfa4501e2d323b6332a4b85e2206db03e9bc27c64"
+      }
+    },
+    "rdr_fig9_sofr_mc.png": {
+      "checks": {
+        "inside_as_quoted": true
+      },
+      "class": "paper_replication",
+      "conventions": {
+        "data": "Market snapshot hard-coded in the paper module",
+        "measure": "Forward measure",
+        "panels": "The module computes the 75-day panel only; the 103-day panel uses the same code with that expiry's futures rate",
+        "parameters": "The module's recorded parameters, which differ from the published tables; the A3 page compares both",
+        "simulation": "calc_mc_vols of calibration_fig_8_9, which honours its seed",
+        "units": "Strikes and normal volatilities in bp"
+      },
+      "function": "produce_rdr_fig9_sofr_mc",
+      "pages": [
+        "docs/app_swaptions_and_sofr_options.md",
+        "docs/analytics_gallery.md"
+      ],
+      "paper_module": "papers/sv_for_factor_hjm/calibration_fig_8_9.py",
+      "parameters": {
+        "figure": "RDR Fig. 9",
+        "nb_path": 131072,
+        "params": "getFutCalibRateLogSVParams()['USD'].reduce(['75d', '103d'])",
+        "strikes": "21, re-centred on the model futures rate of each expiry"
+      },
+      "producer": "scripts.docs_analytics.rates",
+      "question": "Are the first- and second-order expansions accurate against Monte Carlo for SOFR options?",
+      "script": "examples/docs/app_swaptions_and_sofr_options.py",
+      "seed": 20,
+      "sha256": "f3ea5356672c63d1641b8ffa1fd4db074b5217a866eb85af269835ee0ba0a767",
+      "tables": {
+        "rdr_fig9_sofr_mc__comparison.csv": "8a3968f32c1f8047f31a84d5dec381ed7e93042eaf6b1ac32b4d102f1cec5199",
+        "rdr_fig9_sofr_mc__summary.csv": "50b2b9f41380bb3fea50052db462f1a48faaf0860b77563c19beda45f6eb5006"
+      }
+    },
+    "robust_vol_models.png": {
+      "checks": {
+        "faster_than_linearised_at_60_days": true,
+        "matched_heston_satisfies_feller": true
+      },
+      "class": "synthetic",
+      "conventions": {
+        "data": "Synthetic: no market data; the parameters were fitted to VIX, MOVE, OVX and private Bitcoin data",
+        "measure": "Statistical dynamics as fitted; beta = 0",
+        "simulation": "simulate_vol_paths from stationary starts drawn from the generalised inverse Gaussian law, increments from numpy.random.default_rng(seed)"
+      },
+      "function": "produce_robust_vol_models",
+      "pages": [
+        "docs/app_robust_volatility_models.md",
+        "docs/analytics_gallery.md"
+      ],
+      "parameters": {
+        "lag_step": 5,
+        "nb_path": 50000,
+        "params": "PARAMS of the canonical script, recorded in papers/volatility_models/article_figures.py",
+        "steps_per_year": 260
+      },
+      "producer": "scripts.docs_analytics.other_models",
+      "question": "What persistence and stationary distribution do the recorded parameters imply for four volatility indices?",
+      "script": "examples/docs/app_robust_volatility_models.py",
+      "seed": 7,
+      "sha256": "aee11c23668f5a1e5cbfddea8f45c822de12ab58538d496a7d3eeb83528d5460",
+      "tables": {
+        "robust_vol_models__autocorrelation.csv": "0d0ff0364ebab374d35aa512aa95548045c4da134456ef9b87a6b8969ba7c993"
+      }
+    },
+    "second_order_odes.png": {
+      "checks": {
+        "a0_matches_published_figure_reading": true,
+        "terminal_coefficients_match_canonical_script": true
+      },
+      "class": "paper_replication",
+      "conventions": {
+        "data": "Model-driven; no market data",
+        "layout": "Panels A and B side by side and panel C below, instead of one row of three",
+        "measure": "MMA (p = 1)",
+        "parameters": "Those of the paper's figure code, article_figures.py; the published caption cites Eq. (6.4), with which A0(1) = -0.3482 + 0.0517i instead of the published value of about -1.9",
+        "solver": "solve_ode_for_a with the stiff BDF solver and dense output, as ode_sol_in_time.plot_ode_solutions"
+      },
+      "function": "produce_expansion_odes",
+      "pages": [
+        "docs/affine_expansion.md",
+        "docs/analytics_gallery.md"
+      ],
+      "paper_module": "papers/logsv_model_with_quadratic_drift/ode_sol_in_time.py",
+      "parameters": {
+        "figure": "IJTAF Fig. 5",
+        "order": "SECOND",
+        "params": {
+          "beta": 0.1985,
+          "kappa1": 4.8606,
+          "kappa2": 4.7938,
+          "sigma0": 0.8327,
+          "theta": 1.0139,
+          "volvol": 2.369
+        },
+        "phi": [
+          -0.5,
+          2.0
+        ],
+        "published_re_a0_at_1": -1.9,
+        "ttm": 1.0
+      },
+      "producer": "scripts.docs_analytics.transforms",
+      "question": "How do the second-order expansion coefficients evolve, and how small are the higher coefficients?",
+      "script": "examples/docs/affine_expansion.py",
+      "seed": null,
+      "sha256": "0f56f69cfea00d4f28e5dfc0b73473ae1eabb5b2a5b80510d580e07a5d2a86b7",
+      "tables": {
+        "second_order_odes__coefficients.csv": "b48b602c1129ed7bbe33aa407c2fad1829052b752cec5a8c4b989829188278b4"
+      }
+    },
+    "smile_fitter_fit.png": {
+      "checks": {
+        "leading_order_within_015_vol_points": true,
+        "quadratic_fit_within_005_vol_points": true
+      },
+      "class": "synthetic",
+      "conventions": {
+        "data": "Synthetic: a generated chain and a model smile",
+        "measure": "MMA"
+      },
+      "function": "produce_smile_fitter_fit",
+      "pages": [
+        "docs/logsv_smile_fitter.md",
+        "docs/analytics_gallery.md"
+      ],
+      "parameters": {
+        "chain": "get_oca_simulated_chain_data: generated chain, no market data",
+        "model": "sigma0 = theta = 0.2, kappa1 = kappa2 = 0, beta = 0.3, volvol = 0.8, one month, log-moneyness within 0.08"
+      },
+      "producer": "scripts.docs_analytics.calibration",
+      "question": "How close is the approximate smile fitter to the full model?",
+      "script": "examples/docs/logsv_smile_fitter.py",
+      "seed": null,
+      "sha256": "e70beff14b10d759759864a1f79bf5cc561ce4acf7be7875e270d54b4f5a3925",
+      "tables": {
+        "smile_fitter_fit__smiles.csv": "9c2c95d36c70851d581457c389bafff64d2dadde0bd46362a13e856789b54a29"
+      }
+    },
+    "smiles_in_beta.png": {
+      "checks": {
+        "skew_sign_follows_beta": true
+      },
+      "class": "synthetic",
+      "conventions": {
+        "data": "Synthetic teaching exhibit; no market data",
+        "measure": "MMA",
+        "quotation": "Black-Scholes-Merton implied volatility; forward 1"
+      },
+      "function": "produce_smiles_in_beta",
+      "pages": [
+        "docs/martingale_conditions_and_skews.md",
+        "docs/analytics_gallery.md"
+      ],
+      "parameters": {
+        "betas": [
+          -1.0,
+          -0.5,
+          0.0,
+          0.5,
+          1.0
+        ],
+        "nb_strikes": 23,
+        "params": "smile_params of the script: sigma0 = theta = 0.5, kappa1 = 2, kappa2 = 2.5, total vol-of-vol 1.5",
+        "strike_range": [
+          0.75,
+          1.3
+        ],
+        "ttm": 0.08333333333333333
+      },
+      "producer": "scripts.docs_analytics.logsv_model",
+      "question": "How does the sign of the volatility beta set the direction of the implied volatility skew?",
+      "script": "examples/docs/martingale_conditions_and_skews.py",
+      "seed": null,
+      "sha256": "3a721d9c0354961c2fd46efadf8fa7e3507d508aedcdb9ce5a26a558bdd05f65",
+      "tables": {
+        "smiles_in_beta__skews.csv": "1544efd966467db41f37daf7751a24120690189c1ed19e5d3cdb0e31dce2aca3"
+      }
+    },
+    "steady_state_density.png": {
+      "checks": {
+        "paper_density_matches_canonical_script": true
+      },
+      "class": "paper_replication",
+      "conventions": {
+        "data": "Model-driven; no market data",
+        "layout": "Panels arranged for the web; content as in the paper module",
+        "measure": "MMA",
+        "units": "Annualised decimal volatility; kurtosis of short-horizon returns"
+      },
+      "function": "produce_steady_state_density",
+      "pages": [
+        "docs/volatility_distribution_and_moments.md",
+        "docs/analytics_gallery.md"
+      ],
+      "paper_module": "papers/logsv_model_with_quadratic_drift/steady_state_pdf.py",
+      "parameters": {
+        "density_cases": [
+          [
+            4.0,
+            0.0
+          ],
+          [
+            4.0,
+            4.0
+          ],
+          [
+            4.0,
+            8.0
+          ]
+        ],
+        "figure": "IJTAF Fig. 1",
+        "kappa1s": [
+          1.0,
+          4.0,
+          8.0
+        ],
+        "theta": 1.0,
+        "volvol": 1.5
+      },
+      "producer": "scripts.docs_analytics.logsv_model",
+      "question": "How does the quadratic mean reversion shape the steady-state density of volatility, its skewness and the kurtosis of returns?",
+      "script": "examples/docs/volatility_distribution_and_moments.py",
+      "seed": null,
+      "sha256": "ef02e770ce7dcade6f0a4618c623b510611ad33373b523ca75a603b35079e760",
+      "tables": {
+        "steady_state_density__statistics.csv": "1232bdb83f1201b184a95aa3e19288be0e5c2d9fc8fdc6154ecef69a7644ac9f"
+      }
+    },
+    "terminal_distribution_smiles.png": {
+      "checks": {
+        "atm_matched_at_20pct": true,
+        "closed_forms_match_quadrature": true,
+        "forward_matched": true
+      },
+      "class": "synthetic",
+      "conventions": {
+        "check": "Closed-form prices against numerical integration of each density",
+        "data": "Synthetic: no market data",
+        "measure": "Forward measure, zero rates"
+      },
+      "function": "produce_terminal_distribution_smiles",
+      "pages": [
+        "docs/terminal_distribution_models.md",
+        "docs/analytics_gallery.md"
+      ],
+      "parameters": {
+        "forward": 100.0,
+        "mixtures": "MIXTURES of the canonical script: two, three and four states",
+        "nus": [
+          3.0,
+          5.0,
+          30.0
+        ],
+        "student_t": "volatility set so that the implied volatility at the forward is 20%",
+        "ttm": 0.5
+      },
+      "producer": "scripts.docs_analytics.other_models",
+      "question": "What smiles can mixtures and Student-t laws produce without dynamics?",
+      "script": "examples/docs/terminal_distribution_models.py",
+      "seed": null,
+      "sha256": "47d1e2fc7c6d1d49c6630c2bbf34645b93b6d3af2cde5dcc29d9b7553589d2d8",
+      "tables": {
+        "terminal_distribution_smiles__smiles.csv": "a73be7d9574e27757403e83ba8ad2ca3803953df6e1270bc9240f958542a3fa6"
+      }
+    },
+    "vol_moments_vs_mc.png": {
+      "checks": {
+        "k4_moment_system_stable": true,
+        "k8_moment_system_stable": true
+      },
+      "class": "paper_replication",
+      "conventions": {
+        "data": "Model-driven; Monte Carlo with 100,000 paths",
+        "intervals": "95% Monte Carlo confidence intervals",
+        "layout": "Panels stacked for the web",
+        "measure": "MMA",
+        "seed": "37 for numba's generator, as in the paper code, and for NumPy's global generator, which simulate_vol_paths uses; the published figure seeded only numba's",
+        "simulation": "The paper module passes ceil(360 * ttm) = 540 as steps per year"
+      },
+      "function": "produce_vol_moments_vs_mc",
+      "pages": [
+        "docs/volatility_distribution_and_moments.md",
+        "docs/analytics_gallery.md"
+      ],
+      "paper_module": "papers/logsv_model_with_quadratic_drift/moments_vol_qvar.py",
+      "parameters": {
+        "figure": "IJTAF Fig. 2",
+        "n_terms": [
+          4,
+          8
+        ],
+        "nb_path": 100000,
+        "params": {
+          "beta": 0.0,
+          "kappa1": 4.0,
+          "kappa2": 4.0,
+          "sigma0": 1.5,
+          "theta": 1.0,
+          "volvol": 1.0
+        },
+        "ttm": 1.5
+      },
+      "producer": "scripts.docs_analytics.logsv_model",
+      "question": "How accurate is the truncated moment system at orders four and eight against Monte Carlo simulation?",
+      "script": "examples/docs/volatility_distribution_and_moments.py",
+      "seed": 37,
+      "sha256": "d2ebbb4aa9eb72c7a32fbeba9073a84c76630a4487fcef672530a6bec67e1c12",
+      "tables": {
+        "vol_moments_vs_mc__k4_coverage.csv": "39df4b7d0c8bd37641fadb1f73e1fc0f65d9cffef2f8200a068e04d34f7cf40d",
+        "vol_moments_vs_mc__k4_m1.csv": "c1a8780540db6e15f75f0d25a4a951ae76ba46cff267b1a7c92c5fc14502e5b2",
+        "vol_moments_vs_mc__k4_m2.csv": "58934c343f97ddc17656956f76ab7cbe94c33011c8f30f2a0986b29a0c46cb6f",
+        "vol_moments_vs_mc__k4_m3.csv": "b6dd3cb73d954c84f7fd8c4710531f58b0a00ee53f3ab51a842fad518fff7b9d",
+        "vol_moments_vs_mc__k4_m4.csv": "8e89843c942ae3ae85c802b640184fddfeed9dc27a6cfbe6d6ff09fe0eed617b",
+        "vol_moments_vs_mc__k8_coverage.csv": "edc193e70259d42d40c10a8e39800a5e1378fddad5eebc7deef45c541662dbd7",
+        "vol_moments_vs_mc__k8_m1.csv": "7d2cc6b1364ef1880aecd0a23a7ce05be77f7e34e00e33c4a8516256eb391ea4",
+        "vol_moments_vs_mc__k8_m2.csv": "b9b346c4300accd8a3799a5ad6b6427018816665cb1bfbb8c0f33274f3934a4a",
+        "vol_moments_vs_mc__k8_m3.csv": "921e0aeed9dd9922397d3093130c00c8241c6650099a40d789982b287f497336",
+        "vol_moments_vs_mc__k8_m4.csv": "5eb408b8dc4aaa8bc8c2d99710ae5776dc16f198f059f129505e616e644370b1"
+      }
+    }
+  },
+  "generated_at_utc": "2026-09-27T17:53:52+00:00",
+  "kind": "stochvolmodels_documentation_analytics",
+  "schema_version": 1,
+  "source": {
+    "commit": "66fc4fd12adf4076b6e4848a5aed4f6fb75cd305",
+    "dirty_paths": [
+      "M AGENTS.md",
+      " M CHANGELOG.md",
+      " M docs/analytic_vs_monte_carlo.md",
+      " M docs/api.md",
+      " M docs/calibration.md",
+      " M docs/conf.py",
+      " M docs/contributing.md",
+      " M docs/european_option_pricing.md",
+      "D  docs/figures/btc_fit.PNG",
+      "D  docs/figures/btc_mc_comp.PNG",
+      " M docs/getting_started.md",
+      " M docs/heston_model.md",
+      " M docs/index.md",
+      " M docs/logsv_model.md",
+      " M docs/numerical_accuracy_and_performance.md",
+      " M docs/option_chains_and_conventions.md",
+      " M docs/package_comparison.md",
+      " M docs/reproducing_the_papers.md",
+      " M docs/testing_and_coverage.md",
+      " M examples/README.md",
+      " M papers/logsv_model_with_quadratic_drift/moments_vol_qvar.py",
+      " M pyproject.toml",
+      " M src/stochvolmodels/pricers/factor_hjm/factor_hjm_pricer.py",
+      " M src/stochvolmodels/pricers/factor_hjm/rate_logsv_ivols.py",
+      " M src/stochvolmodels/pricers/factor_hjm/rate_logsv_params.py",
+      " M src/stochvolmodels/tests/test_factor_hjm_characterization.py",
+      " M src/stochvolmodels/tests/test_regime_switch_logsv_characterization.py",
+      " M uv.lock",
+      "?? docs/affine_expansion.md",
+      "?? docs/analytics_gallery.md",
+      "?? docs/app_bitcoin_options.md",
+      "?? docs/app_impermanent_loss_hedging.md",
+      "?? docs/app_positive_and_negative_skews.md",
+      "?? docs/app_robust_volatility_models.md",
+      "?? docs/app_swaptions_and_sofr_options.md",
+      "?? docs/documentation_standard.md",
+      "?? docs/examples.md",
+      "?? docs/factor_hjm_stochastic_volatility.md",
+      "?? docs/hawkes_jump_diffusion.md",
+      "?? docs/images/",
+      "?? docs/inverse_options.md",
+      "?? docs/logsv_smile_fitter.md",
+      "?? docs/martingale_conditions_and_skews.md",
+      "?? docs/monte_carlo_simulation.md",
+      "?? docs/quadratic_variance_options.md",
+      "?? docs/terminal_distribution_models.md",
+      "?? docs/volatility_distribution_and_moments.md",
+      "?? examples/docs/",
+      "?? scripts/check_docs.py",
+      "?? scripts/docs_analytics/",
+      "?? scripts/docs_inventory.json",
+      "?? src/stochvolmodels/tests/test_docs_examples.py",
+      "?? src/stochvolmodels/tests/test_docs_tooling.py"
+    ],
+    "hashes": {
+      "examples/docs/affine_expansion.py": "b9472fc35e3620b45f57f2d1c796aca18b17fc0f7ab1e82d5236a51fb7723cc9",
+      "examples/docs/analytic_vs_monte_carlo.py": "934d549fe81de040a7e84d0263e7464440358c565aeab1d7ebeb6be30dedab3e",
+      "examples/docs/app_bitcoin_options.py": "6a92f2a29a7f48b187581d764a715b767a4eb249bcb414ec6057be9775dc16cd",
+      "examples/docs/app_impermanent_loss_hedging.py": "328e6e3bc1b540aac35a61dace00bd642e1d2f3756162cbdbdc8a11245624acf",
+      "examples/docs/app_positive_and_negative_skews.py": "9c6ffb8fc67ddf5fb6ac984e87e37e544701c88c1c6562737a7fad1b42103bea",
+      "examples/docs/app_robust_volatility_models.py": "1cb5ebf10883080f3146c5631cc3fc83eb57d319d58cd0d642f1cd11ed43d858",
+      "examples/docs/app_swaptions_and_sofr_options.py": "eaced0b2105deeef71bd5b46aba494abc306914acf618f8c13b6b873b2353744",
+      "examples/docs/calibration.py": "ee93f67e3b8c3ce41ffced3101c30f1398b79397cd9fbd288f09f85e668bbf28",
+      "examples/docs/european_option_pricing.py": "afff3eafb914fd230e870e657bca91b44b1c06479805d00e89969db27be59c06",
+      "examples/docs/factor_hjm_stochastic_volatility.py": "9e62e1082028767719bf94e6480226298028a930660a9dc1fe30ee8436370c04",
+      "examples/docs/hawkes_jump_diffusion.py": "bafb01a5eae562e6053e842a85c738ff9eb4c9a0cfc40a7cee2879ee2bfd6a9a",
+      "examples/docs/heston_model.py": "da83e5618175d22a997c5622011b98d0dad13eb1aee90dd3b39c27f322d4ea9a",
+      "examples/docs/inverse_options.py": "fcd53d02da1c015a90787c2906848e8ef9c96705c063939d932b9bdcee4ab79c",
+      "examples/docs/logsv_model.py": "516ca5d203c8c97ad0cb37c65c10477a0214bcce86bbde97f8cdd8d4717a6f1f",
+      "examples/docs/logsv_smile_fitter.py": "07b8d5a79127c99ec61c6df85f1e4b68b61ce0ef33a3d589b730a046bd5adbc7",
+      "examples/docs/martingale_conditions_and_skews.py": "2a9109f723d043a20ddb8183dc13645a9ecf3d067156fd957e1823a0b5ca9030",
+      "examples/docs/monte_carlo_simulation.py": "ee9b2f46ee5a1f17c2ec2999c9eb3f07338cbcf56389355e7362b418b39632fd",
+      "examples/docs/quadratic_variance_options.py": "afb1402d59a3a8e3cc565de1beeb1712e998aca3f6c1002e779e087b17ae72f8",
+      "examples/docs/terminal_distribution_models.py": "ae6a45ec1db87bb6fc129ecfc261e71e34d26f60ef6287998c6451ff789b8429",
+      "examples/docs/volatility_distribution_and_moments.py": "508c1ac2bee863db3a066d040105d93ea45aa90899bd8b86e61b47c3c0b2fc1e",
+      "papers/logsv_model_with_quadratic_drift/article_figures.py": "d3d7ddf1bc1f6175d18e75d0d37a7ce421e8a40270f0977b42b4c284cb853820",
+      "papers/logsv_model_with_quadratic_drift/moments_vol_qvar.py": "d9b6920c91b06f1fb538c617d82f3ccd76c64aeb7a78c551ddb788c792edbefc",
+      "papers/logsv_model_with_quadratic_drift/ode_sol_in_time.py": "44448e1b5a033c23b98c3b0c81a5451d0effc9a8ecd1d46e586f9f367056da46",
+      "papers/logsv_model_with_quadratic_drift/paper/log-normal-stochastic-volatility-model-with-quadratic-drift.pdf": "7232e16c08982946a1ceafde0ed494dfad64e61be294316b5e8bf89161570f0a",
+      "papers/logsv_model_with_quadratic_drift/steady_state_pdf.py": "0e22ce5cbf43937915694facbbe75fc9a1b7f6f9deec68f4edf4f8eb9c97f535",
+      "papers/logsv_model_with_quadratic_drift/vol_drift.py": "e7b927878299fbeccd102ea18cc7aa6542bdd33b446d91163be1ce90a3c275b0",
+      "papers/sv_for_factor_hjm/calibration_fig_5_6_7.py": "b4622f2e996c655a71c7124195a7b0c1ab8257978762700d569291b9fbbf0a6d",
+      "papers/sv_for_factor_hjm/calibration_fig_8_9.py": "9de021141187642bd6cddfac019c4c71980f4e97ea2646dfa617bc5a14a19b58",
+      "scripts/docs_analytics/applications.py": "556cd49c4ca1ae525b4660467fd4044b940060478ac52fb2092fdb4e43b910f6",
+      "scripts/docs_analytics/calibration.py": "13e2367226d953ac4ffdb27e54d2b9711d752d25a755c9eed568ce2b131dfce9",
+      "scripts/docs_analytics/logsv_model.py": "f8fcbfd01dca05cd07f33c997ab130c4e48e16df38452c1d25cc0f3b8c15c936",
+      "scripts/docs_analytics/other_models.py": "9c287dffeddf8a43e74f5c87b5c627afea99112fa3cfbb364b5fc0ed07f11ced",
+      "scripts/docs_analytics/paper_pdf.py": "16e1c00d015c3ca9dbd48d4feeebd523ae1cd242cef25c72557315991042fa59",
+      "scripts/docs_analytics/rates.py": "cb9b7942c684c5c15e89eb2f537c91800751895a1f92a21d7dfa752f26641236",
+      "scripts/docs_analytics/registry.json": "19f9cdb337faf2cc505514c60151cf75d0117908c21b6f3e3915bcbf80516880",
+      "scripts/docs_analytics/transforms.py": "75a0a148c9df1c06bda75a812f3c94daad671ae1af55deba3b3e9d0cd2891cd2"
+    }
+  }
+}

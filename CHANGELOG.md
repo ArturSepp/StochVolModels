@@ -4,6 +4,59 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+### Added
+
+- Added the documentation standard supplement, a page inventory with export and parameter
+  ownership, `scripts/check_docs.py`, the `scripts/docs_analytics` exhibit registry and
+  provenance tooling, and repository-only tests that run every case of the canonical documentation
+  scripts under `examples/docs/`.
+
+- Added `sphinxcontrib-mermaid` to the `docs` extra for diagrams in the documentation.
+
+- Added the documentation pages on the steady-state distribution, moments and expected quadratic
+  variance of the log-normal SV model, the Bitcoin options case study and the analytics gallery,
+  with regenerated and reproduced figures of the IJTAF paper and their provenance manifest.
+
+### Changed
+
+- Rewrote the log-normal SV model page as a methodology article and added the page on martingale
+  conditions, valuation measures and positive skews, with their canonical scripts and exhibits.
+
+- Rewrote the European option pricing page as the Fourier pricing article and added the pages on
+  the affine expansion of the moment generating function, inverse options and options on
+  quadratic variance, with their canonical scripts and exhibits, including regenerated IJTAF
+  Figs. 4, 5, 6 and 10.
+
+- Rewrote the analytic-versus-Monte-Carlo and calibration pages as methodology articles, added the
+  pages on Monte Carlo simulation schemes and the approximate smile fitter, and upgraded the
+  numerical accuracy page with an error budget and dated timings, with canonical scripts and
+  exhibits.
+
+- Added the case studies on skews of both signs across five bundled chains and on hedging the
+  impermanent loss of concentrated liquidity with the log-normal SV transform, with canonical
+  scripts and exhibits.
+
+- Added the article on stochastic volatility for factor HJM rates and the case study on USD
+  swaptions and SOFR futures options, with canonical scripts, a swaption-skew exhibit and RDR
+  Figs. 5 to 9 regenerated from the paper modules.
+
+- Rewrote the Heston page as a benchmark article and added the articles on jump-diffusion with
+  clustered jumps and on Gaussian-mixture and Student-t smiles, and the case study on robust
+  stochastic volatility models, with canonical scripts and exhibits.
+
+- Added the software design page (module layers, the pricer interface, the analytic and Monte
+  Carlo paths, the numba boundary and how to seed each random-number generator, stability tiers,
+  dependencies, and the models without an article), extended the reproduction page into the
+  research papers and replication page with the paper ledger and a map of the published figures,
+  added the documentation gates to the testing page, and linked every article from the landing
+  page. The link check skips publishers that refuse automated requests and accepts DOI and
+  sign-in redirects.
+
+- Reorganised the Read the Docs site by model workflow, extended the conventions page into the
+  notation and conventions reference, added an examples router, regrouped the API reference by
+  owning page with parameter maps and the advanced exports, and added bylines and descriptions to
+  every page. No published page URL changed; the public API is unchanged.
+
 ### Fixed
 
 - `papers/logsv_model_with_quadratic_drift/moments_vol_qvar.py` no longer passes the `axis`

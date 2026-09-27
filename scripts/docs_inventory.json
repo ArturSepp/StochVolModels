@@ -1,0 +1,373 @@
+{
+  "schema_version": 1,
+  "description": "Page inventory for scripts/check_docs.py: page forms and statuses, planned pages, export and parameter ownership, and the citation ledger of the package's papers. Status is recorded here explicitly and never inferred from page content.",
+  "pages": {
+    "README.md": {
+      "form": "readme",
+      "status": "retained"
+    },
+    "docs/index.md": {
+      "form": "utility",
+      "status": "review"
+    },
+    "docs/getting_started.md": {
+      "form": "utility",
+      "status": "review",
+      "example": "examples/getting_started/quickstart.py"
+    },
+    "docs/option_chains_and_conventions.md": {
+      "form": "utility",
+      "status": "review",
+      "example": "examples/docs/option_chains_and_conventions.py"
+    },
+    "docs/examples.md": {
+      "form": "utility",
+      "status": "review"
+    },
+    "docs/documentation_standard.md": {
+      "form": "utility",
+      "status": "review"
+    },
+    "docs/logsv_model.md": {
+      "id": "M01",
+      "form": "methodology",
+      "status": "review",
+      "example": "examples/docs/logsv_model.py"
+    },
+    "docs/european_option_pricing.md": {
+      "id": "M05",
+      "form": "methodology",
+      "status": "review",
+      "example": "examples/docs/european_option_pricing.py"
+    },
+    "docs/analytic_vs_monte_carlo.md": {
+      "id": "M09",
+      "form": "methodology",
+      "status": "review",
+      "example": "examples/docs/analytic_vs_monte_carlo.py"
+    },
+    "docs/calibration.md": {
+      "id": "M10",
+      "form": "methodology",
+      "status": "review",
+      "example": "examples/docs/calibration.py"
+    },
+    "docs/heston_model.md": {
+      "id": "M12",
+      "form": "methodology",
+      "status": "review",
+      "example": "examples/docs/heston_model.py"
+    },
+    "docs/numerical_accuracy_and_performance.md": {
+      "form": "utility",
+      "status": "review",
+      "example": "examples/docs/numerical_accuracy_and_performance.py"
+    },
+    "docs/testing_and_coverage.md": {
+      "form": "utility",
+      "status": "review"
+    },
+    "docs/package_comparison.md": {
+      "form": "utility",
+      "status": "review"
+    },
+    "docs/reproducing_the_papers.md": {
+      "form": "utility",
+      "status": "review"
+    },
+    "docs/contributing.md": {
+      "form": "utility",
+      "status": "review"
+    },
+    "docs/api.md": {
+      "form": "api",
+      "status": "api"
+    },
+    "docs/volatility_distribution_and_moments.md": {
+      "id": "M02",
+      "form": "methodology",
+      "status": "review",
+      "example": "examples/docs/volatility_distribution_and_moments.py"
+    },
+    "docs/app_bitcoin_options.md": {
+      "id": "A1",
+      "form": "case_study",
+      "status": "review",
+      "example": "examples/docs/app_bitcoin_options.py"
+    },
+    "docs/analytics_gallery.md": {
+      "id": "U1",
+      "form": "utility",
+      "status": "review"
+    },
+    "docs/martingale_conditions_and_skews.md": {
+      "id": "M03",
+      "form": "methodology",
+      "status": "review",
+      "example": "examples/docs/martingale_conditions_and_skews.py"
+    },
+    "docs/affine_expansion.md": {
+      "id": "M04",
+      "form": "methodology",
+      "status": "review",
+      "example": "examples/docs/affine_expansion.py"
+    },
+    "docs/inverse_options.md": {
+      "id": "M06",
+      "form": "methodology",
+      "status": "review",
+      "example": "examples/docs/inverse_options.py"
+    },
+    "docs/quadratic_variance_options.md": {
+      "id": "M07",
+      "form": "methodology",
+      "status": "review",
+      "example": "examples/docs/quadratic_variance_options.py"
+    },
+    "docs/monte_carlo_simulation.md": {
+      "id": "M08",
+      "form": "methodology",
+      "status": "review",
+      "example": "examples/docs/monte_carlo_simulation.py"
+    },
+    "docs/logsv_smile_fitter.md": {
+      "id": "M11",
+      "form": "methodology",
+      "status": "review",
+      "example": "examples/docs/logsv_smile_fitter.py"
+    },
+    "docs/app_positive_and_negative_skews.md": {
+      "id": "A2",
+      "form": "case_study",
+      "status": "review",
+      "example": "examples/docs/app_positive_and_negative_skews.py"
+    },
+    "docs/app_impermanent_loss_hedging.md": {
+      "id": "A4",
+      "form": "case_study",
+      "status": "review",
+      "example": "examples/docs/app_impermanent_loss_hedging.py"
+    },
+    "docs/factor_hjm_stochastic_volatility.md": {
+      "id": "M15",
+      "form": "methodology",
+      "status": "review",
+      "example": "examples/docs/factor_hjm_stochastic_volatility.py"
+    },
+    "docs/app_swaptions_and_sofr_options.md": {
+      "id": "A3",
+      "form": "case_study",
+      "status": "review",
+      "example": "examples/docs/app_swaptions_and_sofr_options.py"
+    },
+    "docs/terminal_distribution_models.md": {
+      "id": "M14",
+      "form": "methodology",
+      "status": "review",
+      "example": "examples/docs/terminal_distribution_models.py"
+    },
+    "docs/app_robust_volatility_models.md": {
+      "id": "A5",
+      "form": "case_study",
+      "status": "review",
+      "example": "examples/docs/app_robust_volatility_models.py"
+    },
+    "docs/hawkes_jump_diffusion.md": {
+      "id": "M13",
+      "form": "methodology",
+      "status": "review",
+      "example": "examples/docs/hawkes_jump_diffusion.py"
+    },
+    "docs/software_design.md": {
+      "id": "U2",
+      "form": "utility",
+      "status": "review"
+    }
+  },
+  "planned": {},
+  "symbols": {
+    "docs/getting_started.md": [
+      "__version__"
+    ],
+    "docs/option_chains_and_conventions.md": [
+      "OptionChain",
+      "OptionSlice",
+      "OptionType",
+      "VariableType"
+    ],
+    "docs/logsv_model.md": [
+      "LogSvParams",
+      "LogSVPricer"
+    ],
+    "docs/volatility_distribution_and_moments.md": [
+      "compute_analytic_qvar"
+    ],
+    "docs/martingale_conditions_and_skews.md": [
+      "ConstraintsType"
+    ],
+    "docs/affine_expansion.md": [
+      "ExpansionOrder",
+      "compute_logsv_a_mgf_grid",
+      "func_a_ode_quadratic_terms",
+      "func_rhs",
+      "func_rhs_jac",
+      "get_expansion_n",
+      "get_init_conditions_a",
+      "solve_a_ode_grid",
+      "solve_analytic_ode_for_a",
+      "solve_analytic_ode_for_a0",
+      "solve_analytic_ode_grid_phi",
+      "solve_ode_for_a"
+    ],
+    "docs/european_option_pricing.md": [
+      "compute_bsm_vanilla_price",
+      "compute_bsm_vanilla_slice_prices",
+      "compute_bsm_vanilla_delta",
+      "compute_bsm_vanilla_vega",
+      "compute_bsm_vanilla_gamma",
+      "compute_bsm_vanilla_theta",
+      "compute_bsm_strike_from_delta",
+      "infer_bsm_implied_vol",
+      "infer_bsm_ivols_from_slice_prices",
+      "compute_normal_price",
+      "compute_normal_slice_prices",
+      "compute_normal_delta",
+      "compute_normal_delta_to_strike",
+      "compute_normal_slice_vegas",
+      "infer_normal_implied_vol",
+      "infer_normal_ivols_from_slice_prices"
+    ],
+    "docs/monte_carlo_simulation.md": [
+      "get_randoms_for_chain_valuation",
+      "get_randoms_for_rough_vol_chain_valuation",
+      "logsv_mc_chain_pricer_fixed_randoms",
+      "rough_logsv_mc_chain_pricer_fixed_randoms"
+    ],
+    "docs/calibration.md": [
+      "CalibrationError",
+      "LogsvModelCalibrationType",
+      "CalibrationEngine"
+    ],
+    "docs/heston_model.md": [
+      "HestonParams",
+      "HestonPricer"
+    ],
+    "docs/hawkes_jump_diffusion.md": [
+      "HawkesJDParams",
+      "HawkesJDPricer"
+    ],
+    "docs/terminal_distribution_models.md": [
+      "GmmParams",
+      "GmmPricer",
+      "TdistParams",
+      "TdistPricer"
+    ]
+  },
+  "parameters": {
+    "LogSvParams": {
+      "docs/logsv_model.md": [
+        "sigma0",
+        "theta",
+        "kappa1",
+        "kappa2",
+        "beta",
+        "volvol"
+      ],
+      "docs/calibration.md": [
+        "vol_backbone"
+      ],
+      "docs/monte_carlo_simulation.md": [
+        "H",
+        "weights",
+        "nodes"
+      ]
+    },
+    "HestonParams": {
+      "docs/heston_model.md": [
+        "v0",
+        "theta",
+        "kappa",
+        "rho",
+        "volvol"
+      ]
+    },
+    "LogSVPricer.calibrate_model_params_to_chain": {
+      "docs/calibration.md": [
+        "option_chain",
+        "params0",
+        "params_min",
+        "params_max",
+        "is_vega_weighted",
+        "is_unit_ttm_vega",
+        "model_calibration_type",
+        "constraints_type",
+        "calibration_engine",
+        "nb_path",
+        "nb_steps",
+        "seed"
+      ]
+    }
+  },
+  "papers": {
+    "ijtaf_2023": {
+      "title": "Log-normal Stochastic Volatility Model with Quadratic Drift",
+      "authors": "Sepp, A. and Rakhmonov, P.",
+      "year": "2023",
+      "venue": "International Journal of Theoretical and Applied Finance 26(8), 2450003",
+      "doi": "10.1142/S0219024924500031",
+      "status": "published; open access under CC BY 4.0; volume year 2023, published online 28 February 2024",
+      "source": "papers/logsv_model_with_quadratic_drift/paper",
+      "retired_strings": [
+        "Rakhmonov (2024)",
+        "Rakhmonov, P. (2024)"
+      ]
+    },
+    "rdr_2025": {
+      "title": "Stochastic Volatility for Factor Heath-Jarrow-Morton Framework",
+      "authors": "Sepp, A. and Rakhmonov, P.",
+      "year": "2025",
+      "venue": "Review of Derivatives Research 28, article 12",
+      "doi": "10.1007/s11147-025-09217-4",
+      "status": "published; exclusive licence to Springer Science+Business Media; figures are regenerated from repository code, never reproduced from the PDF",
+      "source": "papers/sv_for_factor_hjm/paper",
+      "retired_strings": [
+        "28(3)"
+      ]
+    },
+    "qf_2024": {
+      "title": "Valuation and hedging of cryptocurrency inverse options",
+      "authors": "Lucic, V. and Sepp, A.",
+      "year": "2024",
+      "venue": "Quantitative Finance 24(7), 851-869",
+      "doi": "10.1080/14697688.2024.2364804",
+      "status": "published; title, author order (Lucic, Sepp), volume, issue and pages verified against Crossref on 2026-09-27"
+    },
+    "ssrn_4647027": {
+      "title": "What is a robust stochastic volatility model",
+      "authors": "Sepp, A. and Rakhmonov, P.",
+      "year": "2023",
+      "venue": "SSRN 4647027",
+      "status": "verified against Crossref on 2026-09-27: posted content (SSRN), 2023, DOI 10.2139/ssrn.4647027; no journal version found; the text is not in the repository",
+      "doi": "10.2139/ssrn.4647027"
+    },
+    "ssrn_4887298": {
+      "title": "Unified approach for hedging impermanent loss of liquidity provision",
+      "authors": "Lipton, A., Lucic, V. and Sepp, A.",
+      "year": "2025",
+      "venue": "Digital Finance 7(3), 429-477",
+      "status": "published; title, author order, volume, issue and pages verified against Crossref on 2026-09-27; preprint SSRN 4887298 (DOI 10.2139/ssrn.4887298); papers/il_hedging/README.md lists the authors in another order",
+      "doi": "10.1007/s42521-025-00144-5",
+      "retired_strings": [
+        "Sepp, A., Lipton, A. and Lucic, V."
+      ]
+    },
+    "ssrn_4735365": {
+      "title": "Jump risk premia in the presence of clustered jumps",
+      "authors": "Liu, F., Packham, N. and Sepp, A.",
+      "year": "2025",
+      "venue": "SSRN 4735365; arXiv 2510.21297",
+      "status": "verified on 2026-09-27: arXiv 2510.21297 v1 of 24 October 2025 (abstract page and API) and Crossref record of SSRN 4735365 (posted 2024, same title, authors and abstract); working paper, no journal version",
+      "doi": "10.48550/arXiv.2510.21297"
+    }
+  }
+}

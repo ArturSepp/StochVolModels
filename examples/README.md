@@ -6,8 +6,10 @@ These scripts are repository-only workflows. They are intentionally outside the
 Install the project first:
 
 ```bash
-python -m pip install -e ".[dev]"
+python -m pip install -e .
 ```
+
+Add `".[research]"` for the OptionChainAnalytics and provider-cache examples.
 
 The core examples use packaged or generated sample data and make no network request. Empirical
 examples read explicitly installed local OCA caches: CBOE SPX/VIX under
@@ -19,6 +21,28 @@ enum case and includes Numba compilation on first use.
 
 | Script | Lane | Data/dependencies | Automation |
 |---|---|---|---|
+| `docs/affine_expansion.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py`; the price-impact case in the slow lane |
+| `docs/analytic_vs_monte_carlo.py` | canonical script of a documentation page | core only, bundled Bitcoin chain | every case run by `test_docs_examples.py` |
+| `docs/app_bitcoin_options.py` | canonical script of a documentation page | core only, bundled Bitcoin chain | every case run by `test_docs_examples.py`; the calibration case in the slow lane |
+| `docs/app_impermanent_loss_hedging.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
+| `docs/app_positive_and_negative_skews.py` | canonical script of a documentation page | core only, five bundled chains | every case run by `test_docs_examples.py`; the VIX refit in the slow lane |
+| `docs/app_robust_volatility_models.py` | canonical script of a documentation page | core only, recorded parameters, no data | every case run by `test_docs_examples.py` |
+| `docs/app_swaptions_and_sofr_options.py` | canonical script of a documentation page | repository only, imports `papers/sv_for_factor_hjm` | every case run by `test_docs_examples.py`; the swaption fit and Monte Carlo cases in the slow lane |
+| `docs/calibration.py` | canonical script of a documentation page | core only, bundled Bitcoin chain | every case run by `test_docs_examples.py`; the refit case in the slow lane |
+| `docs/european_option_pricing.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
+| `docs/factor_hjm_stochastic_volatility.py` | canonical script of a documentation page | core only, experimental `factor_hjm` module | every case run by `test_docs_examples.py` |
+| `docs/hawkes_jump_diffusion.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py`; the Monte Carlo case in the slow lane |
+| `docs/heston_model.py` | canonical script of a documentation page | core only, bundled Bitcoin chain | every case run by `test_docs_examples.py` |
+| `docs/inverse_options.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
+| `docs/logsv_model.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
+| `docs/logsv_smile_fitter.py` | canonical script of a documentation page | core only, generated chain | every case run by `test_docs_examples.py` |
+| `docs/martingale_conditions_and_skews.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
+| `docs/monte_carlo_simulation.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
+| `docs/numerical_accuracy_and_performance.py` | timings quoted on a documentation page | core only, bundled Bitcoin chain | run by `test_docs_examples.py`, which asserts completion, not times |
+| `docs/option_chains_and_conventions.py` | canonical script of a documentation page | core only, generated chains | every case run by `test_docs_examples.py` |
+| `docs/quadratic_variance_options.py` | canonical script of a documentation page | core only, packaged QV chain | every case run by `test_docs_examples.py`; the QV option case in the slow lane |
+| `docs/terminal_distribution_models.py` | canonical script of a documentation page | core only, bundled S&P 500 ETF chain | every case run by `test_docs_examples.py` |
+| `docs/volatility_distribution_and_moments.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
 | `getting_started/quickstart.py` | canonical offline reviewer path | core only, generated chain | Linux/Windows/macOS CI |
 | `getting_started/quickstart_colab.ipynb` | hosted offline calculation | network only to install/download matching release | structure/output-free contract in CI |
 | `getting_started/quick_run_lognormal_sv_pricer.py` | legacy plotted LogSV demonstration | core only, bundled chain | manual |
@@ -142,8 +166,11 @@ examples. They deliberately expose separate raw-hourly and exact-08:00-UTC EOD r
   contributor references, not public-API guarantees.
 - Do not commit generated figures, calibration output, caches, or local paths.
 - The canonical deterministic first-success command is
-  `examples/getting_started/quickstart.py`; the user guide includes that file mechanically rather
-  than maintaining a second implementation.
+  `examples/getting_started/quickstart.py`; the user guide shows excerpts of that file, checked
+  line for line by `scripts/check_docs.py`, rather than maintaining a second implementation.
+- Scripts under `docs/` are the canonical scripts of documentation pages. Every Python block on
+  their page is a verbatim excerpt, every case asserts the numbers the page quotes, and running the
+  file executes every case.
 
 Example:
 

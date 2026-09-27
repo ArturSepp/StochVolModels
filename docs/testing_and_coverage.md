@@ -1,4 +1,18 @@
+---
+myst:
+  html_meta:
+    description: >-
+      How stochvolmodels is tested: fast and slow suites, paper-replication checks, coverage scopes,
+      the documentation gates that assert every quoted number and figure, and the numerical
+      verification map of analytic against independent routes.
+---
+
 # Testing and coverage
+
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-08-22](https://github.com/ArturSepp/StochVolModels/commit/db6ea3ec2e724ae8d08e19bc9a8e41054b6f4dd7)*
+
+Part of the [stochvolmodels](https://github.com/ArturSepp/StochVolModels) documentation.
+Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
 
 The automated checks separate scientific behavior from packaging and documentation so a failure
 identifies the contract that changed. The fast source suite covers deterministic pricing,
@@ -35,6 +49,24 @@ The `paper_replication` lane is intentionally narrow and offline. It verifies th
 MGF normalization, moment-stability conditions, constant-volatility limit, and analytic-versus-
 Monte-Carlo agreement. Full figures and private option-data calibrations remain documented manual
 paper workflows.
+
+## Documentation gates
+
+Every number the site quotes is asserted by a test, and every figure carries its provenance. These
+checks are repository-only (marker `repository_only`) and are absent from the wheel.
+
+| Gate | Command | What it checks |
+|---|---|---|
+| Canonical scripts | `pytest src/stochvolmodels/tests/test_docs_examples.py` | Every case of every script under `examples/docs/` that `scripts/docs_inventory.json` names, run offline with network access refused, asserting the numbers its page quotes; the cases a script lists in `SLOW_CASES` run in the slow lane |
+| Page standard | `python scripts/check_docs.py` | Page forms and required headings, bylines and descriptions; Python blocks that are verbatim excerpts of the page's script; one owning page for every stable and advanced export and every parameter, and its section in the [API reference](api.md); GitHub math pitfalls; local links; retired citation strings |
+| Exhibits | `python -m scripts.docs_analytics.run --list` and `--verify` | Every image under `docs/images/` is registered, displayed by the pages that claim it, and matches the committed manifest; `python -m scripts.docs_analytics.validate --run-root <directory>` checks a regenerated bundle and its recorded checks |
+| Tooling | `pytest src/stochvolmodels/tests/test_docs_tooling.py` | The checks above pass on the checkout and fail on seeded defects |
+| Sphinx | `python -m sphinx -E -W -b html docs <directory>`, with `-b doctest` and `-b linkcheck` | Warnings are errors; the doctest block below runs; external links resolve (link checking runs on demand in CI) |
+
+`check_docs.py --all` additionally requires every page to be adopted after a review of its rendering
+on GitHub, in Sphinx and in an editor. The [documentation standard](documentation_standard.md)
+defines the forms and the exhibit classes, and the [analytics gallery](analytics_gallery.md) lists
+every registered exhibit.
 
 ## Numerical verification map
 

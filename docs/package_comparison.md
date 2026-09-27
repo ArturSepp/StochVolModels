@@ -1,13 +1,26 @@
+---
+myst:
+  html_meta:
+    description: >-
+      A dated comparison of stochvolmodels with QuantLib-Python, FinancePy and PyFENG by scope,
+      stochastic volatility models, numerical routes, calibration and research traceability.
+---
+
 # Choosing a Python derivatives library
 
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-08-16](https://github.com/ArturSepp/StochVolModels/commit/e9e01403a6ba36aad7708049028c64438a606234)*
+
+Part of the [stochvolmodels](https://github.com/ArturSepp/StochVolModels) documentation.
+Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
+
 This comparison was manually audited on 2026-08-21 against each project's official documentation
-or repository. It compares workflow and scope, not popularity or numerical superiority. Verify the
+or repository; the stochvolmodels model row was updated on 2026-09-27. It compares workflow and scope, not popularity or numerical superiority. Verify the
 current upstream documentation before making a production decision.
 
 | Dimension | stochvolmodels | QuantLib-Python | FinancePy | PyFENG |
 |---|---|---|---|---|
 | Primary scope | Focused European stochastic-volatility pricing, IVs, calibration, MC validation, and associated papers | General quantitative-finance library and multi-language C++ ecosystem | Product-oriented pricing/risk across rates, FX, equity, and credit | Academic, vectorized reference implementations of many financial-engineering models |
-| SV models | Stable Heston and quadratic-drift log-normal SV; experimental rough LogSV/Factor HJM | Heston and stochastic-local-vol processes among a much broader model set | Product/model coverage across several asset classes; inspect the current product module for the required model | Heston, SABR, NSVh, OUSV, rough Heston, 3/2, GARCH, and others listed in its model guide |
+| SV models | Stable Heston and quadratic-drift log-normal SV, with Gaussian-mixture and Student-t terminal models; advanced Hawkes jump-diffusion; experimental rough LogSV/Factor HJM | Heston and stochastic-local-vol processes among a much broader model set | Product/model coverage across several asset classes; inspect the current product module for the required model | Heston, SABR, NSVh, OUSV, rough Heston, 3/2, GARCH, and others listed in its model guide |
 | Numerical routes | Fourier/MGF pricing plus MC comparisons | Analytic, lattice, finite-difference, and MC engines, including analytic and MC Heston engines | Python/Numba analytics with reference MC implementations for many products | Analytic, approximation, FFT, and MC routes depending on model |
 | Calibration | Shared `OptionChain`; vega-weighted Heston/LogSV optimizers with explicit constraints/failure | Model/helper calibration within QuantLib's instruments, term structures, and engine architecture | No cross-library calibration claim made here; evaluate the specific product/model workflow | Model-focused API; no claim here of a single package-wide option-chain calibration workflow |
 | IV utilities | Stable Black and normal price/IV functions integrated with model chains | Extensive volatility structures and option engines | Product-level pricing/risk conventions | Analytic price, Greeks, and IV for core models; NumPy-vectorized model APIs |

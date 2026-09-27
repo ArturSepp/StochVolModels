@@ -22,12 +22,17 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
     "sphinx.ext.napoleon",
+    "sphinxcontrib.mermaid",
 ]
 autodoc_typehints = "description"
 napoleon_numpy_docstring = True
 napoleon_google_docstring = True
 myst_enable_extensions = ["colon_fence", "dollarmath"]
 myst_heading_anchors = 3
+# A ```mermaid fence renders as a diagram in Sphinx and natively on GitHub.
+myst_fence_as_directive = ["mermaid"]
+# Keep each diagram's own aspect ratio instead of the extension's fixed-height box.
+mermaid_height = "auto"
 myst_html_meta = {
     "google-site-verification": "WJen7v3RzYStpnJNMjZL5X35cuWl__U-MBvZtgN65-g",
 }
@@ -47,9 +52,19 @@ html_theme_options = {
 
 # The DOI publisher rejects automated HEAD/GET probes and GitHub blob pages rate-limit CI.
 linkcheck_ignore = [
-    r"https://doi.org/10.1142/.*",
+    # publishers that refuse automated requests (HTTP 403); each DOI is checked against Crossref
+    r"https://doi.org/10.1142/.*",  # World Scientific
+    r"https://doi.org/10.1080/.*",  # Taylor & Francis
+    r"https://doi.org/10.1093/.*",  # Oxford University Press
+    r"https://doi.org/10.1111/.*",  # Wiley
+    r"https://doi.org/10.2139/.*",  # SSRN
     r"https://github.com/ArturSepp/StochVolModels/blob/.*",
 ]
+# a DOI resolves by redirecting to its publisher; a new-issue form redirects to sign-in
+linkcheck_allowed_redirects = {
+    r"https://doi\.org/.*": r"https://.*",
+    r"https://github\.com/ArturSepp/StochVolModels/issues/new.*": r"https://github\.com/login.*",
+}
 
 
 def _normalize_delegated_docstrings(app, what, name, obj, options, lines) -> None:
