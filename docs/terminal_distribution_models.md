@@ -133,9 +133,10 @@ with $\nu = 5$ misses by 0.0016 and 0.0161. The constraint that makes each model
 holds only at the maturity it was solved for.
 
 **Fits to the S&P 500 ETF chain.** Fitted slice by slice to the bundled chain of 15 July 2022, four
-normal states give root-mean-square errors of 22.3, 15.5, 15.2 and 8.8 bp against mid volatilities
-at two weeks, one, two and six months. The Student-t law, whose skew is fixed by its two
-parameters, misses by 231.4, 273.2, 294.2 and 314.5 bp.
+normal states give root-mean-square errors below 30 bp against mid volatilities at two weeks,
+one, two and six months. The exact errors vary because constrained optimization can reach
+different local optima. The Student-t law, whose skew is fixed by its two parameters, misses by
+231.4, 273.2, 294.2 and 314.5 bp.
 
 ## Implementation in stochvolmodels
 
