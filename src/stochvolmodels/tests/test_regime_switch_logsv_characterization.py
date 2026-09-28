@@ -736,10 +736,11 @@ def test_state_conditional_chain_outputs_follow_model_pricer_contract() -> None:
 
     standard_growth = pricer.price_chain(chain, params, max_phi=401)
     standard_stress = pricer.price_chain(chain, params, initial_regime=Regime.STRESS, max_phi=401)
+    # Separate transform solves can differ by floating-point roundoff.
     for standard, expected in zip(standard_growth, growth_prices):
-        np.testing.assert_allclose(standard, expected, rtol=0.0, atol=0.0)
+        np.testing.assert_allclose(standard, expected, rtol=0.0, atol=5.0e-15)
     for standard, expected in zip(standard_stress, stress_prices):
-        np.testing.assert_allclose(standard, expected, rtol=0.0, atol=0.0)
+        np.testing.assert_allclose(standard, expected, rtol=0.0, atol=5.0e-15)
 
 
 def test_state_conditional_prices_are_forward_homogeneous() -> None:
