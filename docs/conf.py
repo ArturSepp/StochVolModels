@@ -38,6 +38,8 @@ myst_html_meta = {
 }
 
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+# _templates/base.html titles pages other than the homepage "<page title> - stochvolmodels".
+templates_path = ["_templates"]
 
 html_theme = "furo"
 DEFAULT_CANONICAL_BASE_URL = "https://stochvolmodels.readthedocs.io/en/latest/"

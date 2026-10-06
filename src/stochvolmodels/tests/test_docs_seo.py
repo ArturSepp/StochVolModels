@@ -1,9 +1,12 @@
-"""Repository-only contracts for documentation canonical URLs and sitemap output."""
+"""Repository-only contracts for documentation canonical URLs, sitemap output and page titles."""
 
 from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+import re
+import subprocess
+import sys
 from types import SimpleNamespace
 from xml.etree import ElementTree
 
@@ -73,3 +76,42 @@ def test_index_page_context_uses_trailing_slash():
     conf._normalize_canonical_page_url(None, "index", None, context, None)
 
     assert context["pageurl"] == "https://stochvolmodels.readthedocs.io/en/latest/"
+
+
+def test_page_titles_end_with_the_project_name_not_the_site_title(tmp_path):
+    # Furo would end every title with the full html_title, which search results cut off.
+    pytest.importorskip("furo")
+    conf = _load_docs_conf()
+    templates = [
+        str(REPOSITORY_ROOT / "docs" / path) for path in getattr(conf, "templates_path", [])
+    ]
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "conf.py").write_text(
+        "html_theme = 'furo'\n"
+        f"templates_path = {templates!r}\n"
+        f"project = {conf.project!r}\n"
+        f"html_title = {conf.html_title!r}\n",
+        encoding="utf-8",
+    )
+    (source / "index.rst").write_text(
+        "Home\n====\n\n.. toctree::\n\n   heston\n", encoding="utf-8"
+    )
+    (source / "heston.rst").write_text(
+        "The Heston model\n================\n\nA model.\n", encoding="utf-8"
+    )
+    output = tmp_path / "html"
+    result = subprocess.run(
+        [sys.executable, "-m", "sphinx", "-W", "-q", "-b", "html", str(source), str(output)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+    def head_titles(name):
+        head = (output / f"{name}.html").read_text(encoding="utf-8").split("</head>")[0]
+        return re.findall(r"<title>(.*?)</title>", head)
+
+    assert head_titles("index") == [conf.html_title]
+    assert head_titles("heston") == [f"The Heston model - {conf.project}"]
