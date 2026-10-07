@@ -1,6 +1,7 @@
 """Sphinx configuration for the StochVolModels documentation."""
 
 import os
+import re
 import sys
 from pathlib import Path
 from urllib.parse import urljoin
@@ -43,7 +44,21 @@ templates_path = ["_templates"]
 
 html_theme = "furo"
 DEFAULT_CANONICAL_BASE_URL = "https://stochvolmodels.readthedocs.io/en/latest/"
-html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL") or DEFAULT_CANONICAL_BASE_URL
+
+
+def _consolidate_stable(url: str) -> str:
+    """Return the canonical base URL with the moving ``stable`` alias replaced by ``latest``.
+
+    Read the Docs builds ``stable`` from the newest release tag and ``latest`` from ``main``, so
+    both serve the same pages. Left alone, each copy names itself canonical and search engines see
+    every page twice. Numbered versions keep their own canonical URL.
+    """
+    return re.sub(r"(\.readthedocs\.io/en/)stable(/|$)", r"\1latest\2", url)
+
+
+html_baseurl = _consolidate_stable(
+    os.environ.get("READTHEDOCS_CANONICAL_URL") or DEFAULT_CANONICAL_BASE_URL
+)
 html_title = "stochvolmodels - stochastic-volatility pricing and calibration"
 html_short_title = "stochvolmodels"
 html_theme_options = {

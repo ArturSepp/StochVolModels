@@ -61,7 +61,10 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 - Documentation pages other than the homepage are titled `<page title> - stochvolmodels` rather
   than ending with the full site title, which search results cut off. The homepage keeps the
-  full title. No signature or computed value changes.
+  full title.
+- Documentation pages built for the `stable` version name their `latest` address as canonical,
+  so search engines no longer see each page twice. Numbered versions keep their own canonical
+  address. No signature or computed value changes.
 
 - `papers/logsv_model_with_quadratic_drift/moments_vol_qvar.py` no longer passes the `axis`
   keyword to `DataFrame.expanding`, which pandas 3 removed, so IJTAF Fig. 3 can be regenerated.

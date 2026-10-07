@@ -37,6 +37,30 @@ def _load_docs_conf():
     return module
 
 
+@pytest.mark.parametrize(
+    ("service_url", "canonical_url"),
+    [
+        # stable and latest serve the same pages, so both name latest as canonical
+        (
+            "https://stochvolmodels.readthedocs.io/en/stable/",
+            "https://stochvolmodels.readthedocs.io/en/latest/",
+        ),
+        (
+            "https://stochvolmodels.readthedocs.io/en/latest/",
+            "https://stochvolmodels.readthedocs.io/en/latest/",
+        ),
+        (
+            "https://stochvolmodels.readthedocs.io/en/2.4.1/",
+            "https://stochvolmodels.readthedocs.io/en/2.4.1/",
+        ),
+    ],
+)
+def test_stable_builds_name_latest_as_canonical(monkeypatch, service_url, canonical_url):
+    monkeypatch.setenv("READTHEDOCS_CANONICAL_URL", service_url)
+    conf = _load_docs_conf()
+    assert conf.html_baseurl == canonical_url
+
+
 def test_canonical_page_url_normalizes_only_directory_indexes():
     conf = _load_docs_conf()
     base = "https://stochvolmodels.readthedocs.io/en/latest/"
