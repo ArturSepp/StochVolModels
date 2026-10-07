@@ -1,9 +1,12 @@
-"""Repository-only contracts for documentation canonical URLs and sitemap output."""
+"""Repository-only contracts for documentation canonical URLs, sitemap output and page titles."""
 
 from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+import re
+import subprocess
+import sys
 from types import SimpleNamespace
 from xml.etree import ElementTree
 
@@ -32,6 +35,30 @@ def _load_docs_conf():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+@pytest.mark.parametrize(
+    ("service_url", "canonical_url"),
+    [
+        # stable and latest serve the same pages, so both name latest as canonical
+        (
+            "https://stochvolmodels.readthedocs.io/en/stable/",
+            "https://stochvolmodels.readthedocs.io/en/latest/",
+        ),
+        (
+            "https://stochvolmodels.readthedocs.io/en/latest/",
+            "https://stochvolmodels.readthedocs.io/en/latest/",
+        ),
+        (
+            "https://stochvolmodels.readthedocs.io/en/2.4.1/",
+            "https://stochvolmodels.readthedocs.io/en/2.4.1/",
+        ),
+    ],
+)
+def test_stable_builds_name_latest_as_canonical(monkeypatch, service_url, canonical_url):
+    monkeypatch.setenv("READTHEDOCS_CANONICAL_URL", service_url)
+    conf = _load_docs_conf()
+    assert conf.html_baseurl == canonical_url
 
 
 def test_canonical_page_url_normalizes_only_directory_indexes():
@@ -73,3 +100,42 @@ def test_index_page_context_uses_trailing_slash():
     conf._normalize_canonical_page_url(None, "index", None, context, None)
 
     assert context["pageurl"] == "https://stochvolmodels.readthedocs.io/en/latest/"
+
+
+def test_page_titles_end_with_the_project_name_not_the_site_title(tmp_path):
+    # Furo would end every title with the full html_title, which search results cut off.
+    pytest.importorskip("furo")
+    conf = _load_docs_conf()
+    templates = [
+        str(REPOSITORY_ROOT / "docs" / path) for path in getattr(conf, "templates_path", [])
+    ]
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "conf.py").write_text(
+        "html_theme = 'furo'\n"
+        f"templates_path = {templates!r}\n"
+        f"project = {conf.project!r}\n"
+        f"html_title = {conf.html_title!r}\n",
+        encoding="utf-8",
+    )
+    (source / "index.rst").write_text(
+        "Home\n====\n\n.. toctree::\n\n   heston\n", encoding="utf-8"
+    )
+    (source / "heston.rst").write_text(
+        "The Heston model\n================\n\nA model.\n", encoding="utf-8"
+    )
+    output = tmp_path / "html"
+    result = subprocess.run(
+        [sys.executable, "-m", "sphinx", "-W", "-q", "-b", "html", str(source), str(output)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+    def head_titles(name):
+        head = (output / f"{name}.html").read_text(encoding="utf-8").split("</head>")[0]
+        return re.findall(r"<title>(.*?)</title>", head)
+
+    assert head_titles("index") == [conf.html_title]
+    assert head_titles("heston") == [f"The Heston model - {conf.project}"]
