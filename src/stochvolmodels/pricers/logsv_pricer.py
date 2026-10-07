@@ -1182,22 +1182,32 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
                                               ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     """Price a rough-LogSV option chain using caller-supplied Gaussian draws.
 
+    The volatility solves the Volterra equation
+    sigma_t = sigma0 + int_0^t K(t-s) [(kappa1 + kappa2 sigma_s)(theta - sigma_s) ds
+    + beta sigma_s dW0_s + orthog_vol sigma_s dW1_s] with the Markovian kernel
+    K^N(t) = sum_i weights_i exp(-nodes_i t), simulated by the split-step scheme of
+    :mod:`stochvolmodels.pricers.rough_logsv.split_simulation` with
+    vartheta = sqrt(beta^2 + orthog_vol^2), rho = beta / vartheta and factor targets
+    sigma0 / sum_i weights_i. ``orthog_vol`` is epsilon, i.e. ``LogSvParams.volvol``.
+    The kernel is approximated once by the caller (``LogSvParams.approximate_kernel``),
+    usually for the longest maturity, and each maturity is simulated from time 0 on its
+    own grid with the leading rows of Z0 and Z1.
+
     This experimental routine preserves identical random inputs across parameter
     evaluations, which is useful for calibration diagnostics.
     """
     assert weights.shape == nodes.shape and weights.ndim == 1
-    # assert kappa2 == 0.0
     N = nodes.size
     dtype = weights.dtype
-    v0 = np.full((N,), sigma0 / np.sum(weights), dtype=dtype)
+    sigma0_factors = np.full((N,), sigma0 / np.sum(weights), dtype=dtype)
 
-    # need to redenote coefficients
-    volvol = np.sqrt(beta ** 2 + orthog_vol ** 2)
-    rho = beta / volvol
+    # total volatility-of-volatility and spot-volatility correlation of the split-step scheme
+    vartheta = np.sqrt(beta ** 2 + orthog_vol ** 2)
+    rho = beta / vartheta
 
     nb_path = Z0.shape[1]
-    v0_vec = np.repeat(v0[:, None], nb_path, axis=1)
-    v_init = v0_vec.copy()
+    sigma0_factors_vec = np.repeat(sigma0_factors[:, None], nb_path, axis=1)
+    factors_init = sigma0_factors_vec.copy()
     log_s0 = dtype.type(0.0)
     weight_vec = np.repeat(weights[:, None], nb_path, axis=1)
     nodes_vec = np.repeat(nodes[:, None], nb_path, axis=1)
@@ -1213,8 +1223,9 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
         nb_steps = timegrid.size - 1
         Z0_ = Z0[:nb_steps]
         Z1_ = Z1[:nb_steps]
-        log_spot_str, vol_str, qv_str = log_spot_full_combined(nodes_vec, weight_vec, v0_vec, theta, kappa1, kappa2, log_s0,
-                                                               v_init, rho, volvol, timegrid, nb_path, Z0_, Z1_)
+        log_spot_str, vol_str, qv_str = log_spot_full_combined(
+            nodes_vec, weight_vec, sigma0_factors_vec, theta, kappa1, kappa2, log_s0,
+            factors_init, rho, vartheta, timegrid, nb_path, Z0_, Z1_)
         if debug:
             print(f"Number of paths with negative vol: {np.sum(weights @ vol_str < 0.0)}, nan vol: {np.count_nonzero(np.isnan(weights @ vol_str))}")
             print(f"Mean spot Strand: {np.mean(np.exp(log_spot_str))}, nan spots: {np.count_nonzero(np.isnan(log_spot_str))}")

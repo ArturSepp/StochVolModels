@@ -148,3 +148,77 @@ def test_experimental_rough_heston_kernel_fails_precisely() -> None:
 
     with pytest.raises(NotImplementedError, match="Mittag-Leffler"):
         kernel._k(0.5)
+
+
+def test_logsv_params_vartheta_and_rho_follow_beta_and_epsilon() -> None:
+    params = LogSvParams(beta=-0.3, volvol=0.4)
+
+    assert params.vartheta == pytest.approx(0.5, rel=1e-15)
+    assert params.rho == pytest.approx(-0.6, rel=1e-15)
+    assert params.vartheta ** 2 == pytest.approx(params.vartheta2, rel=1e-15)
+
+
+def _linear_drift_lift_moments(nodes: np.ndarray, weights: np.ndarray, sigma0: float, theta: float,
+                               kappa1: float, vartheta: float, ttm: float):
+    """exact E[sigma_T], E[sigma_T^2], E[I_T] of the sum-of-exponentials model with kappa2 = 0.
+
+    The factors U_i = sigma^(i) - sigma0 / sum(w) solve a linear SDE with diffusion vartheta sigma,
+    sigma = sigma0 + w'U, so their first and second moments solve a closed linear ODE system.
+    """
+    from scipy.integrate import solve_ivp
+
+    n = nodes.size
+    ones = np.ones(n)
+    b_mat = np.diag(nodes) + kappa1 * np.outer(ones, weights)
+    a_vec = kappa1 * (theta - sigma0) * ones
+
+    def rhs(_t, y):
+        mu = y[:n]
+        p_mat = y[n:n + n * n].reshape(n, n)
+        e_sigma2 = sigma0 ** 2 + 2.0 * sigma0 * weights @ mu + weights @ p_mat @ weights
+        d_p = (np.outer(a_vec, mu) + np.outer(mu, a_vec) - b_mat @ p_mat - p_mat @ b_mat.T
+               + vartheta ** 2 * e_sigma2 * np.outer(ones, ones))
+        return np.concatenate([a_vec - b_mat @ mu, d_p.ravel(), [e_sigma2]])
+
+    sol = solve_ivp(rhs, (0.0, ttm), np.zeros(n + n * n + 1), method="Radau",
+                    rtol=1e-10, atol=1e-12)
+    mu = sol.y[:n, -1]
+    p_mat = sol.y[n:n + n * n, -1].reshape(n, n)
+    e_sigma2 = sigma0 ** 2 + 2.0 * sigma0 * weights @ mu + weights @ p_mat @ weights
+    return sigma0 + weights @ mu, e_sigma2, sol.y[-1, -1]
+
+
+@pytest.mark.slow
+def test_rough_split_scheme_matches_exact_linear_drift_moments() -> None:
+    """split-step Monte Carlo against the exact moments of the working paper (Sec. 3, Tab. 4a)."""
+    from stochvolmodels.pricers.rough_logsv.split_simulation import log_spot_full_combined
+    from stochvolmodels.utils.funcs import set_time_grid
+
+    params = LogSvParams(sigma0=0.5, theta=0.4, kappa1=2.0, kappa2=0.0,
+                         beta=-0.4, volvol=0.6, H=0.3)
+    ttm, nb_path = 1.0, 40000
+    params.approximate_kernel(T=ttm)
+    nodes, weights = params.nodes, params.weights
+    nb_steps, _dt, grid = set_time_grid(ttm, 360)
+    rng = np.random.default_rng(3)
+    z0 = rng.standard_normal((nb_steps, nb_path))
+    z1 = rng.standard_normal((nb_steps, nb_path))
+    sigma0_factors = np.repeat(np.full(nodes.size, params.sigma0 / weights.sum())[:, None],
+                               nb_path, axis=1)
+
+    log_s, factors, qvar = log_spot_full_combined(
+        np.repeat(nodes[:, None], nb_path, axis=1), np.repeat(weights[:, None], nb_path, axis=1),
+        sigma0_factors, params.theta, params.kappa1, params.kappa2, 0.0, sigma0_factors.copy(),
+        params.rho, params.vartheta, grid, nb_path, z0, z1)
+    sigma_t = weights @ factors
+    spot = np.exp(log_s[0])
+    exact_mean, exact_second, exact_qvar = _linear_drift_lift_moments(
+        nodes, weights, params.sigma0, params.theta, params.kappa1, params.vartheta, ttm)
+
+    def z_score(sample: np.ndarray, exact: float) -> float:
+        return abs(sample.mean() - exact) / (sample.std() / np.sqrt(sample.size))
+
+    assert z_score(sigma_t, exact_mean) < 4.0
+    assert z_score(sigma_t ** 2, exact_second) < 4.0
+    assert z_score(qvar[0], exact_qvar) < 4.0
+    assert z_score(spot, 1.0) < 4.0

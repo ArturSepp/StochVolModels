@@ -1,3 +1,16 @@
+"""
+Fractional kernel and its Markovian (sum-of-exponentials) quadrature approximations.
+
+The rough log-normal Volterra model uses the Riemann-Liouville kernel
+    K(t) = t^(H-1/2) / Gamma(H+1/2),  H in (0, 1/2],
+and replaces it by K^N(t) = sum_i weights_i exp(-nodes_i t). The default rule is ``european_rule``,
+the L2-optimised rule of Bayer and Breneis (2023) for European options with maturity T, used by
+``LogSvParams.approximate_kernel``. ``quadrature_rule`` dispatches to the alternative rules
+(optimised L1/L2, Abi Jaber and El Euch, Alfonsi and Kebaier, Harms, Gaussian).
+Conventions: time in years; nodes are rates per year; weights carry the kernel normalisation.
+``kernel_frac`` and ``kernel_rheston`` are legacy helpers of the hybrid-scheme experiments and are
+not used by the pricers. Simulation belongs in ``split_simulation``.
+"""
 import numpy as np
 import scipy.integrate as integ
 from scipy.optimize import minimize, lsq_linear
@@ -58,7 +71,7 @@ def exp_underflow(x):
     """
     if isinstance(x, np.ndarray):
         if x.dtype == int:
-            x = x.astype(np.float)
+            x = x.astype(float)
         eps = np.finfo(x.dtype).tiny
     else:
         if isinstance(x, int):

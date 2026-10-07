@@ -97,10 +97,13 @@ class LogSvParams(ModelParams):
         """
         set the Markovian approximation nodes and weights of the rough kernel.
 
-        Outside the scope of the article, which fixes H = 1/2. The number of nodes is
-        1 for H in (0.49, 0.5], 2 for H in (0.4, 0.49] and 3 below, following the
-        European quadrature rule; H = 1/2 degenerates to a single node at 1e-3, which
-        reproduces the standard (non-rough) dynamics of Eq. (3.12).
+        Outside the scope of the article, which fixes H = 1/2. The rough model replaces the
+        constant kernel by K(t) = t^(H-1/2) / Gamma(H+1/2) and approximates it by
+        K^N(t) = sum_i weights_i exp(-nodes_i t), optimised over [0, T] by the European
+        quadrature rule of Bayer and Breneis (2023). The number of nodes is 1 for H in
+        (0.49, 0.5], 2 for H in (0.4, 0.49] and 3 below; H in (0.49, 0.5] uses the single
+        node 1e-3 with weight 1, so K^N(t) = exp(-1e-3 t), which reproduces the standard
+        (non-rough) dynamics of Eq. (3.12) up to a mean reversion of rate 1e-3.
 
         Parameters
         ----------
@@ -188,6 +191,26 @@ class LogSvParams(ModelParams):
         Eq. (4.3).
         """
         return self.beta*self.beta + self.volvol*self.volvol
+
+    @property
+    def vartheta(self) -> float:
+        """
+        total volatility of volatility vartheta = sqrt(beta^2 + epsilon^2).
+
+        The volatility-of-volatility argument ``vartheta`` of the rough split-step scheme in
+        ``rough_logsv.split_simulation``.
+        """
+        return np.sqrt(self.vartheta2)
+
+    @property
+    def rho(self) -> float:
+        """
+        instantaneous correlation beta / vartheta between the price and volatility Brownian motions.
+
+        The correlation argument ``rho`` of the rough split-step scheme in
+        ``rough_logsv.split_simulation``.
+        """
+        return self.beta / self.vartheta
 
     @property
     def gamma(self) -> float:

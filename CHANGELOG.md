@@ -4,6 +4,32 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+### Added
+
+- Added `LogSvParams.vartheta` and `LogSvParams.rho`, the total volatility of volatility
+  sqrt(beta^2 + epsilon^2) and the correlation beta / vartheta used by the rough split-step scheme.
+
+- Added a slow test that checks `rough_logsv.split_simulation.log_spot_full_combined` against the
+  exact first and second moments of the volatility and the expected integrated variance for
+  linear drift (kappa2 = 0), computed from the closed moment equations of the factor model.
+
+### Changed
+
+- Renamed the keyword arguments of the experimental `rough_logsv.split_simulation` functions to the
+  notation of the rough log-normal Volterra working paper: `weight` to `weights`, `v0` to
+  `sigma0_factors`, `v_init` to `factors_init`, `volvol` (the total vartheta, not epsilon) to
+  `vartheta`, and the integrated-variance state `y` to `qvar`. Positional order is unchanged and
+  numerical results are identical (the rough pricing regression passes unchanged); callers passing
+  the old keywords must update. Added a module header with the scheme's mathematics.
+
+### Fixed
+
+- Fixed `rough_logsv.rough_kernel.exp_underflow` for integer arrays, which raised on the removed
+  `np.float` alias.
+
+- Fixed the `seeded` mode of the rough pricing benchmark runner, which called a pricer that does
+  not exist, and made `psutil` optional there.
+
 ## [2.4.2] - 2026-10-07
 
 ### Added
