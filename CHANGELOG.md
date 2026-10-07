@@ -4,6 +4,8 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.4.2] - 2026-10-07
+
 ### Added
 
 - Added the documentation standard supplement, a page inventory with export and parameter
