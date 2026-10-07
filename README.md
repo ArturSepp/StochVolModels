@@ -687,7 +687,7 @@ metadata is available in [`CITATION.cff`](CITATION.cff).
   title={StochVolModels: Python Implementation of Stochastic Volatility Models},
   author={Sepp, Artur},
   year={2026},
-  version={2.4.1},
+  version={2.4.2},
   howpublished={\url{https://github.com/ArturSepp/StochVolModels}},
   note={Python package for pricing analytics and Monte Carlo simulations}
 }
