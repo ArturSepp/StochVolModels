@@ -13,6 +13,16 @@ Entries start at 1.2.0. For earlier releases see the git log.
   exact first and second moments of the volatility and the expected integrated variance for
   linear drift (kappa2 = 0), computed from the closed moment equations of the factor model.
 
+- Added `rough_logsv.kernel_fit`, which fits the sum-of-exponentials rough kernel to the mean,
+  variance-swap volatility and leverage functional of the model with linear drift (kappa2 = 0),
+  with exact moments for the Markovian kernel and extrapolated product-integration moments for the
+  fractional kernel. `LogSvParams.approximate_kernel` takes `kernel_rule=KernelRule.MOMENT_FIT`
+  and an optional cap `w_bar_max` on the kernel value at zero; the default remains the European
+  rule, so existing results are unchanged. `max_time_step` and `max_weight_sum` give the empirical
+  step bound w_bar vartheta sqrt(h) <= 0.4 of the split-step scheme. On four out-of-sample parameter
+  sets with maturities up to one year, the fit reduces the largest variance-swap volatility error
+  from 255 bp to 30 bp at H = 0.2 and from 3369 bp to 310 bp at H = 0.1.
+
 ### Changed
 
 - Renamed the keyword arguments of the experimental `rough_logsv.split_simulation` functions to the

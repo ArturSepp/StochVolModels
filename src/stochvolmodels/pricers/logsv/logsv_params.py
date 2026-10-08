@@ -26,6 +26,7 @@ import pandas as pd
 from numpy import linalg as la
 
 from stochvolmodels.pricers.model_pricer import ModelParams
+from stochvolmodels.pricers.rough_logsv.kernel_fit import KernelRule, moment_fitted_kernel
 from stochvolmodels.pricers.rough_logsv.rough_kernel import european_rule
 from stochvolmodels.utils.config import VariableType
 from stochvolmodels.utils.funcs import find_nearest
@@ -93,22 +94,36 @@ class LogSvParams(ModelParams):
             self.kappa2 = self.kappa1 / self.theta
         assert 1e-4 < self.H <= 0.5
 
-    def approximate_kernel(self, T: float):
+    def approximate_kernel(self,
+                           T: float,
+                           kernel_rule: KernelRule = KernelRule.EUROPEAN,
+                           w_bar_max: Optional[float] = None):
         """
         set the Markovian approximation nodes and weights of the rough kernel.
 
         Outside the scope of the article, which fixes H = 1/2. The rough model replaces the
         constant kernel by K(t) = t^(H-1/2) / Gamma(H+1/2) and approximates it by
-        K^N(t) = sum_i weights_i exp(-nodes_i t), optimised over [0, T] by the European
-        quadrature rule of Bayer and Breneis (2023). The number of nodes is 1 for H in
+        K^N(t) = sum_i weights_i exp(-nodes_i t) over [0, T]. The number of nodes is 1 for H in
         (0.49, 0.5], 2 for H in (0.4, 0.49] and 3 below; H in (0.49, 0.5] uses the single
         node 1e-3 with weight 1, so K^N(t) = exp(-1e-3 t), which reproduces the standard
         (non-rough) dynamics of Eq. (3.12) up to a mean reversion of rate 1e-3.
+
+        The default rule is the European quadrature rule of Bayer and Breneis (2023). The rule
+        ``KernelRule.MOMENT_FIT`` fits the nodes and weights to the mean, variance-swap
+        volatility and leverage of the model with kappa2 = 0 (``rough_logsv.kernel_fit``). It
+        reduces the kernel error for H <= 0.2 but raises w_bar = sum_i weights_i, and the
+        split-step simulation then needs w_bar vartheta sqrt(h) <= 0.4; pass ``w_bar_max``
+        from ``kernel_fit.max_weight_sum`` to fit for a given step. The first moment fit for a
+        given (H, T, w_bar_max) takes about a minute and is memoised.
 
         Parameters
         ----------
         T : float
             Horizon in years over which the kernel is approximated.
+        kernel_rule : KernelRule, default KernelRule.EUROPEAN
+            Approximation rule for H <= 0.49.
+        w_bar_max : float, optional
+            Cap on w_bar for ``KernelRule.MOMENT_FIT``; ignored by the European rule.
         """
         if 0.49 < self.H <= 0.5:
             self.weights = np.array([1.0])
@@ -118,7 +133,13 @@ class LogSvParams(ModelParams):
             N = 2
         else:
             N = 3
-        self.nodes, self.weights = european_rule(self.H, N, T)
+        if kernel_rule == KernelRule.MOMENT_FIT:
+            self.nodes, self.weights = moment_fitted_kernel(hurst=self.H, n_nodes=N, horizon=T,
+                                                            w_bar_max=w_bar_max)
+        elif kernel_rule == KernelRule.EUROPEAN:
+            self.nodes, self.weights = european_rule(self.H, N, T)
+        else:
+            raise ValueError(f"unknown kernel_rule {kernel_rule}")
 
 
     def to_dict(self) -> Dict[str, Any]:
