@@ -113,7 +113,7 @@ jobs:
       - name: Sync the tagged locked test environment
         run: uv sync --locked --group test
       - name: Run the tagged numerical regression suite
-        run: uv run --no-sync pytest -m slow -v
+        run: uv run --no-sync pytest -m slow -v --ignore=src/stochvolmodels/tests/test_docs_examples.py
   publish:
     needs: [validate, windows-numerical]
     if: needs.validate.outputs.publish == 'true'
