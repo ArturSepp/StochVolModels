@@ -20,19 +20,37 @@ One step of size h is the Strang splitting D(h/2) o S(h) o D(h/2):
     D  drift ODE, one classical Runge-Kutta 4 step (drift_ode_solve2), full quadratic drift;
     S  diffusion, exact: sigma^N is a geometric Brownian motion with volatility
        vartheta * sum_i w_i, and every factor receives the same increment (diffus_sde_solve_f64).
-The price step recovers J = int sigma^N dW^sigma from the volatility increment with the
-trapezoidal rule and sets, with Vbar = 0.5 (sigma^N_t^2 + sigma^N_{t+h}^2),
+The price step sets, with Vbar = 0.5 (sigma^N_t^2 + sigma^N_{t+h}^2) and J an estimate of
+int_t^{t+h} sigma^N dW^sigma,
 
     log S_{t+h} = log S_t - 0.5 Vbar h + rho J + sqrt(1 - rho^2) sqrt(Vbar h) Z1,
     qvar_{t+h} = qvar_t + Vbar h.
 
-Paths whose sigma^N is non-positive or NaN after the volatility step have all factors reset to
-1e-6, because the Runge-Kutta drift step does not preserve positivity when N > 1.
+Two versions of the step are kept.
+
+``simulate_split_step`` (used by the rough chain pricer) takes J from the diffusion sub-step,
+J = (eta^N_after - eta^N_before) / (w_bar vartheta), which is exactly the stochastic integral of
+that sub-step. Paths whose sigma^N is non-positive or NaN after the Runge-Kutta step are redone
+with the exponential-implicit drift step ``drift_ode_solve_exp_implicit``, which keeps sigma^N
+positive whenever its decayed factor sum is positive; a path that still fails is floored at 1e-6
+and counted. It also returns J_T = sum of J, which conditional Monte Carlo pricing needs: given
+the volatility path, log(S_T / S_0) is Gaussian with mean rho J_T - 0.5 I_T and variance
+(1 - rho^2) I_T.
+
+``log_spot_full_combined`` is the scheme of release 2.4.2, kept for reproducibility: J is recovered
+from the volatility increment with the trapezoidal rule, and non-positive paths are floored at
+1e-6 without a fallback.
+
+The scheme reproduces the moments of its own kernel only when w_bar vartheta sqrt(h) <= 0.4
+(``kernel_fit.max_time_step``), because the diffusion sub-step compounds noise at the volatility
+w_bar vartheta that the fast factors damp within the step.
 Array conventions: factor arrays have shape (N, nb_path); nodes and weights are broadcast to
 (N, nb_path); Z0 (drives W^sigma) and Z1 (orthogonal price noise) have shape (nb_steps, nb_path).
-Entry point: log_spot_full_combined. Option payoffs and chain pricing belong in
-stochvolmodels.pricers.logsv_pricer.
+Entry points: simulate_split_step and log_spot_full_combined. Option payoffs and chain pricing
+belong in stochvolmodels.pricers.logsv_pricer.
 """
+from typing import NamedTuple
+
 import numpy as np
 from numba import njit
 
@@ -493,7 +511,10 @@ def log_spot_full_combined(nodes: np.ndarray, weights: np.ndarray,
                            rho: float, vartheta: float, timegrid: np.ndarray, nb_path: int,
                            Z0: np.ndarray, Z1: np.ndarray):
     """
-    simulate log S_T, the factors at T and the integrated variance I_T on a uniform time grid.
+    simulate log S_T, the factors at T and the integrated variance I_T with the scheme of 2.4.2.
+
+    The trapezoidal recovery of J and the floor without fallback are kept for reproducibility;
+    ``simulate_split_step`` is the scheme of the rough chain pricer.
 
     Parameters
     ----------
@@ -519,3 +540,198 @@ def log_spot_full_combined(nodes: np.ndarray, weights: np.ndarray,
                                           rho, vartheta, timegrid, nb_path, Z0, Z1)
     return log_spot_full_combined_f64(nodes, weights, sigma0_factors, theta, kappa1, kappa2, log_s0, factors_init,
                                       rho, vartheta, timegrid, nb_path, Z0, Z1)
+
+
+@njit(cache=False, fastmath=False)
+def drift_ode_solve_exp_implicit(nodes: np.ndarray, sigma0_factors: np.ndarray, theta: float,
+                                 kappa1: float, kappa2: float, z0: np.ndarray, weights: np.ndarray,
+                                 h: float):
+    """
+    drift map D_h, first order: exact decay of the factors and implicit Euler in the common drift.
+
+    With e_i = exp(-x_i h) and phi_i = (1 - e_i) / (x_i h), the step is
+    xi_i(h) = sigma0_factors_i + e_i (xi_i(0) - sigma0_factors_i) + h phi_i c(s), where
+    c(s) = (kappa1 + kappa2 s)(theta - s) is evaluated at the end value s = sum_i w_i xi_i(h). The
+    end value solves B kappa2 s^2 + (1 + B kappa1 - B kappa2 theta) s - (A + B kappa1 theta) = 0
+    with A = sum_i w_i (sigma0_factors_i + e_i (xi_i(0) - sigma0_factors_i)) and
+    B = h sum_i w_i phi_i, and the positive root is taken. s is positive whenever
+    A + B kappa1 theta > 0, which holds when the factors are non-negative. Used as the fallback of
+    ``simulate_split_step``.
+
+    Parameters
+    ----------
+    nodes : exponents x_i, array of size (n, nb_path)
+    sigma0_factors : factor targets sigma0_factors_i, array of size (n, nb_path)
+    theta : long-run level, scalar
+    kappa1 : linear mean-reversion speed, scalar
+    kappa2 : quadratic mean-reversion speed, scalar, non-negative
+    z0 : factor values at the start of the step, array of size (n, nb_path)
+    weights : kernel weights w_i, array of size (n, nb_path)
+    h : step size
+
+    Returns
+    -------
+    Array of size (n, nb_path)
+    """
+    n, nb = z0.shape
+    xh = nodes * h
+    decay = np.exp(-xh)
+    phi = np.empty_like(xh)
+    for i in range(n):
+        for p in range(nb):
+            x_ = xh[i, p]
+            phi[i, p] = -np.expm1(-x_) / x_ if x_ > 1e-12 else 1.0 - 0.5 * x_
+    decayed = sigma0_factors + decay * (z0 - sigma0_factors)
+    a_sum = np.sum(weights * decayed, axis=0)
+    b_sum = h * np.sum(weights * phi, axis=0)
+    out = np.empty_like(z0)
+    for p in range(nb):
+        qa = b_sum[p] * kappa2
+        qb = 1.0 + b_sum[p] * kappa1 - b_sum[p] * kappa2 * theta
+        qc = a_sum[p] + b_sum[p] * kappa1 * theta
+        if qa == 0.0:
+            s_end = qc / qb
+        else:
+            s_end = 2.0 * qc / (qb + np.sqrt(qb * qb + 4.0 * qa * qc))
+        c_end = (kappa1 + kappa2 * s_end) * (theta - s_end)
+        for i in range(n):
+            out[i, p] = decayed[i, p] + h * phi[i, p] * c_end
+    return out
+
+
+@njit(cache=False, fastmath=False)
+def _redo_non_positive_paths(nodes: np.ndarray, weights: np.ndarray, sigma0_factors: np.ndarray,
+                             theta: float, kappa1: float, kappa2: float, factors: np.ndarray,
+                             vol_h: np.ndarray, yw: np.ndarray, yh: np.ndarray, vartheta: float,
+                             h: float, z0: np.ndarray):
+    """
+    redo the step with the exponential-implicit drift on paths whose sigma^N_{t+h} is not positive.
+
+    Compiled without fastmath so that the NaN test is kept. vol_h, yw and yh are updated in place.
+    Returns the number of redone paths and the number of paths floored at 1e-6 afterwards.
+    """
+    nb = vol_h.shape[1]
+    s_end = np.sum(weights * vol_h, axis=0)
+    bad = np.zeros(nb, dtype=np.bool_)
+    for p in range(nb):
+        bad[p] = not (s_end[p] > 0.0)
+    idx = np.nonzero(bad)[0]
+    n_redo = idx.size
+    n_floor = 0
+    if n_redo == 0:
+        return n_redo, n_floor
+    x_b = nodes[:, idx]
+    w_b = weights[:, idx]
+    s0_b = sigma0_factors[:, idx]
+    w_sum_b = np.sum(w_b, axis=0)
+    vt_b = vartheta * w_sum_b
+    d_inn = drift_ode_solve_exp_implicit(x_b, s0_b, theta, kappa1, kappa2, factors[:, idx], w_b,
+                                         0.5 * h)
+    yw_b = np.sum(w_b * d_inn, axis=0)
+    yh_b = yw_b * np.exp(-0.5 * vt_b * vt_b * h + vt_b * np.sqrt(h) * z0[idx])
+    s_inn = d_inn + (yh_b - yw_b) / w_sum_b
+    v_b = drift_ode_solve_exp_implicit(x_b, s0_b, theta, kappa1, kappa2, s_inn, w_b, 0.5 * h)
+    s_b = np.sum(w_b * v_b, axis=0)
+    for k in range(n_redo):
+        if not (s_b[k] > 0.0):
+            # last resort: floor the factors and end the diffusion move at the floored level, so
+            # that J = (yh - yw) / (w_bar vartheta) stays consistent with the volatility path
+            v_b[:, k] = 1e-6
+            yh_b[k] = 1e-6 * w_sum_b[k]
+            n_floor += 1
+        p = idx[k]
+        vol_h[:, p] = v_b[:, k]
+        yw[p] = yw_b[k]
+        yh[p] = yh_b[k]
+    return n_redo, n_floor
+
+
+@njit(cache=False, fastmath=True)
+def split_step_f64(nodes: np.ndarray, weights: np.ndarray, sigma0_factors: np.ndarray,
+                   theta: float, kappa1: float, kappa2: float, log_s: np.ndarray,
+                   factors: np.ndarray, qvar: np.ndarray, jump_sum: np.ndarray, rho: float,
+                   vartheta: float, h: float, z0: np.ndarray, z1: np.ndarray):
+    """
+    one step of ``simulate_split_step``: D(h/2) o S(h) o D(h/2), J from the diffusion sub-step.
+
+    Returns the factors, I, log S and J_T after the step, and the numbers of redone and floored
+    paths. log_s, qvar and jump_sum have shape (nb_path,).
+    """
+    weight_sum = np.sum(weights, axis=0)
+    vt = vartheta * weight_sum
+    d_inn = drift_ode_solve2(nodes, sigma0_factors, theta, kappa1, kappa2, factors, weights,
+                             0.5 * h)
+    yw = np.sum(weights * d_inn, axis=0)
+    yh = yw * np.exp(-0.5 * vt * vt * h + vt * np.sqrt(h) * z0)
+    s_inn = d_inn + (yh - yw) / weight_sum
+    vol_h = drift_ode_solve2(nodes, sigma0_factors, theta, kappa1, kappa2, s_inn, weights, 0.5 * h)
+    n_redo, n_floor = _redo_non_positive_paths(nodes, weights, sigma0_factors, theta, kappa1,
+                                               kappa2, factors, vol_h, yw, yh, vartheta, h, z0)
+    jump = (yh - yw) / vt
+    vw = np.sum(weights * factors, axis=0)
+    vhw = np.sum(weights * vol_h, axis=0)
+    vbar_h = 0.5 * h * (vw * vw + vhw * vhw)
+    log_s_h = log_s - 0.5 * vbar_h + rho * jump + np.sqrt(1.0 - rho * rho) * np.sqrt(vbar_h) * z1
+    return vol_h, qvar + vbar_h, log_s_h, jump_sum + jump, n_redo, n_floor
+
+
+@njit(cache=False, fastmath=True)
+def split_step_combined_f64(nodes: np.ndarray, weights: np.ndarray, sigma0_factors: np.ndarray,
+                            theta: float, kappa1: float, kappa2: float, log_s0: float,
+                            factors_init: np.ndarray, rho: float, vartheta: float,
+                            timegrid: np.ndarray, nb_path: int, Z0: np.ndarray, Z1: np.ndarray):
+    """float64 loop of ``split_step_f64`` over a uniform grid."""
+    h = timegrid[1] - timegrid[0]
+    factors = factors_init.copy()
+    log_s = np.full(nb_path, log_s0)
+    qvar = np.zeros(nb_path)
+    jump_sum = np.zeros(nb_path)
+    n_redo = 0
+    n_floor = 0
+    for idx in range(timegrid.size - 1):
+        factors, qvar, log_s, jump_sum, redo_k, floor_k = split_step_f64(
+            nodes, weights, sigma0_factors, theta, kappa1, kappa2, log_s, factors, qvar, jump_sum,
+            rho, vartheta, h, Z0[idx], Z1[idx])
+        n_redo += redo_k
+        n_floor += floor_k
+    return log_s, factors, qvar, jump_sum, n_redo, n_floor
+
+
+class SplitStepPaths(NamedTuple):
+    """terminal values of ``simulate_split_step``."""
+    log_spot: np.ndarray    # log S_T, shape (nb_path,)
+    factors: np.ndarray     # factors sigma^(i)_T, shape (n, nb_path)
+    qvar: np.ndarray        # I_T = int_0^T (sigma^N)^2 dt, shape (nb_path,)
+    jump: np.ndarray        # J_T = int_0^T sigma^N dW^sigma, shape (nb_path,)
+    n_fallback: int         # path-steps redone with the exponential-implicit drift
+    n_floor: int            # path-steps floored at 1e-6 after the fallback
+
+
+def simulate_split_step(nodes: np.ndarray, weights: np.ndarray,
+                        sigma0_factors: np.ndarray,
+                        theta: float, kappa1: float, kappa2: float, log_s0: float,
+                        factors_init: np.ndarray, rho: float, vartheta: float,
+                        timegrid: np.ndarray, nb_path: int,
+                        Z0: np.ndarray, Z1: np.ndarray) -> SplitStepPaths:
+    """
+    simulate log S_T, the factors, I_T and J_T with the split-step scheme of the rough chain pricer.
+
+    The arguments are those of ``log_spot_full_combined``. J is taken from the diffusion sub-step,
+    and paths with non-positive sigma^N are redone with ``drift_ode_solve_exp_implicit`` before any
+    floor applies. All arithmetic is in float64; float32 inputs are promoted.
+
+    Returns
+    -------
+    SplitStepPaths
+        Terminal log-price, factors, integrated variance and stochastic integral J_T, with the
+        counts of fallback and floored path-steps.
+    """
+    def as64(a: np.ndarray) -> np.ndarray:
+        return np.ascontiguousarray(a, dtype=np.float64)
+
+    log_s, factors, qvar, jump, n_redo, n_floor = split_step_combined_f64(
+        as64(nodes), as64(weights), as64(sigma0_factors), float(theta), float(kappa1),
+        float(kappa2), float(log_s0), as64(factors_init), float(rho), float(vartheta),
+        as64(timegrid), int(nb_path), as64(Z0), as64(Z1))
+    return SplitStepPaths(log_spot=log_s, factors=factors, qvar=qvar, jump=jump,
+                          n_fallback=int(n_redo), n_floor=int(n_floor))

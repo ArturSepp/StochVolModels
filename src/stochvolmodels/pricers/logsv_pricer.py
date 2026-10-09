@@ -21,6 +21,7 @@ Quadratic Drift, International Journal of Theoretical and Applied Finance 26(8),
 2450003. Equation numbers throughout this module refer to that article.
 """
 # package
+import warnings
 from dataclasses import dataclass
 
 import numpy as np
@@ -34,7 +35,7 @@ from enum import Enum
 # stochvolmodels
 from stochvolmodels.utils.config import VariableType
 import stochvolmodels.utils.mgf_pricer as mgfp
-from stochvolmodels.utils.mc_payoffs import compute_mc_vars_payoff
+from stochvolmodels.utils.mc_payoffs import compute_conditional_mc_payoff, compute_mc_vars_payoff
 from stochvolmodels.utils.funcs import (
     set_time_grid,
     timer,
@@ -47,7 +48,8 @@ import stochvolmodels.pricers.logsv.affine_expansion as afe
 from stochvolmodels.pricers.model_pricer import ModelPricer, validate_optimization_result
 from stochvolmodels.pricers.logsv.affine_expansion import ExpansionOrder
 from stochvolmodels.pricers.logsv.vol_moments_ode import fit_model_vol_backbone_to_varswaps
-from stochvolmodels.pricers.rough_logsv.split_simulation import log_spot_full_combined
+from stochvolmodels.pricers.rough_logsv.kernel_fit import STEP_RULE_CONSTANT
+from stochvolmodels.pricers.rough_logsv.split_simulation import simulate_split_step
 
 # data
 from stochvolmodels.data.option_chain import OptionChain
@@ -1178,6 +1180,7 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
                                               nodes: np.ndarray,
                                               timegrids: List[np.ndarray],
                                               variable_type: VariableType = VariableType.LOG_RETURN,
+                                              is_conditional_mc: bool = True,
                                               debug: bool = False  # print per-slice path diagnostics
                                               ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     """Price a rough-LogSV option chain using caller-supplied Gaussian draws.
@@ -1193,8 +1196,23 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
     usually for the longest maturity, and each maturity is simulated from time 0 on its
     own grid with the leading rows of Z0 and Z1.
 
+    The scheme is :func:`~stochvolmodels.pricers.rough_logsv.split_simulation.simulate_split_step`:
+    the stochastic integral J of the price step comes from the diffusion sub-step, and paths with
+    non-positive volatility are redone with an exponential-implicit drift step before any floor.
+    With ``is_conditional_mc`` (default) and ``VariableType.LOG_RETURN``, prices are averages of
+    Black prices conditional on the volatility path, with forward F exp(rho J_T - rho^2 I_T / 2)
+    and total variance (1 - rho^2) I_T, normalised to the forward; ``Z1`` is then not used.
+    Otherwise payoffs are averaged over the simulated spots. A ``UserWarning`` is issued when
+    w_bar vartheta sqrt(h) exceeds ``kernel_fit.STEP_RULE_CONSTANT`` on any grid, since the scheme
+    is then biased, and when paths are floored after the fallback.
+
     This experimental routine preserves identical random inputs across parameter
     evaluations, which is useful for calibration diagnostics.
+
+    Returns
+    -------
+    Tuple[List[np.ndarray], List[np.ndarray]]
+        Option prices and their Monte Carlo standard errors, one array per maturity slice.
     """
     assert weights.shape == nodes.shape and weights.ndim == 1
     N = nodes.size
@@ -1212,9 +1230,19 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
     weight_vec = np.repeat(weights[:, None], nb_path, axis=1)
     nodes_vec = np.repeat(nodes[:, None], nb_path, axis=1)
 
+    # step rule of the split-step scheme on the coarsest grid
+    w_bar = np.sum(weights)
+    step_ratio = max(w_bar * vartheta * np.sqrt(grid[1] - grid[0]) for grid in timegrids)
+    if step_ratio > STEP_RULE_CONSTANT:
+        warnings.warn(f"w_bar * vartheta * sqrt(h) = {step_ratio:.2f} exceeds "
+                      f"{STEP_RULE_CONSTANT}: the split-step scheme is biased at this step; use "
+                      f"more steps per year (rough_logsv.kernel_fit.max_time_step)",
+                      UserWarning, stacklevel=2)
+
     # outputs as numpy lists
     option_prices_ttm = List()
     option_std_ttm = List()
+    n_floor_total = 0
     for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm, timegrid in zip(ttms, forwards,
                                                                                 discfactors,
                                                                                 strikes_ttms,
@@ -1223,23 +1251,40 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
         nb_steps = timegrid.size - 1
         Z0_ = Z0[:nb_steps]
         Z1_ = Z1[:nb_steps]
-        log_spot_str, vol_str, qv_str = log_spot_full_combined(
-            nodes_vec, weight_vec, sigma0_factors_vec, theta, kappa1, kappa2, log_s0,
-            factors_init, rho, vartheta, timegrid, nb_path, Z0_, Z1_)
+        paths = simulate_split_step(nodes_vec, weight_vec, sigma0_factors_vec, theta, kappa1,
+                                    kappa2, log_s0, factors_init, rho, vartheta, timegrid,
+                                    nb_path, Z0_, Z1_)
+        n_floor_total += paths.n_floor
         if debug:
-            print(f"Number of paths with negative vol: {np.sum(weights @ vol_str < 0.0)}, nan vol: {np.count_nonzero(np.isnan(weights @ vol_str))}")
-            print(f"Mean spot Strand: {np.mean(np.exp(log_spot_str))}, nan spots: {np.count_nonzero(np.isnan(log_spot_str))}")
+            print(f"ttm={ttm}: fallback path-steps {paths.n_fallback}, "
+                  f"floored path-steps {paths.n_floor}, "
+                  f"mean spot {np.mean(np.exp(paths.log_spot))}, "
+                  f"nan spots {np.count_nonzero(np.isnan(paths.log_spot))}")
 
-        option_prices, option_std = compute_mc_vars_payoff(x0=log_spot_str, sigma0=vol_str, qvar0=qv_str,
-                                                           ttm=ttm,
-                                                           forward=forward,
-                                                           strikes_ttm=strikes_ttm,
-                                                           optiontypes_ttm=optiontypes_ttm,
-                                                           discfactor=discfactor,
-                                                           variable_type=variable_type)
+        if is_conditional_mc and variable_type == VariableType.LOG_RETURN:
+            option_prices, option_std = compute_conditional_mc_payoff(
+                log_forward_ratio=rho * paths.jump - 0.5 * rho * rho * paths.qvar,
+                total_var=(1.0 - rho * rho) * paths.qvar,
+                forward=forward,
+                strikes_ttm=strikes_ttm,
+                optiontypes_ttm=optiontypes_ttm,
+                discfactor=discfactor)
+        else:
+            option_prices, option_std = compute_mc_vars_payoff(x0=paths.log_spot,
+                                                               sigma0=weights @ paths.factors,
+                                                               qvar0=paths.qvar,
+                                                               ttm=ttm,
+                                                               forward=forward,
+                                                               strikes_ttm=strikes_ttm,
+                                                               optiontypes_ttm=optiontypes_ttm,
+                                                               discfactor=discfactor,
+                                                               variable_type=variable_type)
         option_prices_ttm.append(option_prices)
         option_std_ttm.append(option_std)
 
+    if n_floor_total > 0:
+        warnings.warn(f"{n_floor_total} path-steps were floored at 1e-6 after the positivity "
+                      f"fallback; prices are biased", UserWarning, stacklevel=2)
     return option_prices_ttm, option_std_ttm
 
 # Manual scenarios are available in ``stochvolmodels.pricers.run_local.logsv_pricer_run``.

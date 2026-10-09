@@ -23,16 +23,45 @@ Entries start at 1.2.0. For earlier releases see the git log.
   sets with maturities up to one year, the fit reduces the largest variance-swap volatility error
   from 255 bp to 30 bp at H = 0.2 and from 3369 bp to 310 bp at H = 0.1.
 
+- Added `rough_logsv.split_simulation.simulate_split_step`, the split-step scheme now used by
+  `rough_logsv_mc_chain_pricer_fixed_randoms`. It takes the stochastic integral J of the price step
+  from the diffusion sub-step instead of the trapezoidal back-out, redoes paths with non-positive
+  volatility with the new exponential-implicit drift step `drift_ode_solve_exp_implicit` before
+  any floor, counts fallback and floored path-steps, and returns J_T. At 360 steps per year and
+  T = 0.25 (H = 0.1, 50,000 paths), the largest implied-volatility error against a 2,880-step
+  reference falls from 34 to 21 bp in a moderate case and from 881 to 187 bp in a crypto-like
+  case. `log_spot_full_combined` keeps the 2.4.2 scheme for reproducibility.
+
+- Added `utils.mc_payoffs.compute_conditional_mc_payoff`, which prices calls, puts and inverse
+  options by averaging Black prices conditional on the volatility path, with forward
+  F exp(rho J_T - rho^2 I_T / 2) and total variance (1 - rho^2) I_T, normalised multiplicatively to
+  the forward. `rough_logsv_mc_chain_pricer_fixed_randoms` uses it by default
+  (`is_conditional_mc=True`) for `VariableType.LOG_RETURN`. In test runs the variance of the price
+  estimates fell by factors of 1.7 to 90, depending on strike and correlation.
+
 ### Changed
+
+- `rough_logsv_mc_chain_pricer_fixed_randoms` uses the new scheme and conditional Monte Carlo,
+  so its prices change. The rough pricing regression baseline was regenerated deliberately: the
+  Bitcoin set of that test (w_bar vartheta sqrt(h) = 1.7 at 360 steps per year) lies far outside
+  the step bound, and its out-of-the-money call prices rise by up to a factor of 25 towards those
+  of a 5,760-step reference. The pricer warns when w_bar vartheta sqrt(h) exceeds 0.4 and when
+  paths are floored after the fallback. The rough-limit statement of the Monte Carlo page and its
+  documentation case now read "within two combined standard errors" instead of 0.01.
 
 - Renamed the keyword arguments of the experimental `rough_logsv.split_simulation` functions to the
   notation of the rough log-normal Volterra working paper: `weight` to `weights`, `v0` to
   `sigma0_factors`, `v_init` to `factors_init`, `volvol` (the total vartheta, not epsilon) to
   `vartheta`, and the integrated-variance state `y` to `qvar`. Positional order is unchanged and
-  numerical results are identical (the rough pricing regression passes unchanged); callers passing
-  the old keywords must update. Added a module header with the scheme's mathematics.
+  the renaming leaves numerical results identical; callers passing the old keywords must update.
+  Added a module header with the scheme's mathematics.
 
 ### Fixed
+
+- Fixed the standard errors of `rough_logsv_mc_chain_pricer_fixed_randoms`, which were the
+  standard deviations of the payoffs: `compute_mc_vars_payoff` divided by `sqrt(x0.shape[0])`, which
+  is 1 for the (1, nb_path) arrays of the rough scheme. It now divides by `sqrt(x0.size)`, which is
+  unchanged for the one-dimensional arrays of the other pricers.
 
 - Fixed `rough_logsv.rough_kernel.exp_underflow` for integer arrays, which raised on the removed
   `np.float` alias.

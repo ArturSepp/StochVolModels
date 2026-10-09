@@ -187,9 +187,11 @@ With a Hurst exponent $H < 1/2$, `LogSvParams` approximates the fractional kerne
 exponentials, whose nodes and weights `approximate_kernel` sets for a horizon, and
 `model_mc_price_chain` simulates the resulting multi-factor dynamics when called with
 `use_rough_mc=True` and a `seed`. This extension is experimental and outside the paper; it has no
-transform price. With $H = 1/2$ the kernel is a single node at $10^{-3}$ with weight one, and the
-three-month prices of the rough simulator agree with those of the standard simulator within 0.01
-standard errors when both use seed 7.
+transform price. The rough simulator averages Black prices conditional on each volatility path
+rather than payoffs, and it warns when the step is too coarse for its kernel. With $H = 1/2$ the
+kernel is a single node at $10^{-3}$ with weight one, and the three-month prices of the rough
+simulator agree with those of the standard simulator within two combined standard errors when
+both use seed 7.
 
 ```python
 def rough_params(hurst: float, params: svm.LogSvParams = PARAMS, ttm: float = 0.25):

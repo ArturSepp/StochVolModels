@@ -79,7 +79,9 @@ def test_rough_random_grid_replays_seed_and_has_aligned_shapes() -> None:
     np.testing.assert_allclose(actual_global_draw, expected_global_draw, rtol=0.0, atol=0.0)
 
 
+# the coarse grid of this determinism check (100 steps per year) is outside the step rule
 @pytest.mark.slow
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_rough_fixed_random_pricer_is_finite_and_deterministic() -> None:
     chain = OptionChain.slice_to_chain(
         ttm=0.05,

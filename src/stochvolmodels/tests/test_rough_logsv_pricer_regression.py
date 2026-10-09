@@ -25,24 +25,26 @@ def test_rough_logsv_pricer_pricing_regression(ndarrays_regression) -> None:
     params0.H = 0.1
     params0.approximate_kernel(T=btc_option_chain.ttms[-1])
 
-    option_prices_ttm, _option_std_ttm = sv.rough_logsv_mc_chain_pricer_fixed_randoms(
-        ttms=btc_option_chain.ttms,
-        forwards=btc_option_chain.forwards,
-        discfactors=btc_option_chain.discfactors,
-        strikes_ttms=btc_option_chain.strikes_ttms,
-        optiontypes_ttms=btc_option_chain.optiontypes_ttms,
-        Z0=Z0,
-        Z1=Z1,
-        sigma0=params0.sigma0,
-        theta=params0.theta,
-        kappa1=params0.kappa1,
-        kappa2=params0.kappa2,
-        beta=params0.beta,
-        orthog_vol=params0.volvol,
-        weights=params0.weights,
-        nodes=params0.nodes,
-        timegrids=grid_ttms,
-    )
+    # the Bitcoin set has w_bar vartheta sqrt(h) = 1.7 at 360 steps per year, above the step rule
+    with pytest.warns(UserWarning, match="exceeds"):
+        option_prices_ttm, _option_std_ttm = sv.rough_logsv_mc_chain_pricer_fixed_randoms(
+            ttms=btc_option_chain.ttms,
+            forwards=btc_option_chain.forwards,
+            discfactors=btc_option_chain.discfactors,
+            strikes_ttms=btc_option_chain.strikes_ttms,
+            optiontypes_ttms=btc_option_chain.optiontypes_ttms,
+            Z0=Z0,
+            Z1=Z1,
+            sigma0=params0.sigma0,
+            theta=params0.theta,
+            kappa1=params0.kappa1,
+            kappa2=params0.kappa2,
+            beta=params0.beta,
+            orthog_vol=params0.volvol,
+            weights=params0.weights,
+            nodes=params0.nodes,
+            timegrids=grid_ttms,
+        )
 
     # per-maturity arrays are ragged: one key each, compared with relative tolerance
     ndarrays_regression.check({f"option_prices_ttm_{idx}": np.asarray(prices, dtype=float)
