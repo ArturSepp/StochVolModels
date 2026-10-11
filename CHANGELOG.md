@@ -4,6 +4,13 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+### Fixed
+
+- `error_l1` in `stochvolmodels.pricers.rough_logsv.rough_kernel` no longer raises `AttributeError`
+  with `method="trapezoidal"`, `"exact - trapezoidal"` or `"reparametrized trapezoidal"`, and
+  `exp_underflow` no longer raises it on integer arrays. They called `np.trapz` and `np.float`,
+  which NumPy has removed, and now call `np.trapezoid` and the builtin `float`.
+
 ## [2.4.2] - 2026-10-07
 
 ### Added

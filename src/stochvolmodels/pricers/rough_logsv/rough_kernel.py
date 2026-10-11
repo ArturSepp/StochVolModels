@@ -58,7 +58,7 @@ def exp_underflow(x):
     """
     if isinstance(x, np.ndarray):
         if x.dtype == int:
-            x = x.astype(np.float)
+            x = x.astype(float)
         eps = np.finfo(x.dtype).tiny
     else:
         if isinstance(x, int):
@@ -413,7 +413,7 @@ def error_l1(H, nodes, weights, T, method='intersections', tol=1e-08):
                 error_t_1[::2] = np.abs(fractional_kernel(H, t[1::2])
                                         - fractional_kernel_approximation(H, t[1::2], nodes, weights))
                 reusable = error_t_1
-            total_error = np.trapz(reusable, dx=T / n)
+            total_error = np.trapezoid(reusable, dx=T / n)
             return total_error + np.abs(fractional_kernel(H, T / (2 * n))
                                         - fractional_kernel_approximation(H, T / (2 * n), nodes, weights)) * T / n, \
                 reusable
@@ -444,7 +444,7 @@ def error_l1(H, nodes, weights, T, method='intersections', tol=1e-08):
                 error_t_1[1::2] = np.abs(fractional_kernel(H, t[1::2])
                                          - fractional_kernel_approximation(H, t[1::2], nodes, weights))
                 reusable = error_t_1
-            total_error = np.trapz(reusable, dx=(T - t_0) / n)
+            total_error = np.trapezoid(reusable, dx=(T - t_0) / n)
             return error_to_t_0 + total_error, reusable
 
         t_0 = find_first_intersection()
@@ -527,7 +527,7 @@ def error_l1(H, nodes, weights, T, method='intersections', tol=1e-08):
                                          - t[1::2] ** (0.5 - H) * fractional_kernel_approximation(H, t[1::2], nodes,
                                                                                                   weights) / (0.5 + H))
                 reusable = error_t_1
-            total_error = np.trapz(reusable, dx=T ** (0.5 + H) / n)
+            total_error = np.trapezoid(reusable, dx=T ** (0.5 + H) / n)
             return total_error, reusable
 
         return single_param_search(f=error_, rel_tol=tol, n=100, factor=2)[0:2]

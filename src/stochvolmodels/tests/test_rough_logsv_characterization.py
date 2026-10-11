@@ -4,9 +4,12 @@ from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 from stochvolmodels.pricers.rough_logsv.rough_kernel import (
     Gaussian_interval,
     Gaussian_parameters,
+    error_l1,
+    exp_underflow,
     fractional_kernel,
     fractional_kernel_approximation,
     kernel_rheston,
+    quadrature_rule,
 )
 
 from stochvolmodels.data.option_chain import OptionChain
@@ -51,6 +54,29 @@ def test_three_factor_rough_kernel_tracks_fractional_reference() -> None:
     assert np.max(relative_error) < 0.25
     assert np.max(relative_error[1:]) < 0.12
 
+
+@pytest.mark.parametrize(("hurst", "n_terms", "maturity"), [(0.1, 3, 1.0), (0.3, 4, 0.5)])
+def test_trapezoidal_l1_errors_match_the_intersection_method(
+    hurst: float, n_terms: int, maturity: float
+) -> None:
+    nodes, weights = quadrature_rule(H=hurst, N=n_terms, T=maturity)
+    kwargs = dict(H=hurst, nodes=nodes, weights=weights, T=maturity)
+
+    reference = error_l1(**kwargs)[0]
+    exact = error_l1(**kwargs, method="exact - trapezoidal")[0]
+    reparametrized = error_l1(**kwargs, method="reparametrized trapezoidal", tol=1e-3)[0]
+    plain = error_l1(**kwargs, method="trapezoidal", tol=1e-2)[0]
+
+    assert exact == pytest.approx(reference, rel=1e-6)
+    assert reparametrized == pytest.approx(reference, rel=1e-2)
+    # The plain rule converges slowly on the t^(H - 1/2) singularity: within 9% at tol=1e-2.
+    assert plain == pytest.approx(reference, rel=0.1)
+
+
+def test_exp_underflow_accepts_integer_arrays() -> None:
+    np.testing.assert_array_equal(
+        exp_underflow(np.array([0, 1, 2])), exp_underflow(np.array([0.0, 1.0, 2.0]))
+    )
 
 def test_rough_random_grid_replays_seed_and_has_aligned_shapes() -> None:
     kwargs = dict(
