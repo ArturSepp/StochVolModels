@@ -252,6 +252,7 @@ analytic_vs_monte_carlo
 
 calibration
 logsv_smile_fitter
+surface_diagnostics
 ```
 
 ```{toctree}

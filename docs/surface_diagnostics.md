@@ -1,0 +1,181 @@
+---
+myst:
+  html_meta:
+    description: >-
+      Compare fitted option prices and implied volatilities with bid and ask quotes,
+      check strike and calendar consistency on explicit grids, and compare surfaces
+      at common tenors with immutable diagnostic reports.
+---
+
+# Fit and surface diagnostics
+
+*Author: [Artur Sepp](https://github.com/ArturSepp)*
+
+Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
+Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
+
+Surface diagnostics measure the agreement of fitted prices with quotes and the consistency of
+a fitted surface across strikes and maturities. The `stochvolmodels.fitters` namespace accepts
+outputs from existing approximate smiles and model pricers. It does not recalibrate or repair them.
+The optional OCA adapter is an advanced module path, imported explicitly as described below.
+
+## Fit quality against observed quotes
+
+`fitters.diagnose_fit` takes an `OptionChain`, final model prices and/or decimal implied
+volatilities, one vector per expiry. The caller supplies `price_unit` and a positive
+`spread_floor` in the same price units. Quoted prices and model prices must already agree in
+currency, discounting and contract normalization; the report performs no implicit conversion.
+
+The returned `DiagnosticReport` contains `quotes`, `expiries` and `summary` tables. Obtain a fresh
+DataFrame with `report.table("quotes")`. The summary pools individual residuals across expiries:
+it does not average per-expiry RMSEs. Optional finite nonnegative weights require a `weight_label`.
+Zero weights exclude observations from weighted metrics only.
+
+| Result | Meaning |
+|---|---|
+| IV and price residual | Fitted value minus the midpoint of a valid bid/ask interval |
+| RMSE and weighted RMSE | Error magnitude, with counts and actual weight sums |
+| Maximum error and quote ID | Worst absolute residual among eligible observations |
+| Inside bid/ask fraction | Share of finite fitted prices inside valid two-sided price quotes |
+| Spread-scaled error | Price residual divided by the larger of half-spread and the explicit floor |
+| Outside-spread distance | Distance to the closest interval boundary, zero inside the interval |
+
+Zero bids remain valid prices. Locked markets use the declared spread floor. One-sided,
+crossed, non-finite and invalid observations are counted explicitly; a mark is never substituted
+for a missing midpoint. Price and IV availability are independent. The existing `OptionChain`
+constructor still validates supplied quote arrays; diagnostics do not weaken that contract.
+
+Fit metric status `pass` means the calculation had eligible inputs, not that its error is acceptable.
+No data or zero eligible weight produces `not_checked`. Economic acceptance thresholds belong to
+the consuming study. Default quote IDs are expiry/row ordinals; provide stable external IDs for
+comparisons after reordering or filtering.
+
+## Strike and density checks
+
+`fitters.check_call_slice` accepts increasing strikes and one consistent discounted call-price
+curve. For standard European payoffs it checks call bounds, decreasing prices, vertical-spread
+slope bounds and convexity, including irregular strike spacing. Never supply a stitched array
+of put and call prices as though it were one call curve.
+
+Without an analytic density, the function estimates density at interior strikes from second
+divided differences divided by discount. A supplied density must be with respect to strike,
+not log-strike; transform measures explicitly before passing it. The report records the minimum
+density, mass and negative mass on the available grid. It integrates only adjacent finite points,
+without clipping or normalization. Truncated mass need not equal one.
+
+Price and slope tolerances use the normalizations documented in the function signature; density
+tolerance has inverse-strike units. Refine the grid and compare independent derivatives when
+interpreting a small numerical violation. A finite grid cannot certify the unobserved wings.
+
+## Calendar and interpolation checks
+
+`fitters.check_calendar` compares a maturity-by-log-moneyness matrix of total variance,
+$w(k,T)=T\sigma(k,T)^2$, at fixed $k=\log(K/F(T))$. The calendar interpretation requires a
+declared common underlying and `carry_model="proportional"`. This follows the assumptions in
+[Gatheral and Jacquier, Section 2.1](https://arxiv.org/html/1204.0646v4).
+
+A declining volatility term structure can still have increasing total variance. Expiries on
+different underlying futures do not automatically satisfy this interpretation. Use
+`carry_model="different_underlyings"` to mark that case `not_applicable`; unknown carry or
+underlying identity is `not_checked`. Nonpositive or non-finite variance cannot produce a pass.
+
+`fitters.SurfaceEvaluator` declares IV, forward and discount callbacks, their maturity and
+log-moneyness domains, and interpolation/extrapolation policies. Use a domain common to all
+evaluated expiries; a disjoint observed range has no common observed-domain check. The evaluator
+must implement its stated policy: the diagnostics do not create interpolation automatically.
+
+`fitters.diagnose_surface` evaluates each maturity at its own forward-scaled strikes, prices
+standard calls through [VanillaOptionPricers](https://github.com/ArturSepp/VanillaOptionPricers),
+and runs the strike and calendar checks. Supply `extra_ttms` to sample intermediate maturities.
+An evaluator with `interpolation="none"` supports calibration slices only. Unrequested interior
+maturities remain unchecked. Extrapolation needs a declared policy and explicit opt-in; each
+grid point is labelled. IVs are never made valid by squaring negative values or flooring them.
+Its `density` and `expiries` tables retain the sampled densities and integration summaries.
+Supply optional `metadata` to preserve observation timestamps and calibration identity.
+
+Check statuses distinguish `pass`, `fail`, `not_checked` and `not_applicable`. Inspect individual
+rows, their tolerances, domain and invalid counts. The `intermediate_maturities` row records
+sampling coverage, not mathematical validity of interpolation. Every report states that it is
+not a global certificate. These are modeled consistency checks, not executable arbitrage tests.
+
+## Comparing snapshots and retaining evidence
+
+`fitters.compare_surface_reports` requires identical time-to-expiry and forward-log-moneyness
+grids and matching underlying, payoff, carry and price-unit conventions. It reports changes in
+IV, total variance, ATM IV and numerical ATM skew/curvature. Re-evaluate snapshots at common
+tenors first; otherwise expiry roll and decay would be mixed into a shape comparison. The
+comparison performs no attribution or time filling.
+
+Optional `previous_fit` and `current_fit` arguments add `fit_changes`: quote/IV/price counts,
+RMSE, weighted RMSE and bid/ask coverage changes. Fit maturities must match each other and
+lie on the surface's constant-tenor grid; units, spread floors and weighting labels must agree.
+Each metric describes its own observed quote universe, so the difference is not an attribution
+of quote churn to market moves.
+
+`DiagnosticReport` stores an immutable JSON snapshot. Tables, metadata and `to_dict()` return
+independent copies. `DiagnosticReport.from_dict()` restores the report after JSON serialization.
+Unavailable numerical values serialize as null alongside their status/reason. A new final fit
+requires a new report; changes to calibration parameters cannot leave cached errors attached.
+
+## Optional OCA provenance
+
+Import `diagnostic_chain_from_oca` from
+`stochvolmodels.fitters.adapters.oca_diagnostics`. It returns a new SVM chain and a provenance
+report using the existing OCA adapter's selection. `price_conversion="quoted"` preserves quote
+units. `price_conversion="usd_per_unit"` applies the recorded USD multiplier once and requires
+`price_unit="USD per unit"`; contract size is recorded separately and is not multiplied in.
+Unit conversion alone does not establish an inverse-payoff or valuation-measure mapping.
+
+The provenance includes contracts, actual source time and requested time. Without a sidecar,
+counts cover reconstructed expiries and earlier duplicate counts remain unavailable.
+With OCA 5.3 or later, pass the sidecar returned by `reconstruct_with_diagnostics` as
+`quality_report`. The adapter validates its timestamps, units and selected quote prices, joins
+source-row IDs and quality reasons, and returns `source_selection` and `counts` tables that
+reconcile every source row through SVM maturity, cleaning, OTM-wing and delta selection.
+Quality flags report evidence without changing the existing adapter's selection defaults.
+The immutable OCA report is also retained in metadata. The older `quality_metadata` argument
+continues to accept an uninterpreted mapping and cannot be combined with `quality_report`.
+OCA remains an optional research dependency. Its software citation is
+[CITATION.cff](https://github.com/ArturSepp/OptionChainAnalytics/blob/main/CITATION.cff).
+
+## Reproduce the synthetic examples
+
+The [canonical script](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/surface_diagnostics.py)
+runs without optional research packages or network access. Its cases fit an approximate LogSV
+smile, check an analytic surface, and compare two flat surfaces on common tenors. The synthetic
+fit falls inside every quoted price spread; a change from 30% to 32% IV produces an ATM change
+of 0.02 in decimal units. Each statement is asserted by the script. Its optional `plot_report`
+helper plots residuals from the same stored tables.
+The companion `plot_surface_report` helper plots densities and adjacent variance gaps.
+
+```console
+python examples/docs/surface_diagnostics.py
+```
+
+The [advanced OCA example](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/oca_surface_diagnostics.py)
+requires the research extra and OCA 5.3. It generates observations, injects stale/crossed/duplicate
+evidence, reconstructs a previous snapshot, converts prices, fits existing LogSV smiles and
+reports fit and surface diagnostics. It reconciles 31 original rows into 15 selected quotes
+and 16 exclusions. A deliberately shifted fit has zero bid/ask price coverage. Ordinary and
+100× quotation variants produce the same converted prices; contract size remains separate.
+
+```console
+python examples/calibration/oca_surface_diagnostics.py
+```
+
+Maintainer Windows checkouts use the external interpreter and runtime setup prescribed by
+the repository's AGENTS.md. Inputs and implementation limitations are part of the returned
+metadata; a small fit error alone does not establish a valid density or calendar surface.
+
+## See also
+
+- [Approximate LogSV smile fitter](logsv_smile_fitter.md).
+- [Calibration](calibration.md) and [terminal-distribution models](terminal_distribution_models.md).
+- [Option-chain conventions](option_chains_and_conventions.md) and [API reference](api.md).
+
+## References
+
+- Jim Gatheral and Antoine Jacquier, *Arbitrage-free SVI volatility surfaces*, arXiv:1204.0646,
+  revision 4 (2013). [Primary manuscript](https://arxiv.org/abs/1204.0646).
+- [VanillaOptionPricers software citation](https://github.com/ArturSepp/VanillaOptionPricers/blob/main/CITATION.cff).
+- [stochvolmodels software citation](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).

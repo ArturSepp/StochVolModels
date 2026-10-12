@@ -36,6 +36,8 @@ enum case and includes Numba compilation on first use.
 | `docs/inverse_options.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
 | `docs/logsv_model.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
 | `docs/logsv_smile_fitter.py` | canonical script of a documentation page | core only, generated chain | every case run by `test_docs_examples.py` |
+| `docs/surface_diagnostics.py` | fit, strike and calendar checks with constant-tenor comparisons | core only, synthetic chains | every case run by `test_docs_examples.py` |
+| `calibration/oca_surface_diagnostics.py` | advanced source-to-fit quality, parity and surface reports | research extra, OCA 5.3, synthetic only | optional cross-package integration test |
 | `docs/martingale_conditions_and_skews.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
 | `docs/monte_carlo_simulation.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
 | `docs/numerical_accuracy_and_performance.py` | timings quoted on a documentation page | core only, bundled Bitcoin chain | run by `test_docs_examples.py`, which asserts completion, not times |

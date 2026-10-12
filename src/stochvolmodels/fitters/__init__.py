@@ -1,5 +1,13 @@
 """Provider-independent volatility-model fitting utilities."""
 
+from stochvolmodels.fitters.diagnostics import DiagnosticReport, diagnose_fit
+from stochvolmodels.fitters.surface_checks import (
+    SurfaceEvaluator,
+    check_call_slice,
+    check_calendar,
+    compare_surface_reports,
+    diagnose_surface,
+)
 from stochvolmodels.fitters.logsv_smile import (
     ATM_VOL,
     BETA,
@@ -17,6 +25,13 @@ from stochvolmodels.fitters.logsv_smile import (
 )
 
 __all__ = [
+    'DiagnosticReport',
+    'SurfaceEvaluator',
+    'diagnose_fit',
+    'check_call_slice',
+    'check_calendar',
+    'diagnose_surface',
+    'compare_surface_reports',
     'ATM_VOL',
     'BETA',
     'VOLVOL',

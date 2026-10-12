@@ -283,7 +283,23 @@ diagnostics, and synthetic grids. They are separate from the full transform-base
 
 ```{eval-rst}
 .. automodule:: stochvolmodels.fitters
-   :members:
+   :members: calc_logsv_atm_fit, fit_logsv_ivols, calc_logsv_ivols, calc_logsv_ivols_partials, calc_logsv_pdf, calc_logsv_pdf_core, infer_strikes_from_deltas, get_vols_delta_space, get_pdf_delta_space, generate_grid_option_prices_from_slice
+```
+
+### Fit and surface diagnostics
+
+Explained in [Fit and surface diagnostics](surface_diagnostics.md). Core diagnostics are
+available from `stochvolmodels.fitters`; the OCA provenance adapter is optional.
+
+```{eval-rst}
+.. automodule:: stochvolmodels.fitters.diagnostics
+   :members: DiagnosticReport, diagnose_fit
+
+.. automodule:: stochvolmodels.fitters.surface_checks
+   :members: SurfaceEvaluator, check_call_slice, check_calendar, diagnose_surface, compare_surface_reports
+
+.. automodule:: stochvolmodels.fitters.adapters.oca_diagnostics
+   :members: diagnostic_chain_from_oca
 ```
 
 ### Local resource and output paths

@@ -4,6 +4,24 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-10-12
+
+### Added
+
+- Added `fitters.DiagnosticReport` and `fitters.diagnose_fit` for immutable, serializable
+  quote residuals, pooled weighted errors and bid/ask coverage in explicit price units.
+- Added `fitters.check_call_slice`, `fitters.check_calendar`, `fitters.SurfaceEvaluator`,
+  `fitters.diagnose_surface` and `fitters.compare_surface_reports` for finite-grid strike,
+  density and calendar diagnostics and comparisons on identical constant-tenor grids.
+  Reports record incomplete checks and applicability; a grid pass is not a global certificate.
+- Added the optional `fitters.adapters.oca_diagnostics.diagnostic_chain_from_oca` helper
+  for quote provenance and explicit per-unit price conversion, preserving the legacy adapter.
+- Added the offline surface diagnostics guide and canonical synthetic examples.
+- Added OCA 5.3 reconstruction-sidecar joins through `diagnostic_chain_from_oca(quality_report=...)`,
+  source-to-calibration exclusion counts and an offline cross-package example.
+- Added optional paired fit reports to `compare_surface_reports` for coverage and fit-error
+  changes on matching constant tenors.
+
 ### Fixed
 
 - `error_l1` in `stochvolmodels.pricers.rough_logsv.rough_kernel` no longer raises `AttributeError`

@@ -136,6 +136,11 @@
       "status": "review",
       "example": "examples/docs/logsv_smile_fitter.py"
     },
+    "docs/surface_diagnostics.md": {
+      "form": "utility",
+      "status": "review",
+      "example": "examples/docs/surface_diagnostics.py"
+    },
     "docs/app_positive_and_negative_skews.md": {
       "id": "A2",
       "form": "case_study",
