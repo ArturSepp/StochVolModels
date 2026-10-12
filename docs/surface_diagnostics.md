@@ -191,8 +191,8 @@ The flat limit explicitly records that its shape parameters are unidentifiable.
 
 The core-only runner freezes synthetic flat, skewed, sparse/noisy and short-dated observations,
 with separate interior and wing holdouts. Models minimize uniformly weighted training IV
-errors except the opt-in `raw_svi_price` objective described below. Native incumbent
-optimizers and three-start experimental optimizers have different
+errors except the opt-in `raw_svi_price` variants described below. Native incumbent
+optimizers and experimental optimizers have different
 budgets; the output records this limitation. Held-out prices, IV errors, bid/ask coverage,
 training-quote perturbations and finite-domain surface checks use the final fitted parameters.
 Every failed job remains in the results, including failures during perturbation or diagnostics.
@@ -245,7 +245,7 @@ limit. The constraints can reduce flexibility and cost more runtime. They do not
 unsampled strikes, out-of-domain wings or calendar consistency, and a shape-valid fit can
 still have poor held-out accuracy or perturbation stability.
 
-Both constrained candidates now reject prediction requests outside each fitted constraint
+All constrained candidates reject prediction requests outside each fitted constraint
 domain. Boundaries allow `1e-12` roundoff in log-moneyness; there is no clipping, automatic
 domain expansion or partial-quote score. Their saved domain report contains the requested
 log-moneyness values, per-expiry bounds, outside indices and counts. Independent slices also
@@ -284,6 +284,26 @@ This candidate supplies no public fitter API or automatic model-selection rule.
 python examples/calibration/compare_smile_fitters.py --models raw_svi_constrained raw_svi_price
 ```
 
+The separate `raw_svi_price_seeded` candidate adds a fourth price start from a constrained
+fit to the same training midpoint IVs. This is an initialization choice, not a mixed loss:
+every price start minimizes the same price objective and uses the existing convergence,
+parameter-bound and dense-grid acceptance gates. The seed is never returned as an IV
+fallback. If its IV calibration fails, the seeded candidate fails explicitly. An exact
+flat-IV seed still undergoes price calibration because premium targets may disagree.
+
+This candidate can avoid poor local price solutions when fixed starts approach a flat
+smile, but does not guarantee a global optimum or stable wings. It normally performs
+three IV solves followed by four price solves, each with the unchanged iteration budget;
+an exact flat-IV seed avoids the three IV solves. Saved evidence includes the IV seed's
+parameters and optimizer record, every price start's initial coordinates, and separate
+seed, price and total function-evaluation counts. Reported fit times include both stages.
+This higher budget must be considered when comparing accuracy and runtime. The original
+price candidate, benchmark defaults, prediction domains and economic screen are unchanged.
+
+```console
+python examples/calibration/compare_smile_fitters.py --models raw_svi_price raw_svi_price_seeded
+```
+
 The `wings` suite defaults to the original, bounded and constrained IV-objective SVI fitters
 on 120 jobs with separately fixed seeds 401–405, tenors and mixture specifications.
 Earlier synthetic and historical cases
@@ -305,7 +325,8 @@ The report records when source-fingerprint checking is unavailable. A missing or
 is recorded as a failure, without rebuilding it or falling back to raw data.
 
 Select the bounded or constrained research candidates explicitly with `--models raw_svi`,
-`--models raw_svi_constrained` or `--models raw_svi_price`; names can be combined with the
+`--models raw_svi_constrained`, `--models raw_svi_price` or `--models raw_svi_price_seeded`;
+names can be combined with the
 default comparators. Constrained candidates derive their grids from training strikes only.
 If the complete observed strike domain extends beyond that grid, evaluation is refused;
 the job retains fitted parameters and domain evidence and remains in attempted counts.
@@ -331,8 +352,8 @@ It does not use a synthetic forward or discount curve for historical evaluation.
 
 Each date has an in-sample fit, an interior holdout of every third interior strike, and
 a wing holdout of the outer 20% of strikes on each side, rounded down. Every expiry must
-retain at least eight training quotes. All models use the same split. The price candidate
-uses its half-spread price objective; other models use uniformly weighted training IV
+retain at least eight training quotes. All models use the same split. The price candidates
+use their half-spread price objective; other models use uniformly weighted training IV
 errors. The holdouts condition on forwards, discounts and quote
 selection obtained from the complete contemporaneous OCA snapshot. They therefore test
 smile interpolation/extrapolation, not the entire quote-to-forward estimation procedure.

@@ -100,7 +100,7 @@ def check_svi_wings(k, params):
                 scope="sampled strike domain; no calendar or global certificate")
 
 
-def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None):
+def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None, iv_seed=False):
     """Fit IV SSE or half-spread price MSE under finite-grid strike constraints.
 
     Parameters use the same positive-minimum and training-relative bounds as
@@ -108,8 +108,12 @@ def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None):
     held-out data. Unsuccessful or dense-check-infeasible solutions are rejected
     before objective selection. Optional price_quotes contains training bid, ask,
     optiontypes, forward and discount; IVs then supply scaling and starts only.
+    With iv_seed=True, a constrained training-IV fit supplies a fourth price start;
+    its cost and evidence are retained. It must converge again on the price loss.
     Exhaustion is a failed fit, not a flat fallback. This is a repository-only helper.
     """
+    if iv_seed and price_quotes is None:
+        raise ValueError("The training-IV seed requires price quotes")
     k, iv = np.asarray(k, dtype=float), np.asarray(iv, dtype=float)
     if (k.ndim != 1 or iv.shape != k.shape or len(k) < 5
             or not np.all(np.isfinite(k)) or len(np.unique(k)) < 5
@@ -192,9 +196,23 @@ def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None):
                          starts=[], nfev_total=0, wing_check=check,
                          jacobian_note="flat rho/m/sigma are unidentifiable", **geometry)
 
+    starts = [(rho, np.clip([0.8 * np.min(target**2), 0.1, rho, 0, 1], lower, upper))
+              for rho in (-0.6, 0.0, 0.6)]
+    seed_nfev = 0
+    if iv_seed:
+        seed_params, seed_evidence = fit_raw_svi_constrained(k, iv, ttm)
+        if seed_evidence["starts"]:
+            seed = np.array(seed_evidence["starts"][seed_evidence["selected_start"]]
+                            ["scaled_parameters"])
+        else:
+            seed = np.clip([1, 0, 0, 0, 1], lower, upper)
+        starts.append((float(seed[2]), seed))
+        seed_nfev = seed_evidence["nfev_total"]
+        geometry["iv_seed"] = dict(parameters=vars(seed_params), optimizer=seed_evidence)
+        geometry["seed_nfev_total"] = seed_nfev
+
     attempts, accepted = [], []
-    for rho in (-0.6, 0.0, 0.6):
-        start = np.clip([0.8 * np.min(target**2), 0.1, rho, 0, 1], lower, upper)
+    for index, (rho, start) in enumerate(starts):
         result = minimize(objective, start, method="SLSQP", jac=True,
                           bounds=list(zip(lower, upper)),
                           constraints={"type": "ineq", "fun": constraints},
@@ -213,13 +231,20 @@ def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None):
                              nfev=int(result.nfev), nit=int(result.nit), training_sse=sse,
                              training_objective=score,
                              scaled_parameters=result.x.tolist(), wing_check=check))
+        if iv_seed:
+            attempts[-1].update(start_kind="fixed" if index < 3 else "training_iv_seed",
+                                initial_scaled_parameters=start.tolist())
         if valid:
             accepted.append((score, params, len(attempts) - 1))
     if not accepted:
         raise RuntimeError(f"All constrained SVI starts failed or were infeasible: {attempts}")
     score, fit, selected = min(accepted, key=lambda item: item[0])
-    return fit, dict(method="scaled_slsqp_finite_wing_constraints",
+    price_nfev = sum(item["nfev"] for item in attempts)
+    if iv_seed:
+        geometry["price_nfev_total"] = price_nfev
+    method = "scaled_slsqp_finite_wing_constraints" + ("_iv_seed" if iv_seed else "")
+    return fit, dict(method=method,
                      training_sse=attempts[selected]["training_sse"], training_objective=score,
                      starts=attempts, selected_start=selected,
-                     nfev_total=sum(item["nfev"] for item in attempts),
+                     nfev_total=price_nfev + seed_nfev,
                      wing_check=validate(fit), **geometry)

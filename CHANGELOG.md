@@ -6,6 +6,10 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Added
 
+- Added opt-in repository-only `raw_svi_price_seeded`: a constrained training-IV fit
+  supplies a fourth price-objective start, with seed evidence and both stages' evaluation
+  costs retained. The price refit must pass the existing convergence and dense shape gates;
+  there is no IV fallback. Existing fitters, prediction limits and defaults are unchanged.
 - Added the opt-in repository-only `raw_svi_price` benchmark using original training
   premium midpoints, half-spread scaling, analytic Black-vega gradients and the existing
   sampled SVI constraints. Both constrained candidates now reject predictions outside

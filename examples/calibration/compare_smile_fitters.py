@@ -48,7 +48,8 @@ from _svi_wing_benchmark import fit_raw_svi_constrained, svi_prediction_domain
 # Keep the original fitter in the default comparison: the bounded candidate's
 # fresh-case convergence gains did not establish acceptable wing stability.
 MODELS = ("approx_logsv", "gmm2", "raw_svi_legacy", "ssvi", "logsv", "heston")
-AVAILABLE_MODELS = (*MODELS, "raw_svi", "raw_svi_constrained", "raw_svi_price")
+AVAILABLE_MODELS = (*MODELS, "raw_svi", "raw_svi_constrained", "raw_svi_price",
+                    "raw_svi_price_seeded")
 CASES = ("flat", "skewed", "sparse_noisy", "short")
 STABILITY_FAMILIES = ("flat", "left", "right", "short_sparse")
 STABILITY_SEEDS = (301, 302, 303, 304, 305)
@@ -314,29 +315,32 @@ def enforce_prediction_domain(fit, chain, evidence):
 
 
 def fit_model(model, chain):
-    """Fit training quotes; raw_svi_price alone uses half-spread price MSE."""
+    """Fit training quotes; the raw_svi_price variants use half-spread price MSE."""
     ks = [np.log(k / f) for k, f in zip(chain.strikes_ttms, chain.forwards)]
     ivs = [0.5 * (b + a) for b, a in zip(chain.bid_ivs, chain.ask_ivs)]
     times = chain.ttms
     raw_fitters = {"raw_svi": fit_raw_svi, "raw_svi_legacy": fit_raw_svi_legacy,
                    "raw_svi_constrained": fit_raw_svi_constrained,
-                   "raw_svi_price": fit_raw_svi_constrained}
+                   "raw_svi_price": fit_raw_svi_constrained,
+                   "raw_svi_price_seeded": fit_raw_svi_constrained}
     if model in raw_fitters:
         fitter = raw_fitters[model]
-        if model == "raw_svi_price":
+        if model in ("raw_svi_price", "raw_svi_price_seeded"):
             if chain.bid_prices is None or chain.ask_prices is None:
-                raise ValueError("raw_svi_price requires original training price quotes")
+                raise ValueError(f"{model} requires original training price quotes")
             fits = [fitter(k, v, t, price_quotes=dict(
                 forward=chain.forwards[i], discount=chain.discfactors[i],
                 optiontypes=chain.optiontypes_ttms[i],
-                bid=chain.bid_prices[i], ask=chain.ask_prices[i]))
+                bid=chain.bid_prices[i], ask=chain.ask_prices[i]),
+                iv_seed=model == "raw_svi_price_seeded")
                 for i, (k, v, t) in enumerate(zip(ks, ivs, times))]
         else:
             fits = [fitter(k, v, t) for k, v, t in zip(ks, ivs, times)]
         params = [p for p, _ in fits]
         domains = (tuple((float(t), *e["wing_check"]["k_domain"]) for t, (_, e)
                          in zip(times, fits))
-                   if model in ("raw_svi_constrained", "raw_svi_price") else ())
+                   if model in ("raw_svi_constrained", "raw_svi_price", "raw_svi_price_seeded")
+                   else ())
 
         def iv_at(k, t):
             index = _slice_index(times, t)
@@ -649,12 +653,13 @@ def run_benchmark(output=None, models=None, cases=None, repeats=2, suite="origin
         "raw_svi_legacy_method": "original S4 finite-difference calibration",
         "raw_svi_constrained_method": "scaled SLSQP; sampled density and call-slope constraints",
         "raw_svi_price_method": "same constraints; mean squared half-spread price residuals",
+        "raw_svi_price_seeded_method": "same price loss; fourth start from constrained IV fit",
         "constrained_prediction_domain": "reject outside training midpoint +/- twice half-range",
         "dynamics_objective_deadline_seconds": DYNAMICS_DEADLINE_SECONDS,
-        "weights": "uniform IV SSE except raw_svi_price: half-spread price MSE",
+        "weights": "uniform IV SSE except raw_svi_price variants: half-spread price MSE",
         "price_unit": "USD per unit", "spread_floor": PRICE_FLOOR,
         "setup": {}, "timing_note": "warm runtime, fresh deterministic parameters each repeat",
-        "limitations": ["synthetic only", "native incumbent vs three-start candidate optimizers",
+        "limitations": ["synthetic only", "unequal optimizer budgets; seeded price adds an IV fit",
                         "finite grids are not global certificates", "no maturity extrapolation"],
     }
     _save(output / "metadata.json", metadata)

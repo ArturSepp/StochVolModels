@@ -56,7 +56,8 @@ CONVENTIONS = {
     "holdout_scope": "conditional on full-snapshot OCA forwards, discounts and quote selection",
     "input_scope": "normalized history; losses before normalization unavailable",
     "filter": "existing OCA cleaning, OTM wings, put delta <= -0.05, call delta >= 0.05",
-    "objective": "uniform training IV SSE except raw_svi_price: half-spread price MSE",
+    "objective": "uniform training IV SSE except raw_svi_price variants: half-spread price MSE",
+    "seeded_price_budget": "three constrained IV starts, then four price starts; no IV fallback",
     "constrained_prediction_domain": "reject outside training midpoint +/- twice half-range",
     "timing": "single elapsed fit; may include JIT; not a warm runtime comparison",
     "intermediate_maturities": "not checked; all models evaluated at observed expiries only",
@@ -462,8 +463,10 @@ and refits once after training-only IV shocks. Warm seconds are their median;
 perturbation is the P95 price change divided by the original evaluation half-spread
 (floor 0.01). The full screen retains the synthetic benchmark's fixed economic criteria.
 Calendar and global consistency remain outside that screen.</p>
-<p>The opt-in raw_svi_price model fits training premium midpoints by mean squared
-half-spread price error. Both constrained SVI models reject any requested observed
+<p>The opt-in raw_svi_price models fit training premium midpoints by mean squared
+half-spread price error. raw_svi_price_seeded adds a constrained training-IV fit to
+initialize a fourth price start; its runtime includes both stages and it cannot return
+the IV seed as a fallback. All constrained SVI models reject any requested observed
 strike outside their training-derived constraint domains; refusals retain parameters
 and quote counts and remain failed jobs. Bounds are never widened from held-out data.</p>
 <h2>Snapshot coverage and exclusions</h2>"""
@@ -488,7 +491,8 @@ def run_validation(input_root=None, output=None, dates=DATES, days=DAYS,
     if not days or any(not isinstance(day, int) or day <= 0 for day in days):
         raise ValueError("maturity targets must be positive integer days")
     if (not models or len(set(models)) != len(models)
-            or set(models) - {*MODELS, "raw_svi", "raw_svi_constrained", "raw_svi_price"}):
+            or set(models) - {*MODELS, "raw_svi", "raw_svi_constrained", "raw_svi_price",
+                              "raw_svi_price_seeded"}):
         raise ValueError("provide unique supported models")
     if carry_model not in ("unspecified", "proportional"):
         raise ValueError("unsupported carry declaration")
@@ -615,7 +619,8 @@ def run_local(local: Locals = Locals.VALIDATE):
     parser.add_argument("--dates", nargs="+", default=DATES)
     parser.add_argument("--days", nargs="+", type=int, default=DAYS)
     parser.add_argument("--models", nargs="+",
-                        choices=(*MODELS, "raw_svi", "raw_svi_constrained", "raw_svi_price"),
+                        choices=(*MODELS, "raw_svi", "raw_svi_constrained", "raw_svi_price",
+                                 "raw_svi_price_seeded"),
                         default=MODELS)
     parser.add_argument("--carry-model", choices=("unspecified", "proportional"),
                         default="unspecified")
