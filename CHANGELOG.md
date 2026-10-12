@@ -6,6 +6,10 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Added
 
+- Added optional historical benchmark robustness measurements: fresh warm repeats,
+  training-only IV perturbations, final fit/surface checks, fixed economic screens and
+  maturity/moneyness quote labels. Refit failures remain in the attempted-job denominator;
+  existing fitter settings and the default historical workflow are unchanged.
 - Added the opt-in repository-only `raw_svi_constrained` benchmark, with sampled density and
   call-slope constraints, independent dense acceptance checks and retained rejected starts.
   Both comparison runners support it and archive their research sources. A separate fixed

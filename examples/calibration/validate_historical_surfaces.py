@@ -31,7 +31,9 @@ import pandas as pd
 from stochvolmodels import OptionChain, fitters, local_path
 from stochvolmodels.fitters.adapters.oca_diagnostics import diagnostic_chain_from_oca
 
-from compare_smile_fitters import _json_safe, _validate_predictions, fit_model
+from compare_smile_fitters import (
+    CRITERIA, _json_safe, _validate_predictions, black_prices, fit_model, passes_screen,
+)
 
 
 MODELS = ("approx_logsv", "gmm2", "raw_svi_legacy", "ssvi")
@@ -40,6 +42,8 @@ DATES = ("2019-12-16", "2020-03-16", "2022-06-13", "2023-11-08")
 DAYS = (1, 7, 30, 90)
 PRICE_FLOOR = 0.01
 MIN_TRAIN = 8
+PERTURBATION_IV_STD = 0.0005
+WARM_REPEATS = 2
 CONVENTIONS = {
     "ticker": "SPX", "product": "OCA SPXW PM mapping",
     "observation": "exact 16:00 America/New_York; no previous or future fill",
@@ -214,7 +218,85 @@ def surface_evidence(fit, chain, carry_model="unspecified"):
     }
 
 
-def run_job(model, chain, fold, carry_model="unspecified"):
+def perturb_training(chain, seed):
+    """Copy training quotes; shift both IV sides and consistently reprice them.
+
+    The original evaluation chain is never supplied here. Five volatility basis
+    points is an absolute decimal-IV standard deviation, not a percentage change.
+    Invalid shocked volatilities fail explicitly; none are clipped or discarded.
+    """
+    changed = subset(chain, [np.ones(len(k), dtype=bool) for k in chain.strikes_ttms])
+    rng = np.random.default_rng(seed)
+    shocks, bid_prices, ask_prices = [], [], []
+    for i, strikes in enumerate(chain.strikes_ttms):
+        shock = rng.normal(0, PERTURBATION_IV_STD, len(strikes))
+        shocks.append(shock)
+        changed.bid_ivs[i] += shock
+        changed.ask_ivs[i] += shock
+        for values, output in ((changed.bid_ivs[i], bid_prices),
+                               (changed.ask_ivs[i], ask_prices)):
+            if not np.all(np.isfinite(values) & (values > 0)):
+                raise ValueError("nonpositive or nonfinite perturbed training IV")
+            output.append(black_prices(chain.forwards[i], strikes, chain.ttms[i], values,
+                                       chain.discfactors[i], chain.optiontypes_ttms[i]))
+    return replace(changed, bid_prices=List(bid_prices), ask_prices=List(ask_prices)), shocks
+
+
+def quote_buckets(quotes):
+    """Label actual maturity and common forward moneyness without fitted coordinates."""
+    days = 365 * quotes.ttm.to_numpy()
+    k = np.log(quotes.strike.to_numpy() / quotes.forward.to_numpy())
+    return pd.DataFrame({
+        "days": days, "log_moneyness": k,
+        "maturity_bucket": np.select([days <= 7, days <= 30, days <= 90],
+                                     ["0-7d", "7-30d", "30-90d"], default="90d+"),
+        "moneyness_bucket": np.select([k < -0.10, k < -0.02, k <= 0.02, k <= 0.10],
+                                      ["left_far", "left", "atm", "right"],
+                                      default="right_far"),
+    })
+
+
+def measure_robustness(model, train, target, chain, base_prices, seed, carry_model, evidence):
+    """Retain repeat and perturbation evidence even when a later stage fails."""
+    evidence.update(seed=int(seed), iv_std=PERTURBATION_IV_STD, repeats=[])
+    for index in range(WARM_REPEATS):
+        evidence["stage"] = f"warm_repeat_{index + 1}"
+        started = perf_counter()
+        repeated = fit_model(model, train)
+        elapsed = perf_counter() - started
+        prices, ivs = repeated.predict(target)
+        _validate_predictions(target, prices, ivs)
+        evidence["repeats"].append(dict(seconds=elapsed, parameters=repeated.parameters,
+                                        optimizer=repeated.optimizer))
+        for original, actual in zip(base_prices, prices):
+            np.testing.assert_allclose(actual, original, rtol=1e-10, atol=1e-9,
+                                       err_msg="fresh repeated fit changed predictions")
+    evidence["stage"] = "perturbed_fit"
+    changed, shocks = perturb_training(train, seed)
+    evidence["training_iv_shocks"] = shocks
+    started = perf_counter()
+    fitted = fit_model(model, changed)
+    evidence.update(perturbed_seconds=perf_counter() - started,
+                    parameters=fitted.parameters, optimizer=fitted.optimizer)
+    evidence["stage"] = "perturbed_evaluation"
+    prices, ivs = fitted.predict(target)
+    _validate_predictions(target, prices, ivs)
+    report = fitters.diagnose_fit(target, model_prices=prices, model_ivols=ivs,
+                                  price_unit="USD per unit", spread_floor=PRICE_FLOOR)
+    evidence["fit"] = report.to_dict()
+    evidence["surface"], metrics = surface_evidence(fitted, chain, carry_model)
+    quotes = report.table("quotes")
+    changes = abs(np.concatenate(prices) - np.concatenate(base_prices)) / np.maximum(
+        (quotes.ask_price.to_numpy() - quotes.bid_price.to_numpy()) / 2, PRICE_FLOOR)
+    evidence["price_changes_half_spreads"] = changes
+    evidence["stage"] = "completed"
+    return dict(warm_seconds=float(np.median([r["seconds"] for r in evidence["repeats"]])),
+                p95_perturbation=float(np.percentile(changes, 95)),
+                perturbed_surface_failures=metrics["surface_failures"],
+                perturbed_surface_unchecked=metrics["surface_unchecked"])
+
+
+def run_job(model, chain, fold, carry_model="unspecified", perturbation_seed=None):
     """Retain any fitting, repricing or diagnostic failure in the job denominator."""
     row = {"model": model, "fold": fold, "status": "failed"}
     evidence, messages, caught = {}, StringIO(), []
@@ -250,9 +332,19 @@ def run_job(model, chain, fold, carry_model="unspecified"):
                        coverage=float(metrics.price_inside_bid_ask_fraction),
                        p95_spread_error=float(np.percentile(abs(quotes.spread_scaled_error), 95)))
             evidence["surface"], surface_metrics = surface_evidence(fit, chain, carry_model)
-            row.update(surface_metrics, status="completed")
+            row.update(surface_metrics)
+            if perturbation_seed is not None:
+                evidence["buckets"] = quote_buckets(quotes).to_dict("records")
+                evidence["robustness"] = {}
+                row.update(measure_robustness(model, train, target, chain, prices,
+                                             perturbation_seed, carry_model,
+                                             evidence["robustness"]))
+                row["screen_pass"] = passes_screen(dict(row, status="ok"))
+            row["status"] = "completed"
     except Exception as error:
         row["error"] = f"{type(error).__name__}: {error}"
+        if perturbation_seed is not None:
+            row["screen_pass"] = False
     row["elapsed_seconds"] = perf_counter() - started
     evidence["warnings"] = list(dict.fromkeys(str(w.message) for w in caught))
     evidence["stdout"] = messages.getvalue()
@@ -305,11 +397,18 @@ def write_summary(output, rows, snapshots):
         for field in ("coverage", "iv_rmse", "p95_spread_error", "fit_seconds"):
             summary[f"mean_{field}_completed_only"] = (
                 float(good[field].mean()) if len(good) else None)
+        if "screen_pass" in group:
+            summary["screen_passed"] = int(group.screen_pass.eq(True).sum())
+            for field in ("warm_seconds", "p95_perturbation"):
+                summary[f"mean_{field}_completed_only"] = (
+                    float(good[field].mean()) if len(good) and field in good else None)
         summaries.append(summary)
     save_json(output / "summary.json", {"models": summaries, "snapshots": snapshots})
     columns = [c for c in ("date", "model", "fold", "status", "n_train", "n_test",
                            "coverage", "iv_rmse", "p95_spread_error", "surface_failures",
-                           "surface_unchecked", "fit_seconds", "error") if c in frame]
+                           "surface_unchecked", "fit_seconds", "warm_seconds",
+                           "p95_perturbation", "perturbed_surface_failures", "screen_pass",
+                           "error") if c in frame]
     labels = {
         "n_normalized": "Input quotes", "n_selected": "Selected", "n_excluded": "Excluded",
         "n_quality_failed_rows": "Flagged quotes", "n_parity_checked": "Parity pairs checked",
@@ -346,6 +445,11 @@ and global absence of arbitrage are not checked. Detailed evidence and input/sou
 hashes are in metadata.json and snapshot/job .json.gz files; jobs.csv contains all jobs.</p>
 <p>A completed job means evaluation finished; it does not mean acceptable errors,
 optimizer convergence certification or a pass of the surface checks.</p>
+<p>Optional robustness mode uses the base fit as warmup, times two fresh repeated fits,
+and refits once after training-only IV shocks. Warm seconds are their median;
+perturbation is the P95 price change divided by the original evaluation half-spread
+(floor 0.01). The full screen retains the synthetic benchmark's fixed economic criteria.
+Calendar and global consistency remain outside that screen.</p>
 <h2>Snapshot coverage and exclusions</h2>"""
     html += table(pd.DataFrame(snapshots))
     html += "<h2>Model and fold summaries</h2>" + table(pd.DataFrame(summaries))
@@ -354,7 +458,7 @@ optimizer convergence certification or a pass of the surface checks.</p>
 
 
 def run_validation(input_root=None, output=None, dates=DATES, days=DAYS,
-                   models=MODELS, carry_model="unspecified"):
+                   models=MODELS, carry_model="unspecified", robustness=False):
     """Read bounded local caches, checkpoint every job, and save a reproducible report."""
     from option_chain_analytics import OptionsDataDFs
     from option_chain_analytics.data.cboe import load_local_cboe_options_data
@@ -386,6 +490,16 @@ def run_validation(input_root=None, output=None, dates=DATES, days=DAYS,
                                  "wings outer floor(n/5)"),
                 "cache_policy": "OCA validates policies and any present source fingerprint; "
                                 "missing/stale cache fails, no repair or raw fallback"}
+    if robustness:
+        metadata["robustness"] = {
+            "warm_repeats": WARM_REPEATS, "base_fit_is_warmup": True,
+            "repeat_price_rtol": 1e-10, "repeat_price_atol": 1e-9,
+            "iv_std": PERTURBATION_IV_STD, "criteria": CRITERIA,
+            "seed_rule": "integer YYYYMMDD * 10 + fold index (in_sample=0,interior=1,wings=2)",
+            "scope": "training-only shocks; original evaluation targets and F/D fixed",
+            "maturity_buckets_days": [7, 30, 90],
+            "log_moneyness_boundaries": [-0.10, -0.02, 0.02, 0.10],
+        }
     cache = source / "spx_options_oca.parquet"
     save_json(output / "metadata.json", metadata)
     archive = output / "run_sources"
@@ -454,7 +568,11 @@ def run_validation(input_root=None, output=None, dates=DATES, days=DAYS,
                     row, detail = {"model": model, "fold": fold, "status": "failed",
                                    "error": snapshot["error"]}, {}
                 else:
-                    row, detail = run_job(model, chain, fold, carry_model)
+                    seed = int(time.strftime("%Y%m%d")) * 10 + FOLDS.index(fold)
+                    row, detail = run_job(model, chain, fold, carry_model,
+                                          perturbation_seed=seed if robustness else None)
+                if robustness:
+                    row.setdefault("screen_pass", False)
                 row["date"] = label
                 rows.append(row)
                 save_json(output / f"{label}_{fold}_{model}.json.gz", {"row": row, **detail})
@@ -484,9 +602,11 @@ def run_local(local: Locals = Locals.VALIDATE):
                         default=MODELS)
     parser.add_argument("--carry-model", choices=("unspecified", "proportional"),
                         default="unspecified")
+    parser.add_argument("--robustness", action="store_true",
+                        help="two warm repeats and one training-only perturbation per job")
     args = parser.parse_args()
     result = run_validation(args.input, args.output, args.dates, args.days,
-                            args.models, args.carry_model)
+                            args.models, args.carry_model, args.robustness)
     print(result / "report.html")
 
 

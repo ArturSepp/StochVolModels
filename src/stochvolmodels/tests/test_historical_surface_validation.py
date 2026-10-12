@@ -192,3 +192,111 @@ def test_optional_missing_or_rejected_cache_preserves_every_job(runner, tmp_path
         runner.run_validation(tmp_path, tmp_path / "duplicate",
                               dates=["2020-03-16", "2020-3-16"])
     assert not (tmp_path / "duplicate").exists()
+
+
+def test_training_shocks_preserve_inputs_spreads_and_black_units(runner, chain):
+    original = [v.copy() for v in chain.bid_ivs]
+    changed, shocks = runner.perturb_training(chain, 927)
+    again, other_shocks = runner.perturb_training(chain, 927)
+    for i, shock in enumerate(shocks):
+        np.testing.assert_array_equal(chain.bid_ivs[i], original[i])
+        np.testing.assert_array_equal(shock, other_shocks[i])
+        np.testing.assert_array_equal(changed.bid_ivs[i], again.bid_ivs[i])
+        np.testing.assert_allclose(changed.bid_ivs[i] - chain.bid_ivs[i], shock, atol=1e-16)
+        np.testing.assert_allclose(changed.ask_ivs[i] - changed.bid_ivs[i],
+                                   chain.ask_ivs[i] - chain.bid_ivs[i], atol=1e-16)
+        for vols, prices in ((changed.bid_ivs[i], changed.bid_prices[i]),
+                             (changed.ask_ivs[i], changed.ask_prices[i])):
+            expected = [bsm.compute_bsm_vanilla_price(chain.forwards[i], k, chain.ttms[i],
+                                                     v, cp, chain.discfactors[i])
+                        for k, v, cp in zip(chain.strikes_ttms[i], vols,
+                                           chain.optiontypes_ttms[i])]
+            np.testing.assert_allclose(prices, expected, rtol=1e-11, atol=1e-10)
+    changed.bid_ivs[0][:] = 1e-10
+    with pytest.raises(ValueError, match="perturbed training IV"):
+        runner.perturb_training(changed, 927)
+
+
+def test_robustness_uses_original_targets_and_independent_movement(runner, chain):
+    row, evidence = runner.run_job("approx_logsv", chain, "interior", perturbation_seed=927)
+    assert row["status"] == "completed", row
+    extra = evidence["robustness"]
+    assert len(extra["repeats"]) == 2 and extra["stage"] == "completed"
+    assert row["warm_seconds"] == np.median([r["seconds"] for r in extra["repeats"]])
+    tables = [evidence["fit"]["tables"]["quotes"], extra["fit"]["tables"]["quotes"]]
+    base, perturbed = [pd.DataFrame(t["data"], columns=t["columns"]) for t in tables]
+    for field in ("strike", "forward", "discount", "bid_price", "ask_price", "bid_iv", "ask_iv"):
+        np.testing.assert_array_equal(base[field], perturbed[field])
+    movement = abs(perturbed.model_price - base.model_price) / np.maximum(
+        (base.ask_price - base.bid_price) / 2, 0.01)
+    np.testing.assert_allclose(extra["price_changes_half_spreads"], movement)
+    assert row["p95_perturbation"] == pytest.approx(np.percentile(movement, 95))
+    assert len(evidence["buckets"]) == len(base)
+    assert row["perturbed_surface_unchecked"] == 1
+    _, held = runner.fold_masks(chain, "interior")
+    poisoned = runner.subset(chain, [np.ones(len(k), dtype=bool) for k in chain.strikes_ttms])
+    for i, mask in enumerate(held):
+        poisoned.bid_ivs[i][mask] += 0.20
+        poisoned.ask_ivs[i][mask] += 0.20
+        poisoned.bid_prices[i][mask] += 100
+        poisoned.ask_prices[i][mask] += 100
+    changed, other = runner.run_job("approx_logsv", poisoned, "interior", perturbation_seed=927)
+    assert changed["status"] == "completed"
+    assert other["parameters"] == evidence["parameters"]
+    assert other["robustness"]["parameters"] == extra["parameters"]
+    assert changed["iv_rmse"] > row["iv_rmse"] + 0.1 and not changed["screen_pass"]
+
+
+@pytest.mark.parametrize("failure_call,stage", [(2, "warm_repeat_1"), (4, "perturbed_fit")])
+def test_robustness_fit_failure_keeps_partial_evidence(runner, chain, monkeypatch,
+                                                     failure_call, stage, tmp_path):
+    real_fit, calls = runner.fit_model, []
+
+    def failing_fit(*args):
+        calls.append(args)
+        if len(calls) == failure_call:
+            raise RuntimeError("deliberate repeat/refit failure")
+        return real_fit(*args)
+
+    monkeypatch.setattr(runner, "fit_model", failing_fit)
+    row, evidence = runner.run_job("approx_logsv", chain, "wings", perturbation_seed=927)
+    assert row["status"] == "failed" and not row["screen_pass"]
+    assert "deliberate repeat/refit failure" in row["error"]
+    assert evidence["robustness"]["stage"] == stage and "fit" in evidence
+    runner.write_summary(tmp_path, [row], [])
+    result = json.loads((tmp_path / "summary.json").read_text())["models"][0]
+    assert result["attempted"] == result["failed"] == 1 and result["screen_passed"] == 0
+
+
+def test_quote_buckets_use_actual_tenor_and_market_forward(runner):
+    quotes = pd.DataFrame(dict(ttm=np.array([5, 7, 14, 30, 60, 90, 120])/365,
+                               forward=[2000.0] * 7,
+                               strike=2000 * np.exp([-0.2, -0.05, 0, 0.01, 0.05, 0.2, 0.3])))
+    result = runner.quote_buckets(quotes)
+    assert result.maturity_bucket.tolist() == ["0-7d", "0-7d", "7-30d", "7-30d",
+                                               "30-90d", "30-90d", "90d+"]
+    assert result.moneyness_bucket.tolist() == ["left_far", "left", "atm", "atm",
+                                                "right", "right_far", "right_far"]
+
+
+def test_changed_warm_repeat_is_rejected(runner, chain, monkeypatch):
+    real_fit, calls = runner.fit_model, []
+
+    def changed_fit(*args):
+        fitted = real_fit(*args)
+        calls.append(fitted)
+        if len(calls) == 2:
+            predict = fitted.predict
+
+            def shifted(target):
+                prices, ivs = predict(target)
+                return [p + 1 for p in prices], ivs
+
+            fitted.predict = shifted
+        return fitted
+
+    monkeypatch.setattr(runner, "fit_model", changed_fit)
+    row, evidence = runner.run_job("approx_logsv", chain, "interior", perturbation_seed=927)
+    assert row["status"] == "failed" and not row["screen_pass"]
+    assert "fresh repeated fit changed predictions" in row["error"]
+    assert evidence["robustness"]["stage"] == "warm_repeat_1"

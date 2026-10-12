@@ -302,6 +302,29 @@ coverage and dense strike/density checks on each observed slice domain. Failed j
 in attempted counts; reported error means condition on completed jobs. Timings are single
 elapsed fits that can include compilation, not a controlled warm-runtime comparison.
 
+Add `--robustness` for two fresh timed repetitions after each base fit and one refit
+with Gaussian training-quote IV shocks of standard deviation `0.0005` (five volatility
+basis points). Each quote receives the same shift on both IV sides; training prices
+are recomputed consistently. Evaluation quotes, forwards and discounts stay fixed.
+Invalid shocked IVs fail explicitly. The seed is the integer date `YYYYMMDD` times ten
+plus the fold index (`in_sample=0`, `interior=1`, `wings=2`), identical across models.
+Fresh repetitions must reproduce the base prices within recorded numerical tolerances.
+The median of their two fit times is the warm runtime; run without competing workloads.
+
+Robustness evidence includes every repeated/perturbed parameter set, optimizer result,
+shock, final diagnostic report and quote-level price movement. Repeat or refit failures
+remain failed jobs. `screen_pass` uses the existing synthetic screen: P95 error at most
+one half-spread, coverage at least 90%, IV RMSE at most `0.005`, perturbation P95 at most
+one half-spread, no base/perturbed strike failures and warm fit time at most ten seconds.
+Passing that screen does not certify calendar consistency or unsampled strikes.
+
+Quote labels use actual ACT/365 maturity in days, with upper boundaries 7, 30 and 90,
+and forward log-moneyness boundaries `-0.10`, `-0.02`, `0.02` and `0.10`. The central
+bucket includes both endpoints; the far buckets are strictly outside `[-0.10, 0.10]`.
+Use the saved quote-level values to pool errors across dates; an average of per-job
+percentiles is a different statistic. Predeclare the date panel before inspecting its
+fits and retain missing snapshots. Report selection effects when comparing completed jobs.
+
 Calendar checks default to `not_checked` because proportional carry is not established
 by the input data. `--carry-model proportional` explicitly declares that research assumption
 and enables its conditional interpretation. No intermediate maturities or global arbitrage
