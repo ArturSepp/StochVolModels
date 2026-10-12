@@ -190,8 +190,9 @@ records failed starts, active bounds and the scaled Jacobian's rank and conditio
 The flat limit explicitly records that its shape parameters are unidentifiable.
 
 The core-only runner freezes synthetic flat, skewed, sparse/noisy and short-dated observations,
-with separate interior and wing holdouts. All models minimize uniformly weighted training IV
-errors. Native incumbent optimizers and three-start experimental optimizers have different
+with separate interior and wing holdouts. Models minimize uniformly weighted training IV
+errors except the opt-in `raw_svi_price` objective described below. Native incumbent
+optimizers and three-start experimental optimizers have different
 budgets; the output records this limitation. Held-out prices, IV errors, bid/ask coverage,
 training-quote perturbations and finite-domain surface checks use the final fitted parameters.
 Every failed job remains in the results, including failures during perturbation or diagnostics.
@@ -244,8 +245,48 @@ limit. The constraints can reduce flexibility and cost more runtime. They do not
 unsampled strikes, out-of-domain wings or calendar consistency, and a shape-valid fit can
 still have poor held-out accuracy or perturbation stability.
 
-The `wings` suite compares all three raw-SVI candidates on 120 jobs with separately fixed
-seeds 401–405, tenors and mixture specifications. Earlier synthetic and historical cases
+Both constrained candidates now reject prediction requests outside each fitted constraint
+domain. Boundaries allow `1e-12` roundoff in log-moneyness; there is no clipping, automatic
+domain expansion or partial-quote score. Their saved domain report contains the requested
+log-moneyness values, per-expiry bounds, outside indices and counts. Independent slices also
+reject unobserved maturities. The runners check the complete observed diagnostic domain
+before scoring a job, so an unsupported wing remains a failed attempt even if the remaining
+quotes could be priced. Earlier runs that allowed unconstrained extrapolation must be
+reproduced from their archived sources. Bounded and original SVI remain research comparators
+without this declared strike-domain policy.
+
+The opt-in `raw_svi_price` candidate uses the same training-derived bounds, starts,
+constraints and optimizer settings, but minimizes a price objective. For training option
+$i$, let $P_i$ be its model premium, $B_i$ and $A_i$ its original bid and ask premiums,
+and $h_i=\max((A_i-B_i)/2,0.01)$ its floored half-spread in the input price units. With
+$n$ training quotes, the implementation choice is
+
+$$
+Q_{\mathrm{price}}=\frac{1}{n}\sum_{i=1}^{n}
+\left(\frac{P_i-(A_i+B_i)/2}{h_i}\right)^2.
+$$
+
+The analytic gradient uses Black vega and the scaled-IV Jacobian. To control numerical
+scale, the optimizer divides both loss and gradient by one training-only constant:
+the larger of one and the price objective of a flat smile at mean training IV, represented
+inside the parameter bounds. This common positive factor preserves the minimizer;
+reported objectives and start selection retain the original half-spread units.
+Original training
+premium midpoints are the targets; midpoint IVs supply scaling and starting values.
+The constant `0.01` is a research floor, not a market tick-size rule. Narrow spreads
+receive more influence and can increase sensitivity to quote noise. The exact-flat-IV
+shortcut is disabled because a price midpoint need not equal the price at midpoint IV.
+Accepted starts are selected by recomputed price error, with both price objective and
+original-unit IV SSE retained. Held-out quotes never choose weights, domains or starts.
+This candidate supplies no public fitter API or automatic model-selection rule.
+
+```console
+python examples/calibration/compare_smile_fitters.py --models raw_svi_constrained raw_svi_price
+```
+
+The `wings` suite defaults to the original, bounded and constrained IV-objective SVI fitters
+on 120 jobs with separately fixed seeds 401–405, tenors and mixture specifications.
+Earlier synthetic and historical cases
 are development evidence for this study. The economic screen is unchanged; the candidate
 stays opt-in. Both runners archive their research source files beside the output hashes.
 
@@ -263,10 +304,11 @@ directory. OCA validates its policies and, when the raw source is present, its f
 The report records when source-fingerprint checking is unavailable. A missing or rejected cache
 is recorded as a failure, without rebuilding it or falling back to raw data.
 
-Select the bounded or constrained research candidates explicitly with `--models raw_svi`
-or `--models raw_svi_constrained`; names can be combined with the default comparators.
-The constrained candidate derives its grid from training strikes only. Historical evaluation
-still checks the complete observed strike domain, which can extend beyond that constraint grid.
+Select the bounded or constrained research candidates explicitly with `--models raw_svi`,
+`--models raw_svi_constrained` or `--models raw_svi_price`; names can be combined with the
+default comparators. Constrained candidates derive their grids from training strikes only.
+If the complete observed strike domain extends beyond that grid, evaluation is refused;
+the job retains fitted parameters and domain evidence and remains in attempted counts.
 
 ```console
 python examples/calibration/validate_historical_surfaces.py --input <local-cboe-directory> --output <fresh-private-results-directory>
@@ -289,8 +331,9 @@ It does not use a synthetic forward or discount curve for historical evaluation.
 
 Each date has an in-sample fit, an interior holdout of every third interior strike, and
 a wing holdout of the outer 20% of strikes on each side, rounded down. Every expiry must
-retain at least eight training quotes. All models use the same split and uniformly
-weighted training IV errors. The holdouts condition on forwards, discounts and quote
+retain at least eight training quotes. All models use the same split. The price candidate
+uses its half-spread price objective; other models use uniformly weighted training IV
+errors. The holdouts condition on forwards, discounts and quote
 selection obtained from the complete contemporaneous OCA snapshot. They therefore test
 smile interpolation/extrapolation, not the entire quote-to-forward estimation procedure.
 

@@ -42,13 +42,13 @@ from stochvolmodels.pricers.logsv_pricer import (
 )
 
 from _svi_benchmark import fit_raw_svi, fit_raw_svi_legacy, fit_ssvi, raw_svi
-from _svi_wing_benchmark import fit_raw_svi_constrained
+from _svi_wing_benchmark import fit_raw_svi_constrained, svi_prediction_domain
 
 
 # Keep the original fitter in the default comparison: the bounded candidate's
 # fresh-case convergence gains did not establish acceptable wing stability.
 MODELS = ("approx_logsv", "gmm2", "raw_svi_legacy", "ssvi", "logsv", "heston")
-AVAILABLE_MODELS = (*MODELS, "raw_svi", "raw_svi_constrained")
+AVAILABLE_MODELS = (*MODELS, "raw_svi", "raw_svi_constrained", "raw_svi_price")
 CASES = ("flat", "skewed", "sparse_noisy", "short")
 STABILITY_FAMILIES = ("flat", "left", "right", "short_sparse")
 STABILITY_SEEDS = (301, 302, 303, 304, 305)
@@ -242,6 +242,7 @@ class Fitted:
     continuous: bool
     parameters: object
     optimizer: object
+    domains: tuple = ()
 
 
 class _CalibrationDeadline:
@@ -292,23 +293,59 @@ def _slice_index(ttms, t):
     return int(match[0])
 
 
+def enforce_prediction_domain(fit, chain, evidence):
+    """Retain every requested slice before rejecting any unsupported prediction."""
+    domains = getattr(fit, "domains", ())
+    if not domains:
+        evidence["domain"] = dict(policy="not_declared_by_this_comparator", supported=None)
+        return
+    report = dict(policy="reject", coordinate="log(K/F)", supported=True,
+                  outside_quotes=0, slices=[])
+    evidence["domain"] = report
+    times = np.array([item[0] for item in domains])
+    for t, forward, strikes in zip(chain.ttms, chain.forwards, chain.strikes_ttms):
+        index = _slice_index(times, t)
+        item = svi_prediction_domain(np.log(strikes / forward), domains[index][1:])
+        report["slices"].append(dict(ttm=float(t), **item))
+        report["outside_quotes"] += item["outside_quotes"]
+        report["supported"] &= item["supported"]
+    if not report["supported"]:
+        raise ValueError(f"{report['outside_quotes']} quotes outside SVI prediction domain")
+
+
 def fit_model(model, chain):
-    """Use only training observations, with uniform IV SSE across candidates."""
+    """Fit training quotes; raw_svi_price alone uses half-spread price MSE."""
     ks = [np.log(k / f) for k, f in zip(chain.strikes_ttms, chain.forwards)]
     ivs = [0.5 * (b + a) for b, a in zip(chain.bid_ivs, chain.ask_ivs)]
     times = chain.ttms
     raw_fitters = {"raw_svi": fit_raw_svi, "raw_svi_legacy": fit_raw_svi_legacy,
-                   "raw_svi_constrained": fit_raw_svi_constrained}
+                   "raw_svi_constrained": fit_raw_svi_constrained,
+                   "raw_svi_price": fit_raw_svi_constrained}
     if model in raw_fitters:
         fitter = raw_fitters[model]
-        fits = [fitter(k, v, t) for k, v, t in zip(ks, ivs, times)]
+        if model == "raw_svi_price":
+            if chain.bid_prices is None or chain.ask_prices is None:
+                raise ValueError("raw_svi_price requires original training price quotes")
+            fits = [fitter(k, v, t, price_quotes=dict(
+                forward=chain.forwards[i], discount=chain.discfactors[i],
+                optiontypes=chain.optiontypes_ttms[i],
+                bid=chain.bid_prices[i], ask=chain.ask_prices[i]))
+                for i, (k, v, t) in enumerate(zip(ks, ivs, times))]
+        else:
+            fits = [fitter(k, v, t) for k, v, t in zip(ks, ivs, times)]
         params = [p for p, _ in fits]
+        domains = (tuple((float(t), *e["wing_check"]["k_domain"]) for t, (_, e)
+                         in zip(times, fits))
+                   if model in ("raw_svi_constrained", "raw_svi_price") else ())
 
         def iv_at(k, t):
-            return np.sqrt(raw_svi(k, params[_slice_index(times, t)])[0] / t)
+            index = _slice_index(times, t)
+            if domains and not svi_prediction_domain(k, domains[index][1:])["supported"]:
+                raise ValueError("Requested coordinates outside SVI prediction domain")
+            return np.sqrt(raw_svi(k, params[index])[0] / t)
 
         return Fitted(_iv_prediction(iv_at), False, [asdict(p) for p in params],
-                      [e for _, e in fits])
+                      [e for _, e in fits], domains)
     if model == "ssvi":
         fit, evidence = fit_ssvi(ks, ivs, times)
         return Fitted(_iv_prediction(lambda k, t: np.sqrt(fit.variance(k, t) / t)),
@@ -475,6 +512,8 @@ def run_job(model, sample, fold, repeats=2):
             evidence["logs"].append(log)
         row["warm_seconds"] = float(np.median(evidence["timings"]))
         evidence.update(parameters=fit.parameters, optimizer=fit.optimizer)
+        row["stage"] = "base_domain"
+        enforce_prediction_domain(fit, sample.chain(), evidence)
         diagnostics_start = perf_counter()
         row["stage"] = "base_diagnostics"
         metrics, reports, base_prices = evaluate(fit, sample, ~train_mask)
@@ -485,6 +524,10 @@ def run_job(model, sample, fold, repeats=2):
         evidence.update(perturbed_seconds=seconds, perturbed_log=log,
                         perturbed_parameters=perturbed.parameters,
                         perturbed_optimizer=perturbed.optimizer)
+        row["stage"] = "perturbed_domain"
+        domain_evidence = {}
+        evidence["perturbed_domain"] = domain_evidence
+        enforce_prediction_domain(perturbed, sample.chain(), domain_evidence)
         row["stage"] = "perturbed_diagnostics"
         perturbed_metrics, reports, shifted_prices = evaluate(perturbed, sample, ~train_mask)
         evidence["perturbed"] = reports
@@ -605,8 +648,11 @@ def run_benchmark(output=None, models=None, cases=None, repeats=2, suite="origin
         "raw_svi_method": "scaled analytic Jacobian; training-relative shape bounds",
         "raw_svi_legacy_method": "original S4 finite-difference calibration",
         "raw_svi_constrained_method": "scaled SLSQP; sampled density and call-slope constraints",
+        "raw_svi_price_method": "same constraints; mean squared half-spread price residuals",
+        "constrained_prediction_domain": "reject outside training midpoint +/- twice half-range",
         "dynamics_objective_deadline_seconds": DYNAMICS_DEADLINE_SECONDS,
-        "weights": "uniform IV SSE", "price_unit": "USD per unit", "spread_floor": PRICE_FLOOR,
+        "weights": "uniform IV SSE except raw_svi_price: half-spread price MSE",
+        "price_unit": "USD per unit", "spread_floor": PRICE_FLOOR,
         "setup": {}, "timing_note": "warm runtime, fresh deterministic parameters each repeat",
         "limitations": ["synthetic only", "native incumbent vs three-start candidate optimizers",
                         "finite grids are not global certificates", "no maturity extrapolation"],

@@ -17,6 +17,53 @@ DENSITY_TOLERANCE = 1e-8
 SLOPE_TOLERANCE = 1e-10
 OPTIMIZATION_POINTS = 801
 VALIDATION_POINTS = 4001
+PRICE_SPREAD_FLOOR = 0.01
+DOMAIN_ROUNDOFF = 1e-12
+
+
+def svi_prediction_domain(k, bounds):
+    """Describe requested log-moneyness without clipping or extending the domain."""
+    k = np.asarray(k, dtype=float)
+    if k.ndim != 1:
+        raise ValueError("SVI prediction coordinates must be one dimensional")
+    low, high = bounds
+    outside = ~np.isfinite(k) | (k < low - DOMAIN_ROUNDOFF) | (k > high + DOMAIN_ROUNDOFF)
+    return dict(k_domain=list(bounds), requested_k=k.tolist(),
+                supported=bool(len(k) and not np.any(outside)),
+                outside_quotes=int(outside.sum()), outside_indices=np.flatnonzero(outside).tolist(),
+                boundary_roundoff=DOMAIN_ROUNDOFF)
+
+
+def _sorted_price_quotes(quotes, order):
+    """Validate original training premiums and reorder every quote field together."""
+    arrays = {name: np.asarray(quotes.get(name)) for name in ("bid", "ask", "optiontypes")}
+    scalars = [quotes.get(name) for name in ("forward", "discount")]
+    if (any(not np.isscalar(x) or not np.isfinite(x) or x <= 0 for x in scalars)
+            or any(a.shape != order.shape for a in arrays.values())
+            or not np.all(np.isfinite(arrays["bid"]))
+            or not np.all(np.isfinite(arrays["ask"]))
+            or np.any(arrays["bid"] < 0) or np.any(arrays["ask"] < arrays["bid"])
+            or not np.all(np.isin(arrays["optiontypes"], ["C", "P"]))):
+        raise ValueError("Invalid training price quotes: require finite two-sided premiums and F/D")
+    return dict(forward=float(scalars[0]), discount=float(scalars[1]),
+                **{name: array[order].copy() for name, array in arrays.items()})
+
+
+def _spread_price_objective(p, z, target, k, ttm, vol, quotes):
+    """Mean squared half-spread price error and its Black-vega chain-rule gradient."""
+    iv = vol * (_scaled_svi_residual(p, z, target) + target)
+    root = iv * np.sqrt(ttm)
+    d1, d2 = -k / root + root / 2, -k / root - root / 2
+    forward, discount = quotes["forward"], quotes["discount"]
+    strikes = forward * np.exp(k)
+    calls = discount * (forward * ndtr(d1) - strikes * ndtr(d2))
+    puts = discount * (strikes * ndtr(-d2) - forward * ndtr(-d1))
+    prices = np.where(quotes["optiontypes"] == "C", calls, puts)
+    half = np.maximum((quotes["ask"] - quotes["bid"]) / 2, PRICE_SPREAD_FLOOR)
+    residual = (prices - (quotes["ask"] + quotes["bid"]) / 2) / half
+    vega = discount * forward * np.exp(-d1*d1 / 2) / np.sqrt(2*np.pi) * np.sqrt(ttm)
+    jac = _scaled_svi_residual(p, z, target, jacobian=True) * (vol * vega / half)[:, None]
+    return float(np.mean(residual**2)), 2 * jac.T @ residual / len(k)
 
 
 def svi_wing_values(k, params):
@@ -53,13 +100,15 @@ def check_svi_wings(k, params):
                 scope="sampled strike domain; no calendar or global certificate")
 
 
-def fit_raw_svi_constrained(k, iv, ttm):
-    """Fit uniform IV SSE subject to finite-grid density and call-slope bounds.
+def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None):
+    """Fit IV SSE or half-spread price MSE under finite-grid strike constraints.
 
     Parameters use the same positive-minimum and training-relative bounds as
     the bounded research candidate. Three independent SLSQP starts receive no
     held-out data. Unsuccessful or dense-check-infeasible solutions are rejected
-    before minimum-SSE selection. Exhaustion is a failed fit, not a flat fallback.
+    before objective selection. Optional price_quotes contains training bid, ask,
+    optiontypes, forward and discount; IVs then supply scaling and starts only.
+    Exhaustion is a failed fit, not a flat fallback. This is a repository-only helper.
     """
     k, iv = np.asarray(k, dtype=float), np.asarray(iv, dtype=float)
     if (k.ndim != 1 or iv.shape != k.shape or len(k) < 5
@@ -69,6 +118,8 @@ def fit_raw_svi_constrained(k, iv, ttm):
         raise ValueError("Raw SVI needs five distinct finite strikes, positive IVs and finite T")
     order = np.argsort(k)
     k, iv = k[order], iv[order]
+    if price_quotes is not None:
+        price_quotes = _sorted_price_quotes(price_quotes, order)
     center, scale = (k[0] + k[-1]) / 2, (k[-1] - k[0]) / 2
     vol = float(np.mean(iv))
     variance = ttm * vol**2
@@ -90,6 +141,9 @@ def fit_raw_svi_constrained(k, iv, ttm):
                       float(scale * sigma))
 
     def objective(p):
+        if price_quotes is not None:
+            value, gradient = _spread_price_objective(p, z, target, k, ttm, vol, price_quotes)
+            return value / price_scale, gradient / price_scale
         residual = _scaled_svi_residual(p, z, target)
         jac = _scaled_svi_residual(p, z, target, jacobian=True)
         return float(residual @ residual), 2 * jac.T @ residual
@@ -106,12 +160,27 @@ def fit_raw_svi_constrained(k, iv, ttm):
         dense = np.unique(np.r_[grid, local, np.linspace(grid[0], grid[-1], VALIDATION_POINTS)])
         return check_svi_wings(dense, params)
 
+    # A common training-only multiplier preserves the minimizer while avoiding
+    # huge gradients from index-point premiums divided by very narrow spreads.
+    price_scale = 1.0
+    if price_quotes is not None:
+        flat = np.clip([1, 0, 0, 0, 1], lower, upper)
+        price_scale = max(1.0, _spread_price_objective(
+            flat, z, target, k, ttm, vol, price_quotes)[0])
+        if not np.isfinite(price_scale):
+            raise ValueError("Nonfinite training price objective scale")
     geometry = dict(k_center=float(center), k_scale=float(scale), iv_scale=vol,
                     scaled_lower=lower.tolist(), scaled_upper=upper.tolist(),
                     scaled_parameter_order=["minimum", "b", "rho", "m", "sigma"],
                     optimization_grid=grid.tolist(), density_buffer=DENSITY_BUFFER,
-                    maxiter=1000, ftol=1e-12)
-    if np.all(iv == iv[0]):
+                    maxiter=1000, ftol=1e-12,
+                    prediction_policy="reject outside training-derived constraint domain",
+                    objective=("uniform_iv_sse" if price_quotes is None
+                               else "mean_squared_half_spread_price_error"))
+    if price_quotes is not None:
+        geometry["price_spread_floor"] = PRICE_SPREAD_FLOOR
+        geometry["optimizer_objective_scale"] = price_scale
+    if price_quotes is None and np.all(iv == iv[0]):
         if not 1e-10 <= variance <= 5:
             raise ValueError("Flat variance is outside the research bounds")
         fit = unpack([1, 0, 0, np.clip(0, lower[3], upper[3]),
@@ -136,16 +205,21 @@ def fit_raw_svi_constrained(k, iv, ttm):
                      and np.all(np.isfinite(result.x)) and check["passed"]
                      and np.all(result.x >= lower) and np.all(result.x <= upper))
         sse = float(np.sum((np.sqrt(raw_svi(k, params)[0] / ttm) - iv)**2))
+        score = (sse if price_quotes is None else
+                 _spread_price_objective(result.x, z, target, k, ttm, vol, price_quotes)[0])
+        valid = bool(valid and np.isfinite(score))
         attempts.append(dict(start_rho=rho, success=bool(result.success), accepted=valid,
                              status=int(result.status), message=str(result.message),
                              nfev=int(result.nfev), nit=int(result.nit), training_sse=sse,
+                             training_objective=score,
                              scaled_parameters=result.x.tolist(), wing_check=check))
         if valid:
-            accepted.append((sse, params, len(attempts) - 1))
+            accepted.append((score, params, len(attempts) - 1))
     if not accepted:
         raise RuntimeError(f"All constrained SVI starts failed or were infeasible: {attempts}")
-    sse, fit, selected = min(accepted, key=lambda item: item[0])
-    return fit, dict(method="scaled_slsqp_finite_wing_constraints", training_sse=sse,
+    score, fit, selected = min(accepted, key=lambda item: item[0])
+    return fit, dict(method="scaled_slsqp_finite_wing_constraints",
+                     training_sse=attempts[selected]["training_sse"], training_objective=score,
                      starts=attempts, selected_start=selected,
                      nfev_total=sum(item["nfev"] for item in attempts),
                      wing_check=validate(fit), **geometry)

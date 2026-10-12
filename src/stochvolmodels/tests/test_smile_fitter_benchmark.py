@@ -98,7 +98,7 @@ def test_constrained_ssvi_interiors_and_long_tenor_refusal(benchmark):
 
 
 @pytest.mark.parametrize("fold", ["interior", "wings"])
-@pytest.mark.parametrize("model", ["ssvi", "raw_svi", "raw_svi_constrained"])
+@pytest.mark.parametrize("model", ["ssvi", "raw_svi", "raw_svi_constrained", "raw_svi_price"])
 def test_holdouts_do_not_enter_training_or_initial_values(benchmark, fold, model):
     """Changing held-out quotes cannot affect a fit made from the training snapshot."""
     bench, _ = benchmark
@@ -408,3 +408,104 @@ def test_wing_study_quotes_match_frozen_protocol(benchmark):
         np.testing.assert_array_equal(iv, 0.22 + expected.normal(0, 0.0005, 29))
         np.testing.assert_array_equal(train.bid_ivs[i],
                                       (iv + shocks.normal(0, 0.0005, 29))[mask] - 0.005)
+
+
+def test_price_objective_and_gradient_against_independent_vip(benchmark):
+    """Different parameter mapping and VIP prices verify all five gradient columns."""
+    import vanilla_option_pricers as vip
+
+    wing = importlib.import_module("_svi_wing_benchmark")
+    k = np.linspace(-0.16, 0.18, 9)
+    z, target = (k - 0.01) / 0.17, np.linspace(0.9, 1.1, len(k))
+    t, vol, forward, discount = 0.3, 0.28, 3456.0, 1.014
+    cp = np.where(k < 0, "P", "C")
+    strikes = forward * np.exp(k)
+    midpoint = np.array([vip.compute_bsm_vanilla_price(forward, s, t, 0.29, c, discount)
+                         for s, c in zip(strikes, cp)])
+    half = np.array([0.0, .02, .1, .2, .4, .3, .15, .08, .04])
+    quotes = dict(forward=forward, discount=discount, optiontypes=cp,
+                  bid=midpoint-half, ask=midpoint+half)
+
+    def independent(p):
+        minimum, b, rho, m, sigma = p
+        x = z-m
+        variance = minimum + b*(rho*x + np.sqrt(x*x+sigma*sigma)
+                                - sigma*np.sqrt(1-rho*rho))
+        ivs = vol*np.sqrt(variance)
+        prices = np.array([vip.compute_bsm_vanilla_price(forward, s, t, v, c, discount)
+                           for s, v, c in zip(strikes, ivs, cp)])
+        return np.mean(((prices-midpoint)/np.maximum(half, .01))**2)
+
+    p = np.array([.85, .22, -.35, .1, .6])
+    value, grad = wing._spread_price_objective(p, z, target, k, t, vol, quotes)
+    assert value == pytest.approx(independent(p), rel=2e-11)
+    for step in (1e-5, 3e-6):
+        expected = [(independent(p+step*e)-independent(p-step*e))/(2*step)
+                    for e in np.eye(5)]
+        np.testing.assert_allclose(grad, expected, rtol=2e-6, atol=2e-5)
+
+
+def test_price_objective_selects_price_best_start_without_flat_iv_shortcut(benchmark, monkeypatch):
+    """Price midpoints can disagree with midpoint IV; start selection must use prices."""
+    from types import SimpleNamespace
+
+    bench, svi = benchmark
+    wing = importlib.import_module("_svi_wing_benchmark")
+    k, iv, t = np.linspace(-.2, .2, 11), np.full(11, .28), .3
+    cp = np.where(k < 0, "P", "C")
+    midpoint = bench.black_prices(100, 100*np.exp(k), t, np.full(11, .308), .98, cp)
+    quotes = dict(forward=100., discount=.98, optiontypes=cp,
+                  bid=midpoint-.001, ask=midpoint+.001)
+    calls = []
+
+    def solver(objective, start, **kwargs):
+        minimum = 1.21 if len(calls) % 3 == 1 else 1.
+        calls.append(minimum)
+        p = np.array([minimum, 0., 0., 0., 1.])
+        return SimpleNamespace(x=p, fun=123., success=True, status=0,
+                               message="controlled price/IV disagreement", nfev=1, nit=1)
+
+    monkeypatch.setattr(wing, "minimize", solver)
+    p, evidence = wing.fit_raw_svi_constrained(k, iv, t, price_quotes=quotes)
+    assert len(calls) == 3 and evidence["selected_start"] == 1
+    assert evidence["objective"] == "mean_squared_half_spread_price_error"
+    assert evidence["training_objective"] < 1e-15
+    assert evidence["training_sse"] > .001
+    np.testing.assert_allclose(np.sqrt(svi.raw_svi(k, p)[0]/t), .308)
+    reversed_quotes = {name: value[::-1] if isinstance(value, np.ndarray) else value
+                       for name, value in quotes.items()}
+    reordered, _ = wing.fit_raw_svi_constrained(k[::-1], iv[::-1], t,
+                                               price_quotes=reversed_quotes)
+    assert reordered == p
+    for name, value in [("bid", np.full(11, np.nan)), ("ask", midpoint-.1),
+                        ("forward", -100.), ("discount", np.inf),
+                        ("optiontypes", np.full(11, "X"))]:
+        with pytest.raises(ValueError, match="price quotes"):
+            wing.fit_raw_svi_constrained(k, iv, t, price_quotes=dict(quotes, **{name: value}))
+
+
+def test_constrained_prediction_domain_is_enforced_and_reported(benchmark):
+    bench, _ = benchmark
+    sample = bench.make_sample("flat")
+    fitted = bench.fit_model("raw_svi_constrained", sample.chain())
+    low, high = fitted.optimizer[0]["wing_check"]["k_domain"]
+    t = sample.ttms[0]
+    edge = bench._quote_chain(np.array([t]), [np.array([low, 0., high])],
+                             [np.full(3, .28)])
+    evidence = {}
+    bench.enforce_prediction_domain(fitted, edge, evidence)
+    assert evidence["domain"]["supported"]
+    assert evidence["domain"]["outside_quotes"] == 0
+    fitted.predict(edge)
+    beyond = bench._quote_chain(np.array([t]), [np.array([low-.01, 0., high+.01])],
+                               [np.full(3, .28)])
+    with pytest.raises(ValueError, match="outside SVI prediction domain"):
+        fitted.predict(beyond)
+    with pytest.raises(ValueError, match="outside SVI prediction domain"):
+        bench.enforce_prediction_domain(fitted, beyond, evidence)
+    assert evidence["domain"]["outside_quotes"] == 2
+    assert evidence["domain"]["slices"][0]["outside_indices"] == [0, 2]
+    assert not evidence["domain"]["supported"]
+    unseen = bench._quote_chain(np.array([t/2]), [np.array([0.])], [np.array([.28])])
+    with pytest.raises(ValueError, match="maturity interpolation"):
+        fitted.predict(unseen)

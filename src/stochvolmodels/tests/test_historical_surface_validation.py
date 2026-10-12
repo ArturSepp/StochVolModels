@@ -78,21 +78,26 @@ def test_historical_prices_use_observed_forward_and_discount(runner, chain):
 
 
 @pytest.mark.parametrize("fold", ["interior", "wings"])
-def test_held_out_quotes_never_enter_calibration(runner, chain, fold):
+@pytest.mark.parametrize("model", ["approx_logsv", "raw_svi_price"])
+def test_held_out_quotes_never_enter_calibration(runner, chain, fold, model):
     train, held = runner.fold_masks(chain, fold)
     assert all(not (a & b).any() and (a | b).all() for a, b in zip(train, held))
-    original, evidence = runner.run_job("approx_logsv", chain, fold)
+    original, evidence = runner.run_job(model, chain, fold)
     poisoned = runner.subset(chain, [np.ones(len(k), dtype=bool) for k in chain.strikes_ttms])
     for i, mask in enumerate(held):
         poisoned.bid_ivs[i][mask] += 0.2
         poisoned.ask_ivs[i][mask] += 0.2
         poisoned.bid_prices[i][mask] += 3
         poisoned.ask_prices[i][mask] += 3
-    changed, changed_evidence = runner.run_job("approx_logsv", poisoned, fold)
+    changed, changed_evidence = runner.run_job(model, poisoned, fold)
     assert original["status"] == changed["status"] == "completed"
     assert evidence["parameters"] == changed_evidence["parameters"]
     assert changed["iv_rmse"] > original["iv_rmse"] + 0.1
-    assert changed["price_rmse"] > original["price_rmse"] + 1
+    tables = [item["fit"]["tables"]["quotes"] for item in (evidence, changed_evidence)]
+    before, after = [pd.DataFrame(item["data"], columns=item["columns"]) for item in tables]
+    np.testing.assert_allclose(before.model_price, after.model_price, rtol=0, atol=1e-10)
+    expected = np.sqrt(np.mean((before.model_price - (before.bid_price+before.ask_price)/2 - 3)**2))
+    assert changed["price_rmse"] == pytest.approx(expected, abs=1e-10)
     for role in ("train", "evaluation"):
         mappings = [r for r in evidence["quote_mapping"] if r["role"] == role]
         assert len({q for r in mappings for q in r["original_quote_ids"]}) == sum(
@@ -300,3 +305,39 @@ def test_changed_warm_repeat_is_rejected(runner, chain, monkeypatch):
     assert row["status"] == "failed" and not row["screen_pass"]
     assert "fresh repeated fit changed predictions" in row["error"]
     assert evidence["robustness"]["stage"] == "warm_repeat_1"
+
+
+def test_domain_refusal_retains_parameters_and_all_quote_denominators(runner, chain):
+    """An unsupported held-out strike must not disappear into a finite-subset score."""
+    for strikes in chain.strikes_ttms:
+        strikes[-1] *= np.exp(1.)
+    row, evidence = runner.run_job("raw_svi_constrained", chain, "wings",
+                                    perturbation_seed=123)
+    assert row["status"] == "failed" and not row["screen_pass"]
+    assert row["stage"] == "base_domain"
+    assert row["domain_outside_quotes"] == 2
+    assert "outside SVI prediction domain" in row["error"]
+    assert len(evidence["parameters"]) == len(chain.ttms)
+    assert evidence["domain"]["outside_quotes"] == 2
+    assert len(evidence["domain"]["slices"]) == len(chain.ttms)
+    assert row["n_test"] == 16
+    assert "fit" not in evidence and "coverage" not in row
+
+
+def test_price_objective_handles_index_scale_and_narrow_spreads(runner, chain):
+    """A realizable SVI curve priced by VIP catches nominally successful poor fits."""
+    for i, (t, forward, strikes, discount) in enumerate(zip(
+            chain.ttms, chain.forwards, chain.strikes_ttms, chain.discfactors)):
+        k = np.log(strikes / forward)
+        vol = np.sqrt(.045 + .05 * (-.4*k + np.sqrt(k*k + .14**2)))
+        prices = np.array([bsm.compute_bsm_vanilla_price(forward, s, t, v, cp, discount)
+                           for s, v, cp in zip(strikes, vol, chain.optiontypes_ttms[i])])
+        chain.bid_ivs[i][:], chain.ask_ivs[i][:] = vol-.002, vol+.002
+        chain.bid_prices[i][:], chain.ask_prices[i][:] = prices-.01, prices+.01
+    row, evidence = runner.run_job("raw_svi_price", chain, "in_sample")
+    assert row["status"] == "completed", row.get("error")
+    assert row["price_rmse"] < .0002
+    assert all(e["optimizer_objective_scale"] > 1 for e in evidence["optimizer"])
+    for item in evidence["optimizer"]:
+        scores = [s["training_objective"] for s in item["starts"] if s["accepted"]]
+        assert item["training_objective"] == min(scores)

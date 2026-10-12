@@ -32,7 +32,8 @@ from stochvolmodels import OptionChain, fitters, local_path
 from stochvolmodels.fitters.adapters.oca_diagnostics import diagnostic_chain_from_oca
 
 from compare_smile_fitters import (
-    CRITERIA, _json_safe, _validate_predictions, black_prices, fit_model, passes_screen,
+    CRITERIA, _json_safe, _validate_predictions, black_prices, enforce_prediction_domain,
+    fit_model, passes_screen,
 )
 
 
@@ -55,7 +56,8 @@ CONVENTIONS = {
     "holdout_scope": "conditional on full-snapshot OCA forwards, discounts and quote selection",
     "input_scope": "normalized history; losses before normalization unavailable",
     "filter": "existing OCA cleaning, OTM wings, put delta <= -0.05, call delta >= 0.05",
-    "objective": "uniform training IV SSE; native/research optimizer budgets differ",
+    "objective": "uniform training IV SSE except raw_svi_price: half-spread price MSE",
+    "constrained_prediction_domain": "reject outside training midpoint +/- twice half-range",
     "timing": "single elapsed fit; may include JIT; not a warm runtime comparison",
     "intermediate_maturities": "not checked; all models evaluated at observed expiries only",
     "global_arbitrage_certificate": False,
@@ -278,6 +280,8 @@ def measure_robustness(model, train, target, chain, base_prices, seed, carry_mod
     fitted = fit_model(model, changed)
     evidence.update(perturbed_seconds=perf_counter() - started,
                     parameters=fitted.parameters, optimizer=fitted.optimizer)
+    evidence["stage"] = "perturbed_domain"
+    enforce_prediction_domain(fitted, chain, evidence)
     evidence["stage"] = "perturbed_evaluation"
     prices, ivs = fitted.predict(target)
     _validate_predictions(target, prices, ivs)
@@ -298,7 +302,7 @@ def measure_robustness(model, train, target, chain, base_prices, seed, carry_mod
 
 def run_job(model, chain, fold, carry_model="unspecified", perturbation_seed=None):
     """Retain any fitting, repricing or diagnostic failure in the job denominator."""
-    row = {"model": model, "fold": fold, "status": "failed"}
+    row = {"model": model, "fold": fold, "status": "failed", "stage": "split"}
     evidence, messages, caught = {}, StringIO(), []
     started = perf_counter()
     try:
@@ -314,10 +318,14 @@ def run_job(model, chain, fold, carry_model="unspecified", perturbation_seed=Non
         ]
         with warnings.catch_warnings(record=True) as caught, redirect_stdout(messages):
             warnings.simplefilter("always")
+            row["stage"] = "base_fit"
             fit_start = perf_counter()
             fit = fit_model(model, train)
             row["fit_seconds"] = perf_counter() - fit_start
             evidence.update(parameters=fit.parameters, optimizer=fit.optimizer)
+            row["stage"] = "base_domain"
+            enforce_prediction_domain(fit, chain, evidence)
+            row["stage"] = "base_evaluation"
             prices, ivs = fit.predict(target)
             _validate_predictions(target, prices, ivs)
             report = fitters.diagnose_fit(
@@ -334,6 +342,7 @@ def run_job(model, chain, fold, carry_model="unspecified", perturbation_seed=Non
             evidence["surface"], surface_metrics = surface_evidence(fit, chain, carry_model)
             row.update(surface_metrics)
             if perturbation_seed is not None:
+                row["stage"] = "robustness"
                 evidence["buckets"] = quote_buckets(quotes).to_dict("records")
                 evidence["robustness"] = {}
                 row.update(measure_robustness(model, train, target, chain, prices,
@@ -341,11 +350,14 @@ def run_job(model, chain, fold, carry_model="unspecified", perturbation_seed=Non
                                              evidence["robustness"]))
                 row["screen_pass"] = passes_screen(dict(row, status="ok"))
             row["status"] = "completed"
+            row["stage"] = "completed"
     except Exception as error:
         row["error"] = f"{type(error).__name__}: {error}"
         if perturbation_seed is not None:
             row["screen_pass"] = False
     row["elapsed_seconds"] = perf_counter() - started
+    if evidence.get("domain", {}).get("policy") == "reject":
+        row["domain_outside_quotes"] = evidence["domain"]["outside_quotes"]
     evidence["warnings"] = list(dict.fromkeys(str(w.message) for w in caught))
     evidence["stdout"] = messages.getvalue()
     return row, evidence
@@ -408,7 +420,7 @@ def write_summary(output, rows, snapshots):
                            "coverage", "iv_rmse", "p95_spread_error", "surface_failures",
                            "surface_unchecked", "fit_seconds", "warm_seconds",
                            "p95_perturbation", "perturbed_surface_failures", "screen_pass",
-                           "error") if c in frame]
+                           "stage", "domain_outside_quotes", "error") if c in frame]
     labels = {
         "n_normalized": "Input quotes", "n_selected": "Selected", "n_excluded": "Excluded",
         "n_quality_failed_rows": "Flagged quotes", "n_parity_checked": "Parity pairs checked",
@@ -450,6 +462,10 @@ and refits once after training-only IV shocks. Warm seconds are their median;
 perturbation is the P95 price change divided by the original evaluation half-spread
 (floor 0.01). The full screen retains the synthetic benchmark's fixed economic criteria.
 Calendar and global consistency remain outside that screen.</p>
+<p>The opt-in raw_svi_price model fits training premium midpoints by mean squared
+half-spread price error. Both constrained SVI models reject any requested observed
+strike outside their training-derived constraint domains; refusals retain parameters
+and quote counts and remain failed jobs. Bounds are never widened from held-out data.</p>
 <h2>Snapshot coverage and exclusions</h2>"""
     html += table(pd.DataFrame(snapshots))
     html += "<h2>Model and fold summaries</h2>" + table(pd.DataFrame(summaries))
@@ -472,7 +488,7 @@ def run_validation(input_root=None, output=None, dates=DATES, days=DAYS,
     if not days or any(not isinstance(day, int) or day <= 0 for day in days):
         raise ValueError("maturity targets must be positive integer days")
     if (not models or len(set(models)) != len(models)
-            or set(models) - {*MODELS, "raw_svi", "raw_svi_constrained"}):
+            or set(models) - {*MODELS, "raw_svi", "raw_svi_constrained", "raw_svi_price"}):
         raise ValueError("provide unique supported models")
     if carry_model not in ("unspecified", "proportional"):
         raise ValueError("unsupported carry declaration")
@@ -598,7 +614,8 @@ def run_local(local: Locals = Locals.VALIDATE):
     parser.add_argument("--output", type=Path, help="fresh private output directory")
     parser.add_argument("--dates", nargs="+", default=DATES)
     parser.add_argument("--days", nargs="+", type=int, default=DAYS)
-    parser.add_argument("--models", nargs="+", choices=(*MODELS, "raw_svi", "raw_svi_constrained"),
+    parser.add_argument("--models", nargs="+",
+                        choices=(*MODELS, "raw_svi", "raw_svi_constrained", "raw_svi_price"),
                         default=MODELS)
     parser.add_argument("--carry-model", choices=("unspecified", "proportional"),
                         default="unspecified")

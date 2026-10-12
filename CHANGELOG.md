@@ -6,6 +6,11 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Added
 
+- Added the opt-in repository-only `raw_svi_price` benchmark using original training
+  premium midpoints, half-spread scaling, analytic Black-vega gradients and the existing
+  sampled SVI constraints. Both constrained candidates now reject predictions outside
+  their training-derived constraint domains and retain explicit domain-failure evidence.
+  Public APIs and default model selection are unchanged.
 - Added optional historical benchmark robustness measurements: fresh warm repeats,
   training-only IV perturbations, final fit/surface checks, fixed economic screens and
   maturity/moneyness quote labels. Refit failures remain in the attempted-job denominator;
