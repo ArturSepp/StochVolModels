@@ -21,6 +21,8 @@ Entries start at 1.2.0. For earlier releases see the git log.
   source-to-calibration exclusion counts and an offline cross-package example.
 - Added optional paired fit reports to `compare_surface_reports` for coverage and fit-error
   changes on matching constant tenors.
+- Added a repository-only SVI/SSVI research benchmark against existing smile and stochastic-model
+  fitters, with fixed synthetic holdouts, failure accounting, perturbation checks and source hashes.
 
 ### Fixed
 

@@ -167,6 +167,36 @@ Maintainer Windows checkouts use the external interpreter and runtime setup pres
 the repository's AGENTS.md. Inputs and implementation limitations are part of the returned
 metadata; a small fit error alone does not establish a valid density or calendar surface.
 
+## Research benchmark
+
+The repository-only [smile-fitter comparison](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/compare_smile_fitters.py)
+evaluates experimental raw stochastic volatility inspired (SVI) slices and constrained surface
+SVI (SSVI) alongside approximate LogSV, two-state Gaussian mixtures, full LogSV and Heston.
+The experimental implementations are outside the installed package and are not public fitter APIs.
+Their formulae follow Gatheral and Jacquier, equations (3.1) and (4.1); the SSVI constraints use
+Theorems 4.1 and 4.2 on the fitted maturity interval. No maturity extrapolation is supplied.
+
+```console
+python examples/calibration/compare_smile_fitters.py
+```
+
+The core-only runner freezes synthetic flat, skewed, sparse/noisy and short-dated observations,
+with separate interior and wing holdouts. All models minimize uniformly weighted training IV
+errors. Native incumbent optimizers and three-start experimental optimizers have different
+budgets; the output records this limitation. Held-out prices, IV errors, bid/ask coverage,
+training-quote perturbations and finite-domain surface checks use the final fitted parameters.
+Every failed job remains in the results, including failures during perturbation or diagnostics.
+
+Outputs use the configured local output directory and include exact quote snapshots, source
+hashes, per-job diagnostic reports, warmup time and repeated warm calibration timings. Summary
+error averages are explicitly conditional on successful jobs; failure counts and counts
+passing the fixed research screen are reported separately. Dynamics calibrations stop at an
+objective boundary after exceeding 75 seconds; a single evaluation can overrun that guard.
+Timeouts remain failed jobs. The screen and numerical settings
+live in the runnable source. Its tolerances are research choices, not validated production
+requirements. Synthetic performance does not establish general superiority or authorize
+promotion to the public API. Runtime depends on the machine and system load.
+
 ## See also
 
 - [Approximate LogSV smile fitter](logsv_smile_fitter.md).
