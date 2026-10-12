@@ -98,7 +98,7 @@ def test_constrained_ssvi_interiors_and_long_tenor_refusal(benchmark):
 
 
 @pytest.mark.parametrize("fold", ["interior", "wings"])
-@pytest.mark.parametrize("model", ["ssvi", "raw_svi"])
+@pytest.mark.parametrize("model", ["ssvi", "raw_svi", "raw_svi_constrained"])
 def test_holdouts_do_not_enter_training_or_initial_values(benchmark, fold, model):
     """Changing held-out quotes cannot affect a fit made from the training snapshot."""
     bench, _ = benchmark
@@ -286,3 +286,125 @@ def test_deadline_checks_after_a_single_long_objective(benchmark, monkeypatch):
     limited = Limited()
     with pytest.raises(TimeoutError, match="75s"):
         limited.compute_model_ivols_for_chain()
+
+
+def test_wing_derivatives_against_independent_black_prices(benchmark):
+    """Differentiate prices in strike space, independent of the analytic constraints."""
+    _, svi = benchmark
+    wing = importlib.import_module("_svi_wing_benchmark")
+    p = svi.RawSvi(0.03, 0.06, -0.3, 0.02, 0.25)
+    forward, discount = 3580.0, 1.013
+    strikes = forward * np.exp(np.linspace(-0.3, 0.3, 7))
+
+    def call(strike):
+        x = np.log(strike / forward) - p.m
+        w = p.a + p.b * (p.rho * x + np.sqrt(x*x + p.sigma**2))
+        d1 = np.log(forward / strike) / np.sqrt(w) + np.sqrt(w) / 2
+        return discount * (forward * norm.cdf(d1) - strike * norm.cdf(d1 - np.sqrt(w)))
+
+    k = np.log(strikes / forward)
+    g, slope = wing.svi_wing_values(k, p)
+    w = p.a + p.b * (p.rho * (k - p.m) + np.sqrt((k - p.m)**2 + p.sigma**2))
+    density = g * norm.pdf(-k / np.sqrt(w) - np.sqrt(w) / 2) / (strikes * np.sqrt(w))
+    for h in (0.30, 0.15):
+        np.testing.assert_allclose(slope, (call(strikes + h) - call(strikes - h))
+                                   / (2 * h * discount), rtol=3e-7, atol=1e-8)
+        numerical = (call(strikes + h) - 2 * call(strikes) + call(strikes - h)) / h**2
+        np.testing.assert_allclose(density, numerical / discount, rtol=3e-6, atol=2e-10)
+
+
+def test_positive_sampled_density_does_not_hide_positive_call_slope(benchmark):
+    """A synthetic raw-SVI counterexample has positive g but increasing call prices."""
+    _, svi = benchmark
+    wing = importlib.import_module("_svi_wing_benchmark")
+    # Hand-constructed parameters, no vendor quotes or calibration output.
+    p = svi.RawSvi(-0.005, 0.2, 0.8, 0.05, 0.05)
+    check = wing.check_svi_wings(np.linspace(0.055, 0.065, 21), p)
+    assert check["min_density_factor"] > 0
+    assert check["max_call_slope"] > 0.1
+    assert not check["passed"]
+
+
+def test_constrained_wings_resolve_observed_flat_density_defect(benchmark):
+    """Previously observed development case: independent finite call slopes stay convex."""
+    bench, _ = benchmark
+    sample = bench.make_stability_sample("flat", 304)
+    mask = sample.training_mask("wings")
+    fit = bench.fit_model("raw_svi_constrained", sample.chain(mask))
+    assert all(e["wing_check"]["passed"] for e in fit.optimizer)
+    for i, t in enumerate(sample.ttms):
+        k = np.linspace(sample.ks[i][0], sample.ks[i][-1], 1001)
+        chain = bench._quote_chain(np.array([t]), [k], [np.full(len(k), 0.24)])
+        p = fit.parameters[i]
+        w = p["a"] + p["b"] * (p["rho"] * (k - p["m"])
+                                  + np.sqrt((k - p["m"])**2 + p["sigma"]**2))
+        d1 = -k / np.sqrt(w) + np.sqrt(w) / 2
+        prices = chain.discfactors[0] * (chain.forwards[0] * norm.cdf(d1)
+                                         - chain.strikes_ttms[0] * norm.cdf(d1 - np.sqrt(w)))
+        slopes = np.diff(prices) / np.diff(chain.strikes_ttms[0]) / chain.discfactors[0]
+        assert np.min(slopes) >= -1 - 1e-9
+        assert np.max(slopes) <= 1e-9
+        assert np.min(np.diff(slopes)) >= -1e-9
+
+
+@pytest.mark.parametrize("failure", ["solver", "dense_check"])
+def test_constrained_svi_rejects_unacceptable_starts(benchmark, monkeypatch, failure):
+    """Optimizer success cannot bypass the final independent grid gate."""
+    from types import SimpleNamespace
+
+    wing = importlib.import_module("_svi_wing_benchmark")
+    calls = []
+
+    def fake_solver(objective, start, **kwargs):
+        calls.append(start)
+        x = np.array([1.0, 0.01, 0.0, 0.0, 1.0])
+        return SimpleNamespace(x=x, fun=objective(x)[0], success=failure != "solver",
+                               status=0, message="injected solver result", nfev=1, nit=1)
+
+    monkeypatch.setattr(wing, "minimize", fake_solver)
+    if failure == "dense_check":
+        original = wing.check_svi_wings
+
+        def bad_dense(k, p):
+            assert len(k) >= wing.VALIDATION_POINTS
+            return dict(original(k, p), passed=False, min_density_factor=-0.01)
+
+        monkeypatch.setattr(wing, "check_svi_wings", bad_dense)
+    with pytest.raises(RuntimeError, match="All constrained SVI starts failed"):
+        wing.fit_raw_svi_constrained(np.linspace(-0.2, 0.2, 11), np.linspace(0.20, 0.22, 11), 0.5)
+    assert len(calls) == 3
+
+
+def test_constrained_flat_limit_and_quote_order(benchmark):
+    bench, svi = benchmark
+    wing = importlib.import_module("_svi_wing_benchmark")
+    k = np.linspace(-0.2, 0.2, 11)
+    p, evidence = wing.fit_raw_svi_constrained(k, np.full(11, 0.28), 0.3)
+    np.testing.assert_allclose(svi.raw_svi(np.array([-5.0, 0, 5.0]), p)[0], 0.3 * 0.28**2)
+    assert p.b == 0 and evidence["starts"] == [] and evidence["wing_check"]["passed"]
+    sample = bench.make_stability_sample("flat", 304)
+    mask = sample.training_mask("wings")
+    k, iv, t = sample.ks[1][mask], sample.ivs[1][mask], sample.ttms[1]
+    before, evidence = wing.fit_raw_svi_constrained(k, iv, t)
+    after, _ = wing.fit_raw_svi_constrained(k[::-1], iv[::-1], t)
+    assert before == after
+    assert evidence["training_sse"] == pytest.approx(
+        np.sum((np.sqrt(svi.raw_svi(k, before)[0] / t) - iv)**2), abs=1e-15)
+    assert "raw_svi_constrained" not in bench.MODELS
+
+
+def test_wing_study_quotes_match_frozen_protocol(benchmark):
+    """Only input generation is checked; no fresh-case fit is used for development."""
+    bench, _ = benchmark
+    sample = bench.make_wing_sample("flat", 401)
+    assert len(sample.z) == 29
+    np.testing.assert_array_equal(sample.ttms, [0.06, 0.25, 0.65])
+    expected = np.random.default_rng(401)
+    shocks = np.random.default_rng(10401)
+    mask = sample.training_mask("wings")
+    train = sample.chain(mask, perturb=True)
+    for i, (t, k, iv) in enumerate(zip(sample.ttms, sample.ks, sample.ivs)):
+        np.testing.assert_array_equal(k, sample.z * 0.30 * np.sqrt(t))
+        np.testing.assert_array_equal(iv, 0.22 + expected.normal(0, 0.0005, 29))
+        np.testing.assert_array_equal(train.bid_ivs[i],
+                                      (iv + shocks.normal(0, 0.0005, 29))[mask] - 0.005)

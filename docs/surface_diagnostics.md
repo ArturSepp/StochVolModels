@@ -226,6 +226,33 @@ Use `--output` to select a fresh results directory and `--repeats` to change tim
 Each run records the actual source hashes, suite and settings; the earlier benchmark remains
 reproducible from its recorded commit and quote snapshot.
 
+The additional opt-in `raw_svi_constrained` candidate uses SLSQP (sequential least-squares
+programming) to minimize the same training IV error with sampled density and call-slope
+constraints. Its domain is the training midpoint plus or minus twice the training half-range.
+It constrains Gatheral–Jacquier's density factor to at least `1e-5` on 801 equally spaced
+points plus the training strikes, and the call-price derivative divided by discount to
+the interval `[-1, 0]`. Positive density on a finite interval alone does not establish
+the call-slope bound; both are checked explicitly.
+
+The three fixed starts each allow 1,000 iterations with an optimizer tolerance of `1e-12`.
+The objective gradient is analytic; constraint derivatives use numerical differences.
+Before selecting the smallest training error, each successful solution must also pass a
+4,001-point grid plus shape-local points, allowing density-factor roundoff of `1e-8` and
+call-slope roundoff of `1e-10`. Rejected starts retain their status and final margins;
+there is no price clipping or fallback fit. Exact flat input uses the constant-variance
+limit. The constraints can reduce flexibility and cost more runtime. They do not certify
+unsampled strikes, out-of-domain wings or calendar consistency, and a shape-valid fit can
+still have poor held-out accuracy or perturbation stability.
+
+The `wings` suite compares all three raw-SVI candidates on 120 jobs with separately fixed
+seeds 401–405, tenors and mixture specifications. Earlier synthetic and historical cases
+are development evidence for this study. The economic screen is unchanged; the candidate
+stays opt-in. Both runners archive their research source files beside the output hashes.
+
+```console
+python examples/calibration/compare_smile_fitters.py --suite wings
+```
+
 ## Historical validation
 
 The advanced [historical runner](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/validate_historical_surfaces.py)
@@ -235,6 +262,11 @@ extra. It requires an existing compatible `spx_options_oca.parquet` cache in the
 directory. OCA validates its policies and, when the raw source is present, its fingerprint.
 The report records when source-fingerprint checking is unavailable. A missing or rejected cache
 is recorded as a failure, without rebuilding it or falling back to raw data.
+
+Select the bounded or constrained research candidates explicitly with `--models raw_svi`
+or `--models raw_svi_constrained`; names can be combined with the default comparators.
+The constrained candidate derives its grid from training strikes only. Historical evaluation
+still checks the complete observed strike domain, which can extend beyond that constraint grid.
 
 ```console
 python examples/calibration/validate_historical_surfaces.py --input <local-cboe-directory> --output <fresh-private-results-directory>

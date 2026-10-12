@@ -283,10 +283,12 @@ def source_identity():
                           ("dirty", ["status", "--porcelain"])):
             process = subprocess.run(["git", "-C", str(root), *args],
                                      capture_output=True, text=True, check=False)
-            result["sources"][package][key] = process.stdout.strip() if not process.returncode else None
+            result["sources"][package][key] = (
+                process.stdout.strip() if not process.returncode else None)
     result["runner_sha256"] = {
         name: sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
-        for name in (Path(__file__).name, "compare_smile_fitters.py", "_svi_benchmark.py")
+        for name in (Path(__file__).name, "compare_smile_fitters.py", "_svi_benchmark.py",
+                     "_svi_wing_benchmark.py")
     }
     return result
 
@@ -365,7 +367,8 @@ def run_validation(input_root=None, output=None, dates=DATES, days=DAYS,
         raise ValueError("provide unique calendar dates, including equivalent date spellings")
     if not days or any(not isinstance(day, int) or day <= 0 for day in days):
         raise ValueError("maturity targets must be positive integer days")
-    if not models or len(set(models)) != len(models) or set(models) - {*MODELS, "raw_svi"}:
+    if (not models or len(set(models)) != len(models)
+            or set(models) - {*MODELS, "raw_svi", "raw_svi_constrained"}):
         raise ValueError("provide unique supported models")
     if carry_model not in ("unspecified", "proportional"):
         raise ValueError("unsupported carry declaration")
@@ -379,11 +382,16 @@ def run_validation(input_root=None, output=None, dates=DATES, days=DAYS,
                 "models": list(models), "folds": list(FOLDS), "conventions": CONVENTIONS,
                 "carry_model": carry_model, "spread_floor": PRICE_FLOOR,
                 "min_training_quotes": MIN_TRAIN, "snapshot_files": {},
-                "split_policy": "interior ranks 1,4,... excluding endpoints; wings outer floor(n/5)",
+                "split_policy": ("interior ranks 1,4,... excluding endpoints; "
+                                 "wings outer floor(n/5)"),
                 "cache_policy": "OCA validates policies and any present source fingerprint; "
                                 "missing/stale cache fails, no repair or raw fallback"}
     cache = source / "spx_options_oca.parquet"
     save_json(output / "metadata.json", metadata)
+    archive = output / "run_sources"
+    archive.mkdir()
+    for name in metadata["source"]["runner_sha256"]:
+        (archive / name).write_bytes(Path(__file__).with_name(name).read_bytes())
     rows, snapshots = [], []
     for day, time in zip(dates, requested):
         label = time.strftime("%Y-%m-%d")
@@ -438,7 +446,8 @@ def run_validation(input_root=None, output=None, dates=DATES, days=DAYS,
         metadata["snapshot_files"][filename] = save_json(output / filename, evidence)
         snapshots.append(snapshot)
         save_json(output / "metadata.json", metadata)
-        print(f"{label}: {snapshot['status']}, {snapshot.get('n_selected', 0)} selected", flush=True)
+        print(f"{label}: {snapshot['status']}, {snapshot.get('n_selected', 0)} selected",
+              flush=True)
         for fold in FOLDS:
             for model in models:
                 if chain is None:
@@ -471,7 +480,8 @@ def run_local(local: Locals = Locals.VALIDATE):
     parser.add_argument("--output", type=Path, help="fresh private output directory")
     parser.add_argument("--dates", nargs="+", default=DATES)
     parser.add_argument("--days", nargs="+", type=int, default=DAYS)
-    parser.add_argument("--models", nargs="+", choices=(*MODELS, "raw_svi"), default=MODELS)
+    parser.add_argument("--models", nargs="+", choices=(*MODELS, "raw_svi", "raw_svi_constrained"),
+                        default=MODELS)
     parser.add_argument("--carry-model", choices=("unspecified", "proportional"),
                         default="unspecified")
     args = parser.parse_args()

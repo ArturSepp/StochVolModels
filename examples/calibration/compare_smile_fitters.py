@@ -42,15 +42,17 @@ from stochvolmodels.pricers.logsv_pricer import (
 )
 
 from _svi_benchmark import fit_raw_svi, fit_raw_svi_legacy, fit_ssvi, raw_svi
+from _svi_wing_benchmark import fit_raw_svi_constrained
 
 
 # Keep the original fitter in the default comparison: the bounded candidate's
 # fresh-case convergence gains did not establish acceptable wing stability.
 MODELS = ("approx_logsv", "gmm2", "raw_svi_legacy", "ssvi", "logsv", "heston")
-AVAILABLE_MODELS = (*MODELS, "raw_svi")
+AVAILABLE_MODELS = (*MODELS, "raw_svi", "raw_svi_constrained")
 CASES = ("flat", "skewed", "sparse_noisy", "short")
 STABILITY_FAMILIES = ("flat", "left", "right", "short_sparse")
 STABILITY_SEEDS = (301, 302, 303, 304, 305)
+WING_SEEDS = (401, 402, 403, 404, 405)
 FOLDS = ("interior", "wings")
 PRICE_FLOOR = 0.01
 DYNAMICS_DEADLINE_SECONDS = 75.0
@@ -203,6 +205,35 @@ def make_stability_sample(family, seed):
     return Sample(f"{family}_{seed}", ttms, z, ks, ivs, perturbation_seed=seed + 10000)
 
 
+def make_wing_sample(family, seed):
+    """Predeclared wing-study cases; separate from the observed stability suite."""
+    if family not in STABILITY_FAMILIES or seed not in WING_SEEDS:
+        raise ValueError("Unknown wing-study family or seed")
+    short = family == "short_sparse"
+    ttms = np.array([3, 9, 21]) / 365 if short else np.array([0.06, 0.25, 0.65])
+    z = np.linspace(-2.75, 2.75, 17 if short else 29)
+    ks = [z * 0.30 * np.sqrt(t) for t in ttms]
+    rng = np.random.default_rng(seed)
+    ivs = []
+    for t, k in zip(ttms, ks):
+        if family == "flat":
+            iv = np.full(len(k), 0.22)
+        else:
+            weights, vols = np.array([0.20, 0.55, 0.25]), np.array([0.45, 0.22, 0.10])
+            drift = np.array([-0.16, 0.015, 0.10]) * (-1 if family == "right" else 1)
+            shifts = np.exp(t * drift)
+            shifts /= weights @ shifts
+            strikes, cps = _forward(t) * np.exp(k), np.where(k < 0, "P", "C")
+            prices = sum(w * black_prices(_forward(t) * s, strikes, t, v, _discount(t), cps)
+                         for w, s, v in zip(weights, shifts, vols))
+            iv = np.array([brentq(
+                lambda v: float(black_prices(_forward(t), strike, t, v, _discount(t), cp))
+                - price, 0.005, 3.0, xtol=1e-13,
+            ) for strike, cp, price in zip(strikes, cps, prices)])
+        ivs.append(iv + rng.normal(0, 0.0005 if family == "flat" else 0.001, len(k)))
+    return Sample(f"{family}_{seed}", ttms, z, ks, ivs, perturbation_seed=seed + 10000)
+
+
 @dataclass
 class Fitted:
     """Research adapter around final parameters and frozen pricing settings."""
@@ -266,8 +297,10 @@ def fit_model(model, chain):
     ks = [np.log(k / f) for k, f in zip(chain.strikes_ttms, chain.forwards)]
     ivs = [0.5 * (b + a) for b, a in zip(chain.bid_ivs, chain.ask_ivs)]
     times = chain.ttms
-    if model in ("raw_svi", "raw_svi_legacy"):
-        fitter = fit_raw_svi if model == "raw_svi" else fit_raw_svi_legacy
+    raw_fitters = {"raw_svi": fit_raw_svi, "raw_svi_legacy": fit_raw_svi_legacy,
+                   "raw_svi_constrained": fit_raw_svi_constrained}
+    if model in raw_fitters:
+        fitter = raw_fitters[model]
         fits = [fitter(k, v, t) for k, v, t in zip(ks, ivs, times)]
         params = [p for p, _ in fits]
 
@@ -526,7 +559,8 @@ def source_identity():
     """Record dirty source identity and numerical environment for native defaults."""
     root = Path(__file__).resolve().parents[2]
     paths = sorted((root / "src/stochvolmodels").rglob("*.py"))
-    paths += [Path(__file__), Path(__file__).with_name("_svi_benchmark.py")]
+    paths += [Path(__file__), Path(__file__).with_name("_svi_benchmark.py"),
+              Path(__file__).with_name("_svi_wing_benchmark.py")]
     return {
         "commit": subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=root, text=True,
@@ -545,10 +579,12 @@ def run_benchmark(output=None, models=None, cases=None, repeats=2, suite="origin
     """Run the fixed offline comparison; write every job before the next begins."""
     if repeats < 1:
         raise ValueError("repeats must be positive")
-    if suite not in ("original", "stability"):
+    if suite not in ("original", "stability", "wings"):
         raise ValueError("Unknown benchmark suite")
     if models is None:
-        models = MODELS if suite == "original" else ("raw_svi_legacy", "raw_svi")
+        models = (MODELS if suite == "original" else ("raw_svi_legacy", "raw_svi")
+                  if suite == "stability" else
+                  ("raw_svi_legacy", "raw_svi", "raw_svi_constrained"))
     if cases is None:
         cases = CASES if suite == "original" else STABILITY_FAMILIES
     if not models or any(m not in AVAILABLE_MODELS for m in models):
@@ -558,14 +594,17 @@ def run_benchmark(output=None, models=None, cases=None, repeats=2, suite="origin
         Path(local_path.get_output_path()) / "smile_fitter_benchmark" / stamp
     )
     output.mkdir(parents=True, exist_ok=False)
+    seeds = STABILITY_SEEDS if suite == "stability" else WING_SEEDS
+    factory = make_stability_sample if suite == "stability" else make_wing_sample
     samples = ([make_sample(name) for name in cases] if suite == "original" else
-               [make_stability_sample(name, seed) for name in cases for seed in STABILITY_SEEDS])
+               [factory(name, seed) for name in cases for seed in seeds])
     metadata = {
         "started_utc": stamp, "source": source_identity(), "criteria": CRITERIA,
         "models": models, "cases": cases, "folds": FOLDS, "repeats": repeats,
-        "suite": suite, "seeds": STABILITY_SEEDS if suite == "stability" else None,
+        "suite": suite, "seeds": seeds if suite != "original" else None,
         "raw_svi_method": "scaled analytic Jacobian; training-relative shape bounds",
         "raw_svi_legacy_method": "original S4 finite-difference calibration",
+        "raw_svi_constrained_method": "scaled SLSQP; sampled density and call-slope constraints",
         "dynamics_objective_deadline_seconds": DYNAMICS_DEADLINE_SECONDS,
         "weights": "uniform IV SSE", "price_unit": "USD per unit", "spread_floor": PRICE_FLOOR,
         "setup": {}, "timing_note": "warm runtime, fresh deterministic parameters each repeat",
@@ -573,6 +612,10 @@ def run_benchmark(output=None, models=None, cases=None, repeats=2, suite="origin
                         "finite grids are not global certificates", "no maturity extrapolation"],
     }
     _save(output / "metadata.json", metadata)
+    archive = output / "run_sources"
+    archive.mkdir()
+    for name in (Path(__file__).name, "_svi_benchmark.py", "_svi_wing_benchmark.py"):
+        (archive / name).write_bytes(Path(__file__).with_name(name).read_bytes())
     snapshots = []
     for sample in samples:
         chain = sample.chain()
@@ -628,7 +671,7 @@ def run_local(local: Locals):
         raise ValueError(local)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, help="fresh directory for all run artifacts")
-    parser.add_argument("--suite", choices=("original", "stability"), default="original")
+    parser.add_argument("--suite", choices=("original", "stability", "wings"), default="original")
     parser.add_argument("--models", nargs="+", choices=AVAILABLE_MODELS)
     parser.add_argument("--repeats", type=int, default=2)
     args = parser.parse_args()

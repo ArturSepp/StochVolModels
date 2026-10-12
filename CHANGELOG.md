@@ -6,6 +6,10 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Added
 
+- Added the opt-in repository-only `raw_svi_constrained` benchmark, with sampled density and
+  call-slope constraints, independent dense acceptance checks and retained rejected starts.
+  Both comparison runners support it and archive their research sources. A separate fixed
+  wing-study suite retains the existing economic screen and default model selection.
 - Added a repository-only historical SPX validation runner using OCA's validated local cache,
   exact observation times and quote provenance. It compares existing research fitters with
   identical interior/wing holdouts, observed forwards/discounts, complete failure accounting,

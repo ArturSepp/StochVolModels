@@ -1,6 +1,7 @@
 """Historical runner contracts without redistributing any observed market data."""
 
 import gzip
+from hashlib import sha256
 import importlib
 import json
 from pathlib import Path
@@ -164,7 +165,11 @@ def test_optional_missing_or_rejected_cache_preserves_every_job(runner, tmp_path
     pytest.importorskip("pyarrow")
     from option_chain_analytics.data import cboe
 
-    monkeypatch.setattr(runner, "source_identity", lambda: {"test": True})
+    source = Path(runner.__file__)
+    hashes = {name: sha256(source.with_name(name).read_bytes()).hexdigest()
+              for name in (source.name, "compare_smile_fitters.py", "_svi_benchmark.py",
+                           "_svi_wing_benchmark.py")}
+    monkeypatch.setattr(runner, "source_identity", lambda: {"runner_sha256": hashes})
     calls = []
 
     def stale(*args, **kwargs):
@@ -180,6 +185,8 @@ def test_optional_missing_or_rejected_cache_preserves_every_job(runner, tmp_path
         jobs = pd.read_csv(output / "jobs.csv")
         assert len(jobs) == 3 and jobs.status.eq("failed").all()
         assert jobs.error.str.contains("cache required" if name == "missing" else "stale").all()
+        for filename, digest in hashes.items():
+            assert sha256((output / "run_sources" / filename).read_bytes()).hexdigest() == digest
     assert len(calls) == 1 and calls[0]["is_use_cache"] is True
     with pytest.raises(ValueError, match="unique calendar dates"):
         runner.run_validation(tmp_path, tmp_path / "duplicate",
