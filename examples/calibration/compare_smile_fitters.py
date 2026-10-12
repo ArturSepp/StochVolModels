@@ -41,11 +41,16 @@ from stochvolmodels.pricers.logsv_pricer import (
     ConstraintsType, LogSVPricer, LogsvModelCalibrationType,
 )
 
-from _svi_benchmark import fit_raw_svi, fit_ssvi, raw_svi
+from _svi_benchmark import fit_raw_svi, fit_raw_svi_legacy, fit_ssvi, raw_svi
 
 
-MODELS = ("approx_logsv", "gmm2", "raw_svi", "ssvi", "logsv", "heston")
+# Keep the original fitter in the default comparison: the bounded candidate's
+# fresh-case convergence gains did not establish acceptable wing stability.
+MODELS = ("approx_logsv", "gmm2", "raw_svi_legacy", "ssvi", "logsv", "heston")
+AVAILABLE_MODELS = (*MODELS, "raw_svi")
 CASES = ("flat", "skewed", "sparse_noisy", "short")
+STABILITY_FAMILIES = ("flat", "left", "right", "short_sparse")
+STABILITY_SEEDS = (301, 302, 303, 304, 305)
 FOLDS = ("interior", "wings")
 PRICE_FLOOR = 0.01
 DYNAMICS_DEADLINE_SECONDS = 75.0
@@ -107,12 +112,15 @@ class Sample:
     z: np.ndarray
     ks: list[np.ndarray]
     ivs: list[np.ndarray]
+    perturbation_seed: int | None = None
 
     def chain(self, mask=None, perturb=False):
         """Select training/test rows; perturbations never change a held-out target."""
         if mask is None:
             mask = np.ones(len(self.z), dtype=bool)
-        rng = np.random.default_rng(20261100 + CASES.index(self.name))
+        seed = (20261100 + CASES.index(self.name) if self.perturbation_seed is None
+                else self.perturbation_seed)
+        rng = np.random.default_rng(seed)
         # Draw the same full-universe shocks for all folds before selecting training rows.
         ivs = [v + rng.normal(0, 0.0005, len(v)) if perturb else v.copy() for v in self.ivs]
         return _quote_chain(self.ttms, [k[mask] for k in self.ks], [v[mask] for v in ivs])
@@ -159,6 +167,40 @@ def make_sample(name):
                 iv += rng.normal(0, 0.001, len(iv))
         ivs.append(iv)
     return Sample(name, ttms, z, ks, ivs)
+
+
+def make_stability_sample(family, seed):
+    """Frozen follow-up cases: new tenors, three-state mixtures and five noise seeds.
+
+    These cases were specified before the raw-SVI conditioning follow-up and are
+    evaluated only after freezing its settings. Reusing them for later tuning
+    would make them development data. The initial S4 cases already have that role.
+    """
+    if family not in STABILITY_FAMILIES or seed not in STABILITY_SEEDS:
+        raise ValueError("Unknown stability family or seed")
+    short = family == "short_sparse"
+    ttms = np.array([5, 12, 25]) / 365 if short else np.array([0.08, 0.3, 0.8])
+    z = np.linspace(-2.5, 2.5, 15 if short else 25)
+    ks = [z * 0.30 * np.sqrt(t) for t in ttms]
+    rng = np.random.default_rng(seed)
+    ivs = []
+    for t, k in zip(ttms, ks):
+        if family == "flat":
+            iv = np.full(len(k), 0.24)
+        else:
+            weights, vols = np.array([0.25, 0.50, 0.25]), np.array([0.50, 0.24, 0.12])
+            drift = np.array([-0.20, 0.02, 0.12]) * (-1 if family == "right" else 1)
+            shifts = np.exp(t * drift)
+            shifts /= weights @ shifts
+            strikes, cps = _forward(t) * np.exp(k), np.where(k < 0, "P", "C")
+            prices = sum(w * black_prices(_forward(t) * s, strikes, t, v, _discount(t), cps)
+                         for w, s, v in zip(weights, shifts, vols))
+            iv = np.array([brentq(
+                lambda v: float(black_prices(_forward(t), strike, t, v, _discount(t), cp))
+                - price, 0.005, 3.0, xtol=1e-13,
+            ) for strike, cp, price in zip(strikes, cps, prices)])
+        ivs.append(iv + rng.normal(0, 0.0005 if family == "flat" else 0.001, len(k)))
+    return Sample(f"{family}_{seed}", ttms, z, ks, ivs, perturbation_seed=seed + 10000)
 
 
 @dataclass
@@ -224,8 +266,9 @@ def fit_model(model, chain):
     ks = [np.log(k / f) for k, f in zip(chain.strikes_ttms, chain.forwards)]
     ivs = [0.5 * (b + a) for b, a in zip(chain.bid_ivs, chain.ask_ivs)]
     times = chain.ttms
-    if model == "raw_svi":
-        fits = [fit_raw_svi(k, v, t) for k, v, t in zip(ks, ivs, times)]
+    if model in ("raw_svi", "raw_svi_legacy"):
+        fitter = fit_raw_svi if model == "raw_svi" else fit_raw_svi_legacy
+        fits = [fitter(k, v, t) for k, v, t in zip(ks, ivs, times)]
         params = [p for p, _ in fits]
 
         def iv_at(k, t):
@@ -407,7 +450,8 @@ def run_job(model, sample, fold, repeats=2):
         row["stage"] = "perturbed_fit"
         perturbed, seconds, log = _timed_fit(model, sample.chain(train_mask, perturb=True))
         evidence.update(perturbed_seconds=seconds, perturbed_log=log,
-                        perturbed_parameters=perturbed.parameters)
+                        perturbed_parameters=perturbed.parameters,
+                        perturbed_optimizer=perturbed.optimizer)
         row["stage"] = "perturbed_diagnostics"
         perturbed_metrics, reports, shifted_prices = evaluate(perturbed, sample, ~train_mask)
         evidence["perturbed"] = reports
@@ -497,19 +541,31 @@ def source_identity():
     }
 
 
-def run_benchmark(output=None, models=MODELS, cases=CASES, repeats=2):
+def run_benchmark(output=None, models=None, cases=None, repeats=2, suite="original"):
     """Run the fixed offline comparison; write every job before the next begins."""
     if repeats < 1:
         raise ValueError("repeats must be positive")
+    if suite not in ("original", "stability"):
+        raise ValueError("Unknown benchmark suite")
+    if models is None:
+        models = MODELS if suite == "original" else ("raw_svi_legacy", "raw_svi")
+    if cases is None:
+        cases = CASES if suite == "original" else STABILITY_FAMILIES
+    if not models or any(m not in AVAILABLE_MODELS for m in models):
+        raise ValueError("Unknown or empty model list")
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     output = Path(output) if output is not None else (
         Path(local_path.get_output_path()) / "smile_fitter_benchmark" / stamp
     )
     output.mkdir(parents=True, exist_ok=False)
-    samples = [make_sample(name) for name in cases]
+    samples = ([make_sample(name) for name in cases] if suite == "original" else
+               [make_stability_sample(name, seed) for name in cases for seed in STABILITY_SEEDS])
     metadata = {
         "started_utc": stamp, "source": source_identity(), "criteria": CRITERIA,
         "models": models, "cases": cases, "folds": FOLDS, "repeats": repeats,
+        "suite": suite, "seeds": STABILITY_SEEDS if suite == "stability" else None,
+        "raw_svi_method": "scaled analytic Jacobian; training-relative shape bounds",
+        "raw_svi_legacy_method": "original S4 finite-difference calibration",
         "dynamics_objective_deadline_seconds": DYNAMICS_DEADLINE_SECONDS,
         "weights": "uniform IV SSE", "price_unit": "USD per unit", "spread_floor": PRICE_FLOOR,
         "setup": {}, "timing_note": "warm runtime, fresh deterministic parameters each repeat",
@@ -572,7 +628,12 @@ def run_local(local: Locals):
         raise ValueError(local)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, help="fresh directory for all run artifacts")
-    return run_benchmark(output=parser.parse_args().output)
+    parser.add_argument("--suite", choices=("original", "stability"), default="original")
+    parser.add_argument("--models", nargs="+", choices=AVAILABLE_MODELS)
+    parser.add_argument("--repeats", type=int, default=2)
+    args = parser.parse_args()
+    return run_benchmark(output=args.output, suite=args.suite, models=args.models,
+                         repeats=args.repeats)
 
 
 if __name__ == "__main__":

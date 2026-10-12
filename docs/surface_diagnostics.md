@@ -180,6 +180,15 @@ Theorems 4.1 and 4.2 on the fitted maturity interval. No maturity extrapolation 
 python examples/calibration/compare_smile_fitters.py
 ```
 
+The opt-in `raw_svi` candidate scales log-moneyness and variance using training observations and supplies
+an analytic optimizer Jacobian. In addition to its original parameter bounds, it restricts
+the smile location to the training midpoint plus or minus twice the observed half-range,
+and the width to 0.05–2 times that half-range. These research restrictions avoid remote,
+weakly identified shapes but can bias fits and do not guarantee stable wings. Exact flat
+input uses the constant-variance limit; noisy input is always fitted. Optimizer evidence
+records failed starts, active bounds and the scaled Jacobian's rank and condition number.
+The flat limit explicitly records that its shape parameters are unidentifiable.
+
 The core-only runner freezes synthetic flat, skewed, sparse/noisy and short-dated observations,
 with separate interior and wing holdouts. All models minimize uniformly weighted training IV
 errors. Native incumbent optimizers and three-start experimental optimizers have different
@@ -196,6 +205,26 @@ Timeouts remain failed jobs. The screen and numerical settings
 live in the runnable source. Its tolerances are research choices, not validated production
 requirements. Synthetic performance does not establish general superiority or authorize
 promotion to the public API. Runtime depends on the machine and system load.
+
+The default comparison retains the original finite-difference raw-SVI calibration under the
+name `raw_svi_legacy`. The bounded candidate completed more fresh jobs but produced a severe
+wing extrapolation failure on one noisy flat case, detected by the diagnostic screen. It
+therefore remains opt-in. The separate stability suite compares both fitters on five
+fixed noise seeds, new maturities, flat smiles and three-state mixture smiles of either
+skew direction. It uses the same economic screen and recomputes both original and perturbed
+surface diagnostics. Its 80 jobs include all failures. The original S4 cases are development
+data for this follow-up; the new cases were specified before development and evaluated after
+freezing the revised settings. Reusing either set for tuning removes its role as fresh evidence.
+These synthetic cases do not replace historical-chain validation.
+
+```console
+python examples/calibration/compare_smile_fitters.py --suite stability
+python examples/calibration/compare_smile_fitters.py --models raw_svi_legacy raw_svi
+```
+
+Use `--output` to select a fresh results directory and `--repeats` to change timing repetitions.
+Each run records the actual source hashes, suite and settings; the earlier benchmark remains
+reproducible from its recorded commit and quote snapshot.
 
 ## See also
 

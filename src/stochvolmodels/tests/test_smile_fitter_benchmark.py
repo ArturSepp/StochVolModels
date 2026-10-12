@@ -98,26 +98,26 @@ def test_constrained_ssvi_interiors_and_long_tenor_refusal(benchmark):
 
 
 @pytest.mark.parametrize("fold", ["interior", "wings"])
-def test_holdouts_do_not_enter_training_or_initial_values(benchmark, fold):
+@pytest.mark.parametrize("model", ["ssvi", "raw_svi"])
+def test_holdouts_do_not_enter_training_or_initial_values(benchmark, fold, model):
     """Changing held-out quotes cannot affect a fit made from the training snapshot."""
     bench, _ = benchmark
     sample = bench.make_sample("skewed")
     mask = sample.training_mask(fold)
     before = sample.chain(mask)
-    params_before = bench.fit_model("ssvi", before).parameters
+    params_before = bench.fit_model(model, before).parameters
     for values in sample.ivs:
         values[~mask] += 0.2
     after = sample.chain(mask)
-    params_after = bench.fit_model("ssvi", after).parameters
-    for key in params_before:
-        np.testing.assert_array_equal(params_before[key], params_after[key])
+    params_after = bench.fit_model(model, after).parameters
+    assert bench._json_safe(params_before) == bench._json_safe(params_after)
     for a, b in zip(before.bid_ivs, after.bid_ivs):
         np.testing.assert_array_equal(a, b)
     assert np.count_nonzero(mask & ~mask) == 0
     assert np.count_nonzero(mask) + np.count_nonzero(~mask) == len(sample.z)
 
 
-@pytest.mark.parametrize("model", ["approx_logsv", "ssvi"])
+@pytest.mark.parametrize("model", ["approx_logsv", "ssvi", "raw_svi"])
 def test_final_reports_reprice_known_flat_target(benchmark, model):
     """The full job recomputes base and perturbed diagnostics on the same holdouts."""
     bench, _ = benchmark
@@ -142,6 +142,96 @@ def test_raw_svi_recovers_nondegenerate_formula(benchmark):
     fitted, evidence = svi.fit_raw_svi(k, target, 1.0)
     np.testing.assert_allclose(np.sqrt(svi.raw_svi(k, fitted)[0]), target, atol=2e-6)
     assert evidence["successful_starts"] > 0
+
+
+@pytest.mark.parametrize("rho,b", [(-0.8, 0.4), (0.7, 0.001), (0.0, 0.0)])
+def test_scaled_optimizer_jacobian_against_independent_raw_formula(benchmark, rho, b):
+    """Parameter derivatives agree with finite differences in the original raw form."""
+    _, svi = benchmark
+    z = np.linspace(-1.5, 1.5, 19)
+    p = np.array([0.6, b, rho, 0.13, 0.3])
+    target = np.full(len(z), 1.1)
+
+    def independent(p):
+        v, slope, corr, shift, width = p
+        a = v - slope * width * np.sqrt(1 - corr**2)
+        x = z - shift
+        return np.sqrt(a + slope * (corr * x + np.sqrt(x*x + width*width))) - target
+
+    analytic = svi._scaled_svi_residual(p, z, target, jacobian=True)
+    steps = np.eye(5) * 1e-6
+    numerical = np.column_stack([(independent(p + h) - independent(p - h)) / 2e-6
+                                 for h in steps])
+    np.testing.assert_allclose(analytic, numerical, rtol=1e-6, atol=2e-10)
+    np.testing.assert_allclose(svi._scaled_svi_residual(p, z, target), independent(p),
+                               rtol=1e-13, atol=1e-15)
+
+
+def test_exact_flat_limit_and_training_order_invariance(benchmark):
+    """Flat shape is explicitly unidentified; noisy estimates are reproducible by quote set."""
+    bench, svi = benchmark
+    k = np.linspace(-0.2, 0.2, 11)
+    for ttm in (0.01, 1.0, 3.0):
+        params, evidence = svi.fit_raw_svi(k, np.full(len(k), 0.28), ttm)
+        assert params.b == 0 and params.a == pytest.approx(ttm * 0.28**2)
+        assert evidence["method"] == "exact_flat_limit"
+        assert evidence["jacobian_condition"] is None
+        np.testing.assert_allclose(svi.raw_svi(np.array([-5, 0, 5]), params)[0], ttm * 0.28**2)
+    sample = bench.make_sample("flat")
+    mask = sample.training_mask("interior")
+    chain = sample.chain(mask, perturb=True)
+    values = (chain.bid_ivs[0] + chain.ask_ivs[0]) / 2
+    k = sample.ks[0][mask]
+    before, evidence = svi.fit_raw_svi(k, values, sample.ttms[0])
+    after, _ = svi.fit_raw_svi(k[::-1], values[::-1], sample.ttms[0])
+    assert before == after
+    assert evidence["successful_starts"] > 0
+    assert evidence["nfev_total"] >= evidence["nfev_selected"]
+    assert 0 < evidence["jacobian_rank"] <= 5
+    # Independently recomputed IV SSE is in original decimal-IV units.
+    x = k - before.m
+    pred = np.sqrt((before.a + before.b * (before.rho*x
+                                          + np.sqrt(x*x + before.sigma**2))) / sample.ttms[0])
+    assert evidence["training_sse"] == pytest.approx(np.sum((pred - values)**2), abs=1e-15)
+
+
+@pytest.mark.parametrize("bad", ["strike", "duplicate", "shape", "iv", "time_nan", "time_inf"])
+def test_raw_svi_rejects_unusable_training_data(benchmark, bad):
+    """Bad calibration domains fail explicitly rather than passing finite subsets."""
+    _, svi = benchmark
+    k, iv, ttm = np.linspace(-0.2, 0.2, 7), np.full(7, 0.3), 0.4
+    if bad == "strike":
+        k[2] = np.nan
+    elif bad == "duplicate":
+        k[:] = 0
+    elif bad == "shape":
+        iv = iv[:-1]
+    elif bad == "iv":
+        iv[2] = -0.1
+    else:
+        ttm = np.nan if bad == "time_nan" else np.inf
+    with pytest.raises(ValueError, match="distinct finite"):
+        svi.fit_raw_svi(k, iv, ttm)
+
+
+def test_stability_quotes_and_shocks_are_frozen_and_training_only(benchmark):
+    """No new fitter is evaluated here; verify the predeclared experiment's inputs."""
+    bench, _ = benchmark
+    sample = bench.make_stability_sample("flat", 301)
+    assert len(sample.z) == 25
+    np.testing.assert_array_equal(sample.ttms, [0.08, 0.3, 0.8])
+    expected = np.random.default_rng(301)
+    for t, k, iv in zip(sample.ttms, sample.ks, sample.ivs):
+        np.testing.assert_array_equal(k, sample.z * 0.30 * np.sqrt(t))
+        np.testing.assert_array_equal(iv, 0.24 + expected.normal(0, 0.0005, 25))
+    shocks = np.random.default_rng(10301)
+    mask = sample.training_mask("wings")
+    train = sample.chain(mask, perturb=True)
+    for i, iv in enumerate(sample.ivs):
+        expected_iv = (iv + shocks.normal(0, 0.0005, 25))[mask]
+        np.testing.assert_allclose(train.bid_ivs[i], expected_iv - 0.005, rtol=0, atol=0)
+    for actual, original in zip(sample.chain().bid_ivs, sample.ivs):
+        np.testing.assert_array_equal(actual, original - 0.005)
 
 
 def test_nonfinite_predictions_and_fit_failures_remain_visible(benchmark, monkeypatch):

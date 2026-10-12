@@ -26,6 +26,10 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Fixed
 
+- Improved the repository-only raw-SVI benchmark's flat/noisy calibration with dimensionless
+  coordinates, analytic derivatives and explicit training-relative shape bounds. Retained the
+  original fitter for paired comparisons and added a frozen multi-seed stability suite;
+  this does not add a public fitter API or certify wing stability.
 - `error_l1` in `stochvolmodels.pricers.rough_logsv.rough_kernel` no longer raises `AttributeError`
   with `method="trapezoidal"`, `"exact - trapezoidal"` or `"reparametrized trapezoidal"`, and
   `exp_underflow` no longer raises it on integer arrays. They called `np.trapz` and `np.float`,
