@@ -333,6 +333,26 @@ are unchanged.
 python examples/calibration/compare_smile_fitters.py --models raw_svi_price_seeded raw_svi_price_regularized
 ```
 
+The opt-in `raw_svi_shared_rho` candidate jointly fits all training expiries with one
+shared raw-SVI rho and separate minimum variance, b, m and sigma per expiry: $4N+1$
+parameters for $N$ expiries. This is an experimental restriction on raw SVI. Its
+loss is uniform decimal-IV SSE across all training quotes, divided by one common
+training-IV scale squared for optimization; per-expiry scaling does not change quote
+weights. Three joint starts use rho values -0.6, 0 and 0.6, with the same local bounds,
+SLSQP budget and sampled strike checks as independent constrained raw SVI. An entirely
+flat surface uses the exact flat limit, whose shape parameters are unidentifiable.
+
+Only successful, bounded, dense-check-passing starts enter selection by recomputed
+physical IV SSE. Evidence retains joint coordinates, all starts and each expiry's
+geometry and checks. Predictions require a fitted tenor and its supported strike
+domain. Sharing rho can reduce shape flexibility, but does not establish stable wings,
+calendar consistency or accurate prices. This candidate supplies no price prior or
+maturity interpolation and leaves the default models and acceptance screen unchanged.
+
+```console
+python examples/calibration/compare_smile_fitters.py --models raw_svi_constrained raw_svi_shared_rho ssvi
+```
+
 The `wings` suite defaults to the original, bounded and constrained IV-objective SVI fitters
 on 120 jobs with separately fixed seeds 401–405, tenors and mixture specifications.
 Earlier synthetic and historical cases
@@ -355,7 +375,7 @@ is recorded as a failure, without rebuilding it or falling back to raw data.
 
 Select the bounded or constrained research candidates explicitly with `--models raw_svi`,
 `--models raw_svi_constrained`, `--models raw_svi_price`, `--models raw_svi_price_seeded`
-or `--models raw_svi_price_regularized`;
+`--models raw_svi_price_regularized` or `--models raw_svi_shared_rho`;
 names can be combined with the
 default comparators. Constrained candidates derive their grids from training strikes only.
 If the complete observed strike domain extends beyond that grid, evaluation is refused;

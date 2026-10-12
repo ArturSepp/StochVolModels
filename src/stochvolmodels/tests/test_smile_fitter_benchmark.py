@@ -99,7 +99,8 @@ def test_constrained_ssvi_interiors_and_long_tenor_refusal(benchmark):
 
 @pytest.mark.parametrize("fold", ["interior", "wings"])
 @pytest.mark.parametrize("model", ["ssvi", "raw_svi", "raw_svi_constrained", "raw_svi_price",
-                                 "raw_svi_price_seeded", "raw_svi_price_regularized"])
+                                 "raw_svi_price_seeded", "raw_svi_price_regularized",
+                                 "raw_svi_shared_rho"])
 def test_holdouts_do_not_enter_training_or_initial_values(benchmark, fold, model):
     """Changing held-out quotes cannot affect a fit made from the training snapshot."""
     bench, _ = benchmark
@@ -486,12 +487,12 @@ def test_price_objective_selects_price_best_start_without_flat_iv_shortcut(bench
 
 
 @pytest.mark.parametrize("model", ["raw_svi_constrained", "raw_svi_price_seeded",
-                                 "raw_svi_price_regularized"])
+                                 "raw_svi_price_regularized", "raw_svi_shared_rho"])
 def test_constrained_prediction_domain_is_enforced_and_reported(benchmark, model):
     bench, _ = benchmark
     sample = bench.make_sample("flat")
     fitted = bench.fit_model(model, sample.chain())
-    low, high = fitted.optimizer[0]["wing_check"]["k_domain"]
+    _, low, high = fitted.domains[0]
     t = sample.ttms[0]
     edge = bench._quote_chain(np.array([t]), [np.array([low, 0., high])],
                              [np.full(3, .28)])

@@ -79,7 +79,7 @@ def test_historical_prices_use_observed_forward_and_discount(runner, chain):
 
 @pytest.mark.parametrize("fold", ["interior", "wings"])
 @pytest.mark.parametrize("model", ["approx_logsv", "raw_svi_price", "raw_svi_price_seeded",
-                                 "raw_svi_price_regularized"])
+                                 "raw_svi_price_regularized", "raw_svi_shared_rho"])
 def test_held_out_quotes_never_enter_calibration(runner, chain, fold, model):
     train, held = runner.fold_masks(chain, fold)
     assert all(not (a & b).any() and (a | b).all() for a, b in zip(train, held))

@@ -42,6 +42,7 @@ from stochvolmodels.pricers.logsv_pricer import (
 )
 
 from _svi_benchmark import fit_raw_svi, fit_raw_svi_legacy, fit_ssvi, raw_svi
+from _svi_shared_benchmark import fit_raw_svi_shared_rho
 from _svi_wing_benchmark import fit_raw_svi_constrained, svi_prediction_domain
 
 
@@ -49,7 +50,7 @@ from _svi_wing_benchmark import fit_raw_svi_constrained, svi_prediction_domain
 # fresh-case convergence gains did not establish acceptable wing stability.
 MODELS = ("approx_logsv", "gmm2", "raw_svi_legacy", "ssvi", "logsv", "heston")
 AVAILABLE_MODELS = (*MODELS, "raw_svi", "raw_svi_constrained", "raw_svi_price",
-                    "raw_svi_price_seeded", "raw_svi_price_regularized")
+                    "raw_svi_price_seeded", "raw_svi_price_regularized", "raw_svi_shared_rho")
 CASES = ("flat", "skewed", "sparse_noisy", "short")
 STABILITY_FAMILIES = ("flat", "left", "right", "short_sparse")
 STABILITY_SEEDS = (301, 302, 303, 304, 305)
@@ -319,6 +320,18 @@ def fit_model(model, chain):
     ks = [np.log(k / f) for k, f in zip(chain.strikes_ttms, chain.forwards)]
     ivs = [0.5 * (b + a) for b, a in zip(chain.bid_ivs, chain.ask_ivs)]
     times = chain.ttms
+    if model == "raw_svi_shared_rho":
+        params, evidence = fit_raw_svi_shared_rho(ks, ivs, times)
+        domains = tuple((float(t), *check["k_domain"])
+                        for t, check in zip(times, evidence["wing_checks"]))
+
+        def iv_at(k, t):
+            index = _slice_index(times, t)
+            if not svi_prediction_domain(k, domains[index][1:])["supported"]:
+                raise ValueError("Requested coordinates outside SVI prediction domain")
+            return np.sqrt(raw_svi(k, params[index])[0] / t)
+
+        return Fitted(_iv_prediction(iv_at), False, [asdict(p) for p in params], evidence, domains)
     raw_fitters = {"raw_svi": fit_raw_svi, "raw_svi_legacy": fit_raw_svi_legacy,
                    "raw_svi_constrained": fit_raw_svi_constrained,
                    "raw_svi_price": fit_raw_svi_constrained,
@@ -610,7 +623,8 @@ def source_identity():
     root = Path(__file__).resolve().parents[2]
     paths = sorted((root / "src/stochvolmodels").rglob("*.py"))
     paths += [Path(__file__), Path(__file__).with_name("_svi_benchmark.py"),
-              Path(__file__).with_name("_svi_wing_benchmark.py")]
+              Path(__file__).with_name("_svi_wing_benchmark.py"),
+              Path(__file__).with_name("_svi_shared_benchmark.py")]
     return {
         "commit": subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=root, text=True,
@@ -658,6 +672,7 @@ def run_benchmark(output=None, models=None, cases=None, repeats=2, suite="origin
         "raw_svi_price_method": "same constraints; mean squared half-spread price residuals",
         "raw_svi_price_seeded_method": "same price loss; fourth start from constrained IV fit",
         "raw_svi_price_regularized_method": "seeded price loss plus fixed-scale training-IV prior",
+        "raw_svi_shared_rho_method": "joint uniform IV SSE; one rho and four parameters per expiry",
         "constrained_prediction_domain": "reject outside training midpoint +/- twice half-range",
         "dynamics_objective_deadline_seconds": DYNAMICS_DEADLINE_SECONDS,
         "weights": "uniform IV SSE; price variants: half-spread MSE; regularized adds IV prior",
@@ -669,7 +684,8 @@ def run_benchmark(output=None, models=None, cases=None, repeats=2, suite="origin
     _save(output / "metadata.json", metadata)
     archive = output / "run_sources"
     archive.mkdir()
-    for name in (Path(__file__).name, "_svi_benchmark.py", "_svi_wing_benchmark.py"):
+    for name in (Path(__file__).name, "_svi_benchmark.py", "_svi_wing_benchmark.py",
+                 "_svi_shared_benchmark.py"):
         (archive / name).write_bytes(Path(__file__).with_name(name).read_bytes())
     snapshots = []
     for sample in samples:

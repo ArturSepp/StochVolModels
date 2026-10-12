@@ -59,6 +59,7 @@ CONVENTIONS = {
     "objective": "uniform IV SSE; price variants: half-spread MSE; regularized adds IV prior",
     "regularized_price_prior": "81 uniform training-domain IV departures, fixed scale 0.005",
     "seeded_price_budget": "three constrained IV starts, then four price starts; no IV fallback",
+    "shared_rho_iv": "joint uniform IV SSE; one rho and four parameters per expiry; three starts",
     "constrained_prediction_domain": "reject outside training midpoint +/- twice half-range",
     "timing": "single elapsed fit; may include JIT; not a warm runtime comparison",
     "intermediate_maturities": "not checked; all models evaluated at observed expiries only",
@@ -394,7 +395,7 @@ def source_identity():
     result["runner_sha256"] = {
         name: sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
         for name in (Path(__file__).name, "compare_smile_fitters.py", "_svi_benchmark.py",
-                     "_svi_wing_benchmark.py")
+                     "_svi_wing_benchmark.py", "_svi_shared_benchmark.py")
     }
     return result
 
@@ -469,7 +470,9 @@ half-spread price error. raw_svi_price_seeded adds a constrained training-IV fit
 initialize a fourth price start; its runtime includes both stages and it cannot return
 the IV seed as a fallback. raw_svi_price_regularized adds a fixed IV departure penalty
 from that seed on 81 uniform training-domain points (scale 0.005 decimal IV); both
-optimization and start selection use price MSE plus this penalty. All constrained SVI
+optimization and start selection use price MSE plus this penalty. raw_svi_shared_rho
+fits uniform IV SSE jointly with one rho and four parameters per expiry, without a price prior.
+All constrained SVI
 models reject any requested observed
 strike outside their training-derived constraint domains; refusals retain parameters
 and quote counts and remain failed jobs. Bounds are never widened from held-out data.</p>
@@ -496,7 +499,8 @@ def run_validation(input_root=None, output=None, dates=DATES, days=DAYS,
         raise ValueError("maturity targets must be positive integer days")
     if (not models or len(set(models)) != len(models)
             or set(models) - {*MODELS, "raw_svi", "raw_svi_constrained", "raw_svi_price",
-                              "raw_svi_price_seeded", "raw_svi_price_regularized"}):
+                              "raw_svi_price_seeded", "raw_svi_price_regularized",
+                              "raw_svi_shared_rho"}):
         raise ValueError("provide unique supported models")
     if carry_model not in ("unspecified", "proportional"):
         raise ValueError("unsupported carry declaration")
@@ -624,7 +628,8 @@ def run_local(local: Locals = Locals.VALIDATE):
     parser.add_argument("--days", nargs="+", type=int, default=DAYS)
     parser.add_argument("--models", nargs="+",
                         choices=(*MODELS, "raw_svi", "raw_svi_constrained", "raw_svi_price",
-                                 "raw_svi_price_seeded", "raw_svi_price_regularized"),
+                                 "raw_svi_price_seeded", "raw_svi_price_regularized",
+                                 "raw_svi_shared_rho"),
                         default=MODELS)
     parser.add_argument("--carry-model", choices=("unspecified", "proportional"),
                         default="unspecified")
