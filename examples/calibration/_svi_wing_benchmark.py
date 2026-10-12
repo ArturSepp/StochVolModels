@@ -19,6 +19,8 @@ OPTIMIZATION_POINTS = 801
 VALIDATION_POINTS = 4001
 PRICE_SPREAD_FLOOR = 0.01
 DOMAIN_ROUNDOFF = 1e-12
+IV_ANCHOR_SCALE = 0.005
+IV_ANCHOR_POINTS = 81
 
 
 def svi_prediction_domain(k, bounds):
@@ -66,6 +68,14 @@ def _spread_price_objective(p, z, target, k, ttm, vol, quotes):
     return float(np.mean(residual**2)), 2 * jac.T @ residual / len(k)
 
 
+def _iv_anchor_objective(p, z, reference_iv, vol):
+    """Fixed-scale IV departure from a training-only reference, with gradient."""
+    zero = np.zeros_like(z)
+    residual = (vol * _scaled_svi_residual(p, z, zero) - reference_iv) / IV_ANCHOR_SCALE
+    jac = vol / IV_ANCHOR_SCALE * _scaled_svi_residual(p, z, zero, jacobian=True)
+    return float(np.mean(residual**2)), 2 * jac.T @ residual / len(z)
+
+
 def svi_wing_values(k, params):
     """Return unclipped density factor and call slope divided by discount.
 
@@ -100,18 +110,23 @@ def check_svi_wings(k, params):
                 scope="sampled strike domain; no calendar or global certificate")
 
 
-def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None, iv_seed=False):
+def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None, iv_seed=False, iv_anchor=False):
     """Fit IV SSE or half-spread price MSE under finite-grid strike constraints.
 
     Parameters use the same positive-minimum and training-relative bounds as
     the bounded research candidate. Three independent SLSQP starts receive no
     held-out data. Unsuccessful or dense-check-infeasible solutions are rejected
     before objective selection. Optional price_quotes contains training bid, ask,
-    optiontypes, forward and discount; IVs then supply scaling and starts only.
+    optiontypes, forward and discount; IVs then supply scaling and starts.
     With iv_seed=True, a constrained training-IV fit supplies a fourth price start;
     its cost and evidence are retained. It must converge again on the price loss.
+    With iv_anchor=True, require that seed and add mean squared IV departure from
+    its curve on 81 uniform training-domain points, divided by fixed 0.005 squared.
+    Optimization and accepted-start selection then use the combined loss.
     Exhaustion is a failed fit, not a flat fallback. This is a repository-only helper.
     """
+    if iv_anchor and (not iv_seed or price_quotes is None):
+        raise ValueError("The IV anchor requires an IV seed and price quotes")
     if iv_seed and price_quotes is None:
         raise ValueError("The training-IV seed requires price quotes")
     k, iv = np.asarray(k, dtype=float), np.asarray(iv, dtype=float)
@@ -147,6 +162,9 @@ def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None, iv_seed=False):
     def objective(p):
         if price_quotes is not None:
             value, gradient = _spread_price_objective(p, z, target, k, ttm, vol, price_quotes)
+            if iv_anchor:
+                penalty, derivative = _iv_anchor_objective(p, anchor_z, reference_iv, vol)
+                value, gradient = value + penalty, gradient + derivative
             return value / price_scale, gradient / price_scale
         residual = _scaled_svi_residual(p, z, target)
         jac = _scaled_svi_residual(p, z, target, jacobian=True)
@@ -211,6 +229,15 @@ def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None, iv_seed=False):
         geometry["iv_seed"] = dict(parameters=vars(seed_params), optimizer=seed_evidence)
         geometry["seed_nfev_total"] = seed_nfev
 
+    if iv_anchor:
+        anchor_grid = np.linspace(grid[0], grid[-1], IV_ANCHOR_POINTS)
+        anchor_z = (anchor_grid - center) / scale
+        reference_iv = np.sqrt(raw_svi(anchor_grid, seed_params)[0] / ttm)
+        geometry["objective"] = "half_spread_price_mse_plus_iv_anchor_mse"
+        geometry["iv_anchor"] = dict(scale=IV_ANCHOR_SCALE, grid=anchor_grid.tolist(),
+                                     reference_iv=reference_iv.tolist(), weight=1.0,
+                                     rule="fixed before evaluation; training-IV reference only")
+
     attempts, accepted = [], []
     for index, (rho, start) in enumerate(starts):
         result = minimize(objective, start, method="SLSQP", jac=True,
@@ -225,12 +252,18 @@ def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None, iv_seed=False):
         sse = float(np.sum((np.sqrt(raw_svi(k, params)[0] / ttm) - iv)**2))
         score = (sse if price_quotes is None else
                  _spread_price_objective(result.x, z, target, k, ttm, vol, price_quotes)[0])
+        if iv_anchor:
+            price_score = score
+            anchor_score = _iv_anchor_objective(result.x, anchor_z, reference_iv, vol)[0]
+            score += anchor_score
         valid = bool(valid and np.isfinite(score))
         attempts.append(dict(start_rho=rho, success=bool(result.success), accepted=valid,
                              status=int(result.status), message=str(result.message),
                              nfev=int(result.nfev), nit=int(result.nit), training_sse=sse,
                              training_objective=score,
                              scaled_parameters=result.x.tolist(), wing_check=check))
+        if iv_anchor:
+            attempts[-1].update(price_objective=price_score, anchor_objective=anchor_score)
         if iv_seed:
             attempts[-1].update(start_kind="fixed" if index < 3 else "training_iv_seed",
                                 initial_scaled_parameters=start.tolist())
@@ -243,6 +276,10 @@ def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None, iv_seed=False):
     if iv_seed:
         geometry["price_nfev_total"] = price_nfev
     method = "scaled_slsqp_finite_wing_constraints" + ("_iv_seed" if iv_seed else "")
+    if iv_anchor:
+        method += "_iv_anchor"
+        geometry.update(price_objective=attempts[selected]["price_objective"],
+                        anchor_objective=attempts[selected]["anchor_objective"])
     return fit, dict(method=method,
                      training_sse=attempts[selected]["training_sse"], training_objective=score,
                      starts=attempts, selected_start=selected,

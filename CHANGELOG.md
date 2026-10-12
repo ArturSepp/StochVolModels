@@ -6,6 +6,10 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Added
 
+- Added opt-in repository-only `raw_svi_price_regularized`: the seeded price benchmark
+  with a fixed training-IV anchor across its existing prediction domain. Optimization
+  and start selection use the combined loss, with separate price/anchor evidence and
+  unchanged failure gates. Both comparison runners support it; defaults are unchanged.
 - Added opt-in repository-only `raw_svi_price_seeded`: a constrained training-IV fit
   supplies a fourth price-objective start, with seed evidence and both stages' evaluation
   costs retained. The price refit must pass the existing convergence and dense shape gates;

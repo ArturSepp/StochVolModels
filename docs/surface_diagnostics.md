@@ -304,6 +304,35 @@ price candidate, benchmark defaults, prediction domains and economic screen are 
 python examples/calibration/compare_smile_fitters.py --models raw_svi_price raw_svi_price_seeded
 ```
 
+The opt-in `raw_svi_price_regularized` candidate uses the same IV seed and four starts,
+and adds a training-only IV anchor to the price loss. Let $\sigma_0(k)$ be the constrained
+training-IV fit and $\sigma(k)$ the candidate's decimal Black IV. On $M=81$ equally
+spaced coordinates $k_j$ across the existing training-derived prediction domain, it uses
+
+$$
+Q_{\mathrm{anchor}}=\frac{1}{M}\sum_{j=1}^{M}
+\left(\frac{\sigma(k_j)-\sigma_0(k_j)}{0.005}\right)^2,
+\qquad Q_{\mathrm{combined}}=Q_{\mathrm{price}}+Q_{\mathrm{anchor}}.
+$$
+
+This fixed research choice makes a root-mean-square IV departure of 0.005 cost one
+squared half-spread price unit. Neither its strength nor its grid uses evaluation quotes.
+It penalizes departures across the supported domain, including beyond training strikes;
+those wing reference values are extrapolations of the IV fit, not additional observations.
+The prior can stabilize weakly identified shapes but can also bias premium fits or inherit
+an unstable IV anchor. It is not a confidence band or an arbitrage certificate.
+
+Both terms use analytic gradients and the same positive optimizer normalization as the
+price loss. Successful, bounded, dense-check-passing starts are selected by their
+recomputed combined loss. Evidence retains the grid, reference IVs, fixed scale, both
+objective components and all seed/refit costs. There is no IV fallback or extra maturity
+support. This remains a repository-only experiment; defaults and acceptance criteria
+are unchanged.
+
+```console
+python examples/calibration/compare_smile_fitters.py --models raw_svi_price_seeded raw_svi_price_regularized
+```
+
 The `wings` suite defaults to the original, bounded and constrained IV-objective SVI fitters
 on 120 jobs with separately fixed seeds 401–405, tenors and mixture specifications.
 Earlier synthetic and historical cases
@@ -325,7 +354,8 @@ The report records when source-fingerprint checking is unavailable. A missing or
 is recorded as a failure, without rebuilding it or falling back to raw data.
 
 Select the bounded or constrained research candidates explicitly with `--models raw_svi`,
-`--models raw_svi_constrained`, `--models raw_svi_price` or `--models raw_svi_price_seeded`;
+`--models raw_svi_constrained`, `--models raw_svi_price`, `--models raw_svi_price_seeded`
+or `--models raw_svi_price_regularized`;
 names can be combined with the
 default comparators. Constrained candidates derive their grids from training strikes only.
 If the complete observed strike domain extends beyond that grid, evaluation is refused;
@@ -353,7 +383,8 @@ It does not use a synthetic forward or discount curve for historical evaluation.
 Each date has an in-sample fit, an interior holdout of every third interior strike, and
 a wing holdout of the outer 20% of strikes on each side, rounded down. Every expiry must
 retain at least eight training quotes. All models use the same split. The price candidates
-use their half-spread price objective; other models use uniformly weighted training IV
+use their half-spread price objective, with the fixed IV anchor added for the regularized
+variant; other models use uniformly weighted training IV
 errors. The holdouts condition on forwards, discounts and quote
 selection obtained from the complete contemporaneous OCA snapshot. They therefore test
 smile interpolation/extrapolation, not the entire quote-to-forward estimation procedure.

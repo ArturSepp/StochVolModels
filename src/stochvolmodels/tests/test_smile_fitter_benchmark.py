@@ -99,7 +99,7 @@ def test_constrained_ssvi_interiors_and_long_tenor_refusal(benchmark):
 
 @pytest.mark.parametrize("fold", ["interior", "wings"])
 @pytest.mark.parametrize("model", ["ssvi", "raw_svi", "raw_svi_constrained", "raw_svi_price",
-                                 "raw_svi_price_seeded"])
+                                 "raw_svi_price_seeded", "raw_svi_price_regularized"])
 def test_holdouts_do_not_enter_training_or_initial_values(benchmark, fold, model):
     """Changing held-out quotes cannot affect a fit made from the training snapshot."""
     bench, _ = benchmark
@@ -485,7 +485,8 @@ def test_price_objective_selects_price_best_start_without_flat_iv_shortcut(bench
             wing.fit_raw_svi_constrained(k, iv, t, price_quotes=dict(quotes, **{name: value}))
 
 
-@pytest.mark.parametrize("model", ["raw_svi_constrained", "raw_svi_price_seeded"])
+@pytest.mark.parametrize("model", ["raw_svi_constrained", "raw_svi_price_seeded",
+                                 "raw_svi_price_regularized"])
 def test_constrained_prediction_domain_is_enforced_and_reported(benchmark, model):
     bench, _ = benchmark
     sample = bench.make_sample("flat")
@@ -514,7 +515,9 @@ def test_constrained_prediction_domain_is_enforced_and_reported(benchmark, model
 
 
 @pytest.mark.parametrize("price_success", [True, False])
-def test_training_iv_seed_is_refitted_and_accounted(benchmark, monkeypatch, price_success):
+@pytest.mark.parametrize("iv_anchor", [False, True])
+def test_training_iv_seed_is_refitted_and_accounted(
+        benchmark, monkeypatch, price_success, iv_anchor):
     """The IV solution supplies a fourth start, never an accepted price fallback."""
     from types import SimpleNamespace
 
@@ -543,9 +546,11 @@ def test_training_iv_seed_is_refitted_and_accounted(benchmark, monkeypatch, pric
     monkeypatch.setattr(wing, "minimize", solver)
     if not price_success:
         with pytest.raises(RuntimeError, match="All constrained SVI starts failed"):
-            wing.fit_raw_svi_constrained(k, iv, t, price_quotes=quotes, iv_seed=True)
+            wing.fit_raw_svi_constrained(k, iv, t, price_quotes=quotes,
+                                         iv_seed=True, iv_anchor=iv_anchor)
     else:
-        _, evidence = wing.fit_raw_svi_constrained(k, iv, t, price_quotes=quotes, iv_seed=True)
+        _, evidence = wing.fit_raw_svi_constrained(k, iv, t, price_quotes=quotes,
+                                                 iv_seed=True, iv_anchor=iv_anchor)
         assert evidence["selected_start"] == 3
         assert evidence["training_objective"] < 1e-18
         assert evidence["starts"][3]["start_kind"] == "training_iv_seed"
@@ -578,7 +583,8 @@ def test_price_seed_requires_prices_and_handles_flat_iv_limit(benchmark):
 
 
 @pytest.mark.parametrize("ttm", [.08, .25])
-def test_seeded_price_recovers_independent_stress_smile(benchmark, ttm):
+@pytest.mark.parametrize("iv_anchor", [False, True])
+def test_seeded_price_recovers_independent_stress_smile(benchmark, ttm, iv_anchor):
     """A high-volatility skew at index scale is checked with independent VIP premiums."""
     import vanilla_option_pricers as vip
 
@@ -593,14 +599,90 @@ def test_seeded_price_recovers_independent_stress_smile(benchmark, ttm):
     half = .03*mid
     quotes = dict(forward=forward, discount=discount, optiontypes=cp,
                   bid=mid-half, ask=mid+half)
-    p, evidence = wing.fit_raw_svi_constrained(k, iv, ttm, price_quotes=quotes, iv_seed=True)
+    p, evidence = wing.fit_raw_svi_constrained(k, iv, ttm, price_quotes=quotes,
+                                             iv_seed=True, iv_anchor=iv_anchor)
     x = k-p.m
     fitted_iv = np.sqrt((p.a+p.b*(p.rho*x+np.sqrt(x*x+p.sigma**2)))/ttm)
     premium = np.array([vip.compute_bsm_vanilla_price(forward, s, ttm, v, c, discount)
                         for s, v, c in zip(strikes, fitted_iv, cp)])
     loss = np.mean(((premium-mid)/np.maximum(half, .01))**2)
     assert loss < 1e-7
-    assert evidence["training_objective"] == pytest.approx(loss, abs=1e-12)
+    component = "price_objective" if iv_anchor else "training_objective"
+    assert evidence[component] == pytest.approx(loss, abs=1e-12)
+    if iv_anchor:
+        assert evidence["anchor_objective"] < 1e-7
     np.testing.assert_allclose(fitted_iv, iv, atol=2e-5)
     assert len(evidence["starts"]) == 4 and evidence["wing_check"]["passed"]
     assert "raw_svi_price_seeded" in bench.AVAILABLE_MODELS
+    assert "raw_svi_price_regularized" in bench.AVAILABLE_MODELS
+    assert "raw_svi_price_regularized" not in bench.MODELS
+
+
+def test_iv_anchor_loss_and_gradient_against_raw_formula(benchmark):
+    """Independent raw parameters and finite differences check the IV prior."""
+    wing = importlib.import_module("_svi_wing_benchmark")
+    z, vol = np.linspace(-2, 2, 81), .37
+    reference = .36 + .015*z*z
+    p = np.array([.8, .23, -.4, .2, .7])
+
+    def reference_loss(q):
+        a = vol**2*(q[0]-q[1]*q[4]*np.sqrt(1-q[2]**2))
+        b, x = vol**2*q[1], z-q[3]
+        iv = np.sqrt(a+b*(q[2]*x+np.hypot(x, q[4])))
+        return np.mean(((iv-reference)/.005)**2)
+
+    value, gradient = wing._iv_anchor_objective(p, z, reference, vol)
+    expected = []
+    for j in range(5):
+        step = np.zeros(5)
+        step[j] = 1e-6
+        expected.append((reference_loss(p+step)-reference_loss(p-step))/2e-6)
+    assert value == pytest.approx(reference_loss(p), rel=2e-13)
+    np.testing.assert_allclose(gradient, expected, rtol=2e-7, atol=1e-6)
+
+
+def test_regularized_selection_and_evidence_use_combined_loss(benchmark, monkeypatch):
+    """A price-perfect result can lose to a better combined IV/price compromise."""
+    from types import SimpleNamespace
+
+    bench, _ = benchmark
+    wing = importlib.import_module("_svi_wing_benchmark")
+    k, iv, t = np.linspace(-.2, .2, 21), np.full(21, .28), .3
+    cp = np.where(k < 0, "P", "C")
+    mid = bench.black_prices(100., 100*np.exp(k), t, np.full(21, .29), .98, cp)
+    quotes = dict(forward=100., discount=.98, optiontypes=cp,
+                  bid=np.maximum(mid-.2, 0), ask=mid+.2)
+    calls = []
+
+    def solver(objective, start, **kwargs):
+        p = np.array([(.29/.28)**2 if len(calls) < 3 else 1., 0., 0., 0., 1.])
+        calls.append(objective(p)[0])
+        return SimpleNamespace(x=p, fun=calls[-1], success=True, status=0,
+                               message="controlled combined loss", nfev=1, nit=1)
+
+    monkeypatch.setattr(wing, "minimize", solver)
+    with pytest.raises(ValueError, match="requires.*seed.*price"):
+        wing.fit_raw_svi_constrained(k, iv, t, iv_anchor=True)
+    with pytest.raises(ValueError, match="requires.*seed.*price"):
+        wing.fit_raw_svi_constrained(k, iv, t, price_quotes=quotes, iv_anchor=True)
+    _, evidence = wing.fit_raw_svi_constrained(
+        k, iv, t, price_quotes=quotes, iv_seed=True, iv_anchor=True)
+    assert evidence["selected_start"] == 3
+    assert evidence["objective"] == "half_spread_price_mse_plus_iv_anchor_mse"
+    anchor = evidence["iv_anchor"]
+    assert anchor["scale"] == .005
+    np.testing.assert_allclose(anchor["grid"], np.linspace(-.4, .4, 81))
+    np.testing.assert_allclose(anchor["reference_iv"], .28)
+    assert evidence["seed_nfev_total"] == 0 and evidence["nfev_total"] == 4
+    first, last = evidence["starts"][0], evidence["starts"][3]
+    assert first["price_objective"] < 1e-20
+    assert first["anchor_objective"] == pytest.approx(4.)
+    assert last["anchor_objective"] < 1e-20
+    assert 0 < last["price_objective"] < 4
+    for call, attempt in zip(calls, evidence["starts"]):
+        total = attempt["price_objective"] + attempt["anchor_objective"]
+        assert attempt["training_objective"] == pytest.approx(total)
+        assert call*evidence["optimizer_objective_scale"] == pytest.approx(total)
+    assert evidence["training_objective"] == last["training_objective"]
+    assert evidence["price_objective"] == last["price_objective"]
+    assert evidence["anchor_objective"] == last["anchor_objective"]
