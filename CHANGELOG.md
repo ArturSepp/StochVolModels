@@ -4,6 +4,13 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+### Added
+
+- Added a repository-only historical SPX validation runner using OCA's validated local cache,
+  exact observation times and quote provenance. It compares existing research fitters with
+  identical interior/wing holdouts, observed forwards/discounts, complete failure accounting,
+  private input snapshots and a compact diagnostic report. No public fitter API changed.
+
 ## [2.5.0] - 2026-10-12
 
 ### Added

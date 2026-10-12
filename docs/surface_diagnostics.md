@@ -226,6 +226,57 @@ Use `--output` to select a fresh results directory and `--repeats` to change tim
 Each run records the actual source hashes, suite and settings; the earlier benchmark remains
 reproducible from its recorded commit and quote snapshot.
 
+## Historical validation
+
+The advanced [historical runner](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/validate_historical_surfaces.py)
+compares approximate LogSV, two-state Gaussian mixtures, original raw SVI and SSVI on
+local SPX observations. Install the SVM research extra, OCA 5.3 or later and OCA's `cboe`
+extra. It requires an existing compatible `spx_options_oca.parquet` cache in the chosen
+directory. OCA validates its policies and, when the raw source is present, its fingerprint.
+The report records when source-fingerprint checking is unavailable. A missing or rejected cache
+is recorded as a failure, without rebuilding it or falling back to raw data.
+
+```console
+python examples/calibration/validate_historical_surfaces.py --input <local-cboe-directory> --output <fresh-private-results-directory>
+```
+
+Without `--input`, the directory is `<RESOURCE_PATH>/cboe_options`. The default dates are
+2019-12-16, 2020-03-16, 2022-06-13 and 2023-11-08. These are illustrative selections, not a
+representative sample of historical performance. Use `--dates` and `--days` to supply
+other dates and calendar-day maturity targets. Defaults target 1, 7, 30 and 90 days;
+the first available expiry at or after each target is selected. Missing and duplicate
+targets remain visible. Existing OCA cleaning and OTM selection use put delta at most
+−0.05 and call delta at least 0.05. Quality flags do not introduce additional filters.
+
+Requests are exactly 16:00 New York, with no prior-snapshot or future-snapshot fill.
+Time to maturity and parity-based forwards/discounts come from OCA's current SPXW PM
+mapping, using 16:00 New York settlement and ACT/365 elapsed seconds. Prices retain
+the adapter's USD-per-unit convention: index quote points, with contract size recorded
+separately. The runner preserves the cache's original metadata alongside those conventions.
+It does not use a synthetic forward or discount curve for historical evaluation.
+
+Each date has an in-sample fit, an interior holdout of every third interior strike, and
+a wing holdout of the outer 20% of strikes on each side, rounded down. Every expiry must
+retain at least eight training quotes. All models use the same split and uniformly
+weighted training IV errors. The holdouts condition on forwards, discounts and quote
+selection obtained from the complete contemporaneous OCA snapshot. They therefore test
+smile interpolation/extrapolation, not the entire quote-to-forward estimation procedure.
+
+The fresh output directory contains a compact `report.html`, all jobs in `jobs.csv`,
+exact normalized input subsets in Parquet, compressed JSON evidence, and source/input
+hashes. Snapshot reports reconcile exclusions and record quote-quality and parity checks.
+Job reports retain final parameters, optimizer evidence, warnings, fit errors, price-spread
+coverage and dense strike/density checks on each observed slice domain. Failed jobs remain
+in attempted counts; reported error means condition on completed jobs. Timings are single
+elapsed fits that can include compilation, not a controlled warm-runtime comparison.
+
+Calendar checks default to `not_checked` because proportional carry is not established
+by the input data. `--carry-model proportional` explicitly declares that research assumption
+and enables its conditional interpretation. No intermediate maturities or global arbitrage
+certificate are supplied. The revised raw-SVI candidate remains opt-in through `--models`.
+Inputs and generated reports are private local artifacts and must not be redistributed
+without the relevant data rights. Public tests use synthetic observations only.
+
 ## See also
 
 - [Approximate LogSV smile fitter](logsv_smile_fitter.md).
