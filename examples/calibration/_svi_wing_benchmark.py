@@ -6,7 +6,7 @@ Sampled constraints are not a global no-arbitrage or extrapolation certificate.
 """
 
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import least_squares, minimize
 from scipy.special import erfcx, ndtr
 
 from _svi_benchmark import RawSvi, _scaled_svi_residual, durrleman, raw_svi
@@ -21,6 +21,8 @@ PRICE_SPREAD_FLOOR = 0.01
 DOMAIN_ROUNDOFF = 1e-12
 IV_ANCHOR_SCALE = 0.005
 IV_ANCHOR_POINTS = 81
+INITIALIZATION_MAX_NFEV = 500
+MAX_GRID_REFINEMENTS = 2
 
 
 def svi_prediction_domain(k, bounds):
@@ -167,12 +169,69 @@ def check_svi_wings(k, params):
                 scope="sampled strike domain; no calendar or global certificate")
 
 
+def _dense_wing_grid(grid, params):
+    """Combine current constraint, uniform validation and shape-local points."""
+    local = params.m+params.sigma*np.linspace(-8, 8, 161)
+    local = local[(local >= grid[0]) & (local <= grid[-1])]
+    return np.unique(np.r_[grid, local, np.linspace(grid[0], grid[-1], VALIDATION_POINTS)])
+
+
+def _refinement_points(dense, params):
+    """Retain dense violations inside the fixed domain for a fresh constrained solve."""
+    g, slope = svi_wing_values(dense, params)
+    return dense[(g < DENSITY_BUFFER) | (slope < -1-SLOPE_TOLERANCE)
+                 | (slope > SLOPE_TOLERANCE)]
+
+
+def _narrow_initializations(starts, z, target, lower, upper):
+    """Prepare bounded training-only IV starts; never accept them as final fits."""
+    records, seeds = [], []
+    for index, (rho, start) in enumerate(starts):
+        record = dict(start_rho=rho, initial_scaled_parameters=start.tolist(),
+                      accepted_as_start=False, nfev=0, residual_calls=0, jacobian_calls=0)
+
+        def residual(p):
+            record['residual_calls'] += 1
+            return _scaled_svi_residual(p, z, target)
+
+        def jac(p):
+            record['jacobian_calls'] += 1
+            return _scaled_svi_residual(p, z, target, jacobian=True)
+
+        try:
+            result = least_squares(residual, start.copy(), bounds=(lower, upper), jac=jac,
+                                   max_nfev=INITIALIZATION_MAX_NFEV,
+                                   ftol=1e-10, xtol=1e-10, gtol=1e-10)
+            point = np.asarray(result.x)
+            finite = bool(np.all(np.isfinite(point)))
+            inside = bool(point.shape == start.shape and finite
+                          and np.all(point >= lower) and np.all(point <= upper))
+            score = (float(np.sum(_scaled_svi_residual(point, z, target)**2))
+                     if inside else np.nan)
+            valid = bool((result.success or result.status == 0) and inside and np.isfinite(score))
+            record.update(success=bool(result.success), status=int(result.status),
+                          message=str(result.message), nfev=int(result.nfev),
+                          normalized_iv_sse=score if np.isfinite(score) else None,
+                          scaled_parameters=[float(x) if np.isfinite(x) else None for x in point],
+                          accepted_as_start=valid, budget_exhausted=bool(result.status == 0),
+                          finite=finite, in_bounds=inside)
+            if valid:
+                seeds.append((index, point.copy()))
+        except Exception as error:
+            record.update(error=f'{type(error).__name__}: {error}',
+                          nfev=record['residual_calls'], nfev_source='counted_before_error')
+        records.append(record)
+    return seeds, records
+
+
 def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None, iv_seed=False, iv_anchor=False):
     """Fit IV SSE or half-spread price MSE under finite-grid strike constraints.
 
     Parameters use the same positive-minimum and training-relative bounds as
     the bounded research candidate. Three independent SLSQP starts receive no
-    held-out data. Unsuccessful or dense-check-infeasible solutions are rejected
+    held-out data. One-sided IV support adds bounded training-only IV initializers.
+    Dense violations trigger at most two explicit grid refinements per start.
+    Unsuccessful or finally dense-check-infeasible solutions are rejected
     before objective selection. Optional price_quotes contains training bid, ask,
     optiontypes, forward and discount; IVs then supply scaling and starts.
     With iv_seed=True, a constrained training-IV fit supplies a fourth price start;
@@ -228,18 +287,13 @@ def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None, iv_seed=False, iv_
         return float(residual @ residual), 2 * jac.T @ residual
 
     def constraints(p):
-        return _scaled_wing_constraints(p, grid, center, scale, variance)
+        return _scaled_wing_constraints(p, solve_grid, center, scale, variance)
 
     def constraint_jac(p):
-        return _scaled_wing_jacobian(p, grid, center, scale, variance)
+        return _scaled_wing_jacobian(p, solve_grid, center, scale, variance)
 
-    def validate(params):
-        # A separate, denser grid and shape-local points can reject a result
-        # missed by the optimizer grid; rejection never triggers a hidden refit.
-        local = params.m + params.sigma * np.linspace(-8, 8, 161)
-        local = local[(local >= grid[0]) & (local <= grid[-1])]
-        dense = np.unique(np.r_[grid, local, np.linspace(grid[0], grid[-1], VALIDATION_POINTS)])
-        return check_svi_wings(dense, params)
+    def validate(params, points=None):
+        return check_svi_wings(_dense_wing_grid(grid if points is None else points, params), params)
 
     # A common training-only multiplier preserves the minimizer while avoiding
     # huge gradients from index-point premiums divided by very narrow spreads.
@@ -255,6 +309,7 @@ def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None, iv_seed=False, iv_
                     scaled_parameter_order=["minimum", "b", "rho", "m", "sigma"],
                     optimization_grid=grid.tolist(), density_buffer=DENSITY_BUFFER,
                     maxiter=1000, ftol=1e-12, constraint_jacobian="analytic",
+                    refinement_limit=MAX_GRID_REFINEMENTS,
                     constraint_scaling="call-slope margins / positive Black tail probability",
                     prediction_policy="reject outside training-derived constraint domain",
                     objective=("uniform_iv_sse" if price_quotes is None
@@ -276,6 +331,17 @@ def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None, iv_seed=False, iv_
 
     starts = [(rho, np.clip([0.8 * np.min(target**2), 0.1, rho, 0, 1], lower, upper))
               for rho in (-0.6, 0.0, 0.6)]
+    kinds = [('fixed', None)]*3
+    initialization = []
+    if price_quotes is None and (k[0] > 0 or k[-1] < 0):
+        seeds, initialization = _narrow_initializations(starts, z, target, lower, upper)
+        for index, point in seeds:
+            starts.append((float(point[2]), point))
+            kinds.append(('training_iv_initialization', index))
+    initialization_nfev = sum(r['nfev'] for r in initialization)
+    geometry.update(initialization=initialization, initialization_nfev_total=initialization_nfev,
+                    initialization_policy='bounded IV least squares for strictly one-sided support',
+                    initialization_max_nfev=INITIALIZATION_MAX_NFEV)
     seed_nfev = 0
     if iv_seed:
         seed_params, seed_evidence = fit_raw_svi_constrained(k, iv, ttm)
@@ -285,6 +351,7 @@ def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None, iv_seed=False, iv_
         else:
             seed = np.clip([1, 0, 0, 0, 1], lower, upper)
         starts.append((float(seed[2]), seed))
+        kinds.append(('training_iv_seed', None))
         seed_nfev = seed_evidence["nfev_total"]
         geometry["iv_seed"] = dict(parameters=vars(seed_params), optimizer=seed_evidence)
         geometry["seed_nfev_total"] = seed_nfev
@@ -300,34 +367,57 @@ def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None, iv_seed=False, iv_
 
     attempts, accepted = [], []
     for index, (rho, start) in enumerate(starts):
-        result = minimize(objective, start, method="SLSQP", jac=True,
-                          bounds=list(zip(lower, upper)),
-                          constraints={"type": "ineq", "fun": constraints,
-                                       "jac": constraint_jac},
-                          options={"maxiter": 1000, "ftol": 1e-12})
-        params = unpack(result.x)
-        check = validate(params)
-        valid = bool(result.success and np.isfinite(result.fun)
-                     and np.all(np.isfinite(result.x)) and check["passed"]
-                     and np.all(result.x >= lower) and np.all(result.x <= upper))
-        sse = float(np.sum((np.sqrt(raw_svi(k, params)[0] / ttm) - iv)**2))
-        score = (sse if price_quotes is None else
-                 _spread_price_objective(result.x, z, target, k, ttm, vol, price_quotes)[0])
-        if iv_anchor:
-            price_score = score
-            anchor_score = _iv_anchor_objective(result.x, anchor_z, reference_iv, vol)[0]
-            score += anchor_score
-        valid = bool(valid and np.isfinite(score))
-        attempts.append(dict(start_rho=rho, success=bool(result.success), accepted=valid,
-                             status=int(result.status), message=str(result.message),
-                             nfev=int(result.nfev), nit=int(result.nit), training_sse=sse,
-                             training_objective=score,
-                             scaled_parameters=result.x.tolist(), wing_check=check))
-        if iv_anchor:
-            attempts[-1].update(price_objective=price_score, anchor_objective=anchor_score)
-        if iv_seed:
-            attempts[-1].update(start_kind="fixed" if index < 3 else "training_iv_seed",
-                                initial_scaled_parameters=start.tolist())
+        solve_grid, point, rounds = grid.copy(), start.copy(), []
+        for refinement in range(MAX_GRID_REFINEMENTS+1):
+            result = minimize(objective, point.copy(), method="SLSQP", jac=True,
+                              bounds=list(zip(lower, upper)),
+                              constraints={"type": "ineq", "fun": constraints,
+                                           "jac": constraint_jac},
+                              options={"maxiter": 1000, "ftol": 1e-12})
+            params = unpack(result.x)
+            dense = _dense_wing_grid(solve_grid, params)
+            check = check_svi_wings(dense, params)
+            eligible = bool(result.success and np.isfinite(result.fun)
+                            and np.all(np.isfinite(result.x))
+                            and np.all(result.x >= lower) and np.all(result.x <= upper))
+            sse = float(np.sum((np.sqrt(raw_svi(k, params)[0] / ttm) - iv)**2))
+            score = (sse if price_quotes is None else
+                     _spread_price_objective(result.x, z, target, k, ttm, vol, price_quotes)[0])
+            entry = dict(success=bool(result.success), accepted=False, status=int(result.status),
+                         message=str(result.message), nfev=int(result.nfev), nit=int(result.nit),
+                         solver_objective=float(result.fun) if np.isfinite(result.fun) else None,
+                         training_sse=sse, training_objective=score,
+                         initial_scaled_parameters=point.tolist(),
+                         scaled_parameters=result.x.tolist(), wing_check=check,
+                         optimization_grid=solve_grid.tolist(), added_points=[])
+            if iv_anchor:
+                anchor_score = _iv_anchor_objective(result.x, anchor_z, reference_iv, vol)[0]
+                entry.update(price_objective=score, anchor_objective=anchor_score)
+                score += anchor_score
+                entry['training_objective'] = score
+            valid = bool(eligible and np.isfinite(score) and check['passed'])
+            entry['accepted'] = valid
+            rounds.append(entry)
+            if valid or not eligible or not np.isfinite(score) or not check['finite']:
+                entry['stop_reason'] = 'accepted' if valid else 'solver_or_numerical_failure'
+                break
+            if refinement == MAX_GRID_REFINEMENTS:
+                entry['stop_reason'] = 'refinement_limit'
+                break
+            additions = np.setdiff1d(_refinement_points(dense, params), solve_grid)
+            if not len(additions):
+                entry['stop_reason'] = 'no_new_points'
+                break
+            entry.update(added_points=additions.tolist(), stop_reason='refine_grid')
+            solve_grid = np.unique(np.r_[solve_grid, additions])
+            point = result.x.copy()
+        attempt = dict(rounds[-1], start_rho=rho, start_kind=kinds[index][0],
+                       initialization_index=kinds[index][1], rounds=rounds,
+                       initial_scaled_parameters=start.tolist(),
+                       nfev=sum(r['nfev'] for r in rounds), nit=sum(r['nit'] for r in rounds))
+        if index == 0 and initialization:
+            attempt['initialization'] = initialization
+        attempts.append(attempt)
         if valid:
             accepted.append((score, params, len(attempts) - 1))
     if not accepted:
@@ -344,5 +434,6 @@ def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None, iv_seed=False, iv_
     return fit, dict(method=method,
                      training_sse=attempts[selected]["training_sse"], training_objective=score,
                      starts=attempts, selected_start=selected,
-                     nfev_total=price_nfev + seed_nfev,
-                     wing_check=validate(fit), **geometry)
+                     nfev_total=price_nfev + seed_nfev + initialization_nfev,
+                     wing_check=validate(fit, np.array(attempts[selected]['optimization_grid'])),
+                     **geometry)

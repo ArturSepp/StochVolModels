@@ -236,6 +236,13 @@ the interval `[-1, 0]`. Positive density on a finite interval alone does not est
 the call-slope bound; both are checked explicitly.
 
 The three fixed starts each allow 1,000 iterations with an optimizer tolerance of `1e-12`.
+For IV calibration with all training strikes strictly on one side of the forward,
+three bounded least-squares fits provide additional starting guesses. They use
+only training IVs and the same parameter box, with analytic derivatives, at most
+500 evaluations and tolerances of `1e-10`. Successful or budget-limited finite
+in-bounds iterates may supply a guess; failures are recorded. Every guess receives
+a fresh constrained fit and the physical acceptance checks. Initializer status is
+distinct from final-fit success, and its evaluations enter the total cost.
 The objective and constraint derivatives are analytic. With $k=\log(K/F)$ and
 total variance $w$, define $d_2=-k/\sqrt{w}-\sqrt{w}/2$. The optimizer divides the
 lower call-slope margin by the positive normal probability $N(-d_2)$ and the upper
@@ -248,7 +255,13 @@ Before selecting the smallest training error, each successful solution must also
 4,001-point grid plus shape-local points, allowing density-factor roundoff of `1e-8` and
 call-slope roundoff of `1e-10`. These final checks use the original, unscaled
 density and call-slope bounds. Rejected starts retain their status and final margins;
-there is no price clipping or fallback fit. Exact flat input uses the constant-variance
+when a finite converged solution fails a dense check, the violating dense points
+are added to that start's constraint grid for a new solve, with at most two
+refinements. Grid endpoints stay fixed. Each round retains its initial/final
+parameters, grid, added points, objective, solver status and evaluations. Solver
+failure, nonfinite results, no new points or exhaustion leave the start rejected;
+an earlier infeasible solution cannot be returned. All round costs are included.
+There is no price clipping or fallback fit. Exact flat input uses the constant-variance
 limit. The constraints can reduce flexibility and cost more runtime. They do not certify
 unsampled strikes, out-of-domain wings or calendar consistency, and a shape-valid fit can
 still have poor held-out accuracy or perturbation stability.

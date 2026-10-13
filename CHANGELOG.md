@@ -63,6 +63,11 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Fixed
 
+- Improved one-sided-support IV calibration in the repository-only constrained
+  raw-SVI benchmark with bounded training-IV initializers and explicit constrained
+  refits. Dense failures can trigger two bounded grid refinements within the
+  original domain; all initializer/round evidence and evaluation costs are retained.
+  Physical acceptance tolerances and loss definitions are unchanged.
 - Improved the repository-only constrained raw-SVI optimizer with analytic
   constraint derivatives and equivalent call-slope probability rescaling, avoiding
   saturated tail margins that caused missed feasible fits. Added fixed synthetic
