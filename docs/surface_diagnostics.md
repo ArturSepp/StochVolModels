@@ -236,10 +236,18 @@ the interval `[-1, 0]`. Positive density on a finite interval alone does not est
 the call-slope bound; both are checked explicitly.
 
 The three fixed starts each allow 1,000 iterations with an optimizer tolerance of `1e-12`.
-The objective gradient is analytic; constraint derivatives use numerical differences.
+The objective and constraint derivatives are analytic. With $k=\log(K/F)$ and
+total variance $w$, define $d_2=-k/\sqrt{w}-\sqrt{w}/2$. The optimizer divides the
+lower call-slope margin by the positive normal probability $N(-d_2)$ and the upper
+margin by $N(d_2)$. These rescalings preserve the inequalities while avoiding
+nearly zero margins in distant tails. Ratios of normal density to tail probability
+are evaluated using the scaled complementary error function, so underflowed
+probabilities do not require clipping. Optimizer evidence records this scaling
+and the analytic constraint Jacobian.
 Before selecting the smallest training error, each successful solution must also pass a
 4,001-point grid plus shape-local points, allowing density-factor roundoff of `1e-8` and
-call-slope roundoff of `1e-10`. Rejected starts retain their status and final margins;
+call-slope roundoff of `1e-10`. These final checks use the original, unscaled
+density and call-slope bounds. Rejected starts retain their status and final margins;
 there is no price clipping or fallback fit. Exact flat input uses the constant-variance
 limit. The constraints can reduce flexibility and cost more runtime. They do not certify
 unsampled strikes, out-of-domain wings or calendar consistency, and a shape-valid fit can

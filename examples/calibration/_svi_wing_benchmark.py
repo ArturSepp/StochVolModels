@@ -7,7 +7,7 @@ Sampled constraints are not a global no-arbitrage or extrapolation certificate.
 
 import numpy as np
 from scipy.optimize import minimize
-from scipy.special import ndtr
+from scipy.special import erfcx, ndtr
 
 from _svi_benchmark import RawSvi, _scaled_svi_residual, durrleman, raw_svi
 
@@ -87,6 +87,63 @@ def svi_wing_values(k, params):
     d2 = -np.asarray(k) / root - root / 2
     slope = -ndtr(d2) + np.exp(-d2**2 / 2) / np.sqrt(2 * np.pi) * first / (2 * root)
     return durrleman(k, w, first, second), slope
+
+
+def _normal_mills(x):
+    """Return n(x)/N(-x) and its derivative without subtracting tail probabilities."""
+    x = np.asarray(x)
+    value = np.empty_like(x, dtype=float)
+    positive = x >= 0
+    value[positive] = np.sqrt(2/np.pi)/erfcx(x[positive]/np.sqrt(2))
+    value[~positive] = np.exp(-x[~positive]**2/2)/np.sqrt(2*np.pi)/ndtr(-x[~positive])
+    return value, value*(value-x)
+
+
+def _scaled_wing_constraints(p, k, center, scale, variance, *, jacobian=False):
+    """Evaluate equivalent normalized slope margins and their analytic Jacobian.
+
+    Apply the chain rule to the positive-minimum raw variance, its first two
+    strike derivatives and g(k). Dividing 1+slope by N(-d2), and -slope by
+    N(d2), preserves their feasible set; normal Mills ratios keep these positive
+    probability rescalings finite when raw tail probabilities round to zero.
+    """
+    minimum, b, rho, m, sigma = p
+    k = np.asarray(k)
+    x = (k-center)/scale-m
+    h, r = np.hypot(x, sigma), np.sqrt(1-rho*rho)
+    params = RawSvi(variance*(minimum-b*sigma*r), b*variance/scale,
+                    rho, center+scale*m, scale*sigma)
+    w, first, second = raw_svi(k, params)
+    root = np.sqrt(w)
+    d2, a = -k/root-root/2, first/(2*root)
+    left, left_derivative = _normal_mills(d2)
+    right, right_derivative = _normal_mills(-d2)
+    if not jacobian:
+        return np.r_[durrleman(k, w, first, second)-DENSITY_BUFFER,
+                     1+left*a, 1-right*a]
+    zero = np.zeros_like(x)
+    dw = variance*np.column_stack((
+        np.ones_like(x), rho*x+h-sigma*r, b*(x+sigma*rho/r),
+        -b*(rho+x/h), b*(sigma/h-r)))
+    df = variance/scale*np.column_stack((
+        zero, rho+x/h, np.full_like(x, b), -b*sigma*sigma/h**3, -b*x*sigma/h**3))
+    ds = variance/scale**2*np.column_stack((
+        zero, sigma*sigma/h**3, zero, 3*b*sigma*sigma*x/h**5,
+        b*(2*sigma/h**3-3*sigma**3/h**5)))
+    wcol, fcol = w[:, None], first[:, None]
+    factor = 1-k*first/(2*w)
+    dg = (-factor*k)[:, None]*(df/wcol-fcol*dw/wcol**2)
+    dg += -fcol*df/2*(1/wcol+.25)+fcol**2*dw/(4*wcol**2)+ds/2
+    dd2 = (k/(2*w*root)-1/(4*root))[:, None]*dw
+    da = df/(2*root[:, None])-fcol*dw/(4*(w*root)[:, None])
+    lower_jac = (left_derivative*a)[:, None]*dd2+left[:, None]*da
+    upper_jac = (right_derivative*a)[:, None]*dd2-right[:, None]*da
+    return np.vstack((dg, lower_jac, upper_jac))
+
+
+def _scaled_wing_jacobian(p, k, center, scale, variance):
+    """Return the Jacobian of the optimizer's equivalent wing constraints."""
+    return _scaled_wing_constraints(p, k, center, scale, variance, jacobian=True)
 
 
 def check_svi_wings(k, params):
@@ -171,8 +228,10 @@ def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None, iv_seed=False, iv_
         return float(residual @ residual), 2 * jac.T @ residual
 
     def constraints(p):
-        g, slope = svi_wing_values(grid, unpack(p))
-        return np.r_[g - DENSITY_BUFFER, 1 + slope, -slope]
+        return _scaled_wing_constraints(p, grid, center, scale, variance)
+
+    def constraint_jac(p):
+        return _scaled_wing_jacobian(p, grid, center, scale, variance)
 
     def validate(params):
         # A separate, denser grid and shape-local points can reject a result
@@ -195,7 +254,8 @@ def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None, iv_seed=False, iv_
                     scaled_lower=lower.tolist(), scaled_upper=upper.tolist(),
                     scaled_parameter_order=["minimum", "b", "rho", "m", "sigma"],
                     optimization_grid=grid.tolist(), density_buffer=DENSITY_BUFFER,
-                    maxiter=1000, ftol=1e-12,
+                    maxiter=1000, ftol=1e-12, constraint_jacobian="analytic",
+                    constraint_scaling="call-slope margins / positive Black tail probability",
                     prediction_policy="reject outside training-derived constraint domain",
                     objective=("uniform_iv_sse" if price_quotes is None
                                else "mean_squared_half_spread_price_error"))
@@ -242,7 +302,8 @@ def fit_raw_svi_constrained(k, iv, ttm, *, price_quotes=None, iv_seed=False, iv_
     for index, (rho, start) in enumerate(starts):
         result = minimize(objective, start, method="SLSQP", jac=True,
                           bounds=list(zip(lower, upper)),
-                          constraints={"type": "ineq", "fun": constraints},
+                          constraints={"type": "ineq", "fun": constraints,
+                                       "jac": constraint_jac},
                           options={"maxiter": 1000, "ftol": 1e-12})
         params = unpack(result.x)
         check = validate(params)

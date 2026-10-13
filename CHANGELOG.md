@@ -63,6 +63,11 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Fixed
 
+- Improved the repository-only constrained raw-SVI optimizer with analytic
+  constraint derivatives and equivalent call-slope probability rescaling, avoiding
+  saturated tail margins that caused missed feasible fits. Added fixed synthetic
+  recovery and tail-integral derivative regressions; retained objectives, parameter
+  bounds, starts, prediction domains and independent dense acceptance gates.
 - Improved the repository-only raw-SVI benchmark's flat/noisy calibration with dimensionless
   coordinates, analytic derivatives and explicit training-relative shape bounds. Retained the
   original fitter for paired comparisons and added a frozen multi-seed stability suite;
