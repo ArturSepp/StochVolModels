@@ -6,6 +6,11 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Added
 
+- Added repository-only training-IV wing reliability diagnostics: seeded repeated
+  refits, fixed supported strike grids, pointwise IV and normalized call-price
+  sensitivity, regional amplification and explicit failed-draw accounting. The
+  synthetic example and optional historical flag report sensitivity separately
+  from calibration, arbitrage and economic acceptance; no warning cutoff is installed.
 - Added opt-in repository-only `raw_svi_shared_rho`: a joint uniform-IV calibration
   with one rho and four shape parameters per expiry, three starts, dense strike
   acceptance checks and explicit finite prediction domains. Both runners retain its

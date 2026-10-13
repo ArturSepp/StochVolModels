@@ -35,6 +35,7 @@ from compare_smile_fitters import (
     CRITERIA, _json_safe, _validate_predictions, black_prices, enforce_prediction_domain,
     fit_model, passes_screen,
 )
+from diagnose_wing_reliability import MODELS as RELIABILITY_MODELS, diagnose_wing_reliability
 
 
 MODELS = ("approx_logsv", "gmm2", "raw_svi_legacy", "ssvi")
@@ -303,7 +304,8 @@ def measure_robustness(model, train, target, chain, base_prices, seed, carry_mod
                 perturbed_surface_unchecked=metrics["surface_unchecked"])
 
 
-def run_job(model, chain, fold, carry_model="unspecified", perturbation_seed=None):
+def run_job(model, chain, fold, carry_model="unspecified", perturbation_seed=None,
+            reliability_draws=0, reliability_seed=5401):
     """Retain any fitting, repricing or diagnostic failure in the job denominator."""
     row = {"model": model, "fold": fold, "status": "failed", "stage": "split"}
     evidence, messages, caught = {}, StringIO(), []
@@ -326,6 +328,20 @@ def run_job(model, chain, fold, carry_model="unspecified", perturbation_seed=Non
             fit = fit_model(model, train)
             row["fit_seconds"] = perf_counter() - fit_start
             evidence.update(parameters=fit.parameters, optimizer=fit.optimizer)
+            if reliability_draws:
+                row["stage"] = "reliability"
+                started_reliability = perf_counter()
+                sensitivity = diagnose_wing_reliability(
+                    train, model=model, draws=reliability_draws, seed=reliability_seed)
+                evidence["reliability"] = sensitivity
+                row.update(reliability_status=sensitivity["status"],
+                           reliability_successful=sensitivity["successful"],
+                           reliability_failed=sensitivity["failed"],
+                           reliability_seconds=perf_counter()-started_reliability,
+                           reliability_max_amplification=(
+                               max(s["regions"]["combined_wings"]["max_rms_amplification"]
+                                   for s in sensitivity["slices"])
+                               if sensitivity["status"] == "complete" else None))
             row["stage"] = "base_domain"
             enforce_prediction_domain(fit, chain, evidence)
             row["stage"] = "base_evaluation"
@@ -395,7 +411,8 @@ def source_identity():
     result["runner_sha256"] = {
         name: sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
         for name in (Path(__file__).name, "compare_smile_fitters.py", "_svi_benchmark.py",
-                     "_svi_wing_benchmark.py", "_svi_shared_benchmark.py")
+                     "_svi_wing_benchmark.py", "_svi_shared_benchmark.py",
+                     "diagnose_wing_reliability.py")
     }
     return result
 
@@ -423,6 +440,8 @@ def write_summary(output, rows, snapshots):
                            "coverage", "iv_rmse", "p95_spread_error", "surface_failures",
                            "surface_unchecked", "fit_seconds", "warm_seconds",
                            "p95_perturbation", "perturbed_surface_failures", "screen_pass",
+                           "reliability_status", "reliability_successful", "reliability_failed",
+                           "reliability_max_amplification", "reliability_seconds",
                            "stage", "domain_outside_quotes", "error") if c in frame]
     labels = {
         "n_normalized": "Input quotes", "n_selected": "Selected", "n_excluded": "Excluded",
@@ -465,6 +484,11 @@ and refits once after training-only IV shocks. Warm seconds are their median;
 perturbation is the P95 price change divided by the original evaluation half-spread
 (floor 0.01). The full screen retains the synthetic benchmark's fixed economic criteria.
 Calendar and global consistency remain outside that screen.</p>
+<p>Optional wing reliability uses repeated training-only IV shocks on the base fit's
+supported strike grid. It reports maximum pointwise RMS IV movement divided by the
+input shock standard deviation, separately from arbitrage checks and the economic
+screen. Failed draws make the diagnostic incomplete and suppress its score. Low
+dispersion is not evidence of accurate prices; no default warning threshold is used.</p>
 <p>The opt-in raw_svi_price models fit training premium midpoints by mean squared
 half-spread price error. raw_svi_price_seeded adds a constrained training-IV fit to
 initialize a fourth price start; its runtime includes both stages and it cannot return
@@ -484,7 +508,7 @@ and quote counts and remain failed jobs. Bounds are never widened from held-out 
 
 
 def run_validation(input_root=None, output=None, dates=DATES, days=DAYS,
-                   models=MODELS, carry_model="unspecified", robustness=False):
+                   models=MODELS, carry_model="unspecified", robustness=False, reliability_draws=0):
     """Read bounded local caches, checkpoint every job, and save a reproducible report."""
     from option_chain_analytics import OptionsDataDFs
     from option_chain_analytics.data.cboe import load_local_cboe_options_data
@@ -504,6 +528,10 @@ def run_validation(input_root=None, output=None, dates=DATES, days=DAYS,
         raise ValueError("provide unique supported models")
     if carry_model not in ("unspecified", "proportional"):
         raise ValueError("unsupported carry declaration")
+    if (isinstance(reliability_draws, bool) or not isinstance(reliability_draws, int)
+            or reliability_draws < 0 or reliability_draws == 1
+            or (reliability_draws and any(m not in RELIABILITY_MODELS for m in models))):
+        raise ValueError("reliability requires zero or at least two draws and supported raw-SVI models")
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     source = Path(input_root or Path(local_path.get_resource_path()) / "cboe_options").resolve()
     output = Path(output or Path(local_path.get_output_path()) /
@@ -514,6 +542,10 @@ def run_validation(input_root=None, output=None, dates=DATES, days=DAYS,
                 "models": list(models), "folds": list(FOLDS), "conventions": CONVENTIONS,
                 "carry_model": carry_model, "spread_floor": PRICE_FLOOR,
                 "min_training_quotes": MIN_TRAIN, "snapshot_files": {},
+                "reliability": {"draws": reliability_draws, "shock_std": 0.0005,
+                                "grid_points": 81, "warning_threshold": None,
+                                "seed_rule": "integer YYYYMMDD * 10 + fold index + 700000000",
+                                "scope": "training only; separate from economic/arbitrage checks"},
                 "split_policy": ("interior ranks 1,4,... excluding endpoints; "
                                  "wings outer floor(n/5)"),
                 "cache_policy": "OCA validates policies and any present source fingerprint; "
@@ -598,7 +630,11 @@ def run_validation(input_root=None, output=None, dates=DATES, days=DAYS,
                 else:
                     seed = int(time.strftime("%Y%m%d")) * 10 + FOLDS.index(fold)
                     row, detail = run_job(model, chain, fold, carry_model,
-                                          perturbation_seed=seed if robustness else None)
+                                          perturbation_seed=seed if robustness else None,
+                                          reliability_draws=reliability_draws,
+                                          reliability_seed=seed+700000000)
+                if reliability_draws:
+                    row.setdefault("reliability_status", "not_run")
                 if robustness:
                     row.setdefault("screen_pass", False)
                 row["date"] = label
@@ -635,9 +671,11 @@ def run_local(local: Locals = Locals.VALIDATE):
                         default="unspecified")
     parser.add_argument("--robustness", action="store_true",
                         help="two warm repeats and one training-only perturbation per job")
+    parser.add_argument("--reliability-draws", type=int, default=0,
+                        help="optional repeated training-IV sensitivity; supported raw-SVI models")
     args = parser.parse_args()
     result = run_validation(args.input, args.output, args.dates, args.days,
-                            args.models, args.carry_model, args.robustness)
+                            args.models, args.carry_model, args.robustness, args.reliability_draws)
     print(result / "report.html")
 
 

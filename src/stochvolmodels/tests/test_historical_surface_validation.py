@@ -308,12 +308,14 @@ def test_changed_warm_repeat_is_rejected(runner, chain, monkeypatch):
     assert evidence["robustness"]["stage"] == "warm_repeat_1"
 
 
-def test_domain_refusal_retains_parameters_and_all_quote_denominators(runner, chain):
+@pytest.mark.parametrize("reliability_draws", [0, 2])
+def test_domain_refusal_retains_parameters_and_all_quote_denominators(runner, chain,
+                                                                    reliability_draws):
     """An unsupported held-out strike must not disappear into a finite-subset score."""
     for strikes in chain.strikes_ttms:
         strikes[-1] *= np.exp(1.)
     row, evidence = runner.run_job("raw_svi_constrained", chain, "wings",
-                                    perturbation_seed=123)
+                                    perturbation_seed=123, reliability_draws=reliability_draws)
     assert row["status"] == "failed" and not row["screen_pass"]
     assert row["stage"] == "base_domain"
     assert row["domain_outside_quotes"] == 2
@@ -323,6 +325,11 @@ def test_domain_refusal_retains_parameters_and_all_quote_denominators(runner, ch
     assert len(evidence["domain"]["slices"]) == len(chain.ttms)
     assert row["n_test"] == 16
     assert "fit" not in evidence and "coverage" not in row
+    if reliability_draws:
+        assert row["reliability_status"] == evidence["reliability"]["status"] == "complete"
+        assert evidence["reliability"]["successful"] == 2
+    else:
+        assert "reliability" not in evidence
 
 
 def test_price_objective_handles_index_scale_and_narrow_spreads(runner, chain):
@@ -342,3 +349,38 @@ def test_price_objective_handles_index_scale_and_narrow_spreads(runner, chain):
     for item in evidence["optimizer"]:
         scores = [s["training_objective"] for s in item["starts"] if s["accepted"]]
         assert item["training_objective"] == min(scores)
+
+
+def test_training_reliability_excludes_held_out_quotes(runner, chain):
+    row, before = runner.run_job("raw_svi_constrained", chain, "wings", reliability_draws=2,
+                                 reliability_seed=791)
+    train, held = runner.fold_masks(chain, "wings")
+    changed = runner.subset(chain, [np.ones(len(k), dtype=bool) for k in chain.strikes_ttms])
+    for i, mask in enumerate(held):
+        changed.bid_ivs[i][mask] += .2
+        changed.ask_ivs[i][mask] += .2
+        changed.bid_prices[i][mask] += 3
+        changed.ask_prices[i][mask] += 3
+    other, after = runner.run_job("raw_svi_constrained", changed, "wings", reliability_draws=2,
+                                  reliability_seed=791)
+    assert row["status"] == other["status"] == "completed"
+    assert row["reliability_status"] == other["reliability_status"] == "complete"
+    assert other["iv_rmse"] > row["iv_rmse"] + .1
+    for evidence in (before, after):
+        evidence["reliability"].pop("base_seconds")
+        for attempt in evidence["reliability"]["attempts"]:
+            attempt.pop("seconds")
+    assert runner._json_safe(before["reliability"]) == runner._json_safe(after["reliability"])
+    assert [len(k) for k in before["reliability"]["training"]["strikes_ttms"]] == [
+        int(mask.sum()) for mask in train]
+
+
+def test_incomplete_reliability_does_not_change_fit_status_or_screen(runner, chain, monkeypatch):
+    base, _ = runner.run_job("raw_svi_constrained", chain, "wings")
+    monkeypatch.setattr(runner, "diagnose_wing_reliability", lambda *a, **k: dict(
+        status="incomplete", successful=1, failed=1, slices=[]))
+    row, detail = runner.run_job("raw_svi_constrained", chain, "wings", reliability_draws=2)
+    assert row["status"] == base["status"] == "completed"
+    assert row["reliability_status"] == detail["reliability"]["status"] == "incomplete"
+    assert row["reliability_max_amplification"] is None
+    assert row["iv_rmse"] == base["iv_rmse"] and row["coverage"] == base["coverage"]

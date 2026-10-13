@@ -433,6 +433,53 @@ one half-spread, coverage at least 90%, IV RMSE at most `0.005`, perturbation P9
 one half-spread, no base/perturbed strike failures and warm fit time at most ten seconds.
 Passing that screen does not certify calendar consistency or unsampled strikes.
 
+### Training-only wing reliability
+
+Refit sensitivity measures how a fitted curve changes under a specified perturbation
+of its training quotes. The repository-only
+[wing reliability example](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/diagnose_wing_reliability.py)
+supports independent constrained and shared-rho raw SVI. It draws independent Gaussian
+shifts of standard deviation 0.0005 decimal IV, shifts both IV sides equally and
+reprices using the fixed training forwards and discounts. Every refit predicts on the
+same 81-point log-moneyness grid across the base fit's supported strike domain.
+Neither the grid nor the refits receive held-out quotes. These are implementation
+choices for a research diagnostic, not an estimated market noise distribution.
+
+For $B$ successful requested refits, define movement from the unperturbed curve by
+$\Delta_b(k)=\sigma_b(k)-\sigma_0(k)$. Pointwise RMS movement and its regional
+amplification relative to the input shock scale $s$ are
+
+$$
+R(k)=\sqrt{\frac{1}{B}\sum_{b=1}^{B}\Delta_b(k)^2},
+\qquad A_{\mathcal{G}}=\max_{k\in\mathcal{G}}\frac{R(k)}{s}.
+$$
+
+The report separates the training range, left extrapolation and right extrapolation,
+and retains pointwise 5th/50th/95th refit IV percentiles, maximum absolute IV movement
+and RMS call-price movement normalized by discount times forward. RMS is measured
+from the original fit; centering on the refit mean would hide a systematic shift.
+Refit percentiles are sensitivity summaries, not confidence intervals.
+
+Every requested draw retains its shocks, fit evidence or failure stage. Any failed
+draw makes the diagnostic incomplete and suppresses regional amplification scores;
+pointwise statistics from successful draws remain labelled as conditional on those
+successes. A failed base fit has no attempted draws. There is no clipping, replacement
+draw or default warning cutoff. Low dispersion can coexist with biased prices and
+does not certify accuracy, arbitrage absence or support outside the declared domain.
+
+```console
+python examples/calibration/diagnose_wing_reliability.py --model raw_svi_constrained --draws 16
+python examples/calibration/validate_historical_surfaces.py --models raw_svi_constrained --reliability-draws 16
+```
+
+The first command runs a synthetic example on the core installation. The second
+uses the historical runner's local-data prerequisites above; its flag defaults to
+zero and requires supported raw-SVI models. Historical diagnostic seeds are the date
+integer times ten plus the fold index plus 700000000. The diagnostic runs before the
+full observed-domain gate, so an evaluation refusal can retain training-only
+sensitivity evidence. Its status and timing are separate from the existing economic
+screen, and forwards/discounts remain conditional on their upstream reconstruction.
+
 Quote labels use actual ACT/365 maturity in days, with upper boundaries 7, 30 and 90,
 and forward log-moneyness boundaries `-0.10`, `-0.02`, `0.02` and `0.10`. The central
 bucket includes both endpoints; the far buckets are strictly outside `[-0.10, 0.10]`.
