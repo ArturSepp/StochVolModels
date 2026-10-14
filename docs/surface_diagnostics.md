@@ -609,6 +609,84 @@ certificate are supplied. The revised raw-SVI candidate remains opt-in through `
 Inputs and generated reports are private local artifacts and must not be redistributed
 without the relevant data rights. Public tests use synthetic observations only.
 
+### Longitudinal diagnostic replay
+
+Longitudinal replay follows the same diagnostic scope across a frozen observation
+schedule. The repository-only `examples/calibration/replay_surface_diagnostics.py`
+records observed recovery, repeated violations and unavailable evidence without
+fitting models or selecting thresholds. The example uses the core installation;
+serialized OCA reports require no provider connection or OCA import.
+
+A track identifies the underlying, model, actual expiry, contract or parity strike,
+diagnostic, severity unit and fixed decision rule. `combined_observations` normalizes
+one saved combined expiry report into quote-quality, observed-price, observed-IV and
+parity tracks. Residuals use the original quoted intervals and recorded roundoff
+tolerances. Quality keeps known failed checks even when other checks are unavailable.
+Parity retains exact source-pair identities; ambiguous or asynchronous pairs remain
+unavailable. The normalizer does not interpret unvalidated wing support as a violation
+or install a sensitivity cutoff.
+
+The expected schedule is separate from the available diagnostic records. A contract
+omitted from a later fit has unavailable residual evidence. It cannot recover merely
+because the selected strike set changed. Contract identity follows actual expiry;
+rolling to a new maturity creates a different track. Changing a diagnostic tolerance,
+quote-quality configuration or recorded price basis also creates a different rule.
+`freeze_causal_schedule` activates tracks from their first inventory observation,
+without reading diagnostic states, and retains subsequent expected slots. A contract
+first known in validation cannot retrospectively add missing calibration slots.
+Alternatively, a caller can predeclare a genuinely known inventory and its schedule.
+When supplied, `known_from` is enforced as the earliest permissible expected time.
+
+For one track, the following hand history illustrates the transitions:
+
+| Scheduled observation | Evidence | Transition |
+|---|---|---|
+| 1 | violation | onset |
+| 2 | violation | persistent violation at consecutive observations |
+| 3 | unavailable | event remains unresolved |
+| 4 | clear | observed recovery after a gap |
+
+Persistence describes adjacent scheduled observations within the predeclared maximum
+gap. It does not establish uninterrupted persistence between them. An event can remain
+open across unavailable observations; its recovery bracket runs from its last observed
+violation to the first subsequent clear observation. Expiry censors an unresolved event.
+The calibration/validation boundary censors calibration events and resets validation
+state, so validation cannot retrospectively resolve calibration events. Missing data
+and elapsed age alone never count as recovery.
+
+Repeated use of the same source timestamp and source IDs is unavailable evidence for
+a fresh observation. Regressing source times and calibration-era sources presented in
+validation are also unavailable. The output retains both the supplied diagnostic state
+and its effective temporal state, so these guards do not erase the original evidence.
+
+Run the synthetic example or supply a frozen normalized manifest:
+
+```console
+python examples/calibration/replay_surface_diagnostics.py
+python examples/calibration/replay_surface_diagnostics.py --manifest frozen-replay/manifest.json --output replay-output
+```
+
+The version-1 manifest declares `panel_id`, aware `split_utc`, positive
+`max_gap_seconds`, `snapshots`, and `tracks`. Each snapshot has `snapshot_id`,
+`requested_time` and its consistent `split`. Each track has its identity fields,
+`track_id` from `track_identity`, and unique `expected_snapshot_ids`. Freeze these
+from the original panel inventory, rather than completed fits. `observations_file`
+is relative to the manifest and `observations_sha256` binds its exact bytes.
+Each observation identifies its track and snapshot, matching `requested_time`,
+non-future `source_time`, `source_ids`, `state`, `severity`, `reasons` and optional
+`details`. States are `clear`, `violation` or `unavailable`; available severities
+must be finite, zero for clear evidence and positive for violations. The synthetic
+input builder is a complete offline example of this schema.
+
+The new output directory contains an immutable `report.json` and CSV tables for
+observations, episodes, track definitions and summaries by cohort and diagnostic.
+Missing expected slots remain in the denominator. Source identities, locations and
+units remain available for audit; severities with different units are not pooled.
+Preserve the parent panel, saved reports and their hashes alongside the manifest.
+The replay does not establish receive-time availability, calibrate age limits,
+validate wing accuracy or establish executable arbitrage. Retrospective analysis-grid
+labels must remain distinguishable from verified market-data availability.
+
 ## See also
 
 - [Approximate LogSV smile fitter](logsv_smile_fitter.md).

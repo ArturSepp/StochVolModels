@@ -4,6 +4,14 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+### Added
+
+- Added repository-only longitudinal diagnostic replay over frozen snapshot schedules,
+  with causal inventory activation, contract/actual-expiry identities, fixed rules, observed recovery,
+  repeated violations, unavailable data and expiry/cohort censoring. Saved OCA sidecars
+  retain quality, parity and observed-fit evidence separately; replay preserves the
+  calibration/validation split and performs no refits or threshold selection.
+
 ## [2.5.0] - 2026-10-14
 
 ### Added
