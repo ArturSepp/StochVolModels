@@ -149,6 +149,8 @@ def test_explicit_eod_dst_and_json(runner, tmp_path):
 
 def test_optional_oca_exact_time_missing_targets_and_reconciliation(runner):
     oca = pytest.importorskip("option_chain_analytics")
+    pytest.importorskip("option_chain_analytics.diagnostics",
+                        reason="requires OCA >=5.3 diagnostics")
     data = oca.generate_simulated_options_data()
     time = data.get_timeindex()[0]
     missing, evidence = runner.reconstruct_snapshot(data, time - pd.Timedelta(seconds=1))
