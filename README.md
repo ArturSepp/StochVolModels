@@ -160,6 +160,12 @@ the [testing and coverage guide](https://stochvolmodels.readthedocs.io/en/latest
 
 ### API stability
 
+[Fit and surface diagnostics](docs/surface_diagnostics.md) report bid/ask residuals,
+strike and calendar consistency, and comparisons at common tenors. The optional OCA
+adapter preserves source-row quality and parity evidence. Source-checkout SVI/SSVI
+benchmarks and combined research reports add support labels and opt-in wing sensitivity;
+they remain repository examples, with no public SVI fitter or automatic warning policy.
+
 The names listed by `stochvolmodels.__all__` are the stable high-level API. Historical package-root
 names remain available lazily for compatibility, but names not in `__all__` should be treated as
 advanced interfaces.

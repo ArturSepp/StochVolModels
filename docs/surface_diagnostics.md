@@ -19,6 +19,11 @@ a fitted surface across strikes and maturities. The `stochvolmodels.fitters` nam
 outputs from existing approximate smiles and model pricers. It does not recalibrate or repair them.
 The optional OCA adapter is an advanced module path, imported explicitly as described below.
 
+The public diagnostics below work with existing fitters and pricers. SVI/SSVI benchmarks,
+wing refits, caller-supplied cutoff policies and combined research reports live under
+`examples/calibration/` in a source checkout; they are not public fitter exports or wheel
+entry points. No market-calibrated quote-error law or automatic wing warning is installed.
+
 ## Fit quality against observed quotes
 
 `fitters.diagnose_fit` takes an `OptionChain`, final model prices and/or decimal implied
@@ -488,13 +493,102 @@ successes. A failed base fit has no attempted draws. There is no clipping, repla
 draw or default warning cutoff. Low dispersion can coexist with biased prices and
 does not certify accuracy, arbitrage absence or support outside the declared domain.
 
+### Caller-frozen research policy
+
+The repository-only [`_wing_research_policy.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/_wing_research_policy.py) helper accepts a caller-frozen JSON
+artifact through `--research-policy`, with an explicit `--research-noise-assumption`
+declaration. It installs no cutoff. The artifact identifies calibration evidence,
+numerical source hashes and two exact symmetric strike half-widths, 0.20 and 0.40.
+Its implemented eligibility contract requires one slice at maturity 0.10 or 0.75,
+31 equally spaced training log-moneyness points, IV half-spread 0.005, 128 complete
+refits, an 81-point supported grid and known independent Gaussian IV shocks of
+0.00025 or 0.001. Changed numerical code, other geometry, missing predictions,
+incomplete diagnostics or an unsupported noise declaration receive `unavailable`.
+Upstream quote/parity reasons can also suppress classification when using the helper.
+
+The helper recomputes the wing score from all requested refits, compares strictly
+greater than the supplied width cutoff and reports `flag`, `clear` or `unavailable`.
+Equality is clear. These are research cutoff exceedances, not verified market
+warning rates or accuracy classifications. The caller's artifact and declaration
+do not establish that a new surface belongs to its calibration population. Bid/ask
+spreads, age and parity evidence do not by themselves estimate an IV error law;
+uniform spread errors or correlated shocks need separate validation. The CLI
+archives the artifact and its hash. Existing synthetic cases can be out of scope
+and correctly abstain. Automatic warnings and the default draw count remain unchanged.
+
+The JSON contract is validated before refitting:
+
+| Field | Required content |
+|---|---|
+| `format` | `svm-wing-research-policy-v1` |
+| `policy_id` | Nonempty identity for the caller's frozen policy |
+| `scope` | Exact `SCOPE` dictionary in the helper, including the model and noise assumption |
+| `cutoffs` | Finite nonnegative values keyed by `"0.2"` and `"0.4"` |
+| `numerical_sha256` | Digests keyed by the three filenames in `NUMERICAL_FILES` |
+| `calibration_sha256` | SHA256 identifying the caller's calibration evidence |
+
+Artifact validation checks structure and provenance declarations, not the statistical
+validity of those cutoffs. Freeze calibration evidence and cutoffs before evaluating a
+validation panel. A revised noise law, constraint implementation or support geometry needs
+a separately evaluated policy; a validation result must not silently retune the current one.
+
+### Combined research report
+
+The repository-only [combined research report](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/combined_research_diagnostics.py)
+joins selected OCA quote quality and parity, existing `diagnose_fit` metrics,
+evaluation-strike support and opt-in sensitivity as separate facets. It supplies
+no overall accuracy verdict. Source-row IDs, units, times and selected IV/price
+quotes must match. Missing or unchecked evidence stays unavailable. Sensitivity
+must refer to the same training snapshot, saved base model and evaluation grid, including
+the baseline IV curve recomputed from the saved parameters on that grid;
+failed or unavailable upstream quality/parity blocks its research classification.
+Serialized OCA sidecars can be consumed on the core installation.
+
+| Facet | Status interpretation |
+|---|---|
+| `quote_quality` | `pass` requires all selected mandatory checks and snapshot age; a known failure is `fail`, missing or unchecked evidence is `unavailable` |
+| `parity` | `pass` requires a matched passing source pair for every selected quote; failing pairs remain `fail`, missing or unchecked pairs remain `unavailable` |
+| `observed_fit` | `clear` or `flag` describes interval membership only; incomplete price or IV evidence is `unavailable` with checked and excluded counts retained |
+| `strike_support` | `within_observed_range` or `extrapolated` describes evaluation locations, without assigning accuracy |
+| `wing_sensitivity` | `clear` or `flag` is a scoped cutoff comparison; missing, failed or incompatible evidence is `unavailable` |
+
+The observed-fit facet flags any checked model IV or price outside its observed
+bid/ask interval, allowing only roundoff of `1e-12` decimal IV and `1e-10` declared
+price units. It retains RMSE, worst quote IDs, spread-scaled errors, inside fractions
+and excluded denominators. These are research interval checks, not calibrated
+accuracy thresholds. Pointwise support labels distinguish locations inside the
+observed strike range from left/right extrapolation. Extrapolated accuracy is
+explicitly unvalidated even with a clear sensitivity result. Hidden wing shapes
+that share identical observations and fits produce identical diagnostic reports.
+
+The offline synthetic command creates a small report without fitting. The saved
+replay accepts `--saved-reliability`, `--research-policy`, `--noise-assumption`, and
+optional `--oca-sidecars` with `--case-label` for a multi-case sidecar. Replaying
+independent constrained raw SVI re-evaluates its saved parameters at training
+strikes and never recalibrates or changes its cutoffs. Saved replay requires
+`--price-unit` and a positive `--spread-floor` in those units; it performs no currency
+or payoff conversion. The synthetic example alone defaults to `USD per unit` and `0.01`.
+
+The optional sidecar JSON contains `quality` and `parity` reports serialized with OCA's
+`to_dict()`, and `selected`, an ordered list of records containing `source_row_id` for
+the training quotes. This CLI sidecar layout supports one expiry. Multi-expiry callers
+use `combine_research_diagnostics` with one `quote_ids` vector per expiry. A multi-case
+file wraps sidecars under `cases`, keyed by the requested `--case-label`.
+
+The output directory must be new. Its `report.json` contains the immutable report,
+input-file SHA256 digests and the consumer-source digest. Preserve the source files
+and input artifacts alongside the report when freezing a study. Mismatched identities,
+units or selected observations are rejected rather than joined approximately.
+
 ```console
+python examples/calibration/combined_research_diagnostics.py
+python examples/calibration/combined_research_diagnostics.py --saved-reliability reliability.json --price-unit "USD per unit" --spread-floor 0.01 --output replay-report
 python examples/calibration/diagnose_wing_reliability.py --model raw_svi_constrained --draws 16
 python examples/calibration/validate_historical_surfaces.py --models raw_svi_constrained --reliability-draws 16
 ```
 
-The first command runs a synthetic example on the core installation. The second
-uses the historical runner's local-data prerequisites above; its flag defaults to
+The wing reliability command runs a synthetic example on the core installation.
+The historical runner uses the local-data prerequisites above; its flag defaults to
 zero and requires supported raw-SVI models. Historical diagnostic seeds are the date
 integer times ten plus the fold index plus 700000000. The diagnostic runs before the
 full observed-domain gate, so an evaluation refusal can retain training-only

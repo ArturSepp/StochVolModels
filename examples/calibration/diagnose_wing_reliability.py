@@ -248,8 +248,22 @@ def run_local(local: Locals = Locals.SYNTHETIC):
     parser.add_argument("--fold", choices=("interior", "wings"), default="wings")
     parser.add_argument("--draws", type=int, default=16)
     parser.add_argument("--seed", type=int, default=5401)
+    parser.add_argument("--shock-std", type=float, default=0.0005)
+    parser.add_argument("--research-policy", type=Path,
+                        help="Caller-frozen JSON cutoff artifact; no installed default")
+    parser.add_argument("--research-noise-assumption", choices=("known_iid_gaussian_iv",),
+                        help="Explicit caller declaration; never inferred from bid/ask spreads")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    if args.research_noise_assumption and args.research_policy is None:
+        parser.error("--research-noise-assumption requires --research-policy")
+    policy = None
+    if args.research_policy is not None:
+        from _wing_research_policy import load_policy
+        policy, policy_hash = load_policy(args.research_policy)
+        policy_bytes = args.research_policy.read_bytes()
+        if sha256(policy_bytes).hexdigest() != policy_hash:
+            raise ValueError("Research artifact changed while loading")
     sample = make_sample(args.case)
     training = sample.chain(sample.training_mask(args.fold))
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
@@ -259,13 +273,25 @@ def run_local(local: Locals = Locals.SYNTHETIC):
     root = Path(__file__).resolve().parents[2]
     source["sha256"][Path(__file__).relative_to(root).as_posix()] = sha256(
         Path(__file__).read_bytes()).hexdigest()
+    if policy is not None:
+        helper = Path(__file__).with_name("_wing_research_policy.py")
+        source["sha256"][helper.relative_to(root).as_posix()] = sha256(
+            helper.read_bytes()).hexdigest()
     archive = output/"run_sources"
     archive.mkdir()
     for name in source["sha256"]:
         if name.startswith("examples/calibration/"):
             (archive/Path(name).name).write_bytes((root/name).read_bytes())
     metadata = dict(started_utc=stamp, case=args.case, fold=args.fold, source=source)
-    result = diagnose_wing_reliability(training, model=args.model, draws=args.draws, seed=args.seed)
+    result = diagnose_wing_reliability(training, model=args.model, draws=args.draws,
+                                      seed=args.seed, shock_std=args.shock_std)
+    if policy is not None:
+        from _wing_research_policy import assess_research_policy
+        metadata["research_policy"] = dict(artifact=policy, sha256=policy_hash,
+                                            noise_assumption=args.research_noise_assumption)
+        (output/"research_policy.json").write_bytes(policy_bytes)
+        result["research_assessment"] = assess_research_policy(
+            result, policy, noise_assumption=args.research_noise_assumption)
     (output/"report.json").write_text(json.dumps(_json_safe(dict(metadata=metadata, result=result)),
                                                  allow_nan=False, indent=2), encoding="utf-8")
     print(result["status"], output/"report.json")

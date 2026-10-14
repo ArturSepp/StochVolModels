@@ -6,6 +6,16 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Added
 
+- Added a repository-only combined research diagnostic report joining selected OCA
+  quote/parity evidence, existing observed-fit residuals, strike support and opt-in
+  sensitivity. It preserves separate statuses and source-row provenance, labels
+  extrapolated accuracy unvalidated, and replays saved fits without recalibration.
+  Replay requires explicit price units and spread floor, and verifies the sensitivity
+  baseline curve against saved parameters on its evaluation grid.
+- Added caller-supplied, opt-in repository-only wing research cutoffs with numerical
+  source provenance, exact scope checks and explicit unavailable classifications.
+  The diagnostic CLI archives the artifact and recomputes all-draw RMS exceedances;
+  no cutoff, automatic warning or draw-count default is installed.
 - Added repository-only training-IV wing reliability diagnostics: seeded repeated
   refits, fixed supported strike grids, pointwise IV and normalized call-price
   sensitivity, regional amplification and explicit failed-draw accounting. The
