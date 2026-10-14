@@ -4,8 +4,25 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-10-14
+
 ### Added
 
+- Added `fitters.DiagnosticReport` and `fitters.diagnose_fit` for immutable, serializable
+  quote residuals, pooled weighted errors and bid/ask coverage in explicit price units.
+- Added `fitters.check_call_slice`, `fitters.check_calendar`, `fitters.SurfaceEvaluator`,
+  `fitters.diagnose_surface` and `fitters.compare_surface_reports` for finite-grid strike,
+  density and calendar diagnostics and comparisons on identical constant-tenor grids.
+  Reports record incomplete checks and applicability; a grid pass is not a global certificate.
+- Added the optional `fitters.adapters.oca_diagnostics.diagnostic_chain_from_oca` helper
+  for quote provenance and explicit per-unit price conversion, preserving the legacy adapter.
+- Added the offline surface diagnostics guide and canonical synthetic examples.
+- Added OCA 5.3 reconstruction-sidecar joins through `diagnostic_chain_from_oca(quality_report=...)`,
+  source-to-calibration exclusion counts and an offline cross-package example.
+- Added optional paired fit reports to `compare_surface_reports` for coverage and fit-error
+  changes on matching constant tenors.
+- Added a repository-only SVI/SSVI research benchmark against existing smile and stochastic-model
+  fitters, with fixed synthetic holdouts, failure accounting, perturbation checks and source hashes.
 - Added a repository-only combined research diagnostic report joining selected OCA
   quote/parity evidence, existing observed-fit residuals, strike support and opt-in
   sensitivity. It preserves separate statuses and source-row provenance, labels
@@ -50,26 +67,6 @@ Entries start at 1.2.0. For earlier releases see the git log.
   exact observation times and quote provenance. It compares existing research fitters with
   identical interior/wing holdouts, observed forwards/discounts, complete failure accounting,
   private input snapshots and a compact diagnostic report. No public fitter API changed.
-
-## [2.5.0] - 2026-10-12
-
-### Added
-
-- Added `fitters.DiagnosticReport` and `fitters.diagnose_fit` for immutable, serializable
-  quote residuals, pooled weighted errors and bid/ask coverage in explicit price units.
-- Added `fitters.check_call_slice`, `fitters.check_calendar`, `fitters.SurfaceEvaluator`,
-  `fitters.diagnose_surface` and `fitters.compare_surface_reports` for finite-grid strike,
-  density and calendar diagnostics and comparisons on identical constant-tenor grids.
-  Reports record incomplete checks and applicability; a grid pass is not a global certificate.
-- Added the optional `fitters.adapters.oca_diagnostics.diagnostic_chain_from_oca` helper
-  for quote provenance and explicit per-unit price conversion, preserving the legacy adapter.
-- Added the offline surface diagnostics guide and canonical synthetic examples.
-- Added OCA 5.3 reconstruction-sidecar joins through `diagnostic_chain_from_oca(quality_report=...)`,
-  source-to-calibration exclusion counts and an offline cross-package example.
-- Added optional paired fit reports to `compare_surface_reports` for coverage and fit-error
-  changes on matching constant tenors.
-- Added a repository-only SVI/SSVI research benchmark against existing smile and stochastic-model
-  fitters, with fixed synthetic holdouts, failure accounting, perturbation checks and source hashes.
 
 ### Fixed
 
