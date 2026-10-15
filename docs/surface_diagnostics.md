@@ -2,14 +2,14 @@
 myst:
   html_meta:
     description: >-
-      Compare fitted option prices and implied volatilities with bid and ask quotes,
-      check strike and calendar consistency on explicit grids, and compare surfaces
-      at common tenors with immutable diagnostic reports.
+      Compare fitted option surfaces with quotes, combine SVI research diagnostics
+      with OCA quality and parity evidence, and replay persistence, missing data and recovery
+      without changing the frozen calibration/validation split.
 ---
 
 # Fit and surface diagnostics
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-10-12](https://github.com/ArturSepp/StochVolModels/commit/c685dd6767ae06d108a2c3ae15a6c0f5e125b328)*
 
 Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
@@ -23,6 +23,29 @@ The public diagnostics below work with existing fitters and pricers. SVI/SSVI be
 wing refits, caller-supplied cutoff policies and combined research reports live under
 `examples/calibration/` in a source checkout; they are not public fitter exports or wheel
 entry points. No market-calibrated quote-error law or automatic wing warning is installed.
+
+## Select a diagnostic workflow
+
+| Task | Entry point | Availability and interpretation |
+|---|---|---|
+| Compare final model outputs with observed quotes | `fitters.diagnose_fit` | Packaged API; price/IV errors and observed coverage |
+| Check strike, density and calendar consistency | `fitters.check_call_slice`, `fitters.check_calendar`, `fitters.diagnose_surface` | Packaged APIs; checks on declared grids and conventions |
+| Compare snapshots on common tenors | `fitters.compare_surface_reports` | Packaged API; differences without attribution or time filling |
+| Compare SVI/SSVI with existing fitters | [Smile-fitter benchmark](#research-benchmark) | Repository-only calibration experiments; not public SVI fitter exports |
+| Retain OCA quality/parity beside fit, support and sensitivity | [Combined research report](#combined-research-report) | Repository-only report; each facet keeps its own status and denominator |
+| Track persistence, unavailable observations and observed recovery | [Longitudinal replay](#longitudinal-diagnostic-replay) | Repository-only saved-evidence replay; no refit or threshold selection |
+
+The packaged diagnostics and advanced OCA adapter are distinct from the source-checkout
+research runners. Adapting an OCA chain requires the optional research dependency;
+consuming serialized OCA sidecars in combined/replay
+research code does not import OCA. See the [example catalogue](examples.md#research-diagnostics)
+for runnable commands and prerequisites.
+
+A useful order is to preserve OCA source evidence and selections, diagnose the final
+fit and its supported strike domain, evaluate any separately declared sensitivity
+policy, then replay the same diagnostic rules through time. Original input validity,
+model agreement, modeled surface consistency and sensitivity answer different questions.
+No aggregate accuracy verdict is inferred from them.
 
 ## Fit quality against observed quotes
 
@@ -609,6 +632,66 @@ certificate are supplied. The revised raw-SVI candidate remains opt-in through `
 Inputs and generated reports are private local artifacts and must not be redistributed
 without the relevant data rights. Public tests use synthetic observations only.
 
+### OCA event-quality and parity qualification
+
+OCA's source-checkout
+[freshness policy](https://github.com/ArturSepp/OptionChainAnalytics/blob/main/docs/quote_diagnostics.md#retrospective-event-freshness-and-asynchrony)
+separates provider-event cadence from original snapshot-age evidence. Its
+`selected_qualification` result retains `original_quality`, `event_quality`,
+`exact_parity` and timing reasons for the unchanged selected source IDs. A provider
+event clock does not establish collector receipt or last quote-update time. The
+calibration-frozen timing policy is descriptive research evidence, not a validated
+economic freshness limit.
+
+For a study that explicitly declares a before/after qualification policy, let $B$
+mean a successful saved base fit, $G$ mean a ready original native-input guard,
+$Q_s$ mean passing original quote quality, $Q_e$ mean passing conditional event
+quality, and $P$ mean complete passing exact parity for the selected quotes.
+The native-input guard is supplied by the study under its frozen admissibility rules.
+The two study conditions are
+
+$$
+\mathrm{eligible}_{\mathrm{strict}}=B\land G\land Q_s\land P,
+\qquad
+\mathrm{eligible}_{\mathrm{event}}=B\land G\land Q_e\land P.
+$$
+
+Each term requires its declared passing state; failed or unavailable evidence cannot
+qualify. These conditions describe a separately declared research policy, not new
+SVM API defaults. The combined report and its CLI preserve the strict quality facet;
+they expose no automatic switch that substitutes event quality for snapshot quality.
+Keep a study's conditional decision alongside that original facet, with the policy
+identity and calibration/validation split.
+
+This synthetic decision table assumes the saved fit and native guard pass:
+
+| Original quality | Event quality | Selected exact parity | Strict condition | Conditional event condition |
+|---|---|---|---|---|
+| unavailable | pass | unavailable | ineligible | ineligible |
+| unavailable | pass | fail | ineligible | ineligible |
+| unavailable | pass | pass | ineligible | eligible under the declared study policy |
+
+A bounded cross-quote time range never synchronizes a call and put observed at
+different event times. OCA's
+[parity attribution helper](https://github.com/ArturSepp/OptionChainAnalytics/blob/main/docs/quote_diagnostics.md#parity-attribution-and-recovery-from-original-evidence)
+can identify missing, ambiguous or invalid counterparts and repeat exact parity on
+the original inventory. Only a newly supported exact pair in the unchanged common
+coordinates can resolve an omitted or incorrectly reported result. A separate
+original-provider-forward pass cannot replace failing common-coordinate evidence.
+
+For handoff, retain the original OCA `quality` report and use the attribution report's
+`metadata["recomputed_parity"]` as a new `parity` sidecar only after verifying its
+source records and conventions. Preserve the original parity report for comparison.
+The attribution report itself has kind `parity_attribution`, not `quote_quality` or
+`parity`, and cannot be passed as either of those combined-report inputs. The selected
+IDs, prices, IVs and training geometry must still match. This is a caller-assembled
+research handoff, not a new automatic adapter or a change to existing selection.
+
+The independent-Gaussian IV cutoff's requirement for 128 complete refits applies
+only to its [frozen synthetic scope](#caller-frozen-research-policy). An event-quality
+pass or recovered parity pair does not validate an empirical quote-error law, its
+tails/dependence, native price admissibility or eligibility under that cutoff.
+
 ### Longitudinal diagnostic replay
 
 Longitudinal replay follows the same diagnostic scope across a frozen observation
@@ -687,15 +770,30 @@ The replay does not establish receive-time availability, calibrate age limits,
 validate wing accuracy or establish executable arbitrage. Retrospective analysis-grid
 labels must remain distinguishable from verified market-data availability.
 
+Keep longitudinal observed recovery separate from OCA attribution recovery. The
+former needs a later clear observation with eligible new source evidence for the
+same track. The latter resolves a missing or incorrect report of an exact pair at
+one unchanged frozen observation. Neither permits filling an expected slot with
+an asynchronous counterpart, a repeated source record or a different expiry.
+
+| Replay table | What it records |
+|---|---|
+| `observations` | Every expected slot, supplied/effective state, temporal guards, source IDs and reasons |
+| `episodes` | Violation episodes, recovery observations/brackets and censoring |
+| `tracks` | Fixed identities, diagnostics, severity units and rule definitions |
+| `summary` | Cohort/diagnostic coverage and event counts; unavailable slots stay in denominators |
+
 ## See also
 
 - [Approximate LogSV smile fitter](logsv_smile_fitter.md).
 - [Calibration](calibration.md) and [terminal-distribution models](terminal_distribution_models.md).
 - [Option-chain conventions](option_chains_and_conventions.md) and [API reference](api.md).
+- [OCA quote, event-timing and parity diagnostics](https://github.com/ArturSepp/OptionChainAnalytics/blob/main/docs/quote_diagnostics.md).
 
 ## References
 
 - Jim Gatheral and Antoine Jacquier, *Arbitrage-free SVI volatility surfaces*, arXiv:1204.0646,
   revision 4 (2013). [Primary manuscript](https://arxiv.org/abs/1204.0646).
 - [VanillaOptionPricers software citation](https://github.com/ArturSepp/VanillaOptionPricers/blob/main/CITATION.cff).
+- [OCA software citation](https://github.com/ArturSepp/OptionChainAnalytics/blob/main/CITATION.cff), [combined report source](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/combined_research_diagnostics.py) and [longitudinal replay source](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/replay_surface_diagnostics.py).
 - [stochvolmodels software citation](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).

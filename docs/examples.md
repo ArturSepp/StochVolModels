@@ -9,7 +9,7 @@ myst:
 
 # Examples and recipes
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-09-27](https://github.com/ArturSepp/StochVolModels/commit/701a5ce4f2a25e39540a916a6ca1512f9a27ab92)*
 
 Examples for [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
@@ -76,6 +76,40 @@ suite runs every case of it and checks the numbers the page quotes.
 | [`calibration/run_oca_logsv_calibration.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/run_oca_logsv_calibration.py) | Conversion of OptionChainAnalytics data and LogSV calibration | `research` extra, generated quotes | [Calibration](calibration.md) |
 | [`calibration/load_cboe_option_chain.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/load_cboe_option_chain.py) | Loading a cached SPX or VIX chain | `research` extra, local CBOE cache | [Option chains](option_chains_and_conventions.md) |
 | [`calibration/run_spy_thetadata_month.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/run_spy_thetadata_month.py) | SPY smile fit and calibration over one month | `research` extra, local ThetaData cache | [Calibration](calibration.md) |
+
+## Research diagnostics
+
+These source-checkout runners are experimental workflows, separate from packaged
+fitters and pricers. The [diagnostic workflow](surface_diagnostics.md#select-a-diagnostic-workflow)
+explains the sequence and status meanings. Fixed synthetic inputs demonstrate the
+contracts; historical studies require separately frozen inputs, conventions and splits.
+
+| Script | Data and dependencies | Evidence produced |
+|---|---|---|
+| [`calibration/compare_smile_fitters.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/compare_smile_fitters.py) | Core, frozen synthetic suite | Research SVI/SSVI and incumbent comparison; holdouts, optimizer failures and repeated timing |
+| [`calibration/diagnose_wing_reliability.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/diagnose_wing_reliability.py) | Core, synthetic training quotes; performs refits | Training-shock sensitivity with incomplete-draw and strike-support evidence |
+| [`calibration/combined_research_diagnostics.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/combined_research_diagnostics.py) | Core; synthetic outputs or saved reliability and optional serialized OCA sidecars | Separate quality, parity, fit, support and optional policy facets; no refit |
+| [`calibration/replay_surface_diagnostics.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/replay_surface_diagnostics.py) | Core; synthetic history or frozen manifest/observations | Persistent violations, unavailable slots, observed recovery and split censoring; no refit |
+| [`calibration/validate_historical_surfaces.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/validate_historical_surfaces.py) | Research extra and licensed local CBOE inputs | Historical fit, surface and opt-in sensitivity reports with exclusions retained |
+
+The two saved-evidence runners can be tried without data credentials or calibration:
+
+```console
+python examples/calibration/combined_research_diagnostics.py --output <new-output-directory>
+python examples/calibration/replay_surface_diagnostics.py --output <different-new-output-directory>
+```
+
+Use actual new directories in place of the angle-bracket placeholders. Output paths
+must not already exist. The combined runner writes `report.json` with an immutable
+report and input/source fingerprints. Longitudinal replay writes `report.json` plus
+`observations.csv`, `episodes.csv`, `tracks.csv` and `summary.csv`. Saved-input flags
+and their schemas are documented in the [combined-report](surface_diagnostics.md#combined-research-report)
+and [replay](surface_diagnostics.md#longitudinal-diagnostic-replay) sections.
+
+OCA's [event freshness](https://github.com/ArturSepp/OptionChainAnalytics/blob/main/examples/retrospective_freshness.py)
+and [parity attribution](https://github.com/ArturSepp/OptionChainAnalytics/blob/main/examples/parity_attribution.py)
+are run in an OCA source checkout. They provide upstream evidence; they do not install
+an SVM empirical noise model or an automatic retrospective qualification option.
 
 ## Option data time series
 

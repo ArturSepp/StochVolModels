@@ -123,6 +123,12 @@ parameters to the implied volatilities of a market chain.
   Bitcoin chain.
 - [Approximate log-normal SV smile fitter](logsv_smile_fitter.md): a three-parameter smile
   for one maturity, what its parameters mean, and its density and delta helpers.
+- [Fit and surface diagnostics](surface_diagnostics.md): observed-price/IV agreement,
+  strike/density/calendar checks, optional OCA provenance and repository-only SVI/SSVI research.
+  The [workflow guide](surface_diagnostics.md#select-a-diagnostic-workflow) connects
+  combined reports, [OCA event/parity qualification](surface_diagnostics.md#oca-event-quality-and-parity-qualification)
+  and [longitudinal replay](surface_diagnostics.md#longitudinal-diagnostic-replay),
+  with unavailable data, persistence and observed recovery retained separately.
 
 ## Other models
 
