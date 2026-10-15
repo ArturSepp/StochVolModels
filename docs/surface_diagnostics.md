@@ -635,7 +635,7 @@ without the relevant data rights. Public tests use synthetic observations only.
 ### OCA event-quality and parity qualification
 
 OCA's source-checkout
-[freshness policy](https://github.com/ArturSepp/OptionChainAnalytics/blob/main/docs/quote_diagnostics.md#retrospective-event-freshness-and-asynchrony)
+[freshness policy](https://github.com/ArturSepp/OptionChainAnalytics/blob/main/docs/quote_diagnostics.md#user-content-retrospective-event-freshness-and-asynchrony)
 separates provider-event cadence from original snapshot-age evidence. Its
 `selected_qualification` result retains `original_quality`, `event_quality`,
 `exact_parity` and timing reasons for the unchanged selected source IDs. A provider
@@ -673,7 +673,7 @@ This synthetic decision table assumes the saved fit and native guard pass:
 
 A bounded cross-quote time range never synchronizes a call and put observed at
 different event times. OCA's
-[parity attribution helper](https://github.com/ArturSepp/OptionChainAnalytics/blob/main/docs/quote_diagnostics.md#parity-attribution-and-recovery-from-original-evidence)
+[parity attribution helper](https://github.com/ArturSepp/OptionChainAnalytics/blob/main/docs/quote_diagnostics.md#user-content-parity-attribution-and-recovery-from-original-evidence)
 can identify missing, ambiguous or invalid counterparts and repeat exact parity on
 the original inventory. Only a newly supported exact pair in the unchanged common
 coordinates can resolve an omitted or incorrectly reported result. A separate
