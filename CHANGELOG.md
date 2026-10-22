@@ -6,6 +6,9 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Changed
 
+- Raised the optional `research` extra's OptionChainAnalytics minimum to 6.0.0 and refreshed
+  its lock with the Pillow and Certifi security fixes. OCA remains outside core dependencies;
+  Python 3.11 and newer remain supported, with no pricing or calibration API changes.
 - Raised the minimum supported Python version from 3.10 to 3.11. Updated package metadata,
   the source-test matrix and minimum-dependency CI jobs, and regenerated the dependency lock
   for Python 3.11 and newer. Python 3.12 remains the development and primary CI interpreter.

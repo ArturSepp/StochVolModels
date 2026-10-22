@@ -8,6 +8,7 @@ import json
 import re
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -26,6 +27,23 @@ def _repository_root() -> Path | None:
 
 
 REPOSITORY_ROOT = _repository_root()
+
+
+@pytest.mark.repository_only
+@pytest.mark.skipif(REPOSITORY_ROOT is None, reason="dependency metadata is absent from the wheel")
+def test_research_extra_requires_and_locks_oca_6() -> None:
+    """Research installs select the security-fixed OCA release without changing core."""
+    assert REPOSITORY_ROOT is not None
+    project = tomllib.loads((REPOSITORY_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    lock = tomllib.loads((REPOSITORY_ROOT / "uv.lock").read_text(encoding="utf-8"))
+    assert "option-chain-analytics[cboe]>=6.0.0" in (
+        project["project"]["optional-dependencies"]["research"]
+    )
+    assert not any("option-chain-analytics" in item for item in project["project"]["dependencies"])
+    locked = {package["name"]: package["version"] for package in lock["package"]}
+    assert locked["option-chain-analytics"] == "6.0.0"
+    assert tuple(map(int, locked["pillow"].split("."))) >= (13, 0, 0)
+    assert tuple(map(int, locked["certifi"].split("."))) >= (2026, 10, 19)
 
 
 def _has_collected_test(path: Path) -> bool:

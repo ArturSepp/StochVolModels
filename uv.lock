@@ -1,15 +1,15 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version == '3.13.*' and sys_platform == 'win32'",
-    "python_full_version == '3.12.*' and sys_platform == 'win32'",
     "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
     "python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
     "python_full_version == '3.12.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version < '3.12' and sys_platform == 'emscripten'",
@@ -2064,10 +2064,10 @@ resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version == '3.13.*' and sys_platform == 'win32'",
-    "python_full_version == '3.12.*' and sys_platform == 'win32'",
     "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
     "python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
     "python_full_version == '3.12.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/9a/80/db0b4559e57ec36362bedbb05530a87fafbcb6067708c946967a41d449e7/numpy-2.5.2.tar.gz", hash = "sha256:d482d171c406ae88c5b19cad3b6a1c4c5209f886ab74bc44c2c865c23f52d860", size = 20773161, upload-time = "2026-08-09T13:48:27.962Z" }
@@ -2153,7 +2153,7 @@ wheels = [
 
 [[package]]
 name = "option-chain-analytics"
-version = "5.2.0"
+version = "6.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "matplotlib" },
@@ -2161,15 +2161,16 @@ dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "pandas" },
+    { name = "pillow" },
     { name = "qis" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "seaborn" },
     { name = "vanilla-option-pricers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3a/9f/f59ac8df6843a44ccbfe83658addcbd6ca9ecc96b84bd900a0e93cfbc316/option_chain_analytics-5.2.0.tar.gz", hash = "sha256:6ce63214233ad3cf96f5beb021b9a7a30f0ab19bc4aa15d0c7e76600e0384339", size = 121962, upload-time = "2026-08-24T05:12:54.347Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/01/cd/8e3973ecc875fc4623e8ef065368c7b5475e5062a1569f64d3b4a6902a25/option_chain_analytics-6.0.0.tar.gz", hash = "sha256:022a5162f8ae62da74477cbefda95557698bf216d283d007cd87ed0ddd6b9bc6", size = 166546, upload-time = "2026-10-22T03:52:13.962Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/ab/c60fce900988404d44ae5c7e255fe1441d765f6eda3aaa4c9c1055f729ad/option_chain_analytics-5.2.0-py3-none-any.whl", hash = "sha256:3511aa896d1a62a56c997b44794d6f1637b4c3e933dd7c633c0185e0b63e5660", size = 79471, upload-time = "2026-08-24T05:12:53.161Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/23/8d85d2c51040e26402732c9147bcaacf2e00844c4dd86f9b3a6327957744/option_chain_analytics-6.0.0-py3-none-any.whl", hash = "sha256:ea621b39b1721d9451ee134111a95acb53ad771b81347e4246bf095e03e865b4", size = 93504, upload-time = "2026-10-22T03:52:12.436Z" },
 ]
 
 [package.optional-dependencies]
@@ -3238,10 +3239,10 @@ resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version == '3.13.*' and sys_platform == 'win32'",
-    "python_full_version == '3.12.*' and sys_platform == 'win32'",
     "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
     "python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
     "python_full_version == '3.12.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 dependencies = [
@@ -3393,10 +3394,10 @@ resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version == '3.13.*' and sys_platform == 'win32'",
-    "python_full_version == '3.12.*' and sys_platform == 'win32'",
     "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
     "python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'win32'",
+    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
     "python_full_version == '3.12.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 dependencies = [
@@ -3666,7 +3667,7 @@ requires-dist = [
     { name = "notebook", marker = "extra == 'jupyter'", specifier = ">=6.5.0" },
     { name = "numba", specifier = ">=0.60.0" },
     { name = "numpy", specifier = ">=2.0" },
-    { name = "option-chain-analytics", extras = ["cboe"], marker = "extra == 'research'", specifier = ">=5.2.0" },
+    { name = "option-chain-analytics", extras = ["cboe"], marker = "extra == 'research'", specifier = ">=6.0.0" },
     { name = "pandas", specifier = ">=2.2.0" },
     { name = "plotly", marker = "extra == 'visualization'", specifier = ">=5.0.0" },
     { name = "qis", marker = "extra == 'research'", specifier = ">=5.11.0" },
