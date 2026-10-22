@@ -1,5 +1,10 @@
 # Contributing to StochVolModels
 
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-08-21](https://github.com/ArturSepp/StochVolModels/commit/83e164c17fcfaa4ef8cd08cbe099bf89681efeb4)*
+
+Source: [StochVolModels](https://github.com/ArturSepp/StochVolModels).
+Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
+
 <!-- docs-start -->
 
 Thank you for your interest in `stochvolmodels`. The package is a reference implementation used by
@@ -45,6 +50,52 @@ Open a public [GitHub issue](https://github.com/ArturSepp/StochVolModels/issues)
 workflow you are trying to implement. Methodology questions are welcome; cite the paper and
 equation or section when relevant. The project is maintained on a best-effort basis and does not
 offer private support or a guaranteed response time.
+
+## Starter tasks
+
+These are bounded proposals, not assigned issues or confirmed defects. Recheck source and open
+work before agreeing one task. Use the existing [feature form](https://github.com/ArturSepp/StochVolModels/issues/new?template=feature_request.yml),
+Area **Documentation or example**. Include the task ID, owner, exact paths, reproduction, acceptance and focused
+check under Proposed behavior; retain required boundary checkboxes. Use the bug form only for
+observed incorrect behaviour. Keep numerical code, public signatures, dependencies, fixtures and
+canonical examples unchanged for these documentation tasks.
+
+### SVM-1: clarify LogSV first output
+
+Owner: StochVolModels. Edit only `docs/getting_started.md` to clarify one observed setup or output-reading ambiguity. Acceptance: locate the vanilla price/IV and two-maturity chain dimensions while preserving every asserted number, canonical excerpt and notebook.
+
+```console
+python examples/getting_started/quickstart.py
+python scripts/check_quickstart_notebook.py
+python scripts/check_docs.py --files docs/getting_started.md
+```
+
+### SVM-2: clarify chain conventions
+
+Owner: StochVolModels. Edit only `docs/option_chains_and_conventions.md` to clarify one forward, discount-factor, maturity or shape ambiguity. Acceptance: keep the stable/advanced distinction and numerical conventions unchanged; do not alter a pricer or parameter.
+
+```console
+python -m pytest src/stochvolmodels/tests/test_option_chain_characterization.py -k "discount or uniform" -q
+```
+
+### SVM-3: check release navigation
+
+Owner: StochVolModels. Edit only `docs/getting_started.md` to clarify one stable/main or optional-research boundary. Acceptance: retain the pinned canonical example and existing page anchors; keep research/provider packages optional.
+
+```console
+python -m pytest src/stochvolmodels/tests/test_docs_seo.py -q
+```
+
+Run the package's existing strict HTML command after a documentation edit and inspect the
+changed passage. On the maintainer's OneDrive checkout, dot-source the shared
+`Enter-AgentRepo.ps1` first and use `C:\Python\StochVolModels312\Scripts\python.exe`.
+Keep exports, caches, builds and run output on C. The `uv` setup below is for ordinary contributor
+checkouts outside OneDrive; never create `.venv` in the synchronized checkout.
+
+Follow the [shared review guidance](https://github.com/ArturSepp/ArturSepp/blob/main/docs/contributing_to_stack.md#review-attribution-and-automation-assisted-changes).
+Record the revision, actual versions, exact checks and skips, rendered review and material
+automation assistance. Preserve MIT licensing and attribution. Automated checks do not
+establish independent reader success. Review time and acceptance are not promised.
 
 ## Development setup
 

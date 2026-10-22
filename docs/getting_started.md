@@ -17,6 +17,31 @@ Use this path when you want a deterministic European-option result under a stoch
 model, entirely offline. It demonstrates the stable `LogSvParams`, `LogSVPricer`, and
 `OptionChain` API. It does not calibrate parameters or run Monte Carlo.
 
+## Reproducible released workflow
+
+The tested support floor for this first-use workflow is **stochvolmodels 2.5.0** on
+Python 3.12. This is a verified floor, not the historical introduction version. Install core
+without extras; save and run the existing package-owned script in a working directory outside
+synchronized folders:
+
+```powershell
+python -m pip install "stochvolmodels==2.5.0"
+python -c "from importlib.metadata import version; import stochvolmodels as p; print(version('stochvolmodels')); print(p.__file__)"
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/ArturSepp/StochVolModels/12a30bf9373f9aa8433763263f2f8db6a4000961/examples/getting_started/quickstart.py' -OutFile quickstart.py
+python quickstart.py
+```
+
+Installation and saving the script need internet access; the calculation below runs offline.
+Measure installation separately from execution, and allow any first Numba compilation to finish.
+No universal time-to-first-result is promised.
+
+This CPU calculation prices one European call and a quote-free two-maturity, five-strike chain under fixed LogSV parameters. Maturities are in years, forwards are normalised to one and volatility uses the stated annual lognormal convention. It asserts four numerical reference results and prints prices, implied volatilities, array shapes and elapsed time. It writes no files and needs no quotes, credentials, network, calibration or Monte Carlo. Research/provider packages such as qis, option-chain-analytics and Bloomberg access are optional and unnecessary for this first-use path.
+
+[Stable documentation](https://stochvolmodels.readthedocs.io/en/stable/) is the release channel;
+[latest](https://stochvolmodels.readthedocs.io/en/latest/) follows main and may include unreleased changes. Check the build's
+source version; a stable alias is not proof of the latest PyPI upload. Existing figures,
+results and conventions below remain the canonical example's contract.
+
 ## Installation
 
 Install the released core package:
