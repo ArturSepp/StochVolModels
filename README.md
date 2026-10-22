@@ -87,7 +87,7 @@ git clone https://github.com/ArturSepp/StochVolModels.git
 ```
 
 Core dependencies:
-- `python >= 3.10`
+- `python >= 3.11`
 - `vanilla-option-pricers >= 2.1.0`
 - `numba >= 0.60.0`
 - `numpy >= 2.0`
@@ -95,6 +95,10 @@ Core dependencies:
 - `pandas >= 2.2.0`
 - `matplotlib >= 3.8.0`
 - `seaborn >= 0.13.0`
+
+Python 3.12 is the development and primary CI interpreter. The Python 3.11 minimum applies
+to current source checkouts and the next release; published version 2.5.0 retains its original
+Python 3.10 requirement.
 
 Optional extras:
 

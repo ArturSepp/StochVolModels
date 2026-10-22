@@ -33,7 +33,7 @@ then operate on a single option, one maturity slice, or a ragged multi-maturity 
 includes synthetic chains and an offline first result; licensed market data is optional and is
 not required to install, test, or review the software.
 
-The source is released under the MIT licence, supports Python 3.10--3.13, and separates the core
+The source is released under the MIT licence, supports Python 3.11--3.14, and separates the core
 pricing package from repository-only examples and research-paper workflows.
 
 # Statement of need

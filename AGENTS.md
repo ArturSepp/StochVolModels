@@ -120,7 +120,7 @@ standard linked below.
 
 Optional extras: `research` (pulls in `qis` and OCA), `visualization`, `numerical`, `jupyter`,
 `docs`, `all`. The `test` dependency group includes `pytest-regressions`. Supported Python is
->= 3.10. CI runs Linux 3.10 - 3.14, Windows 3.12 numerical regressions, macOS 3.12 smoke tests, a core-only installed
+>= 3.11. CI runs Linux 3.11 - 3.14, Windows 3.12 numerical regressions, macOS 3.12 smoke tests, a core-only installed
 wheel, cross-platform quickstarts, documentation/doctests/link checks, and scheduled audits.
 
 ## Conventions

@@ -44,6 +44,10 @@ results and conventions below remain the canonical example's contract.
 
 ## Installation
 
+Current source checkouts require **Python 3.11 or newer**; Python 3.12 is the development
+and primary CI interpreter. This minimum applies to the next release. The pinned 2.5.0
+workflow above retains that published release's original Python 3.10 requirement.
+
 Install the released core package:
 
 ```console

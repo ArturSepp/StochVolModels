@@ -4,6 +4,12 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+### Changed
+
+- Raised the minimum supported Python version from 3.10 to 3.11. Updated package metadata,
+  the source-test matrix and minimum-dependency CI jobs, and regenerated the dependency lock
+  for Python 3.11 and newer. Python 3.12 remains the development and primary CI interpreter.
+
 ### Added
 
 - Added repository-only longitudinal diagnostic replay over frozen snapshot schedules,

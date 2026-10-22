@@ -149,7 +149,7 @@ numerical or plotting module, and the provisional protocols import neither numba
 ## Dependency surface
 
 The core depends on `vanilla-option-pricers`, numba, NumPy, SciPy, pandas, matplotlib and seaborn,
-and supports Python 3.10 to 3.14. Optional extras add the research stack (`qis` and
+and supports Python 3.11 to 3.14. Optional extras add the research stack (`qis` and
 OptionChainAnalytics, used by the paper directories and the data loaders), plotly, scikit-learn and
 statsmodels, Jupyter, and the documentation tools. Ruff bans module-level imports of the optional
 packages and any import of the sibling packages of the author's other libraries;
