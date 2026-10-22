@@ -19,15 +19,14 @@ model, entirely offline. It demonstrates the stable `LogSvParams`, `LogSVPricer`
 
 ## Reproducible released workflow
 
-The tested support floor for this first-use workflow is **stochvolmodels 2.5.0** on
-Python 3.12. This is a verified floor, not the historical introduction version. Install core
-without extras; save and run the existing package-owned script in a working directory outside
-synchronized folders:
+The reproducible workflow below uses **stochvolmodels 2.6.0** and requires Python 3.11
+or newer. Install core without extras; save and run the package-owned script in a working
+directory outside synchronized folders:
 
 ```powershell
-python -m pip install "stochvolmodels==2.5.0"
+python -m pip install "stochvolmodels==2.6.0"
 python -c "from importlib.metadata import version; import stochvolmodels as p; print(version('stochvolmodels')); print(p.__file__)"
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/ArturSepp/StochVolModels/12a30bf9373f9aa8433763263f2f8db6a4000961/examples/getting_started/quickstart.py' -OutFile quickstart.py
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/ArturSepp/StochVolModels/v2.6.0/examples/getting_started/quickstart.py' -OutFile quickstart.py
 python quickstart.py
 ```
 
@@ -44,9 +43,8 @@ results and conventions below remain the canonical example's contract.
 
 ## Installation
 
-Current source checkouts require **Python 3.11 or newer**; Python 3.12 is the development
-and primary CI interpreter. This minimum applies to the next release. The pinned 2.5.0
-workflow above retains that published release's original Python 3.10 requirement.
+Version 2.6.0 and newer require **Python 3.11 or newer**; Python 3.12 is the development
+and primary CI interpreter. Published version 2.5.0 retains its original Python 3.10 requirement.
 
 Install the released core package:
 

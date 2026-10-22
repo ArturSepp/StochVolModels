@@ -2,7 +2,7 @@
 
 Entries start at 1.2.0. For earlier releases see the git log.
 
-## [Unreleased]
+## [2.6.0] - 2026-10-22
 
 ### Changed
 
