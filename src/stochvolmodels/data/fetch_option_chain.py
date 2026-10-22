@@ -30,7 +30,7 @@ try:
 except ImportError as error:
     raise ImportError(
         "stochvolmodels.data.fetch_option_chain needs qis and option-chain-analytics: "
-        'pip install "stochvolmodels[research]" "option-chain-analytics[cboe]>=5.2.0"'
+        'pip install "stochvolmodels[research]" "option-chain-analytics[cboe]>=6.0.0"'
     ) from error
 
 # stochvolmodels

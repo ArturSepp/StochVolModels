@@ -58,7 +58,7 @@ dependencies = [
 
 [project.optional-dependencies]
 research = [
-    "option-chain-analytics[cboe]>=5.2.0",
+    "option-chain-analytics[cboe]>=6.0.0",
     "qis>=5.11.0",
 ]
 
