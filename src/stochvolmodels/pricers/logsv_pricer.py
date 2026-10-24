@@ -1182,6 +1182,17 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
                                               ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     """Price a rough-LogSV option chain using caller-supplied Gaussian draws.
 
+    The volatility solves the Volterra equation
+    sigma_t = sigma0 + int_0^t K(t-s) [(kappa1 + kappa2 sigma_s)(theta - sigma_s) ds
+    + beta sigma_s dW0_s + orthog_vol sigma_s dW1_s] with the Markovian kernel
+    K^N(t) = sum_i weights_i exp(-nodes_i t), simulated by the split-step scheme of
+    :mod:`stochvolmodels.pricers.rough_logsv.split_simulation` with
+    vartheta = sqrt(beta^2 + orthog_vol^2), rho = beta / vartheta and factor targets
+    sigma0 / sum_i weights_i. ``orthog_vol`` is epsilon, i.e. ``LogSvParams.volvol``.
+    The kernel is approximated once by the caller (``LogSvParams.approximate_kernel``),
+    usually for the longest maturity, and each maturity is simulated from time 0 on its
+    own grid with the leading rows of Z0 and Z1.
+
     This experimental routine preserves identical random inputs across parameter
     evaluations, which is useful for calibration diagnostics.
     """

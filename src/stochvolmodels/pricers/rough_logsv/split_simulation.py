@@ -1,3 +1,39 @@
+"""
+Split-step Monte Carlo scheme for the rough log-normal Volterra stochastic volatility model.
+
+Model under the risk-neutral measure Q with zero rates:
+
+    dS_t / S_t = sigma_t dW0_t,
+    sigma_t = sigma0 + int_0^t K(t-s) [(kappa1 + kappa2 sigma_s)(theta - sigma_s) ds
+                                       + vartheta sigma_s dW^sigma_s],
+
+with vartheta^2 = beta^2 + epsilon^2, rho = beta / vartheta = corr(dW0, dW^sigma) and the
+Markovian kernel K^N(t) = sum_i w_i exp(-x_i t) (nodes x_i, weights w_i). With factor targets
+sigma0_factors_i = sigma0 / sum_i w_i the volatility is sigma^N_t = sum_i w_i sigma^(i)_t, where
+
+    d sigma^(i)_t = -x_i (sigma^(i)_t - sigma0_factors_i) dt
+                    + (kappa1 + kappa2 sigma^N_t)(theta - sigma^N_t) dt
+                    + vartheta sigma^N_t dW^sigma_t.
+
+One step of size h is the Strang splitting D(h/2) o S(h) o D(h/2):
+    D  drift ODE, one classical Runge-Kutta 4 step (drift_ode_solve2), full quadratic drift;
+    S  diffusion, exact: sigma^N is a geometric Brownian motion with volatility
+       vartheta * sum_i w_i, and every factor receives the same increment (diffus_sde_solve_f64).
+The price step recovers J = int sigma^N dW^sigma from the volatility increment with the
+trapezoidal rule and sets, with Vbar = 0.5 (sigma^N_t^2 + sigma^N_{t+h}^2),
+
+    log S_{t+h} = log S_t - 0.5 Vbar h + rho J + sqrt(1 - rho^2) sqrt(Vbar h) Z1,
+    qvar_{t+h} = qvar_t + Vbar h.
+
+Paths whose sigma^N is non-positive or NaN after the volatility step have all factors reset to
+1e-6, because the Runge-Kutta drift step does not preserve positivity when N > 1.
+Array conventions: factor arrays have shape (N, nb_path); nodes and weights are broadcast to
+(N, nb_path); Z0 (drives W^sigma) and Z1 (orthogonal price noise) have shape (nb_steps, nb_path).
+Legacy keywords are retained: weight means weights, v0 means sigma0_factors,
+v_init means factors_init, and volvol means the total vartheta (not the residual epsilon).
+Entry point: log_spot_full_combined. Option payoffs and chain pricing belong in
+stochvolmodels.pricers.logsv_pricer.
+"""
 import numpy as np
 from enum import Enum
 
@@ -17,16 +53,17 @@ from stochvolmodels.pricers.rough_logsv.expm import batch_expA, batch_invA
 def drift_ode_solve(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: float, kappa2: float,
                     z0: np.ndarray, weight: np.ndarray, h: float):
     """
+    drift map D_h by one explicit midpoint (Runge-Kutta 2) step. Not used by the default scheme.
 
     Parameters
     ----------
-    nodes : (fixed argument) exponents x_i, array of size (n,)
-    v0 : (fixed argument) array of size (n, nb_path)
+    nodes : exponents x_i, array of size (n, nb_path)
+    v0 : factor targets sigma0_factors_i, array of size (n, nb_path)
     theta : long-run level, scalar
     kappa1 : linear mean-reversion speed, scalar
     kappa2 : quadratic mean-reversion speed, scalar
-    z0 : initial values, array of size (n, nb_path)
-    weight : wieghts, array of size (n, )
+    z0 : factor values at the start of the step, array of size (n, nb_path)
+    weight : kernel weight w_i, array of size (n, nb_path)
     h : step size
 
     Returns
@@ -78,16 +115,20 @@ def drift_ode_solve(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: flo
 def drift_ode_solve2(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: float, kappa2: float,
                     z0: np.ndarray, weight: np.ndarray, h: float):
     """
+    drift map D_h by one classical Runge-Kutta 4 step; the default drift step of the scheme.
+
+    Solves d xi_i / dt = -x_i (xi_i - sigma0_factors_i) + (kappa1 + kappa2 xi^N)(theta - xi^N)
+    with xi^N = sum_i w_i xi_i.
 
     Parameters
     ----------
-    nodes : (fixed argument) exponents x_i, array of size (n,)
-    v0 : (fixed argument) array of size (n, nb_path)
+    nodes : exponents x_i, array of size (n, nb_path)
+    v0 : factor targets sigma0_factors_i, array of size (n, nb_path)
     theta : long-run level, scalar
     kappa1 : linear mean-reversion speed, scalar
     kappa2 : quadratic mean-reversion speed, scalar
-    z0 : initial values, array of size (n, nb_path)
-    weight : wieghts, array of size (n, )
+    z0 : factor values at the start of the step, array of size (n, nb_path)
+    weight : kernel weight w_i, array of size (n, nb_path)
     h : step size
 
     Returns
@@ -129,7 +170,7 @@ def drift_ode_solve2(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: fl
 def drift_ode_solve2_f32(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: float, kappa2: float,
                          z0: np.ndarray, weight: np.ndarray, h: float):
     """
-    Float32-friendly variant of drift_ode_solve2 (avoids float64 literals promoting intermediates).
+    float32-friendly variant of drift_ode_solve2 (avoids float64 literals promoting intermediates).
     """
     assert nodes.shape == v0.shape == z0.shape == weight.shape
     n, nb_path = weight.shape
@@ -166,16 +207,21 @@ def drift_ode_solve2_f32(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1
 def drift_ode_solve3(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: float, kappa2: float,
                     z0: np.ndarray, weight: np.ndarray, h: float):
     """
+    drift map D_h in closed form, with kappa1 + kappa2 xi^N frozen at the start of the step.
+
+    xi_h = exp(A h) xi_0 + A^{-1} (exp(A h) - I) b with A = -(kappa1 + kappa2 xi^N_0) 1 w' - diag(x)
+    and b = (kappa1 + kappa2 xi^N_0) theta 1 + diag(x) v0. Not used by the default
+    scheme; freezing drops the damping of the quadratic term within the step.
 
     Parameters
     ----------
-    nodes : (fixed argument) exponents x_i, array of size (n,)
-    v0 : (fixed argument) array of size (n, nb_path)
+    nodes : exponents x_i, array of size (n, nb_path)
+    v0 : factor targets sigma0_factors_i, array of size (n, nb_path)
     theta : long-run level, scalar
     kappa1 : linear mean-reversion speed, scalar
     kappa2 : quadratic mean-reversion speed, scalar
-    z0 : initial values, array of size (n, nb_path)
-    weight : wieghts, array of size (n, )
+    z0 : factor values at the start of the step, array of size (n, nb_path)
+    weight : kernel weight w_i, array of size (n, nb_path)
     h : step size
 
     Returns
@@ -231,6 +277,21 @@ def drift_ode_solve3(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: fl
 @njit(cache=False, fastmath=True)
 def diffus_sde_solve_f64(y0: np.ndarray, weight: np.ndarray, volvol: float, h: float, nb_path: int,
                          z_rand: np.ndarray):
+    """
+    diffusion map S_h, exact: d eta_i = volvol eta^N dW^sigma for every factor i.
+
+    eta^N = sum_i w_i eta_i is a geometric Brownian motion with volatility volvol * sum_i w_i,
+    and every factor receives the increment (eta^N_{t+h} - eta^N_t) / sum_i w_i.
+
+    Parameters
+    ----------
+    y0 : factor values at the start of the step, array of size (n, nb_path)
+    weight : kernel weight w_i, array of size (n, nb_path)
+    volvol : total volatility-of-volatility sqrt(beta^2 + epsilon^2), scalar
+    h : step size
+    nb_path : number of paths
+    z_rand : iid standard normals driving W^sigma, shape (nb_path, )
+    """
     assert y0.shape == weight.shape and y0.shape[-1] == nb_path
     assert z_rand.shape == (nb_path,)
     weight_sum = np.sum(weight, axis=0)
@@ -254,24 +315,26 @@ def drift_diffus_strand_f64(nodes: np.ndarray, v0: np.ndarray, theta: float, kap
                             volvol: float, v_init: np.ndarray, weight: np.ndarray, h: float,
                             nb_path: int, z_rand: np.ndarray):
     """
+    one volatility step by Strang splitting D(h/2) o S(h) o D(h/2).
 
     Parameters
     ----------
-    nodes : exponents x_i, array of size (n,)
-    v0 : (fixed argument) array of size (n, nb_path)
-    theta : long-run level, scaled by lambda, scalar
+    nodes : exponents x_i, array of size (n, nb_path)
+    v0 : factor targets sigma0_factors_i = sigma0 / sum_i w_i,
+        array of size (n, nb_path)
+    theta : long-run level, scalar
     kappa1 : linear mean-reversion speed, scalar
     kappa2 : quadratic mean-reversion speed, scalar
-    volvol :  total volatility. in other words, vartheta. scalar
-    v_init :  initial values, array of size (n, nb_path)
-    weight :  (fixed argument) wieghts, array of size (n, )
+    volvol : total volatility-of-volatility sqrt(beta^2 + epsilon^2), scalar
+    v_init : factor values sigma^(i)_t, array of size (n, nb_path)
+    weight : kernel weight w_i, array of size (n, nb_path)
     h : time step size
     nb_path : number of paths for MC simulation
-    z_rand : iid standard normals, shape (nb_path, )
+    z_rand : iid standard normals driving W^sigma, shape (nb_path, )
 
     Returns
     -------
-
+    Factor values sigma^(i)_{t+h}, array of size (n, nb_path)
     """
     D_inn = drift_ode_solve2(nodes, v0, theta, kappa1, kappa2, v_init, weight, 0.5 * h)
     S_inn = diffus_sde_solve_f64(D_inn, weight, volvol, h, nb_path, z_rand)
@@ -287,6 +350,12 @@ def log_spot_full_solve2_f64(nodes: np.ndarray, weight: np.ndarray,
                              rho: float, volvol: float, h: float, nb_path: int,
                              z0: np.ndarray, z1: np.ndarray):
     # raise ValueError
+    """
+    one step of the volatility v, the log-price and the integrated variance y.
+
+    term1 is the trapezoidal estimate J of int_t^{t+h} sigma^N dW^sigma recovered from the
+    volatility increment; term2 is Vbar h with Vbar = 0.5 (sigma^N_t^2 + sigma^N_{t+h}^2).
+    """
     assert nodes.shape == weight.shape and weight.ndim == 2
     assert v.shape == weight.shape and v.shape[-1] == nb_path
     assert y.shape == (1, nb_path)
@@ -334,6 +403,7 @@ def log_spot_full_combined_f64(nodes: np.ndarray, weight: np.ndarray,
                                theta: float, kappa1: float, kappa2: float, log_s0: float, v_init: np.ndarray,
                                rho: float, volvol: float, timegrid: np.ndarray, nb_path: int,
                                Z0: np.ndarray, Z1: np.ndarray):
+    """float64 loop over a uniform grid; returns log S_T, the factors at T and I_T."""
     h = timegrid[1] - timegrid[0]
     # assert np.all(np.isclose(np.diff(timegrid)[1:], h)) and timegrid[0] == 0.0
     # assert Z0.shape == (timegrid.size - 1, nb_path) and Z1.shape == (timegrid.size - 1, nb_path)
@@ -356,6 +426,7 @@ def log_spot_full_combined_f64(nodes: np.ndarray, weight: np.ndarray,
 def diffus_sde_solve_f32(y0: np.ndarray, weight: np.ndarray, weight_sum: np.ndarray,
                          volvol_weight_sum: np.ndarray, h: float, sqrt_h: float, nb_path: int,
                          z_rand: np.ndarray):
+    """float32 variant of diffus_sde_solve_f64 with precomputed weight sums."""
     assert y0.shape == weight.shape and y0.shape[-1] == nb_path
     assert z_rand.shape == (nb_path,)
     yw = np.sum(weight * y0, axis=0)
@@ -377,6 +448,7 @@ def diffus_sde_solve_f32(y0: np.ndarray, weight: np.ndarray, weight_sum: np.ndar
 def drift_diffus_strand_f32(nodes: np.ndarray, v0: np.ndarray, theta: float, kappa1: float, kappa2: float,
                             volvol_weight_sum: np.ndarray, v_init: np.ndarray, weight: np.ndarray, h: float,
                             sqrt_h: float, weight_sum: np.ndarray, nb_path: int, z_rand: np.ndarray):
+    """float32 variant of drift_diffus_strand_f64."""
     half = np.float32(0.5)
     D_inn = drift_ode_solve2_f32(nodes, v0, theta, kappa1, kappa2, v_init, weight, half * h)
     S_inn = diffus_sde_solve_f32(D_inn, weight, weight_sum, volvol_weight_sum, h, sqrt_h, nb_path, z_rand)
@@ -391,6 +463,7 @@ def log_spot_full_solve2_f32(nodes: np.ndarray, weight: np.ndarray, wlam: np.nda
                              theta: float, kappa1: float, kappa2: float, log_s: np.ndarray, v: np.ndarray, y: np.ndarray,
                              rho: float, rho_comp: float, inv_volvol: float, volvol_weight_sum: np.ndarray,
                              h: float, sqrt_h: float, nb_path: int, z0: np.ndarray, z1: np.ndarray):
+    """float32 variant of log_spot_full_solve2_f64 with precomputed constants."""
     assert nodes.shape == weight.shape and weight.ndim == 2
     assert v.shape == weight.shape and v.shape[-1] == nb_path
     assert y.shape == (1, nb_path)
@@ -436,6 +509,7 @@ def log_spot_full_combined_f32(nodes: np.ndarray, weight: np.ndarray,
                                theta: float, kappa1: float, kappa2: float, log_s0: float, v_init: np.ndarray,
                                rho: float, volvol: float, timegrid: np.ndarray, nb_path: int,
                                Z0: np.ndarray, Z1: np.ndarray):
+    """float32 loop over a uniform grid; returns log S_T, the factors at T and I_T."""
     one = np.float32(1.0)
     h = timegrid[1] - timegrid[0]
     sqrt_h = np.sqrt(h)
@@ -469,7 +543,25 @@ def log_spot_full_combined(nodes: np.ndarray, weight: np.ndarray,
                            rho: float, volvol: float, timegrid: np.ndarray, nb_path: int,
                            Z0: np.ndarray, Z1: np.ndarray):
     """
-    Dispatch to a float64-stable kernel by default; use float32 kernel only when all inputs are float32.
+    simulate log S_T, the factors at T and the integrated variance I_T on a uniform time grid.
+
+    Parameters
+    ----------
+    nodes, weight : kernel nodes x_i and weight w_i, arrays of size (n, nb_path)
+    v0 : factor targets sigma0_factors_i = sigma0 / sum_i w_i,
+        array of size (n, nb_path)
+    theta, kappa1, kappa2 : drift parameters of (kappa1 + kappa2 sigma)(theta - sigma)
+    log_s0 : initial log-price
+    v_init : factor values at time 0, array of size (n, nb_path), equal to v0
+    rho : correlation beta / volvol between W0 and W^sigma
+    volvol : total volatility-of-volatility sqrt(beta^2 + epsilon^2)
+    timegrid : uniform grid starting at 0, size nb_steps + 1
+    nb_path : number of paths
+    Z0, Z1 : standard normals for W^sigma and the orthogonal price noise,
+        shape (>= nb_steps, nb_path)
+
+    Dispatches to the float64 kernel by default and to the float32 kernel only when all array
+    inputs are float32.
     """
     if (nodes.dtype == np.float32 and weight.dtype == np.float32 and v0.dtype == np.float32 and
             timegrid.dtype == np.float32 and Z0.dtype == np.float32 and Z1.dtype == np.float32):

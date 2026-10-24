@@ -20,7 +20,10 @@ from stochvolmodels import LogSvParams
 from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
 from stochvolmodels.utils.funcs import set_time_grid
 
-import psutil
+try:
+    import psutil
+except ImportError:  # optional: memory sampling is skipped without psutil
+    psutil = None
 
 
 @dataclass(frozen=True)
@@ -95,24 +98,15 @@ def _rough_price_once(option_chain,
         beta = np.float32(beta)
         volvol = np.float32(volvol)
     if random_mode == "seeded":
-        return sv.rough_logsv_mc_chain_pricer_seeded(
-            ttms=option_chain.ttms,
-            forwards=option_chain.forwards,
-            discfactors=option_chain.discfactors,
-            strikes_ttms=option_chain.strikes_ttms,
-            optiontypes_ttms=option_chain.optiontypes_ttms,
-            nb_path=nb_path,
-            seed=seed,
-            sigma0=sigma0,
-            theta=theta,
-            kappa1=kappa1,
-            kappa2=kappa2,
-            beta=beta,
-            orthog_vol=volvol,
-            weights=params.weights,
-            nodes=params.nodes,
-            timegrids=grid_ttms,
-        )
+        # draw fresh normals per call; the library has no seeded rough pricer,
+        # so the fixed-random pricer is reused
+        rng = np.random.RandomState(seed)
+        nb_steps = grid_ttms[-1].size - 1
+        Z0 = rng.normal(0.0, 1.0, size=(nb_steps, nb_path))
+        Z1 = rng.normal(0.0, 1.0, size=(nb_steps, nb_path))
+        if float32_mode:
+            Z0 = Z0.astype(np.float32)
+            Z1 = Z1.astype(np.float32)
     return sv.rough_logsv_mc_chain_pricer_fixed_randoms(
         ttms=option_chain.ttms,
         forwards=option_chain.forwards,

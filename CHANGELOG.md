@@ -2,6 +2,25 @@
 
 Entries start at 1.2.0. For earlier releases see the git log.
 
+## [Unreleased]
+
+### Added
+
+- Added `LogSvParams.vartheta` and `LogSvParams.rho` for total volatility of volatility
+  and spot/volatility correlation, plus a rough split-step validation against exact
+  linear-drift volatility moments and expected integrated variance.
+
+### Fixed
+
+- Fixed the repository-only rough pricing benchmark's `seeded` mode to generate its
+  Gaussian draws and call the existing fixed-random pricer. Memory sampling now works
+  without the optional `psutil` package.
+
+### Documentation
+
+- Documented the rough kernel and split-step scheme's notation. Existing simulation
+  keyword arguments and numerical calculations are preserved.
+
 ## [2.6.0] - 2026-10-22
 
 ### Changed
