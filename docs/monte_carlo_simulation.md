@@ -188,8 +188,11 @@ exponentials, whose nodes and weights `approximate_kernel` sets for a horizon, a
 `model_mc_price_chain` simulates the resulting multi-factor dynamics when called with
 `use_rough_mc=True` and a `seed`. This extension is experimental and outside the paper; it has no
 transform price. With $H = 1/2$ the kernel is a single node at $10^{-3}$ with weight one, and the
-three-month prices of the rough simulator agree with those of the standard simulator within 0.01
-standard errors when both use seed 7.
+three-month prices of the legacy rough simulator agree with those of the standard simulator
+within two combined standard errors when both use seed 7. The error bars count scalar paths;
+the earlier 0.01 claim used the erroneous row-array denominator. The separate experimental
+`rough_logsv_mc_chain_pricer_split_step` entry point uses raw conditional prices without
+forward renormalization; select it with `rough_scheme="split_step"` on `model_mc_price_chain`.
 
 ```python
 def rough_params(hurst: float, params: svm.LogSvParams = PARAMS, ttm: float = 0.25):

@@ -1749,6 +1749,15 @@ wheels = [
 ]
 
 [[package]]
+name = "mpmath"
+version = "1.4.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c5/b0/6de8e78014ff1842a90cc9a56da6ccfb598a5390ed0257fcdb7d9680c18b/mpmath-1.4.1.tar.gz", hash = "sha256:efd6d1b75f09d69524a67609949812668b28e81ecbfe0ab449ced8c13e92642e", size = 2093211, upload-time = "2026-03-15T01:17:38.245Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/13/f2/abeec3db71d221ccd3cd89d206be1fabf5a3ee7178862f5fba23a59607e0/mpmath-1.4.1-py3-none-any.whl", hash = "sha256:dc4f0ea2304480d4a9a48a94c1020571558ade522b44a6912efac63a586e140f", size = 567787, upload-time = "2026-03-15T01:17:36.392Z" },
+]
+
+[[package]]
 name = "msgpack"
 version = "1.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -3588,7 +3597,7 @@ wheels = [
 
 [[package]]
 name = "stochvolmodels"
-version = "2.6.0"
+version = "2.6.1.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "matplotlib" },
@@ -3608,6 +3617,7 @@ all = [
     { name = "ipywidgets" },
     { name = "jupyter" },
     { name = "jupyterlab" },
+    { name = "mpmath" },
     { name = "notebook" },
     { name = "option-chain-analytics", extra = ["cboe"] },
     { name = "plotly" },
@@ -3634,6 +3644,7 @@ numerical = [
     { name = "statsmodels" },
 ]
 research = [
+    { name = "mpmath" },
     { name = "option-chain-analytics", extra = ["cboe"] },
     { name = "qis" },
 ]
@@ -3663,6 +3674,7 @@ requires-dist = [
     { name = "jupyter", marker = "extra == 'jupyter'", specifier = ">=1.0.0" },
     { name = "jupyterlab", marker = "extra == 'jupyter'", specifier = ">=3.0.0" },
     { name = "matplotlib", specifier = ">=3.8.0" },
+    { name = "mpmath", marker = "extra == 'research'", specifier = ">=1.3.0" },
     { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=4.0,<6.0" },
     { name = "notebook", marker = "extra == 'jupyter'", specifier = ">=6.5.0" },
     { name = "numba", specifier = ">=0.60.0" },

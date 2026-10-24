@@ -182,7 +182,7 @@ def run_local(local: Locals) -> None:
                                                      nb_path=100000, nb_steps=360)
         z = (rough_prices[0] - prices[0]) / np.sqrt(rough_errors[0] ** 2 + errors[0] ** 2)
         print(z)
-        assert np.max(np.abs(z)) < 0.01
+        assert np.max(np.abs(z)) < 2.0
 
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@ Quadratic Drift, International Journal of Theoretical and Applied Finance 26(8),
 2450003. Equation numbers throughout this module refer to that article.
 """
 # package
+import warnings
 from dataclasses import dataclass
 
 import numpy as np
@@ -34,7 +35,7 @@ from enum import Enum
 # stochvolmodels
 from stochvolmodels.utils.config import VariableType
 import stochvolmodels.utils.mgf_pricer as mgfp
-from stochvolmodels.utils.mc_payoffs import compute_mc_vars_payoff
+from stochvolmodels.utils.mc_payoffs import compute_conditional_mc_payoff, compute_mc_vars_payoff
 from stochvolmodels.utils.funcs import (
     set_time_grid,
     timer,
@@ -47,7 +48,10 @@ import stochvolmodels.pricers.logsv.affine_expansion as afe
 from stochvolmodels.pricers.model_pricer import ModelPricer, validate_optimization_result
 from stochvolmodels.pricers.logsv.affine_expansion import ExpansionOrder
 from stochvolmodels.pricers.logsv.vol_moments_ode import fit_model_vol_backbone_to_varswaps
-from stochvolmodels.pricers.rough_logsv.split_simulation import log_spot_full_combined
+from stochvolmodels.pricers.rough_logsv.kernel_fit import STEP_RULE_CONSTANT
+from stochvolmodels.pricers.rough_logsv.split_simulation import (
+    log_spot_full_combined, simulate_split_step,
+)
 
 # data
 from stochvolmodels.data.option_chain import OptionChain
@@ -380,6 +384,9 @@ class LogSVPricer(ModelPricer):
 
         Routes to the rough simulator when ``use_rough_mc`` is passed in kwargs, which
         then also requires ``seed``; otherwise to :func:`logsv_mc_chain_pricer`.
+        ``rough_scheme="split_step"`` opts into raw conditional pricing with diffusion-only J
+        and positivity fallback. The default ``"legacy"`` preserves historical prices.
+        Rough pricing supports eta = 1 and the money-market measure only.
 
         Returns
         -------
@@ -388,11 +395,23 @@ class LogSVPricer(ModelPricer):
         """
         vol_backbone_etas = params.get_vol_backbone_etas(ttms=option_chain.ttms)
         if 'use_rough_mc' in kwargs and kwargs['use_rough_mc']:
+            if not is_spot_measure:
+                raise NotImplementedError("rough pricing currently requires the money-market measure")
+            if params.vol_backbone is not None and not np.all(
+                    np.isfinite(params.vol_backbone.to_numpy())
+                    & (params.vol_backbone.to_numpy() == 1.0)):
+                raise NotImplementedError("rough backbone loading is not implemented; use eta = 1")
+            rough_scheme = kwargs.get('rough_scheme', 'legacy')
+            if rough_scheme not in ('legacy', 'split_step'):
+                raise ValueError("rough_scheme must be 'legacy' or 'split_step'")
+            rough_pricer = (rough_logsv_mc_chain_pricer_split_step if rough_scheme == 'split_step'
+                            else rough_logsv_mc_chain_pricer_fixed_randoms)
             assert 'seed' in kwargs
             seed = kwargs['seed']
             Z0, Z1, grid_ttms = get_randoms_for_rough_vol_chain_valuation(ttms=option_chain.ttms, nb_path=nb_path,
-                                                                          nb_steps_per_year=nb_steps, seed=seed)
-            return rough_logsv_mc_chain_pricer_fixed_randoms(ttms=option_chain.ttms,
+                                                                          nb_steps_per_year=360 if nb_steps is None else nb_steps,
+                                                                          seed=seed)
+            return rough_pricer(ttms=option_chain.ttms,
                                                              forwards=option_chain.forwards,
                                                              discfactors=option_chain.discfactors,
                                                              strikes_ttms=option_chain.strikes_ttms,
@@ -407,7 +426,8 @@ class LogSVPricer(ModelPricer):
                                                              orthog_vol=params.volvol,
                                                              weights=params.weights,
                                                              nodes=params.nodes,
-                                                             timegrids=grid_ttms)
+                                                             timegrids=grid_ttms,
+                                                             variable_type=variable_type)
         else:
             return logsv_mc_chain_pricer(v0=params.sigma0,
                                          theta=params.theta,
@@ -985,7 +1005,7 @@ def simulate_logsv_x_vol_terminal(ttm: float,
     theta, kappa1, kappa2, beta, volvol : float
         Model parameters of Eq. (3.12).
     vol_backbone_eta : float, default 1.0
-        Maturity scaling of theta. 1.0 reproduces the article.
+        Deterministic loading on price diffusion; theta is unchanged. 1.0 is the core model.
     is_spot_measure : bool, default True
         MMA measure when True, inverse measure when False.
     nb_path : int, default 100000
@@ -1240,6 +1260,142 @@ def rough_logsv_mc_chain_pricer_fixed_randoms(ttms: np.ndarray,
         option_prices_ttm.append(option_prices)
         option_std_ttm.append(option_std)
 
+    return option_prices_ttm, option_std_ttm
+
+def rough_logsv_mc_chain_pricer_split_step(ttms: np.ndarray,
+                                              forwards: np.ndarray,
+                                              discfactors: np.ndarray,
+                                              strikes_ttms: Tuple[np.ndarray, ...],
+                                              optiontypes_ttms: Tuple[np.ndarray, ...],
+                                              Z0: np.ndarray,
+                                              Z1: np.ndarray,
+                                              sigma0: float,
+                                              theta: float,
+                                              kappa1: float,
+                                              kappa2: float,
+                                              beta: float,
+                                              orthog_vol: float,
+                                              weights: np.ndarray,
+                                              nodes: np.ndarray,
+                                              timegrids: List[np.ndarray],
+                                              variable_type: VariableType = VariableType.LOG_RETURN,
+                                              is_conditional_mc: bool = True,
+                                              debug: bool = False  # print per-slice path diagnostics
+                                              ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+    """Price a rough-LogSV option chain using caller-supplied Gaussian draws.
+
+    The volatility solves the Volterra equation
+    sigma_t = sigma0 + int_0^t K(t-s) [(kappa1 + kappa2 sigma_s)(theta - sigma_s) ds
+    + beta sigma_s dW0_s + orthog_vol sigma_s dW1_s] with the Markovian kernel
+    K^N(t) = sum_i weights_i exp(-nodes_i t), simulated by the split-step scheme of
+    :mod:`stochvolmodels.pricers.rough_logsv.split_simulation` with
+    vartheta = sqrt(beta^2 + orthog_vol^2), rho = beta / vartheta if vartheta > 0.0 else 0.0 and factor targets
+    sigma0 / sum_i weights_i. ``orthog_vol`` is epsilon, i.e. ``LogSvParams.volvol``.
+    The kernel is approximated once by the caller (``LogSvParams.approximate_kernel``),
+    usually for the longest maturity, and each maturity is simulated from time 0 on its
+    own grid with the leading rows of Z0 and Z1.
+
+    The scheme is :func:`~stochvolmodels.pricers.rough_logsv.split_simulation.simulate_split_step`:
+    the stochastic integral J of the price step comes from the diffusion sub-step, and paths with
+    non-positive volatility are redone with an exponential-implicit drift step before any floor.
+    With ``is_conditional_mc`` (default) and ``VariableType.LOG_RETURN``, prices are averages of
+    Black prices conditional on the volatility path, with forward F exp(rho J_T - rho^2 I_T / 2)
+    and total variance (1 - rho^2) I_T. Forwards are never renormalised; ``Z1`` does
+    not affect conditional prices. This routine supports the core model with eta = 1 only.
+    Otherwise payoffs are averaged over the simulated spots. A ``UserWarning`` is issued when
+    w_bar vartheta sqrt(h) exceeds ``kernel_fit.STEP_RULE_CONSTANT`` on any grid, as an empirical resolution diagnostic, and when paths are floored after the fallback.
+
+    This experimental routine preserves identical random inputs across parameter
+    evaluations, which is useful for calibration diagnostics.
+
+    Returns
+    -------
+    Tuple[List[np.ndarray], List[np.ndarray]]
+        Option prices and their Monte Carlo standard errors, one array per maturity slice.
+    """
+    if variable_type != VariableType.LOG_RETURN:
+        raise NotImplementedError("split-step pricing currently supports LOG_RETURN only")
+    if any(np.any(~np.isin(types, ["C", "P"])) for types in optiontypes_ttms):
+        raise NotImplementedError("rough inverse pricing requires a separately validated numeraire")
+    if not (len(ttms) == len(forwards) == len(discfactors) == len(strikes_ttms)
+            == len(optiontypes_ttms) == len(timegrids)) or len(ttms) == 0:
+        raise ValueError("chain inputs must have the same nonzero number of maturities")
+    if weights.shape != nodes.shape or weights.ndim != 1 or weights.size == 0:
+        raise ValueError("nodes and weights must be nonempty one-dimensional arrays of equal shape")
+    if np.any(~np.isfinite(weights)) or np.any(weights <= 0.0):
+        raise ValueError("weights must be finite and positive")
+    if any(len(grid) < 2 or not np.isclose(grid[-1], ttm) or grid[0] != 0.0
+           for grid, ttm in zip(timegrids, ttms)):
+        raise ValueError("each grid must run from zero to its maturity")
+    if kappa2 < beta:
+        warnings.warn("core martingale margin kappa2 - beta is negative; the sufficient "
+                      "martingale condition is not met", UserWarning, stacklevel=2)
+    N = nodes.size
+    dtype = np.dtype(np.float64)
+    sigma0_factors = np.full((N,), sigma0 / np.sum(weights), dtype=dtype)
+
+    # total volatility-of-volatility and spot-volatility correlation of the split-step scheme
+    vartheta = np.sqrt(beta ** 2 + orthog_vol ** 2)
+    rho = beta / vartheta if vartheta > 0.0 else 0.0
+
+    nb_path = Z0.shape[1]
+    sigma0_factors_vec = np.repeat(sigma0_factors[:, None], nb_path, axis=1)
+    factors_init = sigma0_factors_vec.copy()
+    log_s0 = dtype.type(0.0)
+    weight_vec = np.repeat(weights[:, None], nb_path, axis=1)
+    nodes_vec = np.repeat(nodes[:, None], nb_path, axis=1)
+
+    # step rule of the split-step scheme on the coarsest grid
+    w_bar = np.sum(weights)
+    step_ratio = max(w_bar * vartheta * np.sqrt(np.max(np.diff(grid))) for grid in timegrids)
+    if step_ratio > STEP_RULE_CONSTANT:
+        warnings.warn(f"w_bar * vartheta * sqrt(h) = {step_ratio:.2f} exceeds "
+                      f"{STEP_RULE_CONSTANT}: empirical split-step resolution bound exceeded; use "
+                      f"more steps per year (rough_logsv.kernel_fit.max_time_step)",
+                      UserWarning, stacklevel=2)
+
+    # outputs as numpy lists
+    option_prices_ttm = List()
+    option_std_ttm = List()
+    n_floor_total = 0
+    for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm, timegrid in zip(ttms, forwards,
+                                                                                discfactors,
+                                                                                strikes_ttms,
+                                                                                optiontypes_ttms,
+                                                                                timegrids):
+        nb_steps = timegrid.size - 1
+        Z0_ = Z0[:nb_steps]
+        Z1_ = Z1[:nb_steps]
+        paths = simulate_split_step(nodes_vec, weight_vec, sigma0_factors_vec, theta, kappa1,
+                                    kappa2, log_s0, factors_init, rho, vartheta, timegrid,
+                                    nb_path, Z0_, Z1_)
+        n_floor_total += paths.n_floor
+        if debug:
+            print(f"ttm={ttm}: fallback path-steps {paths.n_fallback}, "
+                  f"floored path-steps {paths.n_floor}, "
+                  f"raw conditional forward ratio "
+                  f"{np.mean(np.exp(rho * paths.jump - 0.5 * rho * rho * paths.qvar))}, "
+                  f"nan spots {np.count_nonzero(np.isnan(paths.log_spot))}")
+
+        if is_conditional_mc and variable_type == VariableType.LOG_RETURN:
+            option_prices, option_std = compute_conditional_mc_payoff(
+                log_forward_ratio=rho * paths.jump - 0.5 * rho * rho * paths.qvar,
+                total_var=(1.0 - rho * rho) * paths.qvar,
+                forward=forward,
+                strikes_ttm=strikes_ttm,
+                optiontypes_ttm=optiontypes_ttm,
+                discfactor=discfactor)
+        else:
+            option_prices, option_std = compute_conditional_mc_payoff(
+                log_forward_ratio=paths.log_spot, total_var=np.zeros_like(paths.log_spot),
+                forward=forward, strikes_ttm=strikes_ttm,
+                optiontypes_ttm=optiontypes_ttm, discfactor=discfactor)
+        option_prices_ttm.append(option_prices)
+        option_std_ttm.append(option_std)
+
+    if n_floor_total > 0:
+        warnings.warn(f"{n_floor_total} path-steps were floored at 1e-6 after the positivity "
+                      f"fallback; prices are biased", UserWarning, stacklevel=2)
     return option_prices_ttm, option_std_ttm
 
 # Manual scenarios are available in ``stochvolmodels.pricers.run_local.logsv_pricer_run``.

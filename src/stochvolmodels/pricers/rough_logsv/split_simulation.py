@@ -569,3 +569,295 @@ def log_spot_full_combined(nodes: np.ndarray, weight: np.ndarray,
                                           rho, volvol, timegrid, nb_path, Z0, Z1)
     return log_spot_full_combined_f64(nodes, weight, v0, theta, kappa1, kappa2, log_s0, v_init,
                                       rho, volvol, timegrid, nb_path, Z0, Z1)
+
+
+# The opt-in simulator below leaves all legacy kernels and keywords above unchanged.
+from typing import NamedTuple
+
+
+@njit(cache=False, fastmath=False)
+def _valid_factor_paths(factors: np.ndarray, weights: np.ndarray) -> np.ndarray:
+    """Check finite factors and strictly positive finite aggregate volatility."""
+    valid = np.ones(factors.shape[1], dtype=np.bool_)
+    for p in range(factors.shape[1]):
+        sigma = 0.0
+        for i in range(factors.shape[0]):
+            valid[p] = valid[p] and np.isfinite(factors[i, p])
+            sigma += weights[i, p] * factors[i, p]
+        valid[p] = valid[p] and np.isfinite(sigma) and sigma > 0.0
+    return valid
+
+
+@njit(cache=False, fastmath=False)
+def _drift_rk4_checked(nodes, sigma0_factors, theta, kappa1, kappa2, factors, weights, h):
+    """RK4 drift with checks on every stage, without fastmath's finite-value assumptions."""
+    valid = _valid_factor_paths(factors, weights)
+    sigma = np.sum(weights * factors, axis=0)
+    s1 = -nodes * (factors - sigma0_factors) + (kappa1 + kappa2 * sigma) * (theta - sigma)
+    stage = factors + 0.5 * h * s1
+    valid &= _valid_factor_paths(stage, weights)
+    sigma = np.sum(weights * stage, axis=0)
+    s2 = -nodes * (stage - sigma0_factors) + (kappa1 + kappa2 * sigma) * (theta - sigma)
+    stage = factors + 0.5 * h * s2
+    valid &= _valid_factor_paths(stage, weights)
+    sigma = np.sum(weights * stage, axis=0)
+    s3 = -nodes * (stage - sigma0_factors) + (kappa1 + kappa2 * sigma) * (theta - sigma)
+    stage = factors + h * s3
+    valid &= _valid_factor_paths(stage, weights)
+    sigma = np.sum(weights * stage, axis=0)
+    s4 = -nodes * (stage - sigma0_factors) + (kappa1 + kappa2 * sigma) * (theta - sigma)
+    result = factors + (h / 6.0) * (s1 + 2.0 * s2 + 2.0 * s3 + s4)
+    valid &= _valid_factor_paths(result, weights)
+    for p in range(result.shape[1]):
+        if not valid[p]:
+            result[:, p] = np.nan
+    return result
+
+
+@njit(cache=False, fastmath=False)
+def drift_ode_solve_exp_implicit(nodes: np.ndarray, sigma0_factors: np.ndarray, theta: float,
+                                 kappa1: float, kappa2: float, z0: np.ndarray, weights: np.ndarray,
+                                 h: float):
+    """Apply exact factor decay and an implicit common quadratic drift.
+
+    The endpoint aggregate solves ``a*s**2 + b*s - d = 0``, where
+    ``a=B*kappa2``, ``b=1+B*(kappa1-kappa2*theta)``, ``d=A+B*kappa1*theta``,
+    ``A=sum(w*(sigma0+exp(-nodes*h)*(z0-sigma0)))`` and
+    ``B=sum(w*(-expm1(-nodes*h))/nodes)`` (with its zero-node limit).
+    The stable positive root is used when ``d > 0``. An invalid or unsupported
+    root produces NaN factors, so the caller can count an emergency intervention.
+
+    Parameters
+    ----------
+    nodes, sigma0_factors, z0, weights : numpy.ndarray
+        Factor arrays of identical shape ``(n_factors, n_paths)``.
+    theta, kappa1, kappa2 : float
+        Nonnegative parameters of ``(kappa1 + kappa2*s)*(theta-s)``.
+    h : float
+        Nonnegative drift-step length.
+
+    Returns
+    -------
+    numpy.ndarray
+        Endpoint factors, with the same shape as ``z0``.
+    """
+    xh = nodes * h
+    decay = np.exp(-xh)
+    hphi = np.empty_like(nodes)
+    for i in range(nodes.shape[0]):
+        for p in range(nodes.shape[1]):
+            hphi[i, p] = -np.expm1(-xh[i, p]) / nodes[i, p] if nodes[i, p] > 0.0 else h
+    decayed = sigma0_factors + decay * (z0 - sigma0_factors)
+    a_sum = np.sum(weights * decayed, axis=0)
+    b_sum = np.sum(weights * hphi, axis=0)
+    result = np.empty_like(z0)
+    for p in range(z0.shape[1]):
+        qa = b_sum[p] * kappa2
+        qb = 1.0 + b_sum[p] * (kappa1 - kappa2 * theta)
+        qd = a_sum[p] + b_sum[p] * kappa1 * theta
+        if not (np.isfinite(qa) and np.isfinite(qb) and np.isfinite(qd) and qd > 0.0):
+            result[:, p] = np.nan
+            continue
+        if qa == 0.0:
+            sigma = qd / qb
+        else:
+            scale = max(qa, abs(qb), qd)
+            a, b, d = qa / scale, qb / scale, qd / scale
+            radical = np.sqrt(b * b + 4.0 * a * d)
+            if b >= 0.0:
+                denominator = b + radical
+                sigma = 2.0 * d / denominator if denominator > 0.0 else np.nan
+            else:
+                sigma = (-b + radical) / (2.0 * a) if a > 0.0 else np.nan
+        # Recover the common drift from the aggregate equation. Direct evaluation
+        # at a root close to theta loses accuracy for a stiff quadratic drift.
+        common = (sigma - a_sum[p]) / b_sum[p] if b_sum[p] > 0.0 else 0.0
+        result[:, p] = decayed[:, p] + hphi[:, p] * common
+    return result
+
+
+@njit(cache=False, fastmath=False)
+def _split_volatility_move(nodes, weights, sigma0_factors, theta, kappa1, kappa2,
+                           factors, vartheta, h, z0, implicit):
+    """Return a candidate volatility step, its exact diffusion integral, and validity mask."""
+    if implicit:
+        before = drift_ode_solve_exp_implicit(
+            nodes, sigma0_factors, theta, kappa1, kappa2, factors, weights, 0.5 * h)
+    else:
+        before = _drift_rk4_checked(
+            nodes, sigma0_factors, theta, kappa1, kappa2, factors, weights, 0.5 * h)
+    valid = _valid_factor_paths(before, weights)
+    weight_sum = np.sum(weights, axis=0)
+    sigma = np.sum(weights * before, axis=0)
+    after = before.copy()
+    jump = np.empty(factors.shape[1])
+    for p in range(factors.shape[1]):
+        vt = vartheta * weight_sum[p]
+        driver = np.sqrt(h) * z0[p] - 0.5 * vt * h
+        exponent = vt * driver
+        # expm1 retains the diffusion increment near zero; this divided-difference
+        # form also gives J = sigma*sqrt(h)*Z exactly when vartheta is zero.
+        increment = np.expm1(exponent)
+        ratio = increment / exponent if exponent != 0.0 else 1.0
+        jump[p] = sigma[p] * driver * ratio
+        after[:, p] += sigma[p] * increment / weight_sum[p]
+        valid[p] = valid[p] and np.isfinite(jump[p])
+    valid &= _valid_factor_paths(after, weights)
+    if implicit:
+        result = drift_ode_solve_exp_implicit(
+            nodes, sigma0_factors, theta, kappa1, kappa2, after, weights, 0.5 * h)
+    else:
+        result = _drift_rk4_checked(
+            nodes, sigma0_factors, theta, kappa1, kappa2, after, weights, 0.5 * h)
+    valid &= _valid_factor_paths(result, weights)
+    return result, jump, valid
+
+
+@njit(cache=False, fastmath=False)
+def split_step_f64(nodes: np.ndarray, weights: np.ndarray, sigma0_factors: np.ndarray,
+                   theta: float, kappa1: float, kappa2: float, log_s: np.ndarray,
+                   factors: np.ndarray, qvar: np.ndarray, jump_sum: np.ndarray, rho: float,
+                   vartheta: float, h: float, z0: np.ndarray, z1: np.ndarray):
+    """Apply one checked split step, retrying invalid paths with the same randoms."""
+    result, jump, valid = _split_volatility_move(
+        nodes, weights, sigma0_factors, theta, kappa1, kappa2, factors, vartheta, h, z0, False)
+    initial_sigma = np.sum(weights * factors, axis=0)
+    final_sigma = np.sum(weights * result, axis=0)
+    variance = 0.5 * h * (initial_sigma * initial_sigma + final_sigma * final_sigma)
+    for p in range(valid.size):
+        valid[p] = valid[p] and np.isfinite(variance[p])
+    indices = np.nonzero(~valid)[0]
+    n_floor = 0
+    if indices.size:
+        retry, retry_jump, retry_valid = _split_volatility_move(
+            nodes[:, indices], weights[:, indices], sigma0_factors[:, indices], theta,
+            kappa1, kappa2, factors[:, indices], vartheta, h, z0[indices], True)
+        for k in range(indices.size):
+            p = indices[k]
+            end_sigma = np.sum(weights[:, p] * retry[:, k])
+            retry_variance = 0.5 * h * (initial_sigma[p] ** 2 + end_sigma ** 2)
+            if retry_valid[k] and np.isfinite(retry_variance):
+                result[:, p], jump[p], variance[p] = retry[:, k], retry_jump[k], retry_variance
+            else:
+                # Artificial whole-step intervention, not a positivity/admissibility theorem.
+                # Its count must be zero before empirical illustrations are qualified.
+                floor = 1e-6
+                result[:, p] = floor / np.sum(weights[:, p])
+                jump[p] = floor * np.sqrt(h) * z0[p]
+                variance[p] = floor * floor * h
+                n_floor += 1
+    log_s_h = log_s - 0.5 * variance + rho * jump + np.sqrt(1.0 - rho * rho) * np.sqrt(variance) * z1
+    return result, qvar + variance, log_s_h, jump_sum + jump, indices.size, n_floor
+
+
+@njit(cache=False, fastmath=False)
+def split_step_combined_f64(nodes: np.ndarray, weights: np.ndarray, sigma0_factors: np.ndarray,
+                            theta: float, kappa1: float, kappa2: float, log_s0: float,
+                            factors_init: np.ndarray, rho: float, vartheta: float,
+                            timegrid: np.ndarray, nb_path: int, Z0: np.ndarray, Z1: np.ndarray):
+    """Run the checked float64 step on a validated uniform time grid."""
+    h = timegrid[1] - timegrid[0]
+    factors = factors_init.copy()
+    log_s = np.full(nb_path, log_s0)
+    qvar, jump_sum = np.zeros(nb_path), np.zeros(nb_path)
+    n_redo, n_floor = 0, 0
+    for idx in range(timegrid.size - 1):
+        factors, qvar, log_s, jump_sum, redo_k, floor_k = split_step_f64(
+            nodes, weights, sigma0_factors, theta, kappa1, kappa2, log_s, factors, qvar,
+            jump_sum, rho, vartheta, h, Z0[idx], Z1[idx])
+        n_redo += redo_k
+        n_floor += floor_k
+    return log_s, factors, qvar, jump_sum, n_redo, n_floor
+
+
+class SplitStepPaths(NamedTuple):
+    """Terminal simulation arrays and counts of fallback/floored path-steps."""
+
+    log_spot: np.ndarray
+    factors: np.ndarray
+    qvar: np.ndarray
+    jump: np.ndarray
+    n_fallback: int
+    n_floor: int
+
+
+def simulate_split_step(nodes: np.ndarray, weights: np.ndarray, sigma0_factors: np.ndarray,
+                        theta: float, kappa1: float, kappa2: float, log_s0: float,
+                        factors_init: np.ndarray, rho: float, vartheta: float,
+                        timegrid: np.ndarray, nb_path: int,
+                        Z0: np.ndarray, Z1: np.ndarray) -> SplitStepPaths:
+    """Simulate rough LogSV with checked drift and exact diffusion-substep J.
+
+    Parameters
+    ----------
+    nodes, weights, sigma0_factors, factors_init : numpy.ndarray
+        Finite factor arrays of shape ``(n_factors, nb_path)``. Nodes and weights
+        are nonnegative, with positive weight sum and initial aggregate volatility.
+        Individual factors may be negative. Inputs are never modified.
+    theta, kappa1, kappa2, vartheta : float
+        Nonnegative finite model parameters; vartheta is total volatility of volatility.
+    log_s0 : float
+        Finite initial log-price.
+    rho : float
+        Price/volatility Brownian correlation in [-1, 1].
+    timegrid : numpy.ndarray
+        Strictly increasing uniform one-dimensional grid starting at zero.
+    nb_path : int
+        Positive number of paths.
+    Z0, Z1 : numpy.ndarray
+        Finite standard normal draws of shape ``(len(timegrid)-1, nb_path)``.
+
+    Returns
+    -------
+    SplitStepPaths
+        Float64 arrays: factors retain two dimensions; log-price, integrated
+        variance I and integral J have shape ``(nb_path,)``. Invalid intermediate
+        states trigger a complete exponential-implicit retry with the same draws.
+        A failed retry replaces the entire step by constant aggregate volatility
+        1e-6 and is counted. This artificial intervention is not an admissibility
+        guarantee: qualified simulations require zero floors. I uses endpoint
+        trapezoidal integration on ordinary/retried steps. The volatility backbone
+        is fixed at one. No forward normalization is performed.
+
+    Raises
+    ------
+    ValueError
+        If shapes, time grid, or parameter domains are invalid.
+    FloatingPointError
+        If accumulated outputs overflow despite the checked step.
+    """
+    if isinstance(nb_path, (bool, np.bool_)) or not isinstance(nb_path, (int, np.integer)) or nb_path <= 0:
+        raise ValueError("nb_path must be a positive integer")
+    arrays = [np.ascontiguousarray(a, dtype=np.float64)
+              for a in (nodes, weights, sigma0_factors, factors_init)]
+    shape = arrays[0].shape
+    if len(shape) != 2 or shape[0] == 0 or shape[1] != nb_path or any(a.shape != shape for a in arrays):
+        raise ValueError("factor arrays must share shape (n_factors, nb_path)")
+    if any(not np.all(np.isfinite(a)) for a in arrays):
+        raise ValueError("factor arrays must be finite")
+    nodes, weights, sigma0_factors, factors_init = arrays
+    if np.any(nodes < 0.0) or np.any(weights < 0.0):
+        raise ValueError("nodes and weights must be nonnegative")
+    weight_sum = np.sum(weights, axis=0)
+    initial_sigma = np.sum(weights * factors_init, axis=0)
+    if (not np.all(np.isfinite(weight_sum)) or np.any(weight_sum <= 0.0)
+            or not np.all(np.isfinite(initial_sigma)) or np.any(initial_sigma <= 0.0)):
+        raise ValueError("weight sums and initial aggregate volatility must be finite and positive")
+    parameters = np.asarray([theta, kappa1, kappa2, log_s0, rho, vartheta], dtype=np.float64)
+    if not np.all(np.isfinite(parameters)) or np.any(parameters[[0, 1, 2, 5]] < 0.0) or abs(rho) > 1.0:
+        raise ValueError("model parameters must be finite, speeds/levels nonnegative, and abs(rho)<=1")
+    grid = np.ascontiguousarray(timegrid, dtype=np.float64)
+    if grid.ndim != 1 or grid.size < 2 or not np.all(np.isfinite(grid)) or grid[0] != 0.0:
+        raise ValueError("timegrid must be finite, one-dimensional, start at zero and have two points")
+    steps = np.diff(grid)
+    if np.any(steps <= 0.0) or not np.allclose(steps, steps[0], rtol=1e-10, atol=0.0):
+        raise ValueError("timegrid must be strictly increasing and uniform")
+    randoms = [np.ascontiguousarray(a, dtype=np.float64) for a in (Z0, Z1)]
+    if any(a.shape != (grid.size - 1, nb_path) or not np.all(np.isfinite(a)) for a in randoms):
+        raise ValueError("Z0 and Z1 must be finite with shape (n_steps, nb_path)")
+    log_s, factors, qvar, jump, n_redo, n_floor = split_step_combined_f64(
+        nodes, weights, sigma0_factors, float(theta), float(kappa1), float(kappa2),
+        float(log_s0), factors_init, float(rho), float(vartheta), grid, int(nb_path), *randoms)
+    if any(not np.all(np.isfinite(a)) for a in (log_s, factors, qvar, jump)):
+        raise FloatingPointError("split-step simulation accumulated nonfinite outputs")
+    return SplitStepPaths(log_s, factors, qvar, jump, int(n_redo), int(n_floor))

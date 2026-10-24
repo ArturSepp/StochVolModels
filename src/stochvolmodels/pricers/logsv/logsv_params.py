@@ -26,6 +26,7 @@ import pandas as pd
 from numpy import linalg as la
 
 from stochvolmodels.pricers.model_pricer import ModelParams
+from stochvolmodels.pricers.rough_logsv.kernel_fit import KernelRule, moment_fitted_kernel
 from stochvolmodels.pricers.rough_logsv.rough_kernel import european_rule
 from stochvolmodels.utils.config import VariableType
 from stochvolmodels.utils.funcs import find_nearest
@@ -61,8 +62,9 @@ class LogSvParams(ModelParams):
     volvol : float, default 1.0
         Volatility of residual volatility epsilon > 0.
     vol_backbone : pd.Series, default None
-        Optional term structure of multiplicative scalings for theta, indexed by
-        time to maturity. See Sec. 6.2.
+        Optional deterministic loading eta on the price diffusion, indexed by
+        time to maturity; theta and the volatility-state drift remain unchanged.
+        The rough simulator currently supports eta = 1 only.
     H : float, default 0.5
         Hurst exponent. 0.5 is the article's dynamics; values below 0.5 select the
         rough extension noted in Sec. 7.
@@ -93,23 +95,47 @@ class LogSvParams(ModelParams):
             self.kappa2 = self.kappa1 / self.theta
         assert 1e-4 < self.H <= 0.5
 
-    def approximate_kernel(self, T: float):
+    def approximate_kernel(self,
+                           T: float,
+                           kernel_rule: KernelRule = KernelRule.EUROPEAN,
+                           w_bar_max: Optional[float] = None):
         """
         set the Markovian approximation nodes and weights of the rough kernel.
 
         Outside the scope of the article, which fixes H = 1/2. The rough model replaces the
         constant kernel by K(t) = t^(H-1/2) / Gamma(H+1/2) and approximates it by
-        K^N(t) = sum_i weights_i exp(-nodes_i t), optimised over [0, T] by the European
-        quadrature rule of Bayer and Breneis (2023). The number of nodes is 1 for H in
+        K^N(t) = sum_i weights_i exp(-nodes_i t) over [0, T]. The number of nodes is 1 for H in
         (0.49, 0.5], 2 for H in (0.4, 0.49] and 3 below; H in (0.49, 0.5] uses the single
         node 1e-3 with weight 1, so K^N(t) = exp(-1e-3 t), which reproduces the standard
         (non-rough) dynamics of Eq. (3.12) up to a mean reversion of rate 1e-3.
+
+        The default rule is the European quadrature rule of Bayer and Breneis (2023). The rule
+        ``KernelRule.MOMENT_FIT`` fits the nodes and weights to the mean, variance-swap
+        volatility and leverage of the model with kappa2 = 0 (``rough_logsv.kernel_fit``). It
+        reduces the kernel error for H <= 0.2 but raises w_bar = sum_i weights_i, and the
+        empirical split-step resolution guideline is w_bar vartheta sqrt(h) <= 0.4; pass ``w_bar_max``
+        from ``kernel_fit.max_weight_sum`` to fit for a given step. The first moment fit for a
+        given (H, T, w_bar_max) takes about a minute and is memoised.
 
         Parameters
         ----------
         T : float
             Horizon in years over which the kernel is approximated.
+        kernel_rule : KernelRule, default KernelRule.EUROPEAN
+            Approximation rule for H <= 0.49.
+        w_bar_max : float, optional
+            Required final cap on w_bar for ``KernelRule.MOMENT_FIT``. The penalized optimizer
+            can fail to achieve it, in which case it raises. Ignored by the European rule.
         """
+        if not np.isfinite(T) or T <= 0.0:
+            raise ValueError("kernel horizon T must be finite and positive")
+        if kernel_rule not in (KernelRule.EUROPEAN, KernelRule.MOMENT_FIT):
+            raise ValueError(f"unknown kernel_rule {kernel_rule}")
+        if kernel_rule == KernelRule.MOMENT_FIT and w_bar_max is not None:
+            if not np.isfinite(w_bar_max) or w_bar_max <= 0.0:
+                raise ValueError("w_bar_max must be finite and positive")
+            if self.H > 0.49 and w_bar_max < 1.0:
+                raise ValueError("the near-Markov unit-weight kernel exceeds w_bar_max")
         if 0.49 < self.H <= 0.5:
             self.weights = np.array([1.0])
             self.nodes = np.array([1e-3])
@@ -118,7 +144,13 @@ class LogSvParams(ModelParams):
             N = 2
         else:
             N = 3
-        self.nodes, self.weights = european_rule(self.H, N, T)
+        if kernel_rule == KernelRule.MOMENT_FIT:
+            self.nodes, self.weights = moment_fitted_kernel(hurst=self.H, n_nodes=N, horizon=T,
+                                                            w_bar_max=w_bar_max)
+        elif kernel_rule == KernelRule.EUROPEAN:
+            self.nodes, self.weights = european_rule(self.H, N, T)
+        else:
+            raise ValueError(f"unknown kernel_rule {kernel_rule}")
 
 
     def to_dict(self) -> Dict[str, Any]:
@@ -132,11 +164,10 @@ class LogSvParams(ModelParams):
 
     def set_vol_backbone(self, vol_backbone: pd.Series) -> None:
         """
-        attach a term structure of scaling factors for the mean volatility theta.
+        attach deterministic price-diffusion loadings eta indexed by time to maturity.
 
-        The article calibrates a single theta; Sec. 6.2 notes that the fit in the ATM
-        region improves with a term structure of theta. The backbone carries that term
-        structure as a multiplicative eta indexed by time to maturity.
+        The volatility state drift and theta are unchanged. The model forward variance is
+        eta(t)^2 E[sigma_t^2], so eta^2 alone is not a forward-variance curve.
         """
         self.vol_backbone = vol_backbone
 
@@ -144,7 +175,7 @@ class LogSvParams(ModelParams):
         """
         return the backbone scaling eta at the nearest quoted maturity at or beyond tau.
 
-        Returns 1.0, the flat-theta case of Eq. (3.12), when no backbone is attached.
+        Returns the core loading 1.0 when no backbone is attached.
         """
         if self.vol_backbone is not None:
             nearest_tau = find_nearest(a=self.vol_backbone.index.to_numpy(), value=tau, is_equal_or_largest=True)

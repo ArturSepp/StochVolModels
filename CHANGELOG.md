@@ -4,6 +4,34 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.6.1.dev0] - 2026-10-24
+
+### Added
+
+- Recovered `rough_logsv.kernel_fit` and the optional `KernelRule.MOMENT_FIT` argument
+  of `LogSvParams.approximate_kernel`; the European rule remains the default.
+- Added `mpmath>=1.3.0` to the optional research extra for the rough-paper
+  Mittag-Leffler and stationarity reference calculations.
+- Added `rough_logsv.split_simulation.simulate_split_step` and explicit
+  `rough_logsv_mc_chain_pricer_split_step` pricing. The new core-model path uses the
+  diffusion substep for the stochastic integral, counts positivity fallbacks/floors,
+  and provides raw conditional Monte Carlo prices without forward renormalization.
+  Select `rough_scheme="split_step"` with `use_rough_mc=True` on `LogSVPricer`.
+
+### Fixed
+
+- Monte Carlo standard errors use the number of scalar paths for row-shaped inputs.
+  Historical rough prices, keyword names and stored regression baselines are preserved.
+  The rough-limit documentation check now uses two combined standard errors; the previous
+  0.01 claim depended on the erroneous row-array denominator.
+- Rough pricing rejects unsupported nonunit price-loading backbones and inverse-measure
+  requests instead of silently ignoring them. The revised chain pricer supports ordinary
+  calls and puts only while the inverse-numeraire convention awaits validation.
+- Corrected backbone docstrings: eta loads the price diffusion; it does not scale theta.
+- The high-level rough Monte Carlo route now supplies its default 360 steps per year
+  when `nb_steps` is omitted, instead of passing `None` to the grid generator.
+
+
 ### Added
 
 - Added `LogSvParams.vartheta` and `LogSvParams.rho` for total volatility of volatility
