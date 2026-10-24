@@ -1,8 +1,8 @@
 # Committing with GitHub Desktop
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-09-21](https://github.com/ArturSepp/StochVolModels/commit/db98993aa647873796933400634be418729bc0dd)*
 
-Project: [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
+Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
 
 Create a working branch, select the intended changes, and commit normally. The installed
