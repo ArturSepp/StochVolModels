@@ -1,5 +1,10 @@
 # Option time-series examples
 
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-08-16](https://github.com/ArturSepp/StochVolModels/commit/892b3bf56a5253634967711cf49440801b4e64f5)*
+
+Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
+Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
+
 ## Continuous VIX 1-month ATM volatility
 
 `plot_vix_1m_atm_vol.py` reads the partitioned continuous VIX EOD dataset produced by OCA,

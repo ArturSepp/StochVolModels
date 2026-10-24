@@ -9,9 +9,9 @@ myst:
 
 # Documentation standard
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-09-27](https://github.com/ArturSepp/StochVolModels/commit/701a5ce4f2a25e39540a916a6ca1512f9a27ab92)*
 
-This standard applies to [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
+Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
 
 This page is the stochvolmodels supplement to the
@@ -48,6 +48,11 @@ mechanism, never a paper number that depends on data the repository cannot distr
 A page that uses an advanced, provisional or experimental name says so in its first paragraph
 and uses the import path that the tier requires. The tiers are defined on the
 [conventions page](option_chains_and_conventions.md#stability-tiers).
+
+Use the linked Artur Sepp byline and the stochvolmodels repository/software-citation block shown
+at the top of this page on every reader-facing page, including the README, contribution guide
+and example guides. Each page's First recorded date links to its own verified source history,
+including an earlier RST source or a renamed file where applicable.
 
 A new page carries the author-only byline. The linked first-recorded date is added once a commit
 exists, from `git log --follow` evidence. Page basenames never change, so published URLs stay

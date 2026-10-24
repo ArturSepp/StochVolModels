@@ -1,5 +1,10 @@
 # stochvolmodels
 
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2022-08-03](https://github.com/ArturSepp/StochVolModels/commit/b35a931a94e680b89a59550deb998541549e980a)*
+
+Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
+Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
+
 **Fourier-transform pricing, Monte Carlo validation, and calibration of European options under
 stochastic-volatility models in Python**
 

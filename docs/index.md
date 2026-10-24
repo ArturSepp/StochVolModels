@@ -12,6 +12,9 @@ myst:
 
 *Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-08-16](https://github.com/ArturSepp/StochVolModels/commit/e9e01403a6ba36aad7708049028c64438a606234)*
 
+Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
+Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
+
 [stochvolmodels](https://github.com/ArturSepp/StochVolModels) is a Python library for pricing
 European options under stochastic volatility. It prices vanilla, inverse and quadratic-variance
 options by Fourier inversion of a closed-form moment generating function, checks the analytic
@@ -20,7 +23,6 @@ chains. It is the reference implementation of the log-normal stochastic volatili
 quadratic drift, with the Heston model as benchmark. Its core depends on no sibling package other
 than [vanilla-option-pricers](https://github.com/ArturSepp/VanillaOptionPricers).
 
-Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
 
 ## Start here
 

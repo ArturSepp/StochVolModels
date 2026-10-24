@@ -11,7 +11,7 @@ myst:
 
 *Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-08-22](https://github.com/ArturSepp/StochVolModels/commit/db6ea3ec2e724ae8d08e19bc9a8e41054b6f4dd7)*
 
-Part of the [stochvolmodels](https://github.com/ArturSepp/StochVolModels) documentation.
+Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
 
 The automated checks separate scientific behavior from packaging and documentation so a failure

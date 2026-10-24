@@ -2,7 +2,7 @@
 
 *Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-08-21](https://github.com/ArturSepp/StochVolModels/commit/83e164c17fcfaa4ef8cd08cbe099bf89681efeb4)*
 
-Source: [StochVolModels](https://github.com/ArturSepp/StochVolModels).
+Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
 
 <!-- docs-start -->

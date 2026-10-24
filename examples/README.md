@@ -1,5 +1,10 @@
 # Examples
 
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-08-16](https://github.com/ArturSepp/StochVolModels/commit/e9e01403a6ba36aad7708049028c64438a606234)*
+
+Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
+Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
+
 These scripts are repository-only workflows. They are intentionally outside the
 `stochvolmodels` import package and are not included in wheels or source distributions.
 
