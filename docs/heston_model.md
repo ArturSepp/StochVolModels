@@ -21,7 +21,9 @@ standard benchmark for stochastic volatility (SV) models. The package prices, si
 calibrates it through the same interfaces as the
 [log-normal SV model](logsv_model.md), so the two can be compared on the same chains. This article
 explains the Heston model as implemented, and where it differs from the log-normal SV model in the
-distribution of volatility, in smiles and in fits.
+distribution of volatility, in smiles and in fits. The parameter-bound
+`stochvolmodels.models.heston.HestonModel` path and transform adapter described below is
+provisional; the established option-chain interface remains `HestonPricer`.
 
 ## Overview
 
@@ -182,6 +184,76 @@ scale; (C) log-normal SV minus Heston implied volatility at three maturities, at
 the shared pricer interface. Run the example from a checkout with
 `python examples/docs/heston_model.py`.
 
+### Provisional path and transform adapter
+
+Import `HestonModel` from `stochvolmodels.models.heston`. It binds a validated copy of
+`HestonParams` and implements the structural `PathModel` and `TransformModel` capabilities
+from `stochvolmodels.models`. `HestonPricer` owns option-chain prices, implied volatilities and
+calibration; `HestonModel` supplies dynamics to path valuation and log transforms to numerical
+pricing. Runtime protocol checks establish the presence of methods, not numerical correctness.
+
+The constructor requires finite nonnegative `v0`, `theta`, `kappa` and `volvol`, and `rho` in
+`[-1, 1]`. It does not impose the Feller inequality used by the calibration routine. Changing the
+original parameter object, or the detached object returned by `model.params`, does not alter
+the model's parameter snapshot.
+
+```python
+def heston_model_example() -> tuple:
+    """Use the provisional path and transform adapter with constant variance."""
+    from stochvolmodels.models import PathModel, TransformModel
+    from stochvolmodels.models.heston import HestonModel
+
+    params = svm.HestonParams(v0=0.04, theta=0.04, kappa=2.0, rho=-0.5, volvol=0.0)
+    model = HestonModel(params)
+    assert isinstance(model, PathModel) and isinstance(model, TransformModel)
+    paths = model.simulate_paths(
+        measure="Q_MMA", observation_times=np.array([0.0, 0.125, 0.25]),
+        spot0=100.0, n_paths=64, steps_per_year=24, seed=7,
+    )
+    phi = np.array([0.0, -1.0, 1j], dtype=complex)
+    log_transform = model.log_mgf_grid(ttm=0.25, phi_grid=phi)
+    return paths, phi, log_transform
+```
+
+The canonical `MODEL_INTERFACE` case checks this constant-variance example against the Gaussian
+log-return transform and the deterministic integrated variance. It makes no option-price accuracy
+claim for the small path sample.
+
+`simulate_paths` supports only `measure="Q_MMA"`, the money-market-account measure. Observation
+times are a strictly increasing NumPy array in years, starting at zero and containing at least two
+entries. The initial `spot0` is positive; the simulated asset has zero drift, with no forward carry
+or discounting. The returned `ModelPaths.assets` has shape `(n_paths, n_times, 1)`, asset ID
+`zero_drift_price`, and levels `spot0 * exp(log_zero_drift_return)`. Named states have shape
+`(n_paths, n_times)`:
+
+| State | Convention |
+|---|---|
+| `log_zero_drift_return` | Cumulative log return, initially zero |
+| `variance` | Instantaneous annualized variance, initially `v0` |
+| `sigma` | Annualized volatility, the square root of `variance` |
+| `quadratic_variance` | Cumulative integrated variance, initially zero |
+
+The producer marks its arrays read-only, records the numerical scheme and RNG provenance, and
+reports failed paths without silently dropping them. Paths retain their raw simulated levels;
+discounting and any explicit forward recentering belong to the valuation layer.
+
+Each observation interval carries the preceding log return, variance and integrated variance
+forward, using `int(interval * steps_per_year) + 1` steps. The local `RandomState(seed)` does not
+use the legacy global Numba seed. Repeating an identical request is reproducible; changing the
+observation partition changes the integration grid and random-draw order. Each new
+`simulate_paths` call starts at the parameter snapshot: it does not accept a continuation payload.
+The lower-level `simulate_heston_x_vol_terminal` function accepts initial state arrays, including
+length-one log-return and integrated-variance arrays whose supplied values are broadcast and
+preserved. `HestonPricer.simulate_terminal_values` honors its scalar `x0`, while initializing
+variance from `params.v0` and integrated variance at zero.
+
+`log_mgf_grid(ttm=..., phi_grid=..., psi_grid=...)` returns
+$\log \mathbb{E}[\exp(-\phi X_T-\psi I_T)]$ under `Q_MMA`; omitting `psi_grid` sets it to zero.
+The finite, nonempty one-dimensional NumPy grids must have the same shape. Zero maturity and
+zero vol-of-variance use exact limiting formulas. Ordinary grids reuse the existing Heston
+transform; cancellation and repeated-root cases use an adaptive Riccati solve. These numerical
+branches do not extend the model's moment-existence domain.
+
 ## Interpretation and limitations
 
 - **A fit is not the test.** On one date the Heston model fitted the Bitcoin chain more closely than
@@ -194,8 +266,9 @@ the shared pricer interface. Run the example from a checkout with
 - **Constant parameters.** The package's Heston model has no term structure of parameters; each
   chain is fitted with one set.
 - **Simulation.** The variance is floored at $10^{-4}$ rather than truncated at zero; with the Feller
-  condition failing, the floor is reached often and biases the simulation. The number of steps is not
-  a parameter.
+  condition failing, the floor is reached often and biases the simulation. `HestonPricer` uses
+  its fixed step convention; the provisional `HestonModel` exposes `steps_per_year` while
+  preserving the same variance floor.
 - **Calibration interface.** The docstring of `calibrate_model_params_to_chain` says that `v0` is
   inferred from the at-the-money volatility; the code fits it with the other four parameters.
 

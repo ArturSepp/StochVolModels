@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from functools import lru_cache
 from numbers import Integral, Real
@@ -74,7 +73,7 @@ def _normal_positive_part(mean: np.ndarray, stdev: np.ndarray) -> np.ndarray:
     left = d < -8.0
 
     middle_d = d[middle]
-    density = np.exp(-0.5 * np.square(middle_d)) / math.sqrt(2.0 * math.pi)
+    density = np.exp(-0.5 * np.square(middle_d)) / np.sqrt(2.0 * np.pi)
     scaled[middle] = density + middle_d * ndtr(middle_d)
     scaled[right] = d[right]
 
@@ -85,7 +84,7 @@ def _normal_positive_part(mean: np.ndarray, stdev: np.ndarray) -> np.ndarray:
         + inverse_square
         * (-3.0 + inverse_square * (15.0 + inverse_square * (-105.0 + 945.0 * inverse_square)))
     )
-    scaled[left] = np.exp(-0.5 * np.square(z)) * mills_remainder / math.sqrt(2.0 * math.pi)
+    scaled[left] = np.exp(-0.5 * np.square(z)) * mills_remainder / np.sqrt(2.0 * np.pi)
     return np.maximum(stdevs * scaled, 0.0)
 
 
@@ -234,7 +233,7 @@ class InverseGammaNormalTerminalModel:
         radius = max(
             1.0,
             abs(center),
-            math.sqrt(self._c * self._mean_mixing_variance),
+            np.sqrt(self._c * self._mean_mixing_variance),
         )
         for _ in range(128):
             lower = center - radius

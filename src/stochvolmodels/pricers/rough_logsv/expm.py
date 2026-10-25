@@ -1,6 +1,4 @@
 import numpy as np
-import math
-import cmath
 from numba import njit, prange
 
 
@@ -8,7 +6,7 @@ from numba import njit, prange
 
 @njit(cache=True)
 def _cabs(z):
-    return math.hypot(z.real, z.imag)
+    return np.hypot(z.real, z.imag)
 
 @njit(cache=True)
 def _csqrt(z):
@@ -17,10 +15,10 @@ def _csqrt(z):
     if r == 0.0:
         return 0.0 + 0.0j
     # sqrt in polar form
-    theta = math.atan2(z.imag, z.real)
-    sr = math.sqrt(r)
+    theta = np.arctan2(z.imag, z.real)
+    sr = np.sqrt(r)
     ht = 0.5 * theta
-    return complex(sr * math.cos(ht), sr * math.sin(ht))
+    return complex(sr * np.cos(ht), sr * np.sin(ht))
 
 @njit(cache=True)
 def _ccbrt(z):
@@ -28,10 +26,10 @@ def _ccbrt(z):
     r = _cabs(z)
     if r == 0.0:
         return 0.0 + 0.0j
-    theta = math.atan2(z.imag, z.real)
+    theta = np.arctan2(z.imag, z.real)
     cr = r ** (1.0 / 3.0)
     tt = theta / 3.0
-    return complex(cr * math.cos(tt), cr * math.sin(tt))
+    return complex(cr * np.cos(tt), cr * np.sin(tt))
 
 
 # ---------- Step 1: cubic roots for p(r)=0 ----------
@@ -64,7 +62,7 @@ def _cubic_roots_monic(a2, a1, a0):
     # y2 = -(u+v)/2 + i*sqrt(3)/2*(u-v)
     # y3 = -(u+v)/2 - i*sqrt(3)/2*(u-v)
     half = 0.5
-    s3_2 = 0.5 * math.sqrt(3.0)
+    s3_2 = 0.5 * np.sqrt(3.0)
 
     uv = u - v
     y2 = -half * y1 + complex(-s3_2 * uv.imag, s3_2 * uv.real)  # i*s3_2*(u-v)
@@ -179,7 +177,7 @@ def expA_n3_numba(kappa, lambdas, w, tol=1e-10):
                 colsum_max = s
         s_pow = 0
         if colsum_max > 0.5:
-            s_pow = int(math.ceil(math.log(colsum_max / 0.5) / math.log(2.0)))
+            s_pow = int(np.ceil(np.log(colsum_max / 0.5) / np.log(2.0)))
 
         As = A / (2.0 ** s_pow)
 
@@ -260,7 +258,7 @@ def expA_n1_numba (kappa, lambdas, w):
     w: shape (1,)
     """
     a = -(lambdas[0] + kappa * w[0])
-    out = math.exp(a)
+    out = np.exp(a)
     return out
 
 @njit(cache=True)
@@ -268,8 +266,8 @@ def _sinhc(z, tol=1e-12):
     """sinh(z)/z with small-z series for stability (Numba-friendly)."""
     if abs(z) < tol:
         z2 = z * z
-        return 1.0 + 22 / 6.0 + (z2 *z2) / 120.0
-    return cmath.sinh(z) / z
+        return 1.0 + z2 / 6.0 + (z2 * z2) / 120.0
+    return np.sinh(z) / z
 
 
 @njit(cache=True)
@@ -291,10 +289,10 @@ def expA_n2_numba(kappa, lambdas, w):
     det = a11 * a22 - a12 * a21
 
     half_tr = 0.5 * tr
-    Delta = cmath.sqrt((half_tr * half_tr) - det + 0.0j)
+    Delta = np.sqrt((half_tr * half_tr) - det + 0.0j)
 
-    ehalf = math.exp(half_tr) # half_tr is real
-    c = cmath.cosh(Delta)
+    ehalf = np.exp(half_tr) # half_tr is real
+    c = np.cosh(Delta)
     s_over = _sinhc(Delta)
 
     # B = A  - (tr/2) I

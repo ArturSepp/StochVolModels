@@ -41,13 +41,15 @@ enum case and includes Numba compilation on first use.
 | `docs/inverse_options.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
 | `docs/logsv_model.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
 | `docs/logsv_smile_fitter.py` | canonical script of a documentation page | core only, generated chain | every case run by `test_docs_examples.py` |
-| `docs/surface_diagnostics.py` | fit, strike and calendar checks with constant-tenor comparisons | core only, synthetic chains | every case run by `test_docs_examples.py` |
+| `docs/surface_diagnostics.py` | fit, strike and calendar checks, native tick-scale handoff and portable research audits | core only, synthetic chains/scores and a temporary JSON report | every case run by `test_docs_examples.py`, including `NATIVE_QUOTES` and `RESEARCH_TOOLS` |
 | `calibration/oca_surface_diagnostics.py` | advanced source-to-fit quality, parity and surface reports | research extra, OCA 5.3, synthetic only | optional cross-package integration test |
 | `calibration/_svi_benchmark.py` | internal support module for the research comparison | core only, SVI/SSVI formulae and constrained fits | independent formula/derivative contracts in `test_smile_fitter_benchmark.py`; imported by the comparison runner |
 | `calibration/_svi_wing_benchmark.py` | opt-in constrained raw-SVI research helper with IV or half-spread price objective, training-IV seeding and optional fixed IV-anchor regularization | core only, training-domain density/call-slope constraints and explicit prediction limits | independent price/anchor gradients, combined-loss selection, seed/refit accounting, domain rejection and leakage contracts in `test_smile_fitter_benchmark.py`; imported by both comparison runners |
 | `calibration/_svi_shared_benchmark.py` | opt-in joint raw-SVI fit with one rho and four parameters per expiry | core only, uniform training-IV loss and existing finite-domain strike constraints | independent joint Jacobian, recovery, failure and prediction contracts in `test_svi_shared_benchmark.py`; imported by both runners |
 | `calibration/diagnose_wing_reliability.py` | training-only refit sensitivity on a fixed supported strike grid; also used by the optional historical flag | core only, synthetic CLI; independent constrained or shared-rho raw SVI | independent RMS, quantiles, normalized prices, shocks, failure accounting and leakage tests; no default warning cutoff |
 | `calibration/_wing_research_policy.py` | caller-frozen cutoff validation and all-draw wing RMS assessment | core only; exact research scope and explicit noise declaration | artifact, scope, source-hash and failure-abstention contracts in `test_wing_research_policy.py`; no shipped cutoff |
+| `calibration/_svi_research_fixtures.py` | portable synthetic Gaussian, spread-dependent, correlated and localized-bump challenges, with paired hidden-wing truths | core only; fixed inputs, no fitting or file access | independent noise construction and paired-observation contracts in `test_research_study_tools.py` |
+| `calibration/_research_study_tools.py` | exact tolerance ranks, missing-score accounting, artifact hashes and independent saved wing-score reconstruction | core only; explicit cohorts, probabilities, manifests and artifact roots | binomial enumeration, incomplete-study and tampered-artifact contracts in `test_research_study_tools.py`; no default cutoff |
 | `calibration/combined_research_diagnostics.py` | separate quote/parity, observed-fit, support and sensitivity facets; saved raw-SVI replay | core only; optional serialized OCA sidecars | independent interval/residual arithmetic, provenance, model/grid matching and abstention tests; no overall accuracy verdict |
 | `calibration/replay_surface_diagnostics.py` | frozen-schedule contract/expiry diagnostic episodes with recovery, repeated violations and unavailable evidence | core only; synthetic CLI or hashed normalized observations from saved OCA sidecars | hand histories, split resets, source/policy identities, missing-data and expiry censoring, immutable output and saved CLI contracts in `test_longitudinal_replay.py` |
 | `calibration/compare_smile_fitters.py` | advanced research comparison of raw SVI, constrained SSVI, approximate LogSV, GMM, LogSV and Heston | core only, fixed synthetic quotes and holdouts | formula/runner contracts in `test_smile_fitter_benchmark.py`; full comparison run manually |
@@ -82,6 +84,34 @@ OCA 5 with its CBOE/Parquet support and supports the credential-free
 `calibration/run_oca_logsv_calibration.py` bridge. The CBOE time-series lane also needs local
 normalized SPX/VIX caches; its directory README gives the setup. Paper-replication code under
 `papers/` also uses `research`.
+
+## Native quote and research diagnostics
+
+The [canonical diagnostics script](docs/surface_diagnostics.py) includes two small offline
+cases that need no provider data, OCA installation or archived agent output. From the
+repository root, run:
+
+```console
+python -c "from examples.docs.surface_diagnostics import Locals, run_local; run_local(Locals.NATIVE_QUOTES)"
+python -c "from examples.docs.surface_diagnostics import Locals, run_local; run_local(Locals.RESEARCH_TOOLS)"
+```
+
+`NATIVE_QUOTES` calls the packaged `stochvolmodels.fitters.adapters.diagnose_native_quotes`
+and `normalized_vanilla_price_bounds` helpers, then supplies aligned effective scales to
+`fitters.diagnose_fit`. A locked quote uses its recorded tick; a missing tick leaves the
+scaled error unavailable while retaining the raw residual. The example explicitly supplies
+price units, normalized bounds and IDs. A valid scale does not imply passed price bounds.
+The [native workflow](../docs/surface_diagnostics.md#native-quote-scales-and-admissible-perturbations)
+explains the conversion and missing-data contract.
+
+`RESEARCH_TOOLS` demonstrates the repository-only `_svi_research_fixtures` and
+`_research_study_tools` APIs. It checks paired observations, explicit coverage/error-probability
+inputs, missing-score accounting, a frozen-file hash interface and an independent all-draw wing
+score. Its handwritten scores illustrate calling conventions and are not a fitted policy.
+The paired challenge panel must not be counted as independent calibration draws. The case
+creates and removes a small temporary JSON file, performs no refits and installs no thresholds.
+See [portable study helpers](../docs/surface_diagnostics.md#portable-research-study-helpers)
+for return fields, failure statuses and the saved-report envelope.
 
 ## Option data and calibration
 

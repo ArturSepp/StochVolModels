@@ -105,7 +105,8 @@ cd StochVolModels
 uv sync --locked --group test --group lint --extra docs
 uv run --no-sync pytest -m "not slow"
 uv run --no-sync pytest -m slow
-uv run --no-sync ruff check --select E9,F63,F7,F82,F811 src
+uv run --no-sync ruff check --select F,TID251,TID253,ICN src/stochvolmodels
+uv run --no-sync python scripts/check_fitter_contracts.py
 uv run --no-sync python -m sphinx -W --keep-going -b html docs docs/_build/html
 uv run --no-sync python examples/getting_started/quickstart.py
 ```
@@ -114,6 +115,12 @@ Tests live in `src/stochvolmodels/tests/`. Unmarked fast tests cover core contra
 deterministic numerical properties; `slow` covers simulation/regressions,
 `optional_integration` covers optional providers, `repository_only` covers JOSS/docs/examples, and
 `paper_replication` is reserved for long paper gates.
+
+The authoritative Python 3.12 source CI also installs the `research` extra. Include that extra
+when exercising optional provider contracts locally; a core-only run may skip them. Repository-only
+synthetic research tests, including `test_research_study_tools.py`, do not require the private
+data or output folders from an earlier study. Native quote-scale tests in
+`test_native_quote_diagnostics.py` exercise the core package without an optional data provider.
 
 Component development diagnostics live beside their implementation under the nearest
 `run_local/` package and end in `*_run.py`. Each exposes `Locals` and
@@ -134,15 +141,66 @@ Run installed-wheel tests from a directory outside the checkout so local source 
 packaging error:
 
 ```console
-python -m pytest --pyargs stochvolmodels.tests -m "not slow"
+python -m pytest --pyargs stochvolmodels -m "not slow"
 ```
+
+The wheel ships automated test modules but excludes repository examples, documentation, paper
+sources and development runners. Tests that need these assets skip when they are absent; this is
+why an installed-wheel pass complements the source run. Report executed commands, skips and
+failures separately, including whether the slow and optional-provider lanes were actually run.
+
+## Numerical imports
+
+Use `numpy` as `np` for elementary operations and constants, including scalar calculations:
+`np.sqrt`, `np.log`, `np.exp`, `np.pi` and `np.isfinite`. Use `scipy.special` for special
+functions such as `erf`, `erfc`, `gamma` and `comb`; request `comb(..., exact=True)` when coefficients
+must remain exact integers. Preserve complex input types, integer conversions, tolerances
+and overflow/domain handling when replacing an implementation.
+
+Ruff's `TID251` rule rejects `math` and `cmath` imports throughout `src/stochvolmodels`,
+including tests and development runners. An exception must be an explicit symbol import
+with a line-level `noqa: TID251` and a concrete numerical or compilation reason. Do not
+add blanket file or directory exclusions. The current exceptions are:
+
+- `math.erf` in `utils/mc_payoffs.py`: the scalar normal-CDF helper is compiled by Numba.
+  Ordinary Python and array code uses `scipy.special.erf`; calling it from this compiled
+  kernel would require optional integration that the package does not declare.
+- `math.fsum` in `valuation.py`: ordinary NumPy/SciPy reductions do not guarantee the same
+  accuracy for sums with severe cancellation.
+
+Keep exceptions narrow and verify them through the compiled kernel or an independent
+numerical reference. Adding optional compilation support is a dependency change, not an
+implicit part of replacing an import.
+
+## Fitter annotations and module headers
+
+Every function under `src/stochvolmodels/fitters/` requires argument and return annotations.
+This includes private helpers, nested optimizer callbacks, adapters and `run_local/` dispatchers.
+Conventional instance/class receivers may omit `self`/`cls` annotations; collection and callable
+annotations must include their contained types or signatures.
+
+Each module starts with a docstring containing a summary and an explanatory paragraph. State the
+module's responsibility, important input/output units or shapes, and relevant ownership boundaries
+or limitations. Keep detailed function documentation in NumPy-style docstrings.
+
+`python scripts/check_fitter_contracts.py` checks these contracts from syntax trees without
+importing optional providers. The static CI workflow runs it alongside the Ruff import rules and
+docstring-coverage check. `test_fitter_contracts.py` verifies that incomplete headers, missing
+annotations and bare collection annotations are rejected.
 
 ## Numerical changes
 
 - Add a test that fails before the fix and passes after it.
-- Cross-check pricing, transforms, calibration, or simulation through a genuinely different route:
+- Cross-check pricing, transforms, calibration, or simulation through a different route:
   analytic versus Monte Carlo, a limiting case, a closed-form identity, or a trusted external
   reference.
+- Confirm that the regression rejects its intended defect, for example a wrong tick scale,
+  acceptance of a price at an open bound, or a missing saved draw. Restore the correct
+  implementation afterward and record the failing and passing checks. A mutation check is
+  separate evidence from an ordinary passing test run.
+- Preserve quote identities, units, missing-data reasons and all requested observations or draws.
+  Native admissibility and synthetic sensitivity checks do not establish quote freshness, wing
+  accuracy or a production warning policy.
 - Keep stochastic tests statistical: state the seed, standard error, and acceptance rationale.
 - Do not regenerate a regression `.npz` merely because a test failed. Explain and obtain approval
   for any intentional baseline change.

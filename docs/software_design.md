@@ -28,7 +28,7 @@ flowchart TB
     U["utils: enums, transform grids, slice pricers, Monte Carlo payoffs, rate conventions"]
     D["data: OptionChain, OptionSlice, SwOptionChain, FutOptionChain, ModelPaths, bundled chains"]
     P["pricers: ModelPricer and the model pricers, with their calibration"]
-    F["fitters: approximate smile, Student-t analytics"]
+    F["fitters: approximate smile, Student-t analytics, fit and surface diagnostics"]
     M["models, products, valuation: provisional path-model stack"]
     E["estimation: OHLC estimators and volatility forecasting"]
     D --> U
@@ -37,6 +37,8 @@ flowchart TB
     P --> U
     P --> V
     P --> F
+    F --> D
+    F --> V
     M --> D
     M -. lazy import .-> P
 ```
@@ -45,7 +47,7 @@ In words: arrows point from a layer to the layers it imports. The utilities impo
 from the package. The data containers use the utilities and delegate Black-Scholes and Bachelier
 analytics to `vanilla-option-pricers`. The pricers build on both, and each pricer carries its own
 calibration method; there is no separate calibration package. The provisional path-model stack
-shares only the containers with the pricers and imports the log-normal SV kernel lazily, so
+shares only the containers with the pricers and imports the LogSV and Heston kernels lazily, so
 importing it compiles no numba code. The estimation suite stands alone.
 
 | Layer | Modules | Role |
@@ -53,7 +55,7 @@ importing it compiles no numba code. The estimation suite stands alone.
 | Utilities | `utils/config.py`, `funcs.py`, `mgf_pricer.py`, `mc_payoffs.py`, `var_swap_pricer.py`, `rate_core.py`, `plots.py` | `OptionType` and `VariableType`; time grids and seeding; transform grids and Fourier slice pricers; Monte Carlo payoffs; the model-free variance-swap strike; rate conventions; plotting helpers |
 | Data | `data/option_chain.py`, `model_paths.py`, `sample_option_chains.py`, `fetch_option_chain.py` | Option-chain containers per maturity, the validated path payload, the bundled chains, optional loaders from data providers |
 | Pricers | `pricers/model_pricer.py`, `logsv_pricer.py`, `logsv/`, `heston_pricer.py`, `hawkes_jd_pricer.py`, `gmm_pricer.py`, `tdist_pricer.py`, `regime_switch_logsv_pricer.py`, `rough_logsv/`, `factor_hjm/` | The pricer interface and the models; the affine expansion and moment equations of the log-normal SV model |
-| Fitters | `fitters/logsv_smile.py`, `tdist.py`, `adapters/oca.py` | The [approximate smile fitter](logsv_smile_fitter.md), Student-t analytics, an adapter from OptionChainAnalytics |
+| Fitters | `fitters/logsv_smile.py`, `tdist.py`, `diagnostics.py`, `surface_checks.py`, `adapters/` | The [approximate smile fitter](logsv_smile_fitter.md), Student-t analytics, fit/surface checks, native quote scales and optional OCA handoff |
 | Path models | `models/`, `products/`, `valuation.py` | Protocols for path, transform and terminal models; payoffs; path valuation with explicit measure and weights |
 | Estimation | `estimation/` | OHLC variance estimators, realized-volatility targets, forecasting models and walk-forward evaluation |
 
@@ -61,6 +63,72 @@ Two couplings cross this picture: the log-normal SV parameters import the rough-
 approximate kernels when $H < 1/2$, and the regime-switching pricer imports the regime models of
 the provisional stack. `pde_solvers/` is a private staging directory: it is ignored by Git and
 excluded from the wheel and the source distribution.
+
+### Model, pricer, product and data ownership
+
+The directory names reflect two stages of development. The original `pricers/` modules bundle
+parameters, stochastic dynamics, transforms, simulation, pricing and calibration. The later
+`models/` layer exposes reusable capabilities independently of an option chain. Heston's earlier
+absence from `models/` was an incomplete adapter migration; Heston pricing itself was supported.
+`models.heston.HestonModel` now exposes both `PathModel` and `TransformModel` while preserving
+the existing `HestonParams` and `HestonPricer` import paths.
+
+Use the following ownership rules for new implementations:
+
+| Layer | Owns | Consumes and returns |
+|---|---|---|
+| `models` | Parameters bound to a stochastic law, measure conventions, state evolution, and available transforms or terminal laws | A simulation request returns `ModelPaths`; a transform request returns a numerical transform grid. A model need not provide capabilities its mathematics does not support. |
+| `products` | Contract terms, required assets or states, expiry, payoff and settlement units | Paths become one undiscounted payoff per path. Products do not choose simulation schemes or fit quotes. |
+| `pricers` and `valuation` | Numerical integration or Monte Carlo estimation, deterministic discounting, pricing conventions and implied-volatility conversion | Model outputs and contracts become prices and standard errors. The legacy pricers retain their calibration entry points. |
+| `fitters` | Approximate smile fitting and fit/surface diagnostics | Observed quotes and model evaluations become fit results or diagnostic reports; provider adapters remain optional. |
+| `data` | Market observations, quote conventions, maturity and strike axes, and shared numerical payloads | `OptionChain` holds quotes; `ModelPaths` holds simulated state. Data containers do not define stochastic dynamics. |
+| `estimation` | Historical volatility estimates, forecasts and point-in-time validation | Time series become estimates and forecasts; risk-neutral calibration remains a separate task. |
+
+The target dependency direction is pricing/valuation to model capabilities, products and data.
+For compatibility, existing model adapters may lazily call a numerical kernel still located in
+`pricers/`; this is a documented transition, not a second implementation of the same dynamics.
+Moving all historical parameters and kernels would be a separate migration with compatibility
+re-exports. The presence of a model does not imply that every product or pricing method is
+supported: capability and measure checks define valid combinations.
+
+`HestonModel` paths use `Q_MMA`, a money-market-account numeraire and a zero-drift asset.
+They record `variance` in annualized variance units, `sigma` in annualized volatility units,
+and `quadratic_variance` as integrated variance. Annualization of the last quantity belongs to
+the product's explicit quote convention. The adapter preserves the legacy Euler floor of
+`1e-4`, uses a local seeded generator, and reports the observation partition and scheme.
+The floor introduces discretization bias near zero variance, including the degenerate
+zero-variance process; the exact transform does not apply that numerical floor.
+Its transform is `log E[exp(-phi * X - psi * I)]`, where `X` is the log return and `I` is
+integrated variance. The path adapter supports only `Q_MMA`; it does not infer an inverse measure,
+insert a forward curve, discount a payoff, or recenter simulated prices.
+Ordinary transform grids reuse the legacy closed form. Near very small volatility of variance,
+repeated Riccati roots or cancellation, the adapter integrates the same Riccati equations
+adaptively; exact zero forcing and deterministic-variance limits are handled explicitly.
+
+These rules are exercised by the capability, Heston, path-valuation, option-chain and volatility
+data consistency tests. Fitter annotations and explanatory module headers are checked by
+`scripts/check_fitter_contracts.py` in the static CI job. The
+[numerical import convention](contributing.md#numerical-imports) uses NumPy for elementary
+operations and `scipy.special` for special functions, including exact integer combinations.
+Ruff rejects `math` and `cmath` imports by default; explicit import-line exceptions retain
+`math.erf` in the Numba kernel and `math.fsum` for accurate valuation sums.
+
+### Diagnostic and research boundaries
+
+Packaged diagnostics observe supplied data and model outputs; they do not select a fit,
+repair a quote, infer a price unit or choose an acceptance threshold. The
+[native quote adapter](surface_diagnostics.md#native-quote-scales-and-admissible-perturbations)
+computes scales and conditional price-bound intervals from explicit ticks and bounds.
+`diagnose_fit` consumes aligned scales while preserving unavailable normalized errors and
+their raw residuals. `DiagnosticReport` snapshots evidence; it is separate from
+`OptionChain` observations and `ModelPaths` simulated states.
+
+The [repository research utilities](examples.md#research-diagnostics) combine reports, replay
+saved evidence, generate paired synthetic challenges and verify frozen studies. They live
+under `examples/calibration`, with tests in source CI, and are excluded from the installed
+wheel. Their noise scenarios and caller-supplied statistical limits do not become production
+warning policies. Historical session archives and the private PDE staging code are outside
+these maintained public interfaces.
 
 ## The pricer interface
 
@@ -87,6 +155,13 @@ outside its bounds.
 | `GmmPricer`, `TdistPricer` | Closed-form mixtures and Student-t prices | None | Per maturity, validated |
 | `RegimeSwitchLogSVPricer` | Regime-switching MGF, Fourier inversion | NumPy simulation | None |
 | `RateLogSVPricer`, `RateFutLogSVPricer` | Double-exponential quadrature of the drift-frozen MGF; they return normal volatilities | Factor simulation | None |
+
+The experimental rate pricers are a legacy exception to `ModelPricer.price_chain`'s price
+return contract: their specialized callers consume normal implied volatilities. They must not
+be passed through the generic price-to-implied-volatility helpers. Unifying that return
+contract requires a separate compatibility migration. Swaption-chain price inversion accepts
+annuity-normalized prices and uses Bachelier inversion with a unit discount factor; its arrays
+are nested by swap tenor, option expiry, then strike.
 
 ## Analytic and Monte Carlo paths
 

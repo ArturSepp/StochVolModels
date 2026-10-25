@@ -51,19 +51,30 @@ libraries provide much broader instrument infrastructure, while model collection
 formulas. This package deliberately serves the narrower workflow around the quadratic-drift LogSV
 model, with Heston as a like-for-like benchmark and paper implementations tied to the same code.
 
-- **One model contract, two pricing routes.** Every `ModelPricer` supplies an analytic
-  `price_chain`, a Monte Carlo `model_mc_price_chain`, and a constrained
-  `calibrate_model_params_to_chain`; everything downstream (single-option and slice pricing,
-  model implied vols, Monte Carlo implied vols with confidence bounds, the visualisation layer)
-  is inherited, so every engine can be cross-validated analytic-versus-simulation through the
-  same interface.
-- **Calibration that fails visibly.** Constrained calibration reports failures through
-  `CalibrationError`; `ConstraintsType` selects the martingale conditions.
+- **A common pricing interface.** `ModelPricer` requires `price_chain` and supplies
+  single-option, slice and implied-volatility helpers. LogSV and Heston implement both
+  transform and Monte Carlo pricing, plus constrained calibration. Other models expose
+  their supported capabilities; an unavailable simulation or calibration method raises
+  `NotImplementedError`. See the [model and pricer boundaries](docs/software_design.md#model-pricer-product-and-data-ownership).
+- **Calibration that fails visibly.** Validated LogSV and Heston calibration reports
+  optimizer failures through `CalibrationError`; LogSV's `ConstraintsType` selects the
+  martingale conditions.
 - **One lightweight `OptionChain`.** Bundled simulated chains, normalised OCA panels, and local
   CBOE, ThetaData and Tardis caches all converge to the same container, so fitting and pricing
   code does not depend on the original provider.
+- **Diagnostics in declared quote units.** Fit residuals support scalar or per-quote spread
+  floors. [Native quote diagnostics](docs/surface_diagnostics.md#native-quote-scales-and-admissible-perturbations)
+  retain tick-size, price-bound and missing-data evidence, separately from any caller-defined
+  acceptance policy. [Research helpers](docs/examples.md#research-diagnostics) provide synthetic
+  challenge cases and saved-study verification in a source checkout.
 - **Paper implementations tied to the same code.** The `papers/` directory reproduces the
   computations and figures of six papers with the package's own pricers.
+
+For reusable model dynamics, the provisional
+[`HestonModel`](docs/heston_model.md) adapter supplies named path states and joint transforms
+without a quote chain. `HestonPricer` remains the stable pricing/calibration entry point;
+[products and valuation](docs/software_design.md#model-pricer-product-and-data-ownership)
+own payoffs and discounting.
 
 ### When to use it — and when not
 
@@ -448,7 +459,7 @@ package in your research, please cite the software and the relevant papers:
   title={StochVolModels: Python Implementation of Stochastic Volatility Models},
   author={Sepp, Artur},
   year={2026},
-  version={2.6.1.dev0},
+  version={2.6.1.dev1},
   url={https://github.com/ArturSepp/StochVolModels},
   note={Python package for pricing analytics and Monte Carlo simulations}
 }

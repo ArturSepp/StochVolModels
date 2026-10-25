@@ -1,4 +1,9 @@
-"""Provider-independent volatility-model fitting utilities."""
+"""Provider-independent volatility-model fitting and diagnostic utilities.
+
+Exports combine approximate LogSV smile fitting with immutable fit and surface
+reports. Diagnostics observe supplied model outputs in explicit quote units;
+optional provider conversion is isolated in the adapters subpackage.
+"""
 
 from stochvolmodels.fitters.diagnostics import DiagnosticReport, diagnose_fit
 from stochvolmodels.fitters.surface_checks import (

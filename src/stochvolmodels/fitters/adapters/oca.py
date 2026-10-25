@@ -5,7 +5,9 @@ OptionChainAnalytics. This optional adapter only selects expiries and quotes ins
 already-reconstructed ``SlicesChain`` and materializes an SVM ``OptionChain``.
 """
 
-from typing import Dict, Optional, Tuple
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -13,9 +15,12 @@ from numba.typed import List
 
 from stochvolmodels.data.option_chain import OptionChain
 
+if TYPE_CHECKING:
+    from option_chain_analytics import SlicesChain
+
 
 def option_chain_from_oca(
-    chain: object,
+    chain: SlicesChain,
     value_time: Optional[pd.Timestamp] = None,
     days_map: Optional[Dict[str, int]] = None,
     delta_bounds: Tuple[Optional[float], Optional[float]] = (-0.1, 0.1),

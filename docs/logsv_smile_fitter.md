@@ -150,7 +150,7 @@ non-negative and normalises to one, and its 25-delta call and put strikes on a f
 | Name | Role |
 |---|---|
 | `fitters.fit_logsv_ivols` | Fit the quadratic form to one slice |
-| `fitters.calc_logsv_ivols` | The quadratic form, or with `is_quadratic=False` the full formula divided by $\sigma_0$ |
+| `fitters.calc_logsv_ivols` | The quadratic form, or with `is_quadratic=False` the leading-order smile $\sigma_0 y / x(y)$ |
 | `fitters.calc_logsv_ivols_partials` | The smile and its first two derivatives in $k$; with `is_analytic=True` the leading-order formula |
 | `fitters.calc_logsv_atm_fit` | At-the-money estimates; the fitter uses only its volatility as a starting point |
 | `fitters.calc_logsv_pdf`, `calc_logsv_pdf_core` | Density on a log-moneyness grid, optionally normalised |
@@ -159,9 +159,16 @@ non-negative and normalises to one, and its 25-delta call and put strikes on a f
 
 The module is reached by `from stochvolmodels import fitters`, outside `stochvolmodels.__all__`;
 its names are listed with the provisional surfaces of the [API reference](api.md). The branch
-`is_quadratic=False` of `calc_logsv_ivols` returns $y / x(y)$ without the factor $\sigma_0$; use
-`calc_logsv_ivols_partials` with `is_analytic=True` for the leading-order smile. Run the example
+`is_quadratic=False` of `calc_logsv_ivols` includes the initial volatility multiplier and
+returns $\sigma_0$ at the money and in the constant-volatility limit. Away from those limits,
+its level agrees with `calc_logsv_ivols_partials` with `is_analytic=True`. Run the example
 from a checkout with `python examples/docs/logsv_smile_fitter.py`.
+
+From development version `2.6.1.dev1`, the nonquadratic branch returns decimal implied
+volatility consistently with the analytic-partials branch. Earlier versions omitted
+the initial volatility multiplier. Callers that compensated by multiplying the result
+by `sigma0` must remove that extra multiplication. The default quadratic fitting form
+and its curvature-parameter convention are unchanged.
 
 ## Interpretation and limitations
 

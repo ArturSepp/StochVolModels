@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stochvolmodels"
-version = "2.6.1.dev0"
+version = "2.6.1.dev1"
 description = "Fourier-transform pricing, Monte Carlo validation, and calibration of European options under stochastic-volatility models in Python"
 readme = "README.md"
 license = "MIT"
@@ -151,6 +151,11 @@ select = ["E", "F", "W"]
 extend-select = ["TID251", "TID253", "ICN"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
+# NumPy owns elementary operations; scipy.special owns special functions.
+# Only justified imports receive a line-level TID251 exception: the Numba erf
+# kernel and cancellation-sensitive fsum in valuation. See CONTRIBUTING.md.
+"math".msg = "Use NumPy for elementary operations or scipy.special for special functions; document any required kernel/precision exception on its import line."
+"cmath".msg = "Use NumPy with complex inputs for elementary operations, or scipy.special for special functions."
 "optimalportfolios".msg = "Subject packages must not depend on each other."
 "factorlasso".msg = "Subject packages must not depend on each other."
 "trendfollowing".msg = "Subject packages must not depend on each other."

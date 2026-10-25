@@ -28,3 +28,6 @@ jobs:
       - name: Check stable docstring coverage
         if: ${{ !cancelled() }}
         run: uv run --locked --only-group lint interrogate -v src/stochvolmodels
+      - name: Check fitter annotations and explanatory headers
+        if: ${{ !cancelled() }}
+        run: uv run --locked --only-group lint python scripts/check_fitter_contracts.py

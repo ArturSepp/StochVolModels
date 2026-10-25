@@ -138,6 +138,46 @@ def test_model_pricer_mc_pdf_filters_invalid_paths_and_normalizes(
     assert "num nans = 1" in output
 
 
+def test_model_pricer_mc_pdf_uses_only_terminal_log_returns(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    samples = np.array([-0.2, -0.1, 0.0, 0.1, 0.2])
+    grid = np.linspace(-0.5, 0.5, 51)
+    terminal = (
+        np.append(samples, [np.nan, np.inf]),
+        np.full(7, 50.0),
+        np.full(7, np.nan),
+    )
+    pricer = _FlatVolPricer()
+    monkeypatch.setattr(pricer, "simulate_terminal_values", lambda **kwargs: terminal)
+    density = pricer.get_log_return_mc_pdf(0.25, _FlatVolParams(), grid, nb_path=7)
+
+    # Independent Gaussian-mixture calculation with Scott's univariate bandwidth.
+    bandwidth = np.std(samples, ddof=1) * samples.size**(-0.2)
+    expected = np.mean(np.exp(-0.5 * ((grid[:, None] - samples) / bandwidth)**2), axis=1)
+    expected /= expected.sum()
+    np.testing.assert_allclose(density, expected, rtol=2e-14, atol=1e-16)
+
+
+@pytest.mark.parametrize(
+    "terminal, message",
+    [
+        ((np.arange(3.0), np.arange(3.0)), "three terminal state arrays"),
+        ((np.arange(3.0), np.arange(2.0), np.arange(3.0)), "aligned one-dimensional"),
+        (np.zeros((2, 3)), "one-dimensional log-return"),
+        (np.array([np.nan, np.inf, 0.1]), "at least two finite"),
+        (np.zeros(3), "non-degenerate"),
+    ],
+)
+def test_model_pricer_mc_pdf_rejects_invalid_terminal_samples(
+    monkeypatch: pytest.MonkeyPatch, terminal, message: str,
+) -> None:
+    pricer = _FlatVolPricer()
+    monkeypatch.setattr(pricer, "simulate_terminal_values", lambda **kwargs: terminal)
+    with pytest.raises(ValueError, match=message):
+        pricer.get_log_return_mc_pdf(0.25, _FlatVolParams(), np.linspace(-0.5, 0.5, 11))
+
+
 def test_model_pricer_default_unsupported_interfaces_raise() -> None:
     pricer = _PriceOnlyPricer()
     params = _FlatVolParams()

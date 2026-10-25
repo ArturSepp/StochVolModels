@@ -347,8 +347,11 @@ class OptionChain:
 
     @classmethod
     def to_forward_normalised_strikes(cls, obj: OptionChain) -> OptionChain:
-        """
-        strike and prices to normalized by forwards
+        """Normalize strikes and quote-currency bid/ask prices by each forward.
+
+        Black implied volatilities and discount factors are invariant to this
+        normalization. Missing price sides remain absent. Prices must follow the
+        chain's quote-currency convention, including for inverse option codes.
         """
         new_strikes_ttms = List()
         for strikes_ttm, forward in zip(obj.strikes_ttms, obj.forwards):
@@ -363,6 +366,12 @@ class OptionChain:
                    ticker=obj.ticker,
                    ids=obj.ids,
                    bid_ivs=obj.bid_ivs, ask_ivs=obj.ask_ivs,
+                   bid_prices=None if obj.bid_prices is None else List(
+                       prices / forward for prices, forward in zip(obj.bid_prices, obj.forwards)
+                   ),
+                   ask_prices=None if obj.ask_prices is None else List(
+                       prices / forward for prices, forward in zip(obj.ask_prices, obj.forwards)
+                   ),
                    forwards0=obj.forwards)
 
     @classmethod
@@ -495,11 +504,13 @@ class OptionChain:
 @dataclass
 class SwOptionChain:
     """
-    container for a swaption cube: expiries by swap tenors by strikes.
+    Container for a swaption cube: swap tenors by expiries by strikes.
 
-    Volatilities are nested one level deeper than in :class:`OptionChain`, since
-    each expiry carries a full set of swap tenors. Swap schedules and par rates
-    come from ``stochvolmodels.utils.rate_core``.
+    Quotes are annualized absolute normal volatilities, in rate units rather than
+    basis points. Model prices are annuity-normalized expectations, so their
+    Bachelier inversion uses a unit discount factor. Arrays are nested one level
+    deeper than in :class:`OptionChain`, with tenor first and expiry second.
+    Swap schedules and par rates come from ``stochvolmodels.utils.rate_core``.
     """
     ccy: str
     ttms: np.ndarray  # swaption expiries
@@ -662,7 +673,7 @@ class SwOptionChain:
         return atm_vols
 
     def get_mid_vols(self) -> List[List[np.ndarray]]:
-        """mid implied volatilities, nested by expiry then tenor."""
+        """Mid absolute normal volatilities, nested by tenor then expiry."""
         return [[0.5 * (self.bid_ivs[idx_tenor][idx_ttm] + self.ask_ivs[idx_tenor][idx_ttm]) for
                  idx_ttm, _ in enumerate(self.ttms_ids)] for idx_tenor, _ in enumerate(self.tenors_ids)]
 
@@ -675,7 +686,7 @@ class SwOptionChain:
     #     return deltas_ttms
 
     def get_chain_vegas(self, is_unit_ttm_vega: bool = False) -> List[List[np.ndarray]]:
-        """vegas nested by expiry then tenor, for calibration weighting."""
+        """Normal vegas nested by tenor then expiry, for calibration weighting."""
         if is_unit_ttm_vega:
             ttms = np.ones_like(self.ttms)
         else:
@@ -690,14 +701,38 @@ class SwOptionChain:
             vegas_chain.append(vegas_ttms)
         return vegas_chain
 
-    def compute_model_ivols_from_chain_data(self, model_prices: List[np.ndarray]) -> List[np.ndarray]:
-        """invert model swaption prices to implied volatilities."""
-        model_ivols = bsm.infer_bsm_ivols_from_model_chain_prices(ttms=self.ttms,
-                                                                  forwards=self.forwards,
-                                                                  discfactors=self.discfactors,
-                                                                  strikes_ttms=self.strikes_ttms,
-                                                                  optiontypes_ttms=self.optiontypes_ttms,
-                                                                  model_prices_ttms=model_prices)
+    def compute_model_ivols_from_chain_data(
+        self, model_prices: List[List[np.ndarray]]
+    ) -> List[List[np.ndarray]]:
+        """Invert annuity-normalized swaption prices to absolute normal vols.
+
+        Input and output follow the cube's ``[tenor][expiry][strike]`` layout.
+        Prices are expectations under the swap-annuity measure, matching the
+        factor-HJM pricing kernels; divide currency PVs by their initial annuity
+        before passing them to this method.
+        """
+        if len(model_prices) != len(self.tenors):
+            raise ValueError("model_prices must have one entry per tenor")
+        model_ivols = List()
+        for tenor_index, prices in enumerate(model_prices):
+            if len(prices) != self.ttms.size:
+                raise ValueError(f"model_prices[{tenor_index}] must have one entry per expiry")
+            prices_ttms = List()
+            for expiry_index, values in enumerate(prices):
+                prices_ttms.append(_validate_slice_array(
+                    f"model_prices[{tenor_index}][{expiry_index}]",
+                    values,
+                    self.strikes_ttms[tenor_index][expiry_index].size,
+                    nonnegative=True,
+                ))
+            model_ivols.append(bachel.infer_normal_ivols_from_chain_prices(
+                ttms=self.ttms,
+                forwards=self.forwards[tenor_index],
+                discfactors=np.ones_like(self.ttms, dtype=float),
+                strikes_ttms=tuple(self.strikes_ttms[tenor_index]),
+                optiontypes_ttms=self.optiontypes_ttms,
+                model_prices_ttms=prices_ttms,
+            ))
         return model_ivols
 
     @classmethod
@@ -842,14 +877,12 @@ class FutOptionChain:
         """mid implied volatilities per futures expiry."""
         return self.ivs_call_ttms
 
-    def get_chain_vegas(self):
-        """vegas per futures expiry, for calibration weighting."""
-        optiontypes_ttms = np.repeat('C', self.strikes_ttms[0].size)
-
+    def get_chain_vegas(self) -> List[np.ndarray]:
+        """Normal vegas aligned with every futures expiry and its strike slice."""
         vegas_ttms = bachel.compute_normal_vegas_ttms(ttms=self.ttms,
                                                       forwards=self.forwards,
                                                       strikes_ttms=self.strikes_ttms,
-                                                      optiontypes_ttms=tuple(optiontypes_ttms),
+                                                      optiontypes_ttms=self.optiontypes_ttms,
                                                       vols_ttms=self.ivs_call_ttms)
         return vegas_ttms
 

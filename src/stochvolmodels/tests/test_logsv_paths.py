@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 
 import numpy as np
 import pytest
@@ -185,7 +184,7 @@ def _independent_numpy_recurrence(
     for interval_index, interval in enumerate(np.diff(observation_times), start=1):
         step_count = int(interval * steps_per_year) + 1
         dt = float(interval / step_count)
-        sqrt_dt = math.sqrt(dt)
+        sqrt_dt = np.sqrt(dt)
         w0_matrix = rng.normal(0.0, 1.0, size=(step_count, n_paths))
         w1_matrix = rng.normal(0.0, 1.0, size=(step_count, n_paths))
         log_sigma = np.log(sigma)
@@ -231,7 +230,7 @@ def _assert_global_random_states_equal(left: tuple[object, ...], right: tuple[ob
 
 def _standard_error(values: np.ndarray) -> float:
     """Return the ordinary raw-sample standard error of a mean."""
-    return float(np.std(values, ddof=1) / math.sqrt(values.size))
+    return float(np.std(values, ddof=1) / np.sqrt(values.size))
 
 
 def test_logsv_path_adapter_public_submodule_imports() -> None:
@@ -617,7 +616,7 @@ def test_raw_paths_match_analytic_prices_martingales_and_moments_within_four_se(
         ]
     )
     mc_prices = np.mean(raw_payoffs, axis=0)
-    mc_errors = np.std(raw_payoffs, axis=0, ddof=1) / math.sqrt(n_paths)
+    mc_errors = np.std(raw_payoffs, axis=0, ddof=1) / np.sqrt(n_paths)
     assert np.all(np.abs(analytic_prices - mc_prices) <= 4.0 * mc_errors)
 
     assert abs(float(np.mean(terminal_asset)) - 1.0) <= 4.0 * _standard_error(terminal_asset)

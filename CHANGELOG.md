@@ -2,7 +2,56 @@
 
 Entries start at 1.2.0. For earlier releases see the git log.
 
-## [Unreleased]
+## [2.6.1.dev1] - 2026-10-25
+
+### Added
+
+- Added provider-independent native quote diagnostics with explicit price units,
+  tick-size scales, open price bounds and admissible shock intervals. Missing or
+  invalid inputs retain their reasons; no automatic acceptance policy is supplied.
+- Extracted repository-only synthetic SVI challenge fixtures, exact tolerance-rank
+  calculations and independent saved-study verification into maintained research
+  utilities with deterministic regression tests.
+- Added provisional `models.heston.HestonModel` with validated parameter snapshots,
+  logarithmic transforms and reproducible paths using the maintained Heston kernels.
+  Paths declare variance, volatility, integrated variance, measure and numerical scheme.
+- Added a static CI check requiring argument/return annotations and explanatory module
+  headers throughout `fitters`, including private helpers and optional adapters.
+
+### Changed
+
+- `fitters.diagnose_fit` accepts aligned per-quote spread floors in addition to the
+  existing scalar floor, retaining unavailable scales without losing raw residuals.
+- Standardized elementary operations on NumPy and special functions on `scipy.special`,
+  including `comb(..., exact=True)` for exact integer coefficients. Ruff rejects `math`
+  and `cmath` imports except for documented import-line exceptions: `math.erf` in the
+  Numba kernel and `math.fsum` for accurate valuation sums.
+- Completed fitter type annotations and documented model, product, pricing, fitting,
+  historical estimation and data ownership in the software design guide.
+
+### Fixed
+
+- `ModelPricer.get_log_return_mc_pdf` extracts log returns from the simulator's
+  terminal-state triple while preserving legacy array-returning implementations.
+- `fitters.calc_logsv_ivols(..., is_quadratic=False)` includes the missing initial
+  volatility multiplier and handles its at-the-money and constant-volatility limits.
+- `HestonPricer.price_chain` now honors the requested underlying variable type, and
+  Heston terminal simulation preserves nonzero initial returns and integrated variance.
+- Corrected the small-argument `sinhc` expansion in the rough-kernel matrix exponential,
+  including zero and repeated-eigenvalue matrices, against independent SciPy references.
+- `SwOptionChain.compute_model_ivols_from_chain_data` now inverts annuity-normalized
+  prices to normal volatilities with explicit tenor/expiry/strike alignment.
+- Forward-normalized `OptionChain` instances preserve and scale bid/ask price quotes.
+- `FutOptionChain.get_chain_vegas` preserves all expiries on ragged strike grids.
+
+### Documentation
+
+- Expanded the Heston path/transform, terminal-density and native quote-diagnostic
+  guides with executable examples and explicit units, limits and failure meanings.
+- Documented synthetic research fixtures, tolerance estimation and saved-study
+  verification, including paired observations and unavailable evidence.
+- Updated model/pricer ownership, normal-volatility rate containers, price
+  normalization, numerical import rules and the fitter static checks.
 
 ## [2.6.1.dev0] - 2026-10-24
 

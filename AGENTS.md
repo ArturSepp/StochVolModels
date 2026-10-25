@@ -125,6 +125,11 @@ wheel, cross-platform quickstarts, documentation/doctests/link checks, and sched
 
 ## Conventions
 
+- Use NumPy (`np`) for elementary numerical operations and constants, and `scipy.special`
+  for special functions. `math`/`cmath` imports are rejected by Ruff except for narrowly
+  justified, documented import-line exceptions: currently the compiled `math.erf` kernel
+  and accurate `math.fsum` valuation sums. Preserve exact integer combinations with
+  `scipy.special.comb(..., exact=True)`. See `CONTRIBUTING.md#numerical-imports`.
 - Test files are named `test_*.py` and live in `src/stochvolmodels/tests/`. Nothing named
   `test_*.py` sits anywhere else in the package.
 - Following OptimalPortfolios, component development dispatchers live in the nearest

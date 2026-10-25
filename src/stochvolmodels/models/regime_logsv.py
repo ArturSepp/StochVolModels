@@ -24,12 +24,12 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, replace
 from enum import Enum, IntEnum
-from math import comb
 from numbers import Integral, Real
 from typing import Any
 
 import numpy as np
 from scipy.integrate import solve_ivp
+from scipy.special import comb
 
 
 def _finite_float(value: object, name: str) -> float:
@@ -438,7 +438,8 @@ def _poly_shift(values: np.ndarray, delta: float, degree: int) -> np.ndarray:
     for power in range(degree + 1):
         for original in range(power, degree + 1):
             output[..., power] += (
-                comb(original, power) * values[..., original] * delta ** (original - power)
+                comb(original, power, exact=True)
+                * values[..., original] * delta ** (original - power)
             )
     return output
 

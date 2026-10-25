@@ -3,6 +3,10 @@
 Calendar interpretation follows Gatheral and Jacquier, arXiv:1204.0646,
 Section 2.1, under the stated common-underlying and proportional-carry assumptions.
 Finite strike grids do not certify global absence of arbitrage.
+Inputs are discounted call prices or decimal Black IV on declared maturity and
+forward-log-moneyness grids. Results are immutable DiagnosticReports with price
+units, checked domains and explicit unavailable/inapplicable statuses; callbacks
+own interpolation and extrapolation, and these checks never repair the surface.
 """
 
 from __future__ import annotations
@@ -17,7 +21,13 @@ import vanilla_option_pricers as bsm
 from stochvolmodels.fitters.diagnostics import DiagnosticReport
 
 
-def _grid(values, name: str, *, positive=False, minimum=1) -> np.ndarray:
+def _grid(
+    values: Sequence[float] | np.ndarray,
+    name: str,
+    *,
+    positive: bool = False,
+    minimum: int = 1,
+) -> np.ndarray:
     """Require finite ordered coordinates without silently sorting model outputs."""
     array = np.asarray(values, dtype=float)
     if (
@@ -37,7 +47,15 @@ def _positive(value: float, name: str) -> None:
         raise ValueError(f"{name} must be finite and positive")
 
 
-def _check(name, margins, coordinates, tolerance, unit, *, reason="") -> dict:
+def _check(
+    name: str,
+    margins: Sequence[float] | np.ndarray,
+    coordinates: Sequence[float] | np.ndarray,
+    tolerance: float,
+    unit: str,
+    *,
+    reason: str = "",
+) -> dict[str, str | int | float]:
     """Check nonnegative margins; incomplete grids cannot silently pass."""
     if not np.isfinite(tolerance) or tolerance < 0:
         raise ValueError("tolerances must be finite and nonnegative")
@@ -276,7 +294,7 @@ def diagnose_surface(
     price_unit: str,
     tolerance: float = 1e-10,
     density_tolerance: float = 1e-10,
-    metadata: Mapping | None = None,
+    metadata: Mapping[str, object] | None = None,
 ) -> DiagnosticReport:
     """Evaluate slice and calendar checks, optionally between fitted expiries.
 
@@ -520,7 +538,12 @@ def compare_surface_reports(
     )
 
 
-def _compare_fit_summaries(previous, current, tenors, price_unit):
+def _compare_fit_summaries(
+    previous: DiagnosticReport,
+    current: DiagnosticReport,
+    tenors: Sequence[float] | np.ndarray,
+    price_unit: str,
+) -> pd.DataFrame:
     """Align already-computed fit metrics by explicit common time to expiry."""
     for report in (previous, current):
         if report.metadata.get("kind") != "fit" or report.metadata["price_unit"] != price_unit:

@@ -21,6 +21,7 @@ Sepp and Rakhmonov (2023, Section 3.8) simulate the log of volatility, whose dif
 is constant, with a drift-implicit Euler scheme of strong order one. This article states that
 scheme, documents the explicit scheme the package implements, measures its convergence and its
 sampling error, and explains seeds, fixed random numbers and the simulators of the other models.
+The `stochvolmodels.models.heston.HestonModel` adapter discussed below is a provisional path API.
 
 ## Overview
 
@@ -96,9 +97,12 @@ $X_t$ changes sign and $\kappa_2$ becomes $\kappa_2 - \beta$ in $\zeta$, per Eq.
 
 A price is the mean of $N$ discounted payoffs, and its standard error is the sample standard
 deviation over $\sqrt{N}$; a 95% interval is the price plus or minus 1.96 standard errors. Before
-taking the payoff, the package shifts the simulated terminal prices by a constant so that their mean
+taking the payoff, the legacy chain-pricing route shifts simulated terminal prices by a constant so that their mean
 equals the forward: this removes the sampling error of the forward and makes put-call parity hold on
-every path set. The discretisation error is separate and does not show in the standard error.
+every path set. The provisional model-path interface retains raw levels; its valuation layer
+requires explicit opt-in to legacy additive forward recentering. The experimental rough
+split-step pricer also retains raw forwards. The discretisation error is separate and does not
+show in the standard error.
 
 ## Worked example
 
@@ -181,6 +185,13 @@ simulator `model_mc_price_chain` within three combined standard errors at every 
 $10^{-4}$ after each step, and accumulates the log-price and the QV with left-point increments, on
 360 steps per year; it takes no `nb_steps` argument.
 
+The provisional `HestonModel.simulate_paths` adapter uses this same variance-floor scheme with
+explicit `steps_per_year` and a local seed. It returns named log-return, variance, volatility and
+integrated-variance states under `Q_MMA`, together with raw zero-drift asset levels. State values
+continue across observation intervals; a fresh call starts at the model's initial state. See the
+[Heston adapter contract](heston_model.md#provisional-path-and-transform-adapter) for shapes,
+units, transform conventions and the effect of the observation partition on reproducibility.
+
 ### The rough extension
 
 With a Hurst exponent $H < 1/2$, `LogSvParams` approximates the fractional kernel by a sum of
@@ -221,6 +232,30 @@ takes $\lfloor 360 T \rfloor + 1$ for the longest maturity $T$, which is coarse 
 and too coarse for options on QV (see [QV options](quadratic_variance_options.md)). The numba
 simulators are seeded by `stochvolmodels.utils.funcs.set_seed`. Run the example from a checkout with
 `python examples/docs/monte_carlo_simulation.py`.
+
+### Terminal log-return KDE weights
+
+`ModelPricer.get_log_return_mc_pdf(ttm, params, x_grid, nb_path=...)`, inherited by the concrete
+pricers, estimates a Gaussian kernel density from terminal log returns. It extracts the first
+array of the simulator's three-state tuple: LogSV supplies log return, volatility and integrated
+variance; Heston supplies log return, variance and integrated variance. The helper also accepts
+the legacy contract in which a simulator returns the one-dimensional log-return array directly.
+The other two states are checked for aligned one-dimensional shape but do not enter the estimate.
+
+The returned values are KDE samples divided by their sum on the supplied grid. They therefore
+sum to one as discrete grid weights; they are not a continuously normalized density, integrated
+bin probabilities, or a quadrature rule for an irregular grid. On a uniform grid with spacing
+$\Delta x$, dividing the weights by $\Delta x$ gives a rectangular-rule density approximation
+normalized over that sampled grid. Changing the grid or truncating its tails changes this
+normalization, so these weights cannot establish full-line probability mass or a martingale
+condition.
+
+Before fitting the KDE, the helper prints counts and removes NaN values and returns outside
+`[-1e16, 1e16]`, including infinities. It raises `ValueError` for malformed state shapes, fewer
+than two remaining samples, degenerate sample variance, or nonpositive/nonfinite total KDE mass
+on the requested grid. Filtering is part of this diagnostic helper; it does not repair a failed
+simulation. The helper has no seed argument: seed the concrete simulator through its documented
+mechanism, such as `stochvolmodels.utils.funcs.set_seed` for the legacy LogSV and Heston pricers.
 
 ## Interpretation and limitations
 

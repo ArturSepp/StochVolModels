@@ -1,4 +1,11 @@
-"""Approximate zero-mean-reversion LogSV smile fitting and density analytics."""
+"""Approximate zero-mean-reversion LogSV smile fitting and density analytics.
+
+The fitter estimates sigma0, beta, and volvol from decimal implied volatilities
+at forward log-moneyness log(strike/forward). Companion routines evaluate the
+approximate smile, its derivatives and density, and convert between strike and
+delta grids. Maturities are in years; this approximation does not calibrate the
+mean-reverting LogSV dynamics implemented by LogSVPricer.
+"""
 
 from __future__ import annotations
 
@@ -96,11 +103,20 @@ def calc_logsv_ivols(
     if is_quadratic:
         return quadratic_ivols
 
-    vartheta2 = beta * beta + volvol * volvol
-    vartheta = np.sqrt(vartheta2)
-    j_y = np.sqrt(1.0 + vartheta2 * y * y - 2.0 * beta * y)
-    x = np.log((j_y * vartheta + vartheta2 * y - beta) / (vartheta - beta)) / vartheta
-    return np.where(np.abs(x) > 0.0, y / x, quadratic_ivols)
+    vartheta = np.hypot(beta, volvol)
+    atm_ivols = np.full_like(y, sigma0, dtype=float)
+    if vartheta == 0.0:
+        return atm_ivols
+
+    # x(y) is the integral of 1/j(u) from zero to y. Rationalizing its
+    # logarithm avoids cancellation at ATM and division by vartheta - beta.
+    j_y = np.hypot(1.0 - beta * y, volvol * y)
+    z = np.abs(vartheta * y)
+    denominator = j_y + 1.0 - z
+    ratio = np.divide(2.0 * z, denominator, out=np.full_like(y, np.inf),
+                      where=denominator > 0.0)
+    x = np.sign(y) * np.log1p(ratio) / vartheta
+    return np.divide(sigma0 * y, x, out=atm_ivols, where=x != 0.0)
 
 
 def calc_logsv_ivols_partials(

@@ -2,9 +2,9 @@
 myst:
   html_meta:
     description: >-
-      Compare fitted option surfaces with quotes, combine SVI research diagnostics
-      with OCA quality and parity evidence, and replay persistence, missing data and recovery
-      without changing the frozen calibration/validation split.
+      Compare fitted option surfaces with quotes, retain native tick scales and price bounds,
+      audit frozen research evidence, and replay persistence, missing data and recovery without
+      changing the calibration/validation split.
 ---
 
 # Fit and surface diagnostics
@@ -29,11 +29,13 @@ entry points. No market-calibrated quote-error law or automatic wing warning is 
 | Task | Entry point | Availability and interpretation |
 |---|---|---|
 | Compare final model outputs with observed quotes | `fitters.diagnose_fit` | Packaged API; price/IV errors and observed coverage |
+| Derive quote-specific scales from recorded ticks and check price bounds | [Native quote diagnostics](#native-quote-scales-and-admissible-perturbations) | Packaged adapter; explicit units, source IDs and conditional price arithmetic |
 | Check strike, density and calendar consistency | `fitters.check_call_slice`, `fitters.check_calendar`, `fitters.diagnose_surface` | Packaged APIs; checks on declared grids and conventions |
 | Compare snapshots on common tenors | `fitters.compare_surface_reports` | Packaged API; differences without attribution or time filling |
 | Compare SVI/SSVI with existing fitters | [Smile-fitter benchmark](#research-benchmark) | Repository-only calibration experiments; not public SVI fitter exports |
 | Retain OCA quality/parity beside fit, support and sensitivity | [Combined research report](#combined-research-report) | Repository-only report; each facet keeps its own status and denominator |
 | Track persistence, unavailable observations and observed recovery | [Longitudinal replay](#longitudinal-diagnostic-replay) | Repository-only saved-evidence replay; no refit or threshold selection |
+| Exercise synthetic error regimes or audit frozen study outputs | [Portable study helpers](#portable-research-study-helpers) | Repository-only arrays, explicit statistical design and read-only evidence checks |
 
 The packaged diagnostics and advanced OCA adapter are distinct from the source-checkout
 research runners. Adapting an OCA chain requires the optional research dependency;
@@ -51,8 +53,15 @@ No aggregate accuracy verdict is inferred from them.
 
 `fitters.diagnose_fit` takes an `OptionChain`, final model prices and/or decimal implied
 volatilities, one vector per expiry. The caller supplies `price_unit` and a positive
-`spread_floor` in the same price units. Quoted prices and model prices must already agree in
+`spread_floor` in the same price units: either one scalar or an aligned vector per expiry.
+Vector entries may be missing (`NaN`); their normalized errors remain unavailable while
+raw residuals are retained. Quoted prices and model prices must already agree in
 currency, discounting and contract normalization; the report performs no implicit conversion.
+For one expiry, a vector floor is still wrapped as `spread_floor=[scales]`. A scalar
+must be finite and positive; only vector entries can be `NaN`. Zero, negative and infinite
+floors are rejected. A missing vector entry withholds `spread_scaled_error` even when a
+positive quote spread is present. Valid raw residuals still contribute to price RMSE and
+bid/ask coverage, so those counts can exceed the number of available scaled errors.
 
 The returned `DiagnosticReport` contains `quotes`, `expiries` and `summary` tables. Obtain a fresh
 DataFrame with `report.table("quotes")`. The summary pools individual residuals across expiries:
@@ -77,6 +86,105 @@ Fit metric status `pass` means the calculation had eligible inputs, not that its
 No data or zero eligible weight produces `not_checked`. Economic acceptance thresholds belong to
 the consuming study. Default quote IDs are expiry/row ordinals; provide stable external IDs for
 comparisons after reordering or filtering.
+
+### Native quote scales and admissible perturbations
+
+Import `diagnose_native_quotes` and `normalized_vanilla_price_bounds` from
+`stochvolmodels.fitters.adapters`. They require no data-provider package. The native report
+accepts five equally sized, one-dimensional vectors: bids, asks, recorded ticks, lower bounds
+and upper bounds. Ticks are supplied observations, not inferred from displayed precision or
+price levels. `quote_ids` must be aligned and unique; provide source identifiers because the
+default row ordinals do not survive reordering. Optional `metadata` preserves provenance
+without interpreting it.
+
+Let $B$ and $A$ denote a bid and ask and $\tau$ the positive recorded tick. The report records
+`half_spread` as $(A-B)/2$, `spread_floor` as $\tau/2$ and `spread_scale` as
+$s=\max((A-B)/2,\tau/2)$. A missing tick leaves $s$ unavailable even for a wide spread.
+A locked quote can have a usable scale supplied by its tick. Scale availability and price-bound
+admissibility remain separate facets:
+
+| Evidence | `scale_status` | `admissibility_status` |
+|---|---|---|
+| Valid two-sided quote, positive tick, strictly interior prices | `pass` | `pass` |
+| Missing tick, otherwise interior quote | `unavailable` | `unavailable` |
+| Crossed or negative quote | `fail` | `fail` |
+| Valid scale but missing, nonfinite or unordered bounds | `pass` | `unavailable` |
+| Valid scale but bid or ask at or beyond an open bound | `pass` | `fail` |
+
+Inspect `scale_reason` and `admissibility_reason` for the actual cause. Known bound violations
+remain failures even if tick evidence is missing. The `summary` table counts all input rows by
+each facet's status; it does not filter the quote table.
+
+Prices, ticks and bounds must already share the declared `price_unit`. For ordinary European
+calls and puts, `normalized_vanilla_price_bounds(forward, strikes, optiontypes)` supplies bounds
+in the coordinate $q=p/(D F)$, where $D$ is the discount factor and $F$ the positive forward.
+With $r=K/F$, the bounds are $\max(1-r,0)$ to $1$ for calls and $\max(r-1,0)$ to $r$ for puts.
+The helper accepts only `C` and `P`. It uses no spot, discount or contract multiplier because
+those quantities have already been accounted for in this declared coordinate. When starting
+from discounted cash prices, divide both prices and ticks by the same $D F$ yourself.
+Neither a `price_unit` label nor the helper converts a provider's coin-premium or inverse payoff.
+
+For supplied lower and upper bounds $L$ and $U$, the report considers the equal shift
+$B+s u$ and $A+s u$, preserving the quoted spread. The dimensionless coefficient must satisfy
+
+$$
+\frac{L-B}{s}<u<\frac{U-A}{s}.
+$$
+
+The endpoints are excluded. `lower_coefficient` and `upper_coefficient` are available only
+when the original quotes, scale and open bounds already pass. An invalid original quote is
+not repaired by finding a shift that could move it inside. This is conditional input
+arithmetic, with no noise probability, freshness, parity or accuracy certificate.
+
+The canonical `NATIVE_QUOTES` case uses $F=D=1$, so its synthetic prices and ticks already
+have the chosen normalization. The fourth quote deliberately lacks a recorded tick:
+
+```python
+    # F = D = 1: the following prices and ticks already use q = p / (D * F).
+    strikes = np.array([0.8, 1.0, 1.2, 1.4])
+    types = np.array(["P", "C", "C", "C"])
+    bid, ask = np.array([0.01, 0.02, 0.03, 0.01]), np.array([0.03, 0.02, 0.05, 0.03])
+    quote_ids = ["put-80", "call-100", "call-120", "call-140-missing-tick"]
+    lower, upper = normalized_vanilla_price_bounds(1.0, strikes, types)
+    native = diagnose_native_quotes(
+        bid_prices=bid, ask_prices=ask, tick_sizes=np.array([0.004, 0.02, 0.1, np.nan]),
+        lower_bounds=lower, upper_bounds=upper, price_unit="price / (discount * forward)",
+        quote_ids=quote_ids,
+    )
+```
+
+Group `spread_scale` by expiry and align it to the same quote IDs before passing it as
+`spread_floor`. It already dominates each quote's half-spread, so `diagnose_fit` preserves it.
+The outer list is one entry per expiry, and IDs must be unique across the entire chain.
+The following continuation supplies a model price 0.005 above every midpoint:
+
+```python
+    chain = svm.OptionChain(
+        ttms=np.array([0.5]), forwards=np.ones(1), strikes_ttms=List([strikes]),
+        discfactors=np.ones(1),
+        optiontypes_ttms=List([types]), bid_prices=List([bid]), ask_prices=List([ask]),
+        ids=np.array(["normalized"]),
+    )
+    fitted = fitters.diagnose_fit(
+        chain, model_prices=[0.5 * (bid + ask) + 0.005],
+        price_unit="price / (discount * forward)", quote_ids=[quote_ids],
+        spread_floor=[native.table("quotes").spread_scale.to_numpy(dtype=float)],
+    )
+```
+
+| Quote | Native effective scale | Fit spread-scaled error | Raw price residual |
+|---|---:|---:|---:|
+| `put-80` | 0.010 | 0.500 | 0.005 |
+| `call-100` (locked) | 0.010 | 0.500 | 0.005 |
+| `call-120` | 0.050 | 0.100 | 0.005 |
+| `call-140-missing-tick` | unavailable | unavailable | 0.005 |
+
+All four raw residuals enter the fit summary. The last native reason is
+`missing_or_nonfinite_tick`; after the handoff the fit reason is `missing_spread_floor`.
+Nulls restored from serialized native tables become `NaN` in the float vector. Keep the native
+report beside the fit report: passing a scale does not transfer or enforce its bound check.
+A quote can have a valid scale and failed admissibility, and `diagnose_fit` does not exclude
+it on that basis. The consuming study owns any explicitly declared eligibility rule.
 
 ## Strike and density checks
 
@@ -170,7 +278,8 @@ OCA remains an optional research dependency. Its software citation is
 
 The [canonical script](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/surface_diagnostics.py)
 runs without optional research packages or network access. Its cases fit an approximate LogSV
-smile, check an analytic surface, and compare two flat surfaces on common tenors. The synthetic
+smile, check an analytic surface, compare two flat surfaces on common tenors, pass native quote
+scales into fit diagnostics, and exercise the portable research helpers below. The synthetic
 fit falls inside every quoted price spread; a change from 30% to 32% IV produces an ATM change
 of 0.02 in decimal units. Each statement is asserted by the script. Its optional `plot_report`
 helper plots residuals from the same stored tables.
@@ -179,6 +288,16 @@ The companion `plot_surface_report` helper plots densities and adjacent variance
 ```console
 python examples/docs/surface_diagnostics.py
 ```
+
+To run only the new native or research-helper case from the repository root:
+
+```console
+python -c "from examples.docs.surface_diagnostics import Locals, run_local; run_local(Locals.NATIVE_QUOTES)"
+python -c "from examples.docs.surface_diagnostics import Locals, run_local; run_local(Locals.RESEARCH_TOOLS)"
+```
+
+`RESEARCH_TOOLS` creates and removes a small temporary JSON artifact. It performs no refits
+and does not require archived study output. Its handwritten scores illustrate the API only.
 
 The [advanced OCA example](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/oca_surface_diagnostics.py)
 requires the research extra and OCA 5.3. It generates observations, injects stale/crossed/duplicate
@@ -194,6 +313,116 @@ python examples/calibration/oca_surface_diagnostics.py
 Maintainer Windows checkouts use the external interpreter and runtime setup prescribed by
 the repository's AGENTS.md. Inputs and implementation limitations are part of the returned
 metadata; a small fit error alone does not establish a valid density or calendar surface.
+
+## Portable research study helpers
+
+The repository-only [_svi_research_fixtures.py](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/_svi_research_fixtures.py)
+and [_research_study_tools.py](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/_research_study_tools.py)
+support deterministic challenges and read-only saved-evidence audits. They are not installed
+package exports or command-line programs. The canonical `RESEARCH_TOOLS` case locates
+`examples/calibration` relative to its own file before importing them; independent research
+scripts must likewise make that source directory importable.
+
+### Paired synthetic quote fixtures
+
+`synthetic_challenge_panel(include_hidden=True)` returns immutable dataclass records with
+read-only arrays. `k` is training log-moneyness; `bid_iv` and `ask_iv` are annualized decimal IV.
+`ttm` is in years. `evaluation_k` and `evaluation_truth_iv` are separately supplied scoring
+evidence and must not enter calibration. Records retain parameters, half-width, input seed,
+regime, case ID and observation ID.
+
+The fixed panel contains 48 observed datasets: three profiles, two tenors, two widths and four
+regimes (Gaussian control, spread-dependent uniform, spread-dependent correlated, localized
+bump). Twelve optional hidden-wing truths reuse their Gaussian controls' exact quotes.
+The four regimes within each geometry also share a random driver. Thus the 60 records,
+48 quote sets and their IDs do not represent 48 or 60 independent calibration draws.
+These are paired diagnostic challenges, not evidence for a market quote-error law.
+
+```python
+    panel = synthetic_challenge_panel(include_hidden=True)
+    observed = {case.case_id: case for case in panel if not case.hidden_wing}
+    hidden = [case for case in panel if case.hidden_wing]
+    assert len(observed) == 48 and len(hidden) == 12
+    paired = hidden[0]
+    np.testing.assert_array_equal(paired.bid_iv, observed[paired.observations_id].bid_iv)
+    np.testing.assert_array_equal(paired.ask_iv, observed[paired.observations_id].ask_iv)
+```
+
+### Explicit tolerance-limit design
+
+`estimate_tolerance_cutoff(scores, coverage=..., alpha=...)` accepts a mapping from distinct
+independent calibration-dataset IDs to finite nonnegative scores. A repeated refit or batch
+of the same input does not constitute another independent dataset. The caller freezes the
+calibration/validation separation and any multiple-comparison adjustment before estimating a
+cutoff. Neither parameter has a default, and the paired panel above is not automatically used
+as a calibration population.
+
+For sample size $n$, target coverage $c$ and one-sided error probability $\alpha$, the
+implementation chooses the smallest observed order-statistic rank $r$ satisfying
+
+$$
+\Pr\left[\operatorname{Binomial}(n,c)\ge r\right]\le\alpha.
+$$
+
+It compares the survival probability directly with `alpha`, avoiding subtraction from one
+when a tiny tail would round away. For example, coverage 0.5 with `alpha=1e-18` is unattainable
+at 55 observations, while rank 60 is available at 60 observations. This illustrates the
+floating-point safeguard, not a recommended study design. The returned `ToleranceEstimate`
+records `status`, `sample_size`, `missing`, `rank`, `confidence`, `cutoff` and `selected_id`.
+Rank is one-based; ties are resolved by dataset ID and no interpolation is used.
+
+The following hand-chosen scores demonstrate the call, without asserting a statistical
+population interpretation or installing a warning threshold:
+
+```python
+    # Hand-chosen scores illustrate the API; they are not empirical calibration evidence.
+    scores = {f"dataset-{i:02d}": float(i) for i in range(20)}
+    estimate = estimate_tolerance_cutoff(scores, coverage=0.8, alpha=0.1)
+    assert estimate.status == "estimated" and estimate.rank == 19 and estimate.cutoff == 18
+    missing = estimate_tolerance_cutoff({**scores, "dataset-00": None}, coverage=0.8, alpha=0.1)
+    assert missing.status == "unavailable_scores" and missing.sample_size == 20
+    assert missing.missing == 1 and missing.cutoff is None
+```
+
+`None` or nonfinite scores make the entire result `unavailable_scores`, preserving the
+original denominator. An empty or too-small complete sample is `insufficient_sample`.
+Negative scores, invalid IDs and invalid probability inputs raise errors. Keep these
+unavailable outcomes in study counts rather than dropping them and recalibrating a smaller
+sample. A numerical cutoff estimate alone does not qualify a noise law, scope or policy.
+
+### Verify saved evidence before interpreting its score
+
+`verify_artifact_hashes(root, expected)` reads a nonempty mapping of relative POSIX paths to
+lowercase SHA256 digests. It refuses missing or changed files, absolute/escaping paths,
+symlinks escaping the root and malformed digests. Use a separately frozen trusted manifest
+for a real audit; computing hashes from today's files only creates today's identity record.
+The helper does not read unlisted files, authenticate the manifest or validate scientific claims.
+
+`verify_saved_wing_score(report)` accepts one saved reliability slice and reconstructs the
+maximum wing RMS displacement from the base IV curve, divided by the positive shock standard
+deviation. It uses every requested ordered successful refit and derives the wing mask from
+training strikes and forward, rather than trusting stored region labels. In the wing runner's
+`report.json` envelope, pass `saved["result"]`, not the outer metadata mapping.
+The canonical example writes a small synthetic envelope to a temporary directory:
+
+```python
+    with TemporaryDirectory(prefix="svm-research-doc-") as directory:
+        root = Path(directory)
+        raw = json.dumps({"result": report}, allow_nan=False).encode("utf-8")
+        (root / "report.json").write_bytes(raw)
+        # This illustrative manifest is created here; real audits use a separately frozen one.
+        manifest = {"report.json": sha256(raw).hexdigest()}
+        verify_artifact_hashes(root, manifest)
+        saved = json.loads((root / "report.json").read_text(encoding="utf-8"))
+        score = verify_saved_wing_score(saved["result"])
+```
+
+An incomplete report can return only `None`; a retained claimed score raises `ValueError`.
+A complete report with absent/failed/misordered draws, invalid arrays or a changed saved score
+also raises. A grid with no wing points has no wing score. These checks perform no refitting
+and do not certify optimization, noise independence, extrapolation accuracy or production
+eligibility. Keep empirical error-law qualification and acceptance thresholds in the explicitly
+scoped consuming study.
 
 ## Research benchmark
 

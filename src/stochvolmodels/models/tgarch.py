@@ -7,7 +7,6 @@ returns are log returns. The bounded first lift stores only the initial and term
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
@@ -25,8 +24,8 @@ __all__ = (
     "derive_tgarch_limit_params",
 )
 
-M1 = math.sqrt(2.0 / math.pi)
-S1 = math.sqrt(1.0 - 2.0 / math.pi)
+M1 = float(np.sqrt(2.0 / np.pi))
+S1 = float(np.sqrt(1.0 - 2.0 / np.pi))
 SIGMA_FLOOR = 1.0e-6
 
 _DEFAULT_CHUNK_STEPS = 8
@@ -52,7 +51,7 @@ def _finite_float(value: object, name: str) -> float:
         result = float(value)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"{name} must be a finite real number") from exc
-    if not math.isfinite(result):
+    if not np.isfinite(result):
         raise ValueError(f"{name} must be finite, got {value!r}")
     return result
 
@@ -147,7 +146,7 @@ class TgarchParams:
     @property
     def vartheta(self) -> float:
         """Return total volatility of volatility ``sqrt(beta**2 + eps**2)``."""
-        return math.hypot(self.beta, self.eps)
+        return float(np.hypot(self.beta, self.eps))
 
     @property
     def d0(self) -> float:
@@ -244,7 +243,7 @@ class TgarchLimitParams:
             kappa1_hat = -d1_value
             theta_hat = d0_value / kappa1_hat
         else:
-            discriminant = math.sqrt(d1_value * d1_value + 4.0 * kappa2_value * d0_value)
+            discriminant = float(np.sqrt(d1_value * d1_value + 4.0 * kappa2_value * d0_value))
             if d1_value >= 0.0:
                 theta_hat = (d1_value + discriminant) / (2.0 * kappa2_value)
             else:
@@ -299,7 +298,7 @@ def derive_tgarch_limit_params(params: TgarchParams) -> TgarchLimitParams:
 def _step_grid(horizon: float, max_dt: float) -> tuple[int, float]:
     horizon_value = _positive_float(horizon, "maturity")
     max_dt_value = _positive_float(max_dt, "max_dt")
-    n_steps = max(1, int(math.ceil(horizon_value / max_dt_value - 2.0e-14)))
+    n_steps = max(1, int(np.ceil(horizon_value / max_dt_value - 2.0e-14)))
     return n_steps, horizon_value / n_steps
 
 
@@ -327,7 +326,7 @@ def _exact_q_law(
     dt: float,
     params: TgarchParams,
 ) -> tuple[FloatArray, FloatArray]:
-    sqrt_dt = math.sqrt(dt)
+    sqrt_dt = float(np.sqrt(dt))
     denominator = 1.0 - 2.0 * sqrt_dt * params.eta(sigma)
     if np.any(denominator <= 0.0) or not np.isfinite(denominator).all():
         worst = float(np.min(denominator))
@@ -364,7 +363,7 @@ def _effective_sample_size(log_weights: FloatArray) -> float:
     scaled = np.exp(log_weights - shift)
     numerator = float(np.sum(scaled)) ** 2
     denominator = float(np.dot(scaled, scaled))
-    if denominator == 0.0 or not math.isfinite(numerator):
+    if denominator == 0.0 or not np.isfinite(numerator):
         raise FloatingPointError("could not compute a finite effective sample size")
     return numerator / denominator
 
@@ -400,9 +399,9 @@ def _simulate_terminal(
     limit = _resolve_limit_params(params, measure, limit_params)
     rng = np.random.Generator(np.random.PCG64(seed))
     sigma = np.full(n_paths, params.sigma0, dtype=np.float64)
-    log_spot = np.full(n_paths, math.log(params.spot0), dtype=np.float64)
+    log_spot = np.full(n_paths, np.log(params.spot0), dtype=np.float64)
     log_weights = np.zeros(n_paths, dtype=np.float64) if track_log_weights else None
-    sqrt_dt = math.sqrt(dt)
+    sqrt_dt = float(np.sqrt(dt))
     floor_hits = 0
 
     for block_start in range(0, n_steps, chunk_steps):
@@ -571,7 +570,7 @@ class TgarchModel:
         assets[:, 0, 0] = self.params.spot0
         assets[:, 1, 0] = terminal.spot
         log_spot = np.empty((n_paths_value, 2), dtype=np.float64)
-        log_spot[:, 0] = math.log(self.params.spot0)
+        log_spot[:, 0] = np.log(self.params.spot0)
         log_spot[:, 1] = terminal.log_spot
         sigma = np.empty((n_paths_value, 2), dtype=np.float64)
         sigma[:, 0] = self.params.sigma0

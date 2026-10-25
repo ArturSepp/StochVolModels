@@ -2,13 +2,18 @@
 
 These reports observe final model outputs; they never fit, filter or repair a chain.
 Vanilla pricing and quote normalization remain owned by their existing providers.
+Inputs contain one model-price or decimal-IV vector per OptionChain expiry, with
+weights, scalar or per-quote scale floors, and quote identities aligned to strikes.
+Missing per-quote floors withhold only normalized residuals. Reports snapshot quote residuals
+and expiry/chain aggregates as strict JSON, retaining explicit price units and
+failure reasons when non-finite results serialize as null.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 import json
-from typing import Mapping, Sequence
+from typing import Mapping, Sequence, TypeAlias
 
 import numpy as np
 import pandas as pd
@@ -16,7 +21,12 @@ import pandas as pd
 from stochvolmodels.data.option_chain import OptionChain
 
 
-def _json_value(value):
+_JsonValue: TypeAlias = (
+    str | int | float | bool | None | list["_JsonValue"] | dict[str, "_JsonValue"]
+)
+
+
+def _json_value(value: object) -> _JsonValue:
     """Copy supported metadata and table values into strict JSON primitives."""
     if value is pd.NaT or value is pd.NA:
         return None
@@ -58,7 +68,9 @@ class DiagnosticReport:
                 raise ValueError("invalid diagnostic table dimensions")
 
     @classmethod
-    def from_tables(cls, tables: Mapping[str, pd.DataFrame], metadata: Mapping) -> DiagnosticReport:
+    def from_tables(
+        cls, tables: Mapping[str, pd.DataFrame], metadata: Mapping[str, object]
+    ) -> DiagnosticReport:
         """Snapshot tables and JSON-compatible metadata without retaining mutable inputs."""
         data = {
             "schema_version": 1,
@@ -74,16 +86,16 @@ class DiagnosticReport:
         return cls.from_dict(data)
 
     @classmethod
-    def from_dict(cls, data: Mapping) -> DiagnosticReport:
+    def from_dict(cls, data: Mapping[str, object]) -> DiagnosticReport:
         """Restore a report from its strict JSON representation."""
         return cls(json.dumps(_json_value(data), allow_nan=False, sort_keys=True))
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, _JsonValue]:
         """Return an independent JSON-compatible representation."""
         return json.loads(self._payload)
 
     @property
-    def metadata(self) -> dict:
+    def metadata(self) -> dict[str, _JsonValue]:
         """Return an independent copy of conventions and provenance."""
         return self.to_dict()["metadata"]
 
@@ -93,7 +105,13 @@ class DiagnosticReport:
         return pd.DataFrame(table["data"], columns=table["columns"])
 
 
-def _aligned(chain: OptionChain, values, name: str, *, fill=np.nan) -> list[np.ndarray]:
+def _aligned(
+    chain: OptionChain,
+    values: Sequence[np.ndarray] | None,
+    name: str,
+    *,
+    fill: float = np.nan,
+) -> list[np.ndarray]:
     """Validate one vector per expiry and copy all input arrays."""
     if values is None:
         return [np.full(len(strikes), fill, dtype=float) for strikes in chain.strikes_ttms]
@@ -119,7 +137,7 @@ def _market_status(bid: float, ask: float, *, positive: bool) -> str:
     return "valid"
 
 
-def _fit_summary(frame: pd.DataFrame, label: str) -> dict:
+def _fit_summary(frame: pd.DataFrame, label: str) -> dict[str, str | int | float | None]:
     """Aggregate raw residuals, preserving actual weight sums across expiries."""
     result = {"expiry_id": label, "n_quotes": len(frame)}
     for kind in ("iv", "price"):
@@ -170,11 +188,11 @@ def diagnose_fit(
     model_prices: Sequence[np.ndarray] | None = None,
     model_ivols: Sequence[np.ndarray] | None = None,
     price_unit: str,
-    spread_floor: float,
+    spread_floor: float | Sequence[np.ndarray],
     weights: Sequence[np.ndarray] | None = None,
     weight_label: str | None = None,
     quote_ids: Sequence[Sequence[str]] | None = None,
-    metadata: Mapping | None = None,
+    metadata: Mapping[str, object] | None = None,
 ) -> DiagnosticReport:
     """Measure final fitted values against chain bid/ask intervals.
 
@@ -188,8 +206,13 @@ def diagnose_fit(
         pricing is performed here. Invalid outputs are counted, not clipped.
     price_unit : str
         Explicit common unit of model and quoted prices, e.g. ``USD per unit``.
-    spread_floor : float
-        Positive floor for the half-spread denominator, in price_unit.
+    spread_floor : float or sequence of arrays
+        Positive floor for the half-spread denominator, in price_unit. A scalar
+        applies to every quote; vectors align with each expiry's strikes. NaN
+        vector entries explicitly mark unavailable scales and withhold normalized
+        errors without discarding raw price residuals. Inf, zero and negative
+        floors are rejected. An already computed effective scale may be supplied
+        if it dominates the same quote's half-spread; it remains unchanged.
     weights : sequence of arrays, optional
         Finite nonnegative weights. Zero weights exclude only weighted metrics.
     weight_label : str, optional
@@ -210,8 +233,20 @@ def diagnose_fit(
         raise ValueError("provide model_prices or model_ivols")
     if not isinstance(price_unit, str) or not price_unit.strip():
         raise ValueError("price_unit must explicitly name the common price unit")
-    if not np.isfinite(spread_floor) or spread_floor <= 0:
-        raise ValueError("spread_floor must be finite and positive")
+    if spread_floor is None:
+        raise ValueError("spread_floor must be scalar or contain one vector per expiry")
+    if np.isscalar(spread_floor) or (
+        isinstance(spread_floor, np.ndarray) and spread_floor.ndim == 0
+    ):
+        if not np.isfinite(spread_floor) or spread_floor <= 0:
+            raise ValueError("spread_floor must be finite and positive")
+        floor_arrays = _aligned(chain, None, "spread_floor", fill=float(spread_floor))
+        floor_metadata = float(spread_floor)
+    else:
+        floor_arrays = _aligned(chain, spread_floor, "spread_floor")
+        if any(np.any(np.isinf(row) | (row <= 0)) for row in floor_arrays):
+            raise ValueError("spread_floor vectors must contain positive values or NaN")
+        floor_metadata = floor_arrays
     if weights is not None and (not isinstance(weight_label, str) or not weight_label.strip()):
         raise ValueError("explicit weights require weight_label")
     arrays = {
@@ -263,8 +298,22 @@ def diagnose_fit(
             bid, ask, model = row["bid_price"], row["ask_price"], row["model_price"]
             row["inside_bid_ask"] = bool(bid <= model <= ask) if valid else None
             row["outside_spread"] = max(bid - model, model - ask, 0.0) if valid else np.nan
+            floor = floor_arrays[i][j]
+            scale_reason = row["price_market"] if row["price_market"] != "valid" else (
+                "missing_spread_floor" if np.isnan(floor) else "valid"
+            )
+            row["spread_floor"] = floor
+            row["scale_reason"] = scale_reason
+            row["scale_status"] = (
+                "pass" if scale_reason == "valid" else
+                "unavailable" if scale_reason.startswith("missing") else "fail"
+            )
+            row["spread_scale"] = (
+                max((ask - bid) / 2, floor) if scale_reason == "valid" else np.nan
+            )
             row["spread_scaled_error"] = (
-                (row["price_residual"] / max((ask - bid) / 2, spread_floor)) if valid else np.nan
+                row["price_residual"] / row["spread_scale"]
+                if valid and scale_reason == "valid" else np.nan
             )
             rows.append(row)
     quotes = pd.DataFrame(rows)
@@ -284,7 +333,7 @@ def diagnose_fit(
             "price_unit": price_unit,
             "iv_unit": "decimal",
             "ttm_unit": "years",
-            "spread_floor": spread_floor,
+            "spread_floor": floor_metadata,
             "weighting": weight_label if weights is not None else "uniform",
             "coverage_denominator": "finite model prices with valid two-sided price quotes",
             "provenance": dict(metadata or {}),

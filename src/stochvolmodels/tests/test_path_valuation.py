@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 import subprocess
 import sys
 from dataclasses import FrozenInstanceError
@@ -336,7 +335,7 @@ def test_hand_computed_direct_raw_and_self_normalized_estimators() -> None:
 
     assert direct.estimator is PathEstimator.MONTE_CARLO
     assert direct.value == pytest.approx(7.0 / 3.0)
-    assert direct.standard_error == pytest.approx(math.sqrt(7.0) / 3.0)
+    assert direct.standard_error == pytest.approx(np.sqrt(7.0) / 3.0)
     assert direct.standard_error_basis == "iid_paths"
     assert direct.n_paths == direct.n_independent_groups == 3
     assert direct.group_size == 1
@@ -350,7 +349,7 @@ def test_hand_computed_direct_raw_and_self_normalized_estimators() -> None:
 
     assert raw.estimator is PathEstimator.RAW_LIKELIHOOD_RATIO
     assert raw.value == pytest.approx(3.5)
-    assert raw.standard_error == pytest.approx(math.sqrt(21.0) / 2.0)
+    assert raw.standard_error == pytest.approx(np.sqrt(21.0) / 2.0)
     assert normalized.estimator is PathEstimator.SELF_NORMALIZED_LIKELIHOOD_RATIO
     assert normalized.value == pytest.approx(3.0)
     assert normalized.standard_error == pytest.approx(6.0 / 7.0)
@@ -360,7 +359,7 @@ def test_hand_computed_direct_raw_and_self_normalized_estimators() -> None:
         assert result.group_effective_sample_size == pytest.approx(7.0 / 3.0)
         assert result.group_ess_fraction == pytest.approx(7.0 / 9.0)
         assert result.mean_likelihood_ratio == pytest.approx(7.0 / 6.0)
-        assert result.log_mean_likelihood_ratio == pytest.approx(math.log(7.0 / 6.0))
+        assert result.log_mean_likelihood_ratio == pytest.approx(np.log(7.0 / 6.0))
     with pytest.raises(FrozenInstanceError):
         direct.value = 0.0  # type: ignore[misc]
 
@@ -379,7 +378,7 @@ def test_raw_scale_is_preserved_but_ratio_estimator_and_ess_are_scale_free() -> 
         values,
         sampling_measure="P",
         target_measure="Q",
-        log_likelihood_ratios=logs + math.log(10.0),
+        log_likelihood_ratios=logs + np.log(10.0),
     )
     raw = value_paths(paths=base_paths, payoff=_call())
     raw_scaled = value_paths(paths=scaled_paths, payoff=_call())
@@ -390,7 +389,7 @@ def test_raw_scale_is_preserved_but_ratio_estimator_and_ess_are_scale_free() -> 
     assert raw_scaled.standard_error == pytest.approx(10.0 * raw.standard_error)
     assert raw_scaled.mean_likelihood_ratio == pytest.approx(10.0 * raw.mean_likelihood_ratio)
     assert raw_scaled.log_mean_likelihood_ratio == pytest.approx(
-        raw.log_mean_likelihood_ratio + math.log(10.0)
+        raw.log_mean_likelihood_ratio + np.log(10.0)
     )
     assert normalized_scaled.value == pytest.approx(normalized.value)
     assert normalized_scaled.standard_error == pytest.approx(normalized.standard_error)
@@ -412,7 +411,7 @@ def test_weighted_payoff_scaling_preserves_finite_extreme_contributions() -> Non
     )
     raw = value_paths(paths=paths, payoff=_call())
     normalized = value_paths_self_normalized(paths=paths, payoff=_call())
-    expected_normalized = math.exp(math.log(1.0e300) - 1000.0)
+    expected_normalized = np.exp(np.log(1.0e300) - 1000.0)
 
     assert raw.value == pytest.approx(5.0e299)
     assert raw.standard_error == pytest.approx(5.0e299)
@@ -564,7 +563,7 @@ def test_explicit_unweighted_recenter_matches_legacy_additive_values(
     assert raw.value == pytest.approx(discount * np.mean(raw_payoff))
     assert result.recenter_shift == pytest.approx(-1.0 / 3.0)
     assert result.standard_error == pytest.approx(
-        discount * np.std(adjusted_payoff, ddof=1) / math.sqrt(adjusted_payoff.size)
+        discount * np.std(adjusted_payoff, ddof=1) / np.sqrt(adjusted_payoff.size)
     )
     assert result.standard_error != pytest.approx(legacy_se[0])
     assert result.standard_error_basis == "legacy_conditional_iid_paths"
@@ -589,7 +588,7 @@ def test_normalized_weighted_recenter_is_explicit_and_self_normalized_only() -> 
         terminal_spots,
         sampling_measure="P",
         target_measure="Q",
-        log_likelihood_ratios=logs + math.log(10.0),
+        log_likelihood_ratios=logs + np.log(10.0),
     )
     scaled = value_paths_self_normalized(
         paths=scaled_paths,
@@ -845,16 +844,16 @@ def test_tgarch_direct_q_and_raw_weighted_p_agree_with_antithetic_groups() -> No
     weighted_p = value_paths(
         paths=p_paths,
         payoff=payoff,
-        discount_factor=math.exp(-params.r * maturity),
+        discount_factor=np.exp(-params.r * maturity),
         independent_group_ids=pair_ids,
     )
     direct_q = value_paths(
         paths=q_paths,
         payoff=payoff,
-        discount_factor=math.exp(-params.r * maturity),
+        discount_factor=np.exp(-params.r * maturity),
         independent_group_ids=pair_ids,
     )
-    combined_error = math.hypot(weighted_p.standard_error, direct_q.standard_error)
+    combined_error = np.hypot(weighted_p.standard_error, direct_q.standard_error)
 
     assert weighted_p.estimator is PathEstimator.RAW_LIKELIHOOD_RATIO
     assert direct_q.estimator is PathEstimator.MONTE_CARLO

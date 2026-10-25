@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 import subprocess
 import sys
 from dataclasses import replace
@@ -311,14 +310,14 @@ def _paired_standard_error(values: np.ndarray) -> float:
     """Return the standard error respecting first-half antithetic pairing."""
     pair_count = values.size // 2
     pair_means = 0.5 * (values[:pair_count] + values[pair_count:])
-    return float(np.std(pair_means, ddof=1) / math.sqrt(pair_count))
+    return float(np.std(pair_means, ddof=1) / np.sqrt(pair_count))
 
 
 def _stable_raw_weights(log_weights: np.ndarray) -> np.ndarray:
     """Exponentiate raw ratios using the companion study's shifted calculation."""
     maximum = float(np.max(log_weights))
     scaled = np.exp(log_weights - maximum)
-    return math.exp(maximum) * scaled
+    return np.exp(maximum) * scaled
 
 
 def _controlled_call_pair_values(
@@ -690,7 +689,7 @@ def test_exact_q_discounted_spot_is_a_three_se_martingale(parameter_name: str) -
         seed=20260827,
     )
     params = _study_params(parameter_name)
-    discounted_spot = paths.assets[:, -1, 0] * math.exp(-params.r * 0.25)
+    discounted_spot = paths.assets[:, -1, 0] * np.exp(-params.r * 0.25)
     error = float(np.mean(discounted_spot) - params.spot0)
     standard_error = _paired_standard_error(discounted_spot)
 
@@ -716,7 +715,7 @@ def test_raw_weighted_p_and_direct_exact_q_prices_agree_within_three_se(
         seed=20260825,
     )
     params = _study_params(parameter_name)
-    discount = math.exp(-params.r * 0.25)
+    discount = np.exp(-params.r * 0.25)
     likelihood_ratios = _stable_raw_weights(p_paths.log_likelihood_ratios)
     weighted_p_pairs = _controlled_call_pair_values(
         p_paths.assets[:, -1, 0],
@@ -733,7 +732,7 @@ def test_raw_weighted_p_and_direct_exact_q_prices_agree_within_three_se(
     )
     differences = direct_q_pairs - weighted_p_pairs
     error = float(np.mean(differences))
-    standard_error = float(np.std(differences, ddof=1) / math.sqrt(differences.size))
+    standard_error = float(np.std(differences, ddof=1) / np.sqrt(differences.size))
 
     assert abs(error) <= 3.0 * standard_error + 2.0e-13 * params.spot0
 

@@ -114,11 +114,11 @@ def run_local(local: Locals) -> None:
             np.testing.assert_allclose(curvature, (2.0 * 0.8 ** 2 - beta ** 2) / 12.0, rtol=0.05)
 
     elif local == Locals.FULL_BRANCH:
-        # the full-formula branch returns the leading-order smile divided by sigma0
+        # Both entry points return the leading-order smile in decimal volatility units.
         branch = fitters.calc_logsv_ivols(log_strikes, 0.2, 0.3, 0.8, is_quadratic=False)
-        np.testing.assert_allclose(branch, leading_order_smile(log_strikes, 0.2, 0.3, 0.8) / 0.2,
+        np.testing.assert_allclose(branch, leading_order_smile(log_strikes, 0.2, 0.3, 0.8),
                                    rtol=1e-12)
-        assert np.all(branch > 0.9)
+        assert np.all((branch > 0.1) & (branch < 0.3))
 
     elif local == Locals.DENSITY_AND_DELTAS:
         density = fitters.calc_logsv_pdf(ttm=1.0 / 12.0, sigma0=0.2, beta=0.3, volvol=0.3,

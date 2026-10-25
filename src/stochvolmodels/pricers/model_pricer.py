@@ -206,7 +206,13 @@ class ModelPricer(ABC):
 
     def simulate_terminal_values(self, params: ModelParams, **kwargs) -> (np.ndarray, np.ndarray, np.ndarray):
         """
-        get realizationss of terminal paths of x, vol, qvar
+        Return three model-native terminal state arrays.
+
+        LogSV returns log return, annualized volatility and integrated variance;
+        Heston returns log return, annualized variance and integrated variance.
+        Hawkes returns log return and the two jump intensities. Callers must use
+        the concrete model's documented convention; the provisional ``ModelPaths``
+        adapters expose named states with explicit units.
         """
         raise NotImplementedError("must be implemented in parent class")
 
@@ -247,8 +253,22 @@ class ModelPricer(ABC):
                               nb_path: int = 100000
                               ) -> np.ndarray:
 
-        """histogram of simulated terminal log-returns, for comparison against an analytic density."""
-        t_values = self.simulate_terminal_values(ttm=ttm, params=params, nb_path=nb_path)
+        """Return a KDE of terminal log returns, normalized to sum to one on ``x_grid``.
+
+        Simulators return a triple whose first state is log return. A legacy
+        simulator may return the one-dimensional log-return array directly.
+        """
+        terminal = self.simulate_terminal_values(ttm=ttm, params=params, nb_path=nb_path)
+        if isinstance(terminal, tuple):
+            if len(terminal) != 3:
+                raise ValueError("simulate_terminal_values must return three terminal state arrays")
+            states = tuple(np.asarray(state) for state in terminal)
+            if any(state.ndim != 1 or state.shape != states[0].shape for state in states):
+                raise ValueError("terminal state arrays must be aligned one-dimensional arrays")
+            terminal = states[0]
+        t_values = np.asarray(terminal, dtype=float)
+        if t_values.ndim != 1:
+            raise ValueError("terminal samples must be a one-dimensional log-return array")
 
         cut_off = 1e16
         # nan can be present too
@@ -257,11 +277,20 @@ class ModelPricer(ABC):
         inf_neg = np.logical_and(~inf_nans, t_values < -cut_off)
 
         print(f"in mc: num -inf = {np.sum(inf_neg)}, num +inf = {np.sum(inf_pos)}, num nans = {np.sum(inf_nans)}")
-        t_values = t_values[np.logical_and(np.logical_and(inf_neg == False, inf_pos == False), inf_nans == False)]
-        kernel = stats.gaussian_kde(t_values)
+        t_values = t_values[~(inf_neg | inf_pos | inf_nans)]
+        if t_values.size < 2:
+            raise ValueError("log-return KDE requires at least two finite samples within the cutoff")
+        if np.ptp(t_values) == 0.0:
+            raise ValueError("log-return KDE requires non-degenerate samples")
+        try:
+            kernel = stats.gaussian_kde(t_values)
+        except np.linalg.LinAlgError as error:
+            raise ValueError("log-return KDE requires non-degenerate samples") from error
         z = kernel(x_grid)
-        # z = np.where(np.greater(z, 0.0), z, 0.0)
-        z = z / np.nansum(z)
+        mass = np.sum(z)
+        if not np.isfinite(mass) or mass <= 0.0:
+            raise ValueError("x_grid must have positive finite sampled KDE mass")
+        z = z / mass
         return z
 
     #########################################################

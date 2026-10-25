@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
+import pytest
 import vanilla_option_pricers as bsm
+from scipy.integrate import quad
 
 from stochvolmodels.data.sample_option_chains import get_oca_simulated_chain_data
 from stochvolmodels.fitters import (
@@ -11,6 +13,52 @@ from stochvolmodels.fitters import (
     fit_logsv_ivols,
     generate_grid_option_prices_from_slice,
 )
+
+
+@pytest.mark.parametrize("beta, volvol", [(-0.2, 0.4), (0.3, 0.5), (0.2, 0.0)])
+def test_nonquadratic_logsv_smile_matches_integrated_local_metric(
+    beta: float, volvol: float,
+) -> None:
+    """Check smile magnitudes against numerical integration, not the closed form."""
+    sigma0 = 0.25
+    log_strikes = np.array([-0.2, -0.1, 0.1, 0.2])
+    expected = []
+    for log_strike in log_strikes:
+        y = -log_strike / sigma0
+        # Substitution u = y*t gives x(y)/y without the closed-form logarithm.
+        average_metric, _ = quad(
+            lambda t: 1.0 / np.sqrt(
+                (1.0 - beta * y * t)**2 + (volvol * y * t)**2
+            ),
+            0.0,
+            1.0,
+            epsabs=1e-13,
+            epsrel=1e-13,
+        )
+        expected.append(sigma0 / average_metric)
+
+    with np.errstate(all="raise"):
+        actual = calc_logsv_ivols(log_strikes, sigma0, beta, volvol, is_quadratic=False)
+    np.testing.assert_allclose(actual, expected, rtol=2e-13, atol=1e-15)
+
+
+@pytest.mark.parametrize("beta, volvol", [(-0.2, 0.4), (0.3, 0.5), (0.2, 0.0)])
+def test_nonquadratic_logsv_smile_is_continuous_at_atm(beta: float, volvol: float) -> None:
+    log_strikes = np.array([-1e-12, 0.0, 1e-12])
+    with np.errstate(all="raise"):
+        actual = calc_logsv_ivols(log_strikes, 0.25, beta, volvol, is_quadratic=False)
+        scalar_atm = calc_logsv_ivols(0.0, 0.25, beta, volvol, is_quadratic=False)
+    np.testing.assert_allclose(actual, 0.25 + 0.5 * beta * log_strikes, rtol=0, atol=1e-15)
+    assert scalar_atm == 0.25
+
+
+@pytest.mark.parametrize("log_strikes", [0.0, 0.2, np.array([-0.2, 0.0, 0.2])])
+def test_nonquadratic_logsv_smile_has_constant_volatility_limit(log_strikes) -> None:
+    with np.errstate(all="raise"):
+        actual = calc_logsv_ivols(
+            log_strikes, sigma0=0.25, beta=0.0, volvol=0.0, is_quadratic=False,
+        )
+    np.testing.assert_array_equal(actual, np.full_like(log_strikes, 0.25))
 
 
 def test_fit_logsv_ivols_recovers_synthetic_smile() -> None:

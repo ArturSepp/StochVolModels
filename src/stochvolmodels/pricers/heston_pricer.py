@@ -1,5 +1,9 @@
-"""
-Implementation of Heston model pricer deriving from ModelPricer
+"""Heston transform pricing, calibration and the maintained Monte Carlo kernel.
+
+The model state is log forward return, annualized variance and integrated variance.
+Chain pricing combines that law with forwards, discounts and option payoffs. The
+private increment-driven simulator is shared with the path adapter in ``models.heston``;
+legacy callers retain their seeded draw ordering and historical variance floor.
 """
 
 import numpy as np
@@ -62,7 +66,10 @@ class HestonPricer(ModelPricer):
                                                 forwards=option_chain.forwards,
                                                 discfactors=option_chain.discfactors,
                                                 strikes_ttms=option_chain.strikes_ttms,
-                                                optiontypes_ttms=option_chain.optiontypes_ttms)
+                                                optiontypes_ttms=option_chain.optiontypes_ttms,
+                                                variable_type=kwargs.get(
+                                                    'variable_type', VariableType.LOG_RETURN
+                                                ))
         return model_prices_ttms
 
     def model_mc_price_chain(self, option_chain: OptionChain, params: HestonParams,
@@ -95,9 +102,9 @@ class HestonPricer(ModelPricer):
                                  **kwargs
                                  ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
-        """simulate terminal state variables for the given parameters."""
+        """Return terminal log return, annualized variance and integrated variance."""
         x0, var0, qvar0 = simulate_heston_x_vol_terminal(ttm=ttm,
-                                                         x0=np.zeros(nb_path),
+                                                         x0=np.full(nb_path, x0, dtype=float),
                                                          var0=params.v0 * np.ones(nb_path),
                                                          qvar0=np.zeros(nb_path),
                                                          theta=params.theta,
@@ -347,11 +354,12 @@ def simulate_heston_x_vol_terminal(ttm: float,
     """
     simulate terminal log-return, variance and quadratic variance under Heston.
 
-    Uses a full truncation Euler scheme, which floors the variance at zero rather
-    than reflecting it, so paths remain well defined when the Feller condition fails.
+    The historical Euler scheme floors each updated variance at ``1e-4``.
+    It uses left-point integrated variance and draws the complete first Brownian
+    matrix before the second. Length-one initial states broadcast their values.
     """
     if x0.shape[0] == 1:  # initial value
-        x0 = x0*np.zeros(nb_path)
+        x0 = x0 * np.ones(nb_path)
     else:
         assert x0.shape[0] == nb_path
 
@@ -361,7 +369,7 @@ def simulate_heston_x_vol_terminal(ttm: float,
         assert var0.shape[0] == nb_path
 
     if qvar0.shape[0] == 1:  # initial value
-        qvar0 = np.zeros(nb_path)
+        qvar0 = qvar0 * np.ones(nb_path)
     else:
         assert qvar0.shape[0] == nb_path
 
@@ -369,6 +377,30 @@ def simulate_heston_x_vol_terminal(ttm: float,
     w0 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))
     w1 = np.sqrt(dt) * np.random.normal(0, 1, size=(nb_steps, nb_path))
 
+    return _simulate_heston_with_increments(
+        x0, var0, qvar0, theta, kappa, rho, volvol, dt, w0, w1
+    )
+
+
+@njit(cache=False, fastmath=True)
+def _simulate_heston_with_increments(
+    x0: np.ndarray,
+    var0: np.ndarray,
+    qvar0: np.ndarray,
+    theta: float,
+    kappa: float,
+    rho: float,
+    volvol: float,
+    dt: float,
+    w0: np.ndarray,
+    w1: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Advance Heston states using supplied ``sqrt(dt)``-scaled Brownian increments.
+
+    The callers supply matching ``(n_steps, n_paths)`` matrices and path vectors.
+    No random draws occur here, allowing the path-model adapter to use a local RNG
+    while the legacy terminal simulator preserves its global Numba RNG contract.
+    """
     rho_1 = np.sqrt(1.0-rho*rho)
     for w0_, w1_ in zip(w0, w1):
         sigma0 = np.sqrt(var0)

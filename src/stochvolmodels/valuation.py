@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from enum import Enum
+# Preserve accurate scalar sums when positive and negative path values cancel.
+from math import fsum  # noqa: TID251 -- NumPy/SciPy reductions do not guarantee fsum accuracy.
 from numbers import Real
 
 import numpy as np
@@ -26,8 +27,8 @@ __all__ = (
 FloatArray = NDArray[np.float64]
 IntArray = NDArray[np.integer]
 
-_LOG_MAX_FLOAT = math.log(np.finfo(np.float64).max)
-_LOG_MIN_SUBNORMAL = math.log(float(np.nextafter(0.0, 1.0)))
+_LOG_MAX_FLOAT = float(np.log(np.finfo(np.float64).max))
+_LOG_MIN_SUBNORMAL = float(np.log(np.nextafter(0.0, 1.0)))
 
 
 class PathEstimator(str, Enum):
@@ -50,7 +51,7 @@ def _finite_positive_float(value: object, name: str) -> float:
     if isinstance(value, (bool, np.bool_)) or not isinstance(value, Real):
         raise ValueError(f"{name} must be a finite real scalar")
     result = float(value)
-    if not math.isfinite(result) or result <= 0.0:
+    if not np.isfinite(result) or result <= 0.0:
         raise ValueError(f"{name} must be finite and strictly positive")
     return result
 
@@ -227,11 +228,11 @@ def _stable_ess(nonnegative_values: FloatArray, name: str) -> float:
     if not np.all(np.isfinite(nonnegative_values)) or np.any(nonnegative_values < 0.0):
         raise ValueError(f"{name} must contain finite non-negative values")
     total = float(np.sum(nonnegative_values))
-    if not math.isfinite(total) or total <= 0.0:
+    if not np.isfinite(total) or total <= 0.0:
         raise ValueError(f"{name} cannot contain all-zero weights")
     probabilities = nonnegative_values / total
     squared_sum = float(np.dot(probabilities, probabilities))
-    if not math.isfinite(squared_sum) or squared_sum <= 0.0:
+    if not np.isfinite(squared_sum) or squared_sum <= 0.0:
         raise FloatingPointError(f"could not compute a finite {name} ESS")
     return 1.0 / squared_sum
 
@@ -252,20 +253,19 @@ def _resolve_weights(paths: ModelPaths) -> _Weights:
 
     log_values = np.asarray(log_ratios, dtype=np.float64)
     log_scale = float(np.max(log_values))
-    if log_scale == -math.inf:
+    if log_scale == -np.inf:
         raise ValueError("likelihood ratios cannot all be zero")
     with np.errstate(under="ignore"):
         scaled = np.exp(log_values - log_scale)
     scaled = np.asarray(scaled, dtype=np.float64)
     scaled_total = float(np.sum(scaled))
-    if not math.isfinite(scaled_total) or scaled_total <= 0.0:
+    if not np.isfinite(scaled_total) or scaled_total <= 0.0:
         raise FloatingPointError("could not normalize likelihood ratios")
     mean_scaled = scaled_total / scaled.size
-    log_mean = log_scale + math.log(mean_scaled)
-    try:
-        mean = math.exp(log_mean)
-    except OverflowError:
-        mean = math.inf
+    log_mean = log_scale + float(np.log(mean_scaled))
+    # Overflow is an allowed diagnostic here; the estimator retains the finite log mean.
+    with np.errstate(over="ignore", under="ignore"):
+        mean = float(np.exp(log_mean))
     path_ess = _stable_ess(scaled, "path likelihood")
     return _Weights(
         log_ratios=log_values,
@@ -284,10 +284,10 @@ def _stable_mean(values: FloatArray, name: str) -> float:
     if not np.all(np.isfinite(values)):
         raise ValueError(f"{name} must contain only finite values")
     try:
-        result = math.fsum(float(value) / values.size for value in values)
+        result = fsum(float(value) / values.size for value in values)
     except OverflowError as exc:
         raise FloatingPointError(f"{name} mean is not representable") from exc
-    if not math.isfinite(result):
+    if not np.isfinite(result):
         raise FloatingPointError(f"{name} mean is not representable")
     return result
 
@@ -325,13 +325,14 @@ def _restore_log_scale(scaled_value: float, log_scale: float, name: str) -> floa
     """Restore one log-scaled scalar and reject float overflow or underflow."""
     if scaled_value == 0.0:
         return 0.0
-    log_absolute_value = math.log(abs(scaled_value)) + log_scale
-    if not math.isfinite(log_absolute_value) or log_absolute_value > _LOG_MAX_FLOAT:
+    log_absolute_value = float(np.log(abs(scaled_value))) + log_scale
+    if not np.isfinite(log_absolute_value) or log_absolute_value > _LOG_MAX_FLOAT:
         raise FloatingPointError(f"{name} is not representable")
     if log_absolute_value < _LOG_MIN_SUBNORMAL:
         raise FloatingPointError(f"{name} is not representable")
-    restored = math.copysign(math.exp(log_absolute_value), scaled_value)
-    if not math.isfinite(restored) or restored == 0.0:
+    with np.errstate(over="ignore", under="ignore"):
+        restored = float(np.copysign(np.exp(log_absolute_value), scaled_value))
+    if not np.isfinite(restored) or restored == 0.0:
         raise FloatingPointError(f"{name} is not representable")
     return restored
 
@@ -345,10 +346,10 @@ def _ratio_from_scaled_means(
     name: str,
 ) -> tuple[float, float, float]:
     """Restore a ratio whose numerator and denominator have separate log scales."""
-    if not math.isfinite(denominator) or denominator <= 0.0:
+    if not np.isfinite(denominator) or denominator <= 0.0:
         raise ValueError(f"{name} denominator must be positive")
     scaled_ratio = numerator / denominator
-    if not math.isfinite(scaled_ratio):
+    if not np.isfinite(scaled_ratio):
         raise FloatingPointError(f"{name} scaled ratio is not representable")
     relative_log_scale = numerator_log_scale - denominator_log_scale
     value = _restore_log_scale(scaled_ratio, relative_log_scale, name)
@@ -436,7 +437,7 @@ def _evaluate_payoff(
                 weights,
                 "weighted recenter sample mean",
             )
-        if not math.isfinite(sample_mean):
+        if not np.isfinite(sample_mean):
             raise FloatingPointError("could not compute a finite recenter sample mean")
 
         recenter_shift = recenter.target_forward - sample_mean
@@ -481,11 +482,11 @@ def _mean_and_standard_error(values: FloatArray) -> tuple[float, float]:
     if scale == 0.0:
         return mean, 0.0
     normalized_mean = mean / scale
-    squared_deviations = math.fsum(
+    squared_deviations = fsum(
         (float(value) / scale - normalized_mean) ** 2 for value in values
     )
-    standard_error = scale * math.sqrt(squared_deviations / (n_values - 1) / n_values)
-    if not math.isfinite(standard_error):
+    standard_error = scale * float(np.sqrt(squared_deviations / (n_values - 1) / n_values))
+    if not np.isfinite(standard_error):
         raise FloatingPointError("estimator standard error is not representable")
     return mean, standard_error
 

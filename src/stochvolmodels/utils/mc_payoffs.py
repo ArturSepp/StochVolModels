@@ -7,7 +7,9 @@ given that path, log(S_T / F) is Gaussian with mean m - v / 2 and variance v, wh
 m = rho J_T - rho^2 I_T / 2 and v = (1 - rho^2) I_T, so each path contributes a Black price with
 forward F exp(m).
 """
-import math
+# Numba supports scalar math.erf natively. scipy.special.erf inside this kernel
+# would require optional integration that is not a declared package dependency.
+from math import erf  # noqa: TID251 -- Required by the compiled _normal_cdf kernel.
 
 import numpy as np
 from numba import njit
@@ -98,7 +100,7 @@ def compute_mc_vars_payoff(x0: np.ndarray,
 @njit(cache=False, fastmath=False)
 def _normal_cdf(x: float) -> float:
     """standard normal distribution function."""
-    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+    return 0.5 * (1.0 + erf(x / np.sqrt(2.0)))
 
 
 @njit(cache=False, fastmath=False)
@@ -178,16 +180,16 @@ def compute_conditional_mc_payoff(log_forward_ratio: np.ndarray,
             f = fwd_paths[p]
             v = total_var[p]
             if v > 1e-300:
-                sd = math.sqrt(v)
-                d2 = (math.log(f / strike) - 0.5 * v) / sd
+                sd = np.sqrt(v)
+                d2 = (np.log(f / strike) - 0.5 * v) / sd
                 if type_ == 'C':
                     values[p] = f * _normal_cdf(d2 + sd) - strike * _normal_cdf(d2)
                 elif type_ == 'P':
                     values[p] = strike * _normal_cdf(-d2) - f * _normal_cdf(-d2 - sd)
                 elif type_ == 'IC':
-                    values[p] = _normal_cdf(d2) - strike * math.exp(v) * _normal_cdf(d2 - sd) / f
+                    values[p] = _normal_cdf(d2) - strike * np.exp(v) * _normal_cdf(d2 - sd) / f
                 elif type_ == 'IP':
-                    values[p] = strike * math.exp(v) * _normal_cdf(sd - d2) / f - _normal_cdf(-d2)
+                    values[p] = strike * np.exp(v) * _normal_cdf(sd - d2) / f - _normal_cdf(-d2)
                 else:
                     raise ValueError("unknown option payoff code")
             else:

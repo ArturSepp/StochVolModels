@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 
 import numpy as np
 import pytest
@@ -148,7 +147,7 @@ def _canonical_curve_payload() -> tuple[dict[str, object], np.ndarray, np.ndarra
 
 def _normal_positive_part(mean: float, stdev: float) -> float:
     d = mean / stdev
-    return float(mean * ndtr(d) + stdev * np.exp(-0.5 * d * d) / math.sqrt(2.0 * math.pi))
+    return float(mean * ndtr(d) + stdev * np.exp(-0.5 * d * d) / np.sqrt(2.0 * np.pi))
 
 
 def _adaptive_normalized_call(
@@ -166,12 +165,12 @@ def _adaptive_normalized_call(
         variance = params.beta / precision
         positive_part = _normal_positive_part(
             shift - normalized_strike + params.q * variance,
-            math.sqrt(params.c * variance),
+            np.sqrt(params.c * variance),
         )
         if positive_part == 0.0:
             return 0.0
-        log_density = (params.alpha - 1.0) * math.log(precision) - precision - gammaln(params.alpha)
-        return math.exp(log_density) * positive_part
+        log_density = (params.alpha - 1.0) * np.log(precision) - precision - gammaln(params.alpha)
+        return np.exp(log_density) * positive_part
 
     return float(
         quad(integrand, 0.0, 1.0, epsabs=2.0e-11, epsrel=2.0e-11, limit=300)[0]
@@ -191,7 +190,7 @@ def _skew_marginal_density(
     shock: float,
 ) -> float:
     radius_squared = shock * shock + 2.0 * params.beta * params.c
-    radius = math.sqrt(radius_squared)
+    radius = np.sqrt(radius_squared)
     absolute_q = abs(params.q)
     bessel_argument = absolute_q * radius / params.c
     if params.q * shock >= 0.0:
@@ -199,15 +198,15 @@ def _skew_marginal_density(
     else:
         exponential_term = -absolute_q * (radius + abs(shock)) / params.c
     log_density = (
-        math.log(2.0)
-        + params.alpha * math.log(params.beta)
+        np.log(2.0)
+        + params.alpha * np.log(params.beta)
         - gammaln(params.alpha)
-        - 0.5 * math.log(2.0 * math.pi * params.c)
+        - 0.5 * np.log(2.0 * np.pi * params.c)
         + exponential_term
-        + 0.5 * (params.alpha + 0.5) * (math.log(params.q * params.q) - math.log(radius_squared))
-        + math.log(kve(params.alpha + 0.5, bessel_argument))
+        + 0.5 * (params.alpha + 0.5) * (np.log(params.q * params.q) - np.log(radius_squared))
+        + np.log(kve(params.alpha + 0.5, bessel_argument))
     )
-    return math.exp(log_density)
+    return np.exp(log_density)
 
 
 def _bessel_normalized_call(
@@ -295,8 +294,8 @@ def test_q_zero_matches_tdist_at_nonunit_discount() -> None:
     discfactor = 0.96
     model = _model(alpha=alpha, beta=beta, c=c, q=0.0, ttm=ttm)
     nu = 2.0 * alpha
-    vol = math.sqrt(c * beta / ((alpha - 1.0) * ttm))
-    rate = -math.log(discfactor) / ttm
+    vol = np.sqrt(c * beta / ((alpha - 1.0) * ttm))
+    rate = -np.log(discfactor) / ttm
     drift = imply_drift_tdist(rf_rate=rate, vol=vol, nu=nu, ttm=ttm)
     reference = TdistTerminalModel(TdistParams(drift=drift, vol=vol, nu=nu, ttm=ttm))
     option_slice = _slice(

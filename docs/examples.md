@@ -25,6 +25,12 @@ others need the `research` extra and, where stated, a local data cache.
 
 Each page with Python code has one canonical script. The page shows excerpts of it, and the test
 suite runs every case of it and checks the numbers the page quotes.
+For the recent native-quote and research-study workflows, the `NATIVE_QUOTES` and
+`RESEARCH_TOOLS` cases in `docs/surface_diagnostics.py` are short offline entry points.
+The [native handoff example](surface_diagnostics.md#native-quote-scales-and-admissible-perturbations)
+shows recorded ticks, explicit price bounds, stable IDs and vector floors with missing scales;
+the [study-helper example](surface_diagnostics.md#portable-research-study-helpers) shows explicit
+statistical inputs and saved-evidence checks. Neither case needs OCA or historical files.
 
 | Script | Page | Data |
 |---|---|---|
@@ -91,6 +97,44 @@ contracts; historical studies require separately frozen inputs, conventions and 
 | [`calibration/combined_research_diagnostics.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/combined_research_diagnostics.py) | Core; synthetic outputs or saved reliability and optional serialized OCA sidecars | Separate quality, parity, fit, support and optional policy facets; no refit |
 | [`calibration/replay_surface_diagnostics.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/replay_surface_diagnostics.py) | Core; synthetic history or frozen manifest/observations | Persistent violations, unavailable slots, observed recovery and split censoring; no refit |
 | [`calibration/validate_historical_surfaces.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/validate_historical_surfaces.py) | Research extra and licensed local CBOE inputs | Historical fit, surface and opt-in sensitivity reports with exclusions retained |
+
+Two supporting modules make synthetic studies reproducible without private archives.
+[`_svi_research_fixtures.py`](../examples/calibration/_svi_research_fixtures.py) generates
+48 observed datasets across four noise/distortion regimes and 12 optional hidden-wing
+alternatives. Each alternative shares its control's exact observations; paired truths must
+not be counted as independent calibration datasets. Regimes within a geometry also share
+their random driver, so distinct observation IDs do not establish independence. Evaluation
+truth is kept separate from calibration inputs. These cases test diagnostic limitations,
+not market-noise validity.
+
+[`_research_study_tools.py`](../examples/calibration/_research_study_tools.py) selects
+order-statistic tolerance limits for caller-supplied coverage and error probability, retaining
+missing scores and insufficient samples as unavailable. It also verifies explicit artifact
+manifests and independently reconstructs a saved single-slice wing score from all requested
+refits. Callers provide independent calibration cohorts and any multiple-comparison adjustment;
+no automatic policy or historical cutoff is supplied. Hash agreement verifies file identity,
+not the authenticity of a manifest or the scientific validity of a study. Both modules are
+repository-only and have deterministic tests in the source CI suite.
+
+| Helper call | Result and scope |
+|---|---|
+| `synthetic_challenge_panel(include_hidden=True)` | Paired quote/evaluation records with fixed seeds and read-only arrays; no fitting |
+| `tolerance_rank(n, coverage=..., alpha=...)` | Minimum admissible rank and confidence, or `(None, None)`; direct survival-probability comparison protects tiny tails |
+| `estimate_tolerance_cutoff(scores, coverage=..., alpha=...)` | `ToleranceEstimate` with explicit unavailable status when any score is missing or the sample is insufficient |
+| `verify_artifact_hashes(root, expected)` | Verified SHA256 mapping; rejects missing/changed files and escaping paths |
+| `verify_saved_wing_score(saved["result"])` | Recomputed single-slice wing score from the wing runner's JSON envelope; incomplete evidence returns `None` only when no score is claimed |
+
+These are Python helper modules, not standalone programs. Run their canonical offline usage
+case from the source-checkout root:
+
+```console
+python -c "from examples.docs.surface_diagnostics import Locals, run_local; run_local(Locals.RESEARCH_TOOLS)"
+```
+
+The case uses illustrative handwritten scores and a temporary JSON report; it neither fits the
+synthetic panel nor establishes statistical coverage for those demonstration scores. See the
+[complete usage and input contracts](surface_diagnostics.md#portable-research-study-helpers)
+before supplying a calibration cohort or a separately frozen manifest.
 
 The two saved-evidence runners can be tried without data credentials or calibration:
 

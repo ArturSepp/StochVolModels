@@ -79,6 +79,22 @@ versions and the load.
 The package does not promise bitwise identity across BLAS, SciPy, Numba, CPU or operating-system
 combinations. Regression tolerances should reflect the algorithm and the decision the number serves.
 
+### Limits and implementation checks
+
+The nonquadratic [approximate LogSV smile](logsv_smile_fitter.md) includes its initial-volatility
+scale and evaluates the at-the-money and constant-volatility limits explicitly. Its regression
+checks compare the level against independent numerical integration. This correction does not
+change the default quadratic fit or turn its curvature parameter into structural vol-of-vol.
+
+The rough-kernel matrix-exponential helper evaluates its small-argument hyperbolic-sine ratio
+with the corrected quadratic term. Tests compare zero and repeated-eigenvalue matrices with
+`scipy.linalg.expm`. Agreement of this helper does not by itself validate a rough-kernel
+approximation, timestep choice or calibration.
+
+The provisional [Heston transform adapter](heston_model.md) separates exact transform limits
+from the Euler variance floor used by its path simulator. Numerical transform agreement and
+Monte Carlo sampling error therefore address different parts of its error budget.
+
 ## See also
 
 - [The moment generating function and its affine expansion](affine_expansion.md)

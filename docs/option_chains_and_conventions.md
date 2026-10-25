@@ -172,8 +172,31 @@ def inspect_chain(chain: svm.OptionChain) -> dict:
 ```
 
 The derived discount factors are 0.99667 and 0.99005. The one-month mid volatilities are the
-averages of bid and ask, 0.22, 0.20 and 0.19. The forward-normalised chain divides strikes by the
-forward of their slice and sets the forwards to one.
+averages of bid and ask, 0.22, 0.20 and 0.19. The forward-normalised chain divides strikes and
+any bid/ask price arrays by the forward of their slice and sets the forwards to one. Missing
+price sides remain absent, while implied volatilities and discount factors are retained;
+`forwards0` records the original forwards. Model prices passed to that chain must likewise
+be divided by the original forward.
+
+This operation produces prices $p/F$, with discounting still included. It differs from the
+native vanilla-bound helper's coordinate $q=p/(D F)$: divide by the retained discount factor
+before applying those bounds. Tick sizes, floors and model prices must undergo the same
+unit conversion as the quotes. See [native quote diagnostics](surface_diagnostics.md#native-quote-scales-and-admissible-perturbations).
+
+### Normal-volatility rate containers
+
+`SwOptionChain.compute_model_ivols_from_chain_data` accepts annuity-normalized swaption
+prices and returns absolute annualized Bachelier volatilities. Its nested arrays follow
+`[swap tenor][option expiry][strike]`; each strike vector must match the corresponding
+slice. Divide a currency present value by its initial swap annuity before calling it.
+The inversion uses a unit discount factor because that normalization already selects the
+annuity-measure expectation.
+
+`FutOptionChain.get_chain_vegas` returns one Bachelier-vega vector for every expiry, preserving
+ragged strike grids. Keep these normal-volatility rate containers separate from
+`OptionChain`'s Black implied-volatility convention and from pricers that already return
+normal volatilities. The [rate-pricer interface](software_design.md#the-pricer-interface)
+records that legacy exception to the ordinary price-returning interface.
 
 The alignment contract:
 
@@ -262,8 +285,9 @@ The [API reference](api.md) groups the stable and advanced names by the page tha
 - **Quadratic variance (QV).** The integrated variance $I_\tau$ of the log price.
 - **Variance swap.** A forward contract on realised variance; its fair strike is the expected QV
   divided by the maturity.
-- **Vol backbone.** An optional term structure of multiplicative scalings of $\theta$, indexed by
-  maturity, set by `LogSvParams.set_vol_backbone`.
+- **Vol backbone.** An optional term structure of price-diffusion loadings, indexed by maturity,
+  set by `LogSvParams.set_vol_backbone`. The loading multiplies the asset's volatility exposure;
+  it does not rescale the volatility process's mean level $\theta$.
 - **Vega weighting.** Weighting implied-volatility residuals by BSM vega in calibration.
 
 ## See also

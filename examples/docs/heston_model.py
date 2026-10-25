@@ -72,6 +72,23 @@ def logsv_smile(params: svm.LogSvParams, ttm: float) -> np.ndarray:
                                                 vol_scaler=pricer.set_vol_scaler(option_chain=chain))[0]
 
 
+def heston_model_example() -> tuple:
+    """Use the provisional path and transform adapter with constant variance."""
+    from stochvolmodels.models import PathModel, TransformModel
+    from stochvolmodels.models.heston import HestonModel
+
+    params = svm.HestonParams(v0=0.04, theta=0.04, kappa=2.0, rho=-0.5, volvol=0.0)
+    model = HestonModel(params)
+    assert isinstance(model, PathModel) and isinstance(model, TransformModel)
+    paths = model.simulate_paths(
+        measure="Q_MMA", observation_times=np.array([0.0, 0.125, 0.25]),
+        spot0=100.0, n_paths=64, steps_per_year=24, seed=7,
+    )
+    phi = np.array([0.0, -1.0, 1j], dtype=complex)
+    log_transform = model.log_mgf_grid(ttm=0.25, phi_grid=phi)
+    return paths, phi, log_transform
+
+
 class Locals(Enum):
     """Cases of this script; each asserts the numbers the page quotes."""
     SMILES_IN_RHO = 1
@@ -79,6 +96,7 @@ class Locals(Enum):
     STATIONARY_VOLATILITY = 3
     MATCHED_SMILES = 4
     BITCOIN_FIT = 5
+    MODEL_INTERFACE = 6
 
 
 def run_local(local: Locals) -> None:
@@ -128,6 +146,24 @@ def run_local(local: Locals) -> None:
         # the same at the money; the low-strike wing is higher under the log-normal SV model
         assert all(abs(g[6]) < 0.06 for g in gaps.values())
         np.testing.assert_allclose([gaps[1.0][0], gaps[2.0][0]], [0.47, 0.40], atol=0.01)
+
+    elif local == Locals.MODEL_INTERFACE:
+        paths, phi, log_transform = heston_model_example()
+        assert paths.assets.shape == (64, 3, 1)
+        assert paths.asset_ids == ("zero_drift_price",)
+        assert paths.sampling_measure == paths.target_measure == "Q_MMA"
+        assert not paths.assets.flags.writeable
+        np.testing.assert_allclose(paths.states["variance"], 0.04, rtol=0, atol=1e-15)
+        np.testing.assert_allclose(paths.states["sigma"], 0.2, rtol=0, atol=1e-15)
+        expected_qvar = np.broadcast_to(0.04 * paths.observation_times, (64, 3))
+        np.testing.assert_allclose(paths.states["quadratic_variance"], expected_qvar,
+                                   rtol=0, atol=1e-15)
+        np.testing.assert_allclose(np.log(paths.assets[:, :, 0] / 100.0),
+                                   paths.states["log_zero_drift_return"], atol=1e-15)
+        # Independent Gaussian log-return transform for constant variance.
+        np.testing.assert_allclose(log_transform, 0.5 * phi * (phi + 1.0) * 0.04 * 0.25,
+                                   rtol=0, atol=1e-15)
+        assert paths.provenance["interval_step_counts"] == (4, 4)
 
     elif local == Locals.BITCOIN_FIT:
         chain = get_btc_test_chain_data()

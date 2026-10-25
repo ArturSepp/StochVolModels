@@ -8,7 +8,6 @@ outside this boundary.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from enum import Enum
 from numbers import Integral, Real
@@ -43,7 +42,7 @@ def _finite_float(value: object, name: str) -> float:
     if isinstance(value, (bool, np.bool_)) or not isinstance(value, Real):
         raise ValueError(f"{name} must be a finite real number, not {type(value).__name__}")
     result = float(value)
-    if not math.isfinite(result):
+    if not np.isfinite(result):
         raise ValueError(f"{name} must be finite, got {value!r}")
     return result
 

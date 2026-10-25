@@ -238,7 +238,9 @@ after validation across additional model implementations:
 
 - `stochvolmodels.models.PathModel` and `TransformModel` describe independent dynamic
   capabilities. `stochvolmodels.models.logsv.LogSvModel` and
-  `stochvolmodels.models.tgarch.TgarchModel` are the first path implementations.
+  `stochvolmodels.models.tgarch.TgarchModel` provide paths;
+  `stochvolmodels.models.heston.HestonModel` provides both paths and a joint log-return /
+  integrated-variance transform, reusing the maintained Heston kernels.
 
 - `stochvolmodels.models.TerminalDistributionModel` and `TerminalSmileModel` describe
   one-maturity laws and smiles separately from path models. Implementations are
@@ -257,13 +259,25 @@ after validation across additional model implementations:
 
 Student-t and GMM validate the terminal boundary without being made into artificial path models.
 Root aliases and protocol stabilization are deferred until the same contracts have been exercised
-by another dynamic model.
+across the supported measures and pricing methods of the dynamic models.
 
 The deep modules `stochvolmodels.pricers.rough_logsv` and `stochvolmodels.pricers.factor_hjm` are
 experimental research surfaces that may evolve between minor releases; the second is explained in
 [Stochastic volatility for factor HJM rates](factor_hjm_stochastic_volatility.md). The removed
 `stochvolmodels.pricers.analytic.bsm` and `stochvolmodels.pricers.analytic.bachelier` paths are not
 compatibility facades in 2.0.
+
+### Heston path and transform adapter
+
+The [Heston model guide](heston_model.md) explains the provisional direct-module adapter,
+its named states and transform convention. It uses the same `HestonParams` type as the
+stable `HestonPricer`; path evolution, option-chain pricing and payoff valuation remain
+separate capabilities.
+
+```{eval-rst}
+.. autoclass:: stochvolmodels.models.heston.HestonModel
+   :members: params, log_mgf_grid, simulate_paths
+```
 
 ### OHLC volatility estimation
 
@@ -300,6 +314,9 @@ available from `stochvolmodels.fitters`; the OCA provenance adapter is optional.
 
 .. automodule:: stochvolmodels.fitters.adapters.oca_diagnostics
    :members: diagnostic_chain_from_oca
+
+.. automodule:: stochvolmodels.fitters.adapters.native_quotes
+   :members: diagnose_native_quotes, normalized_vanilla_price_bounds
 ```
 
 ### Local resource and output paths

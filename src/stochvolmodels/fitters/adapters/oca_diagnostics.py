@@ -1,7 +1,16 @@
-"""Optional OCA diagnostic inputs, preserving the legacy adapter return contract."""
+"""Convert OCA quotes and their quality evidence into SVM diagnostic inputs.
+
+Selection reuses the legacy point-in-time adapter, then applies the caller's
+explicit price-unit conversion and joins source-row provenance when supplied.
+The returned OptionChain and immutable DiagnosticReport retain maturity, quote,
+and timestamp alignment; quality flags never silently alter quote selection.
+OptionChainAnalytics remains optional and is imported only when an adapter runs.
+"""
+
+from __future__ import annotations
 
 from dataclasses import replace
-from typing import Mapping
+from typing import TYPE_CHECKING, Mapping
 
 import numpy as np
 import pandas as pd
@@ -10,9 +19,13 @@ from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.fitters.adapters.oca import option_chain_from_oca
 from stochvolmodels.fitters.diagnostics import DiagnosticReport
 
+if TYPE_CHECKING:
+    from option_chain_analytics import SlicesChain
+    from option_chain_analytics.diagnostics import QuoteDiagnosticReport
+
 
 def diagnostic_chain_from_oca(
-    chain: object,
+    chain: SlicesChain,
     *,
     price_conversion: str,
     price_unit: str,
@@ -20,8 +33,8 @@ def diagnostic_chain_from_oca(
     days_map: dict[str, int] | None = None,
     delta_bounds: tuple[float | None, float | None] = (-0.1, 0.1),
     is_filtered: bool = True,
-    quality_metadata: Mapping | None = None,
-    quality_report: object | None = None,
+    quality_metadata: Mapping[str, object] | None = None,
+    quality_report: QuoteDiagnosticReport | None = None,
 ) -> tuple[OptionChain, DiagnosticReport]:
     """Return an SVM chain and selected-quote provenance from a reconstructed OCA chain.
 
@@ -174,8 +187,15 @@ def diagnostic_chain_from_oca(
 
 
 def _attach_quality(
-    tables, quality, chain, source_time, requested_time, price_unit, is_filtered, delta_bounds
-):
+    tables: dict[str, pd.DataFrame],
+    quality: QuoteDiagnosticReport,
+    chain: SlicesChain,
+    source_time: pd.Timestamp,
+    requested_time: pd.Timestamp,
+    price_unit: str,
+    is_filtered: bool,
+    delta_bounds: tuple[float | None, float | None] | None,
+) -> dict[str, pd.DataFrame]:
     """Validate and join OCA sidecar evidence without changing quote selection."""
     from option_chain_analytics.diagnostics import QuoteDiagnosticReport
 
