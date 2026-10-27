@@ -99,7 +99,7 @@ test = [
     "pytest-regressions>=2.8.3",
 ]
 lint = [
-    "ruff==0.17.1",
+    "ruff==0.17.2",
     "interrogate==1.7.0",
 ]
 audit = [
