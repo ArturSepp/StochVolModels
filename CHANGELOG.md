@@ -2,6 +2,14 @@
 
 Entries start at 1.2.0. For earlier releases see the git log.
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed `OptionChain.get_chain_atm_vols()` for unsorted strike arrays by sorting paired
+  strikes and mid volatilities locally before interpolation. Stored quote order,
+  sorted-grid results and endpoint clamping are preserved (#46).
+
 ## [2.6.1.dev1] - 2026-10-25
 
 ### Added

@@ -1,3 +1,5 @@
+from itertools import permutations
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -59,6 +61,53 @@ def test_option_chain_dimensions_mid_vols_and_atm_interpolation() -> None:
     np.testing.assert_allclose(mid_vols[0], np.array([0.2, 0.4]), atol=1.0e-14)
     np.testing.assert_allclose(mid_vols[1], np.array([0.25, 0.35]), atol=1.0e-14)
     np.testing.assert_allclose(chain.get_chain_atm_vols(), np.array([0.3, 0.3]), atol=1.0e-14)
+
+
+@pytest.mark.parametrize("order", list(permutations(range(3))))
+@pytest.mark.parametrize(
+    ("forward", "expected"),
+    [(70.0, 0.3), (80.0, 0.3), (95.0, 0.225), (100.0, 0.2),
+     (110.0, 0.15), (120.0, 0.1), (130.0, 0.1)],
+)
+def test_option_chain_atm_vols_are_independent_of_strike_order(order, forward, expected) -> None:
+    indices = np.array(order)
+    strikes = np.array([80.0, 100.0, 120.0])[indices]
+    mid_vols = np.array([0.3, 0.2, 0.1])[indices]
+    chain = OptionChain(
+        ttms=np.array([1.0]), forwards=np.array([forward]),
+        strikes_ttms=List([strikes]),
+        optiontypes_ttms=List([np.where(strikes < forward, "P", "C")]),
+        ids=np.array(["synthetic"]),
+        bid_ivs=List([mid_vols - 0.01]), ask_ivs=List([mid_vols + 0.01]),
+    )
+
+    # Hand-computed values of the line through (80, .3), (100, .2), (120, .1),
+    # with endpoint clamping outside the strike range.
+    np.testing.assert_allclose(chain.get_chain_atm_vols(), [expected], rtol=0.0, atol=1e-15)
+
+
+def test_option_chain_atm_vols_handle_ragged_slices_without_mutating_quotes() -> None:
+    strikes = [np.array([110.0, 90.0]), np.array([100.0]), np.array([120.0, 80.0, 100.0])]
+    mid_vols = [np.array([0.1, 0.3]), np.array([0.25]), np.array([0.1, 0.3, 0.2])]
+    forwards = np.array([100.0, 105.0, 95.0])
+    prices = [np.arange(values.size, dtype=float) + 1.0 for values in strikes]
+    chain = OptionChain(
+        ttms=np.array([0.25, 0.5, 1.0]), forwards=forwards,
+        strikes_ttms=List(strikes),
+        optiontypes_ttms=List([np.where(k < f, "P", "C") for k, f in zip(strikes, forwards)]),
+        ids=np.array(["2-quotes", "1-quote", "3-quotes"]),
+        bid_ivs=List([v - 0.01 for v in mid_vols]),
+        ask_ivs=List([v + 0.01 for v in mid_vols]),
+        bid_prices=List(prices), ask_prices=List([p + 0.1 for p in prices]),
+    )
+    names = ("strikes_ttms", "optiontypes_ttms", "bid_ivs", "ask_ivs", "bid_prices", "ask_prices")
+    before = {name: [values.copy() for values in getattr(chain, name)] for name in names}
+
+    np.testing.assert_allclose(chain.get_chain_atm_vols(), [0.2, 0.25, 0.225],
+                               rtol=0.0, atol=1e-15)
+    for name, snapshots in before.items():
+        for original, current in zip(snapshots, getattr(chain, name)):
+            np.testing.assert_array_equal(current, original)
 
 
 def test_option_chain_skew_interpolates_put_and_call_wings_separately() -> None:

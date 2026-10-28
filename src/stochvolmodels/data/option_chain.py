@@ -279,10 +279,17 @@ class OptionChain:
         return vegas_ttms
 
     def get_chain_atm_vols(self) -> np.ndarray:
-        """at-the-money volatility of each slice, interpolated to the forward."""
+        """Interpolate each slice's mid volatility to its forward.
+
+        Strike/volatility pairs are sorted locally, preserving the stored quote order.
+        Outside the quoted strike range, return the nearest endpoint volatility.
+        """
         atm_vols = np.zeros(len(self.ttms))
-        for idx, (forward, strikes_ttm, y) in enumerate(zip(self.forwards, self.strikes_ttms, self.get_mid_vols())):
-            atm_vols[idx] = np.interp(x=forward, xp=strikes_ttm, fp=y)
+        for idx, (forward, strikes_ttm, y) in enumerate(
+            zip(self.forwards, self.strikes_ttms, self.get_mid_vols())
+        ):
+            order = np.argsort(strikes_ttm, kind="stable")
+            atm_vols[idx] = np.interp(x=forward, xp=np.asarray(strikes_ttm)[order], fp=y[order])
         return atm_vols
 
     def get_chain_skews(self, delta: float = 0.25) -> np.ndarray:
