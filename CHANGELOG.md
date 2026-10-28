@@ -19,6 +19,8 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Fixed
 
+- Added the required `Locals` annotation to the IL figure runner dispatcher so the
+  repository layout contract passes in source and minimum-dependency CI jobs.
 - Fixed `OptionChain.get_chain_atm_vols()` for unsorted strike arrays by sorting paired
   strikes and mid volatilities locally before interpolation. Stored quote order,
   sorted-grid results and endpoint clamping are preserved (#46).

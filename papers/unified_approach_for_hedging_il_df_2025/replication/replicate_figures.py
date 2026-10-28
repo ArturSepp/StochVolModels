@@ -236,7 +236,7 @@ class Locals(Enum):
     LOGSV = "logsv"
 
 
-def run_local(local=Locals.ALL, output=None, skip_logsv=False):
+def run_local(local: Locals = Locals.ALL, output=None, skip_logsv=False):
     """Generate selected figures and record numerical inputs/dependency versions."""
     if output is None:
         from stochvolmodels import local_path
