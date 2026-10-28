@@ -194,7 +194,7 @@ def produce_cross_asset_calibrations(name: str, spec: dict, output_dir: Path) ->
         ax.set_title("Fitted parameters", color="darkblue")
         ax.legend(loc="lower right", fontsize=9)
     save(fig, output_dir, name)
-    module = importlib.import_module("papers.logsv_model_with_quadratic_drift.calibrations")
+    module = importlib.import_module("papers.logsv_model_with_quadratic_drift_ijtaf_2023.calibrations")
     recorded = {asset.value: params for asset, params in module.CALIBRATED_PARAMS.items()}
     keys = {"S&P 500 (SPY)": "S&P500", "Gold (GLD)": "Gold", "Bitcoin": "Bitcoin",
             "-3x Nasdaq (SQQQ)": "-3x Nasdaq", "VIX": "Vix"}

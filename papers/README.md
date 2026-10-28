@@ -1,5 +1,10 @@
 # papers
 
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-07-21](https://github.com/ArturSepp/StochVolModels/commit/f1bfd0c2e25404feb7fd8dba2cc8ee81064ccb6f)*
+
+Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
+Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
+
 Code accompanying published papers and active long-form research. Ten directories contain
 figure or calibration workflows; `jump_risk_premia_clustered_jumps/` is explicitly
 retained as development code rather than an exact replication package. Nothing here is imported
@@ -14,7 +19,7 @@ by `stochvolmodels`: the dependency runs one way, `papers` uses the package.
 pip install stochvolmodels[research]
 ```
 
-The established paper workflows commonly import `qis`. Only `il_hedging` and `sv_for_factor_hjm`
+The established paper workflows commonly import `qis`. Only `unified_approach_for_hedging_il_df_2025` and `sv_for_factor_hjm_rdr_2025`
 run without it.
 
 The `research` extra installs OptionChainAnalytics. One further package is not covered by an
@@ -27,20 +32,22 @@ pip install "option-chain-analytics[cboe]>=5.2.0" # local CBOE provider workflow
 ```
 
 The base `option-chain-analytics` package from `[research]` is needed by option-chain workflows in
-`risk_premia_gmm/`, `logsv_model_with_quadratic_drift/`, and
+`risk_premia_gmm/`, `logsv_model_with_quadratic_drift_ijtaf_2023/`, and
 `jump_risk_premia_clustered_jumps/`.
 ## Papers
 
-Two directories carry the article and its LaTeX source under `paper/`, so the equations the
+The IJTAF and RDR directories carry the article and its LaTeX source under `paper/`, so the equations the
 docstrings cite can be read without leaving the repository. Read equation references against the
 PDF: for both papers the source numbers equations differently, and each `paper/README.md` says how.
+The Digital Finance IL folder also carries a corrected author manuscript, its original figure
+assets and independent theoretical replication; its correction notes use the author-draft equation numbers.
 
 | Directory | Entry point | Paper |
 |---|---|---|
-| `logsv_model_with_quadratic_drift` | `article_figures.py` | Log-normal Stochastic Volatility Model with Quadratic Drift, *IJTAF* 26(8), 2450003 — [`paper/`](logsv_model_with_quadratic_drift/paper) · [publisher](https://doi.org/10.1142/S0219024924500031) · [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2522425) |
-| `sv_for_factor_hjm` | `calibration_fig_5_6_7.py`, `calibration_fig_8_9.py` | Stochastic volatility for factor Heath-Jarrow-Morton framework, *Review of Derivatives Research* 28:12 — [`paper/`](sv_for_factor_hjm/paper) · [publisher](https://doi.org/10.1007/s11147-025-09217-4) · [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4646925) |
+| `logsv_model_with_quadratic_drift_ijtaf_2023` | `article_figures.py` | Log-normal Stochastic Volatility Model with Quadratic Drift, *IJTAF* 26(8), 2450003 — [`paper/`](logsv_model_with_quadratic_drift_ijtaf_2023/paper) · [publisher](https://doi.org/10.1142/S0219024924500031) · [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2522425) |
+| `sv_for_factor_hjm_rdr_2025` | `calibration_fig_5_6_7.py`, `calibration_fig_8_9.py` | Stochastic volatility for factor Heath-Jarrow-Morton framework, *Review of Derivatives Research* 28:12 — [`paper/`](sv_for_factor_hjm_rdr_2025/paper) · [publisher](https://doi.org/10.1007/s11147-025-09217-4) · [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4646925) |
 | `volatility_models` | `article_figures.py` | What Is a Robust Stochastic Volatility Model — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027) |
-| `il_hedging` | `run_logsv_for_il_payoff.py` | Unified Approach for Hedging Impermanent Loss of Liquidity Provision — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4887298) |
+| `unified_approach_for_hedging_il_df_2025` | `run_logsv_for_il_payoff.py` | Unified Approach for Hedging Impermanent Loss of Liquidity Provision — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4887298) |
 | `inverse_options` | `compare_net_delta.py` | Valuation and Hedging of Cryptocurrency Inverse Options — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4606748) |
 | `jump_risk_premia_clustered_jumps` | `hawkes_estimator.py`, `risk_premia_calibration.py` | **Development code (not exact replication):** Jump risk premia in the presence of clustered jumps — [SSRN](https://ssrn.com/abstract=4735365) · [arXiv](https://arxiv.org/abs/2510.21297) |
 | `risk_premia_gmm` | `gmm_slides.py` | Exploratory Gaussian-mixture risk-premia analysis; no publication mapping is asserted |

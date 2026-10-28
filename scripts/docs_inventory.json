@@ -321,7 +321,7 @@
       "venue": "International Journal of Theoretical and Applied Finance 26(8), 2450003",
       "doi": "10.1142/S0219024924500031",
       "status": "published; open access under CC BY 4.0; volume year 2023, published online 28 February 2024",
-      "source": "papers/logsv_model_with_quadratic_drift/paper",
+      "source": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/paper",
       "retired_strings": [
         "Rakhmonov (2024)",
         "Rakhmonov, P. (2024)"
@@ -334,7 +334,7 @@
       "venue": "Review of Derivatives Research 28, article 12",
       "doi": "10.1007/s11147-025-09217-4",
       "status": "published; exclusive licence to Springer Science+Business Media; figures are regenerated from repository code, never reproduced from the PDF",
-      "source": "papers/sv_for_factor_hjm/paper",
+      "source": "papers/sv_for_factor_hjm_rdr_2025/paper",
       "retired_strings": [
         "28(3)"
       ]
@@ -360,8 +360,9 @@
       "authors": "Lipton, A., Lucic, V. and Sepp, A.",
       "year": "2025",
       "venue": "Digital Finance 7(3), 429-477",
-      "status": "published; title, author order, volume, issue and pages verified against Crossref on 2026-09-27; preprint SSRN 4887298 (DOI 10.2139/ssrn.4887298); papers/il_hedging/README.md lists the authors in another order",
+      "status": "published; title, author order, volume, issue and pages verified against Crossref on 2026-09-27; preprint SSRN 4887298 (DOI 10.2139/ssrn.4887298); corrected author manuscript and theoretical replication are in papers/unified_approach_for_hedging_il_df_2025",
       "doi": "10.1007/s42521-025-00144-5",
+      "source": "papers/unified_approach_for_hedging_il_df_2025/paper",
       "retired_strings": [
         "Sepp, A., Lipton, A. and Lucic, V."
       ]

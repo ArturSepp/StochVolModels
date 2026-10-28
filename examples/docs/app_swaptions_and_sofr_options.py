@@ -3,7 +3,7 @@
 Every Python block on that page is a verbatim excerpt of this file, and every number the page
 quotes is asserted here. The Nelson-Siegel HJM model with a log-normal stochastic volatility driver
 of Sepp and Rakhmonov (2025) is evaluated on the USD swaption surface and the 3M SOFR options
-hard-coded in ``papers/sv_for_factor_hjm``, with the parameters those modules record. The Monte
+hard-coded in ``papers/sv_for_factor_hjm_rdr_2025``, with the parameters those modules record. The Monte
 Carlo cases take minutes and are listed in ``SLOW_CASES``. ``stochvolmodels.pricers.factor_hjm`` is
 an experimental research surface. Select a case in ``Locals`` or run the file to execute every case.
 """
@@ -26,8 +26,8 @@ from stochvolmodels.utils.rate_core import (generate_ttms_grid, get_default_swap
 # the market data are hard-coded in the paper's modules, which live in the repository, not the
 # package; put the repository root on the path so that they import from a checkout
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from papers.sv_for_factor_hjm import calibration_fig_5_6_7 as swaption_module  # noqa: E402
-from papers.sv_for_factor_hjm import calibration_fig_8_9 as sofr_module  # noqa: E402
+from papers.sv_for_factor_hjm_rdr_2025 import calibration_fig_5_6_7 as swaption_module  # noqa: E402
+from papers.sv_for_factor_hjm_rdr_2025 import calibration_fig_8_9 as sofr_module  # noqa: E402
 
 SLOW_CASES = ("SWAPTION_FIT", "SWAPTION_MONTE_CARLO", "SHOCK_SCENARIOS")
 EXPIRY_IDS = ["1y", "2y", "3y", "5y"]

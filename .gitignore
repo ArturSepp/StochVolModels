@@ -140,3 +140,5 @@ dmypy.json
 /src/stochvolmodels/pde_solvers/
 /papers/sv_for_factor_hjm/.private
 /papers/rough_volterra_lognormal_sv_model_2026
+/papers/il_hedging/agents
+/papers/sv_for_factor_hjm_rdr_2025/.private

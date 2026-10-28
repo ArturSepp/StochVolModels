@@ -250,7 +250,7 @@ The `CALIBRATE` case repeats the calibration and asserts that it reproduces `FIT
 in `SLOW_CASES` and runs in the slow test lane. The other cases take seconds.
 
 The paper's figures come from
-[`papers/logsv_model_with_quadratic_drift/article_figures.py`](https://github.com/ArturSepp/StochVolModels/blob/main/papers/logsv_model_with_quadratic_drift/article_figures.py).
+[`papers/logsv_model_with_quadratic_drift_ijtaf_2023/article_figures.py`](https://github.com/ArturSepp/StochVolModels/blob/main/papers/logsv_model_with_quadratic_drift_ijtaf_2023/article_figures.py).
 Fig. 7 reads a local file of weekly calibration results, and Figs. 8 and 9 load a Deribit chain
 from local Tardis data through the `research` extra; neither input is distributed. The paper
 directories and their prerequisites are described in

@@ -3,7 +3,7 @@
 Every Python block on that page is a verbatim excerpt of this file, and every number the page
 quotes is asserted here. The impermanent loss of a concentrated-liquidity position is replicated by
 European payoffs and valued with the log-normal SV transform, following the module
-``papers/il_hedging/run_logsv_for_il_payoff.py`` that accompanies Lipton, Lucic and Sepp (2025).
+``papers/unified_approach_for_hedging_il_df_2025/replication/run_logsv_for_il_payoff.py`` that accompanies Lipton, Lucic and Sepp (2025).
 Select a case in ``Locals`` or run the file to execute every case.
 """
 from enum import Enum

@@ -19,7 +19,7 @@ Equity-index options price a skew in which puts are dearer than calls; options o
 on leveraged-short exchange-traded funds price the opposite. This case study evaluates one
 parameterisation of the log-normal stochastic volatility (SV) model with quadratic drift on option
 chains of five underlyings bundled with the package, using the parameters recorded in the module
-`papers/logsv_model_with_quadratic_drift/calibrations.py`. It is an illustration of the package on
+`papers/logsv_model_with_quadratic_drift_ijtaf_2023/calibrations.py`. It is an illustration of the package on
 dated historical snapshots, not the replication of a published result: the published article
 calibrates the model to Bitcoin options only (see the
 [Bitcoin case study](app_bitcoin_options.md)).

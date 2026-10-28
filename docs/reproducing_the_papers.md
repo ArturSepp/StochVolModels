@@ -26,10 +26,10 @@ papers are cited as such.
 
 | Paper | Status | In the repository | Documentation pages |
 |---|---|---|---|
-| Sepp and Rakhmonov (2023), Log-normal stochastic volatility model with quadratic drift, *International Journal of Theoretical and Applied Finance* 26(8), 2450003, [DOI 10.1142/S0219024924500031](https://doi.org/10.1142/S0219024924500031) | Published, open access (CC BY 4.0) | PDF and LaTeX in `papers/logsv_model_with_quadratic_drift/paper/`; figure code in that directory | [Log-normal SV model](logsv_model.md), [steady state and moments](volatility_distribution_and_moments.md), [martingale conditions](martingale_conditions_and_skews.md), [affine expansion](affine_expansion.md), [Fourier pricing](european_option_pricing.md), [inverse options](inverse_options.md), [QV options](quadratic_variance_options.md), [Monte Carlo schemes](monte_carlo_simulation.md), [analytic versus Monte Carlo](analytic_vs_monte_carlo.md), [calibration](calibration.md), [Bitcoin options](app_bitcoin_options.md) |
-| Sepp and Rakhmonov (2025), Stochastic volatility for factor Heath-Jarrow-Morton framework, *Review of Derivatives Research* 28, article 12, [DOI 10.1007/s11147-025-09217-4](https://doi.org/10.1007/s11147-025-09217-4) | Published, exclusive licence to Springer | PDF and LaTeX in `papers/sv_for_factor_hjm/paper/`; figure code in that directory | [Factor HJM rates](factor_hjm_stochastic_volatility.md), [USD swaptions and SOFR options](app_swaptions_and_sofr_options.md) |
+| Sepp and Rakhmonov (2023), Log-normal stochastic volatility model with quadratic drift, *International Journal of Theoretical and Applied Finance* 26(8), 2450003, [DOI 10.1142/S0219024924500031](https://doi.org/10.1142/S0219024924500031) | Published, open access (CC BY 4.0) | PDF and LaTeX in `papers/logsv_model_with_quadratic_drift_ijtaf_2023/paper/`; figure code in that directory | [Log-normal SV model](logsv_model.md), [steady state and moments](volatility_distribution_and_moments.md), [martingale conditions](martingale_conditions_and_skews.md), [affine expansion](affine_expansion.md), [Fourier pricing](european_option_pricing.md), [inverse options](inverse_options.md), [QV options](quadratic_variance_options.md), [Monte Carlo schemes](monte_carlo_simulation.md), [analytic versus Monte Carlo](analytic_vs_monte_carlo.md), [calibration](calibration.md), [Bitcoin options](app_bitcoin_options.md) |
+| Sepp and Rakhmonov (2025), Stochastic volatility for factor Heath-Jarrow-Morton framework, *Review of Derivatives Research* 28, article 12, [DOI 10.1007/s11147-025-09217-4](https://doi.org/10.1007/s11147-025-09217-4) | Published, exclusive licence to Springer | PDF and LaTeX in `papers/sv_for_factor_hjm_rdr_2025/paper/`; figure code in that directory | [Factor HJM rates](factor_hjm_stochastic_volatility.md), [USD swaptions and SOFR options](app_swaptions_and_sofr_options.md) |
 | Lucic and Sepp (2024), Valuation and hedging of cryptocurrency inverse options, *Quantitative Finance* 24(7), 851-869, [DOI 10.1080/14697688.2024.2364804](https://doi.org/10.1080/14697688.2024.2364804) | Published | Code in `papers/inverse_options/` | [Inverse options](inverse_options.md) |
-| Lipton, Lucic and Sepp (2025), Unified approach for hedging impermanent loss of liquidity provision, *Digital Finance* 7(3), 429-477, [DOI 10.1007/s42521-025-00144-5](https://doi.org/10.1007/s42521-025-00144-5) | Published | Code in `papers/il_hedging/` | [Impermanent loss hedging](app_impermanent_loss_hedging.md) |
+| Lipton, Lucic and Sepp (2025), Unified approach for hedging impermanent loss of liquidity provision, *Digital Finance* 7(3), 429-477, [DOI 10.1007/s42521-025-00144-5](https://doi.org/10.1007/s42521-025-00144-5) | Published | Code in `papers/unified_approach_for_hedging_il_df_2025/` | [Impermanent loss hedging](app_impermanent_loss_hedging.md) |
 | Liu, Packham and Sepp (2025), Jump risk premia in the presence of clustered jumps, arXiv 2510.21297, first posted on SSRN (4735365) in 2024, [DOI 10.48550/arXiv.2510.21297](https://doi.org/10.48550/arXiv.2510.21297) | Working paper | Development code in `papers/jump_risk_premia_clustered_jumps/` | [Clustered jumps](hawkes_jump_diffusion.md) |
 | Sepp and Rakhmonov (2023), What is a robust stochastic volatility model, SSRN 4647027, [DOI 10.2139/ssrn.4647027](https://doi.org/10.2139/ssrn.4647027) | Working paper; text not in the repository | Code and recorded parameters in `papers/volatility_models/` | [Robust SV models](app_robust_volatility_models.md) |
 
@@ -75,7 +75,7 @@ python -m scripts.docs_analytics.run --verify
 canonical script, which runs offline, for example `python examples/docs/app_swaptions_and_sofr_options.py`;
 the [examples page](examples.md) lists them all. The narrow offline test lane of the IJTAF results
 runs with `pytest -m paper_replication`. The paper directories' own entry points run from the
-repository root, for example `python -m papers.logsv_model_with_quadratic_drift.article_figures`;
+repository root, for example `python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.article_figures`;
 read `papers/README.md` and the README of the directory first.
 
 ## Reproducibility record
@@ -95,9 +95,9 @@ new dataset; validate market conventions and residuals separately.
 
 | Directory | Classification | Inputs |
 |---|---|---|
-| `logsv_model_with_quadratic_drift` | principal published-paper implementation with article source and PDF | generated model grids, bundled option chains, and documented local option data for the time-series calibrations |
-| `sv_for_factor_hjm` | published-paper implementation of an experimental package surface | hard-coded swaption and SOFR option data; online US Treasury data for Fig. 4 |
-| `inverse_options`, `il_hedging` | code of published papers | generated inputs |
+| `logsv_model_with_quadratic_drift_ijtaf_2023` | principal published-paper implementation with article source and PDF | generated model grids, bundled option chains, and documented local option data for the time-series calibrations |
+| `sv_for_factor_hjm_rdr_2025` | published-paper implementation of an experimental package surface | hard-coded swaption and SOFR option data; online US Treasury data for Fig. 4 |
+| `inverse_options`, `unified_approach_for_hedging_il_df_2025` | code of published papers | generated inputs |
 | `volatility_models` | code of a working paper, with recorded parameters | public volatility indices and private Bitcoin data, downloaded or local |
 | `jump_risk_premia_clustered_jumps` | development code related to a working paper, not an exact replication | local cryptocurrency data and optional research dependencies |
 | `risk_premia_gmm`, `t_distribution`, `forward_var`, `barriers` | exploratory, no publication mapping asserted; not cited on this site | generated and local research inputs, depending on the script |
@@ -110,13 +110,13 @@ synthetic option-chain examples, package tests, and built documentation are the 
 These are recorded in the documentation audits and have not been changed; the pages that use the
 code say how they work around them.
 
-- **`logsv_model_with_quadratic_drift`.** `article_figures.py` draws Figs. 6 and 10 through `qis`.
+- **`logsv_model_with_quadratic_drift_ijtaf_2023`.** `article_figures.py` draws Figs. 6 and 10 through `qis`.
   In `steady_state_pdf.py`, `vol_moment` inverts the scale factor, so absolute moments are wrong;
   Fig. 1, which shows skewness and kurtosis, is not affected. The docstring of `calibrations.py`
   refers to figures and a table that the published article does not contain; the
   [skews case study](app_positive_and_negative_skews.md) uses its recorded parameters as a package
   illustration.
-- **`sv_for_factor_hjm`.** The recorded parameters differ from Tables 1 and 3 of the article, and
+- **`sv_for_factor_hjm_rdr_2025`.** The recorded parameters differ from Tables 1 and 3 of the article, and
   some expiries and path counts differ from its text; the
   [case study](app_swaptions_and_sofr_options.md) sets both out. `plot_mkt_model_joint_smile_MF`
   calls `np.in1d`, which NumPy has removed, and `plot_mkt_model_joint_fut_smile_MF` fails with
@@ -127,7 +127,9 @@ code say how they work around them.
   pandas frequency that pandas 3 rejects.
 - **`inverse_options`.** `compare_net_delta.py` imports `qis`, and its output could not be matched
   to a numbered figure of the article.
-- **`il_hedging`.** The README lists the authors in another order than the published article.
+- **`unified_approach_for_hedging_il_df_2025`.** The corrected author manuscript and theoretical
+  replication include independent payoff, quadrature and delta checks. See the paper README for
+  their scope; these checks do not revalidate historical empirical results.
 - **`jump_risk_premia_clustered_jumps`.** Most scripts need Tardis or Deribit data and `qis`;
   `hawkes_estimator.py` uses `beta1_m` where the negative intensity needs `beta2_m`.
 

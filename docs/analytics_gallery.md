@@ -74,7 +74,7 @@ The registry is
 | Class | Paper replication, IJTAF Fig. 1 |
 | Parameters | $\theta = 1$, $\vartheta = 1.5$; density for $\kappa_1 = 4$ and $\kappa_2 = 0, 4, 8$; skewness and kurtosis for $\kappa_1 = 1, 4, 8$ |
 | Result | Excess kurtosis of returns 28.5, 2.05 and 1.26 for $\kappa_2 = 0, 4, 8$ with $\kappa_1 = 4$ |
-| Paper module | `papers/logsv_model_with_quadratic_drift/steady_state_pdf.py` |
+| Paper module | `papers/logsv_model_with_quadratic_drift_ijtaf_2023/steady_state_pdf.py` |
 | Producer | `scripts/docs_analytics/logsv_model.py`, `produce_steady_state_density` |
 | Article | [Steady-state distribution, moments and expected QV](volatility_distribution_and_moments.md) |
 
@@ -88,7 +88,7 @@ The registry is
 | Class | Paper replication, IJTAF Fig. 2 |
 | Parameters | $\sigma_0 = 1.5$, $\theta = 1$, $\kappa_1 = \kappa_2 = 4$, $\vartheta = 1$; 100,000 paths, seed 37 |
 | Result | At long horizons, order eight matches the stationary moments within 0.2%, order four within 6% |
-| Paper module | `papers/logsv_model_with_quadratic_drift/moments_vol_qvar.py` |
+| Paper module | `papers/logsv_model_with_quadratic_drift_ijtaf_2023/moments_vol_qvar.py` |
 | Producer | `scripts/docs_analytics/logsv_model.py`, `produce_vol_moments_vs_mc` |
 | Article | [Steady-state distribution, moments and expected QV](volatility_distribution_and_moments.md) |
 
@@ -102,7 +102,7 @@ The registry is
 | Class | Paper replication, IJTAF Fig. 3 |
 | Parameters | $\kappa_1 = 4$, $\kappa_2 = 0, 4, 8$, $\theta = 1$, $\vartheta = 1.5$, $\sigma_0 = 1.5$ and 0.5; 25,000 paths (the paper used 100,000), seed 37 |
 | Result | From $\sigma_0 = 1.5$, the two-year expected QV is 1.55, 1.07 and 1.02 for $\kappa_2 = 0, 4, 8$ |
-| Paper module | `papers/logsv_model_with_quadratic_drift/moments_vol_qvar.py` |
+| Paper module | `papers/logsv_model_with_quadratic_drift_ijtaf_2023/moments_vol_qvar.py` |
 | Producer | `scripts/docs_analytics/logsv_model.py`, `produce_expected_qvar_vs_mc` |
 | Article | [Steady-state distribution, moments and expected QV](volatility_distribution_and_moments.md) |
 
@@ -146,7 +146,7 @@ The registry is
 | Class | Paper replication, IJTAF Fig. 4 |
 | Parameters | $\Phi = -0.5 + 2i$, MMA measure; $\sigma_0 = 0.8327$, $\theta = 1.0139$, $\kappa_1 = 4.8606$, $\kappa_2 = 4.7938$, $\beta = 0.1985$, $\varepsilon = 2.369$, those of the paper's figure code (the caption cites Eq. (6.4)) |
 | Result | $A^{(0)}(1) = -1.8986 + 0.1060i$ and $E^{[1]}(1) = 0.1593 + 0.0163i$ |
-| Paper module | `papers/logsv_model_with_quadratic_drift/ode_sol_in_time.py` |
+| Paper module | `papers/logsv_model_with_quadratic_drift_ijtaf_2023/ode_sol_in_time.py` |
 | Producer | `scripts/docs_analytics/transforms.py`, `produce_expansion_odes` |
 | Article | [The moment generating function and its affine expansion](affine_expansion.md) |
 
@@ -160,7 +160,7 @@ The registry is
 | Class | Paper replication, IJTAF Fig. 5 |
 | Parameters | As for Fig. 4 |
 | Result | $A^{(2)}$, $A^{(3)}$ and $A^{(4)}$ stay below $10^{-4}$ at one year; $E^{[2]}(1) = 0.1589 + 0.0162i$ |
-| Paper module | `papers/logsv_model_with_quadratic_drift/ode_sol_in_time.py` |
+| Paper module | `papers/logsv_model_with_quadratic_drift_ijtaf_2023/ode_sol_in_time.py` |
 | Producer | `scripts/docs_analytics/transforms.py`, `produce_expansion_odes` |
 | Article | [The moment generating function and its affine expansion](affine_expansion.md) |
 
@@ -402,7 +402,7 @@ The registry is
 |---|---|
 | Question | Does one parameterisation fit equity, VIX, gold and inverse-ETF skews? |
 | Class | Historical snapshots: SPY, GLD, SQQQ and VIX of 15 July 2022; Bitcoin of 21 October 2021 |
-| Parameters | `FITTED` of the canonical script, recorded in `papers/logsv_model_with_quadratic_drift/calibrations.py`; the two-month maturity |
+| Parameters | `FITTED` of the canonical script, recorded in `papers/logsv_model_with_quadratic_drift_ijtaf_2023/calibrations.py`; the two-month maturity |
 | Result | $\beta$ negative for SPY only; every fit satisfies $\kappa_2 \ge 2 \beta$ |
 | Script | [`examples/docs/app_positive_and_negative_skews.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/app_positive_and_negative_skews.py) |
 | Producer | `scripts/docs_analytics/calibration.py`, `produce_cross_asset_calibrations` |
@@ -415,7 +415,7 @@ The registry is
 | | |
 |---|---|
 | Question | Does one set of parameters per expiry fit the swaption smiles of three tenors? |
-| Class | Paper replication, RDR Fig. 5, regenerated from `papers/sv_for_factor_hjm/calibration_fig_5_6_7.py` with the module's parameters, which differ from the published tables |
+| Class | Paper replication, RDR Fig. 5, regenerated from `papers/sv_for_factor_hjm_rdr_2025/calibration_fig_5_6_7.py` with the module's parameters, which differ from the published tables |
 | Parameters | USD swaptions of 18 August 2023, expiries 1y to 5y, tenors 2y, 5y, 10y; first-order expansion |
 | Result | Root-mean-square error 1.15, 0.48 and 0.70 bp by tenor; 2.29, 1.38 and 1.95 bp with Table 1 |
 | Script | [`examples/docs/app_swaptions_and_sofr_options.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/app_swaptions_and_sofr_options.py) |
@@ -429,7 +429,7 @@ The registry is
 | | |
 |---|---|
 | Question | Is the first-order expansion accurate against Monte Carlo at the 5y expiry? |
-| Class | Paper replication, RDR Fig. 6, regenerated from `papers/sv_for_factor_hjm/calibration_fig_5_6_7.py` with the module's parameters, which differ from the published tables |
+| Class | Paper replication, RDR Fig. 6, regenerated from `papers/sv_for_factor_hjm_rdr_2025/calibration_fig_5_6_7.py` with the module's parameters, which differ from the published tables |
 | Parameters | 5y expiry; 200,000 paths in 20 batches, seeds 1 to 20 |
 | Result | Inside the 95% interval at 19, 15 and 0 of 21 strikes; 0.55 to 1.46 bp above it for the 10y tenor |
 | Script | [`examples/docs/app_swaptions_and_sofr_options.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/app_swaptions_and_sofr_options.py) |
@@ -443,7 +443,7 @@ The registry is
 | | |
 |---|---|
 | Question | Does the first-order expansion stay accurate under the parameter shocks of Table 2? |
-| Class | Paper replication, RDR Fig. 7, regenerated from `papers/sv_for_factor_hjm/calibration_fig_5_6_7.py` with the module's parameters, which differ from the published tables |
+| Class | Paper replication, RDR Fig. 7, regenerated from `papers/sv_for_factor_hjm_rdr_2025/calibration_fig_5_6_7.py` with the module's parameters, which differ from the published tables |
 | Parameters | The four scenarios of Table 2; 2y expiry; 200,000 paths per scenario |
 | Result | All 63 strikes inside for the base and level-shifted scenarios; 9 to 11 and 7 to 9 of 21 per tenor with vol-of-vol times 4 and betas times $-2$ |
 | Script | [`examples/docs/app_swaptions_and_sofr_options.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/app_swaptions_and_sofr_options.py) |
@@ -457,7 +457,7 @@ The registry is
 | | |
 |---|---|
 | Question | Does the model fit the smiles of short-dated SOFR futures options? |
-| Class | Paper replication, RDR Fig. 8, regenerated from `papers/sv_for_factor_hjm/calibration_fig_8_9.py` with the module's parameters, which differ from the published tables |
+| Class | Paper replication, RDR Fig. 8, regenerated from `papers/sv_for_factor_hjm_rdr_2025/calibration_fig_8_9.py` with the module's parameters, which differ from the published tables |
 | Parameters | 3M SOFR options at 75 and 103 days, SABR refit at five deltas; first-order expansion |
 | Result | Root-mean-square error 0.03 and 0.48 bp against the refit, inside one tick at every strike; 18.84 and 12.33 bp with Table 3 |
 | Script | [`examples/docs/app_swaptions_and_sofr_options.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/app_swaptions_and_sofr_options.py) |
@@ -471,7 +471,7 @@ The registry is
 | | |
 |---|---|
 | Question | Are the first- and second-order expansions accurate against Monte Carlo for SOFR options? |
-| Class | Paper replication, RDR Fig. 9, regenerated from `papers/sv_for_factor_hjm/calibration_fig_8_9.py` with the module's parameters, which differ from the published tables |
+| Class | Paper replication, RDR Fig. 9, regenerated from `papers/sv_for_factor_hjm_rdr_2025/calibration_fig_8_9.py` with the module's parameters, which differ from the published tables |
 | Parameters | $2^{17}$ paths, seed 20; strikes re-centred on the model futures rate |
 | Result | At 75 days both orders inside at 21 of 21 strikes; at 103 days 15 and 21 of 21 |
 | Script | [`examples/docs/app_swaptions_and_sofr_options.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/app_swaptions_and_sofr_options.py) |
@@ -486,7 +486,7 @@ The registry is
 |---|---|
 | Question | Do European payoffs replicate the impermanent loss, and how does its value depend on vol-of-vol? |
 | Class | Synthetic teaching exhibit |
-| Parameters | `PARAMS` of the canonical script, the example of `papers/il_hedging/run_logsv_for_il_payoff.py`: range 2,000 to 2,400 around 2,200, ten days |
+| Parameters | `PARAMS` of the canonical script, the example of `papers/unified_approach_for_hedging_il_df_2025/replication/run_logsv_for_il_payoff.py`: range 2,000 to 2,400 around 2,200, ten days |
 | Result | Replication exact to $10^{-12}$; expected loss 1.650% of the position at $\varepsilon = 1$ and 1.786% at $\varepsilon = 4$ |
 | Script | [`examples/docs/app_impermanent_loss_hedging.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/app_impermanent_loss_hedging.py) |
 | Producer | `scripts/docs_analytics/applications.py`, `produce_il_replication` |

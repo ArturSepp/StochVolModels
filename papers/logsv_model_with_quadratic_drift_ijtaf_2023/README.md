@@ -18,6 +18,6 @@ Figures in the paper are generated using unittests in
 ```python 
 article_figures.py
 ```
-https://github.com/ArturSepp/StochVolModels/blob/main/papers/logsv_model_with_quadratic_drift/article_figures.py
+https://github.com/ArturSepp/StochVolModels/blob/main/papers/logsv_model_with_quadratic_drift_ijtaf_2023/article_figures.py
 
 See the description of data and analysis in the paper.

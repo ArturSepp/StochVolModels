@@ -11,6 +11,6 @@ Figures in the paper are generated using unittests in
 calibration_fig_5_6_7.py
 calibration_fig_8_9.py
 ```
-https://github.com/ArturSepp/StochVolModels/tree/main/papers/sv_for_factor_hjm
+https://github.com/ArturSepp/StochVolModels/tree/main/papers/sv_for_factor_hjm_rdr_2025
 
 See the description of data and analysis in the paper.

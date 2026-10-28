@@ -34,7 +34,7 @@ digital options, all European and all priced from the moment generating function
 
 ## Study design and data
 
-The example is that of `papers/il_hedging/run_logsv_for_il_payoff.py`: an initial and forward
+The example is that of `papers/unified_approach_for_hedging_il_df_2025/replication/run_logsv_for_il_payoff.py`: an initial and forward
 price of 2,200, a range from 2,000 to 2,400, a horizon of ten days, and the module's log-normal SV
 parameters ($\sigma_0 = 0.4862$, $\theta = 0.6176$, $\kappa_1 = 1.9558$, $\kappa_2 = 1.9784$,
 $\beta = -0.2692$, $\varepsilon = 3.2658$). No market data are used; the parameters are given, not
@@ -120,7 +120,7 @@ parameters.*
 ## Reproduce
 
 Run the example from a checkout with `python examples/docs/app_impermanent_loss_hedging.py`; the
-pricing module is `papers/il_hedging/run_logsv_for_il_payoff.py`, whose `logsv_il_pricer` returns the
+pricing module is `papers/unified_approach_for_hedging_il_df_2025/replication/run_logsv_for_il_payoff.py`, whose `logsv_il_pricer` returns the
 same value on a notional of 1,000,000. The functions used are advanced and compatibility exports:
 `compute_logsv_a_mgf_grid`, `get_transform_var_grid`, `vanilla_slice_pricer_with_mgf_grid`,
 `digital_slice_pricer_with_mgf_grid` and `compute_integration_weights` (see

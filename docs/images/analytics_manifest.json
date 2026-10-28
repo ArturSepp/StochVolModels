@@ -1280,6 +1280,16 @@
   },
   "generated_at_utc": "2026-09-27T17:53:52+00:00",
   "kind": "stochvolmodels_documentation_analytics",
+  "path_relocations": {
+    "papers.il_hedging": "papers.unified_approach_for_hedging_il_df_2025.replication",
+    "papers.logsv_model_with_quadratic_drift": "papers.logsv_model_with_quadratic_drift_ijtaf_2023",
+    "papers.sv_for_factor_hjm": "papers.sv_for_factor_hjm_rdr_2025",
+    "papers/il_hedging": "papers/unified_approach_for_hedging_il_df_2025",
+    "papers/il_hedging/logsv_figures.py": "papers/unified_approach_for_hedging_il_df_2025/replication/logsv_figures.py",
+    "papers/il_hedging/run_logsv_for_il_payoff.py": "papers/unified_approach_for_hedging_il_df_2025/replication/run_logsv_for_il_payoff.py",
+    "papers/logsv_model_with_quadratic_drift": "papers/logsv_model_with_quadratic_drift_ijtaf_2023",
+    "papers/sv_for_factor_hjm": "papers/sv_for_factor_hjm_rdr_2025"
+  },
   "schema_version": 1,
   "source": {
     "commit": "66fc4fd12adf4076b6e4848a5aed4f6fb75cd305",

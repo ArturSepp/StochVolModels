@@ -113,7 +113,7 @@
       "question": "Does one parameterisation fit equity, VIX, gold and inverse-ETF skews?",
       "parameters": {
         "chains": "get_spy_test_chain_data, get_gld_test_chain_data, get_btc_test_chain_data, get_sqqq_test_chain_data, get_vix_test_chain_data",
-        "params": "FITTED of the canonical script, recorded in papers/logsv_model_with_quadratic_drift/calibrations.py",
+        "params": "FITTED of the canonical script, recorded in papers/logsv_model_with_quadratic_drift_ijtaf_2023/calibrations.py",
         "slice": "2m"
       },
       "seed": null,
@@ -131,7 +131,7 @@
       "producer": "scripts.docs_analytics.transforms",
       "function": "produce_expansion_pdfs_vs_mc",
       "script": "examples/docs/affine_expansion.py",
-      "paper_module": "papers/logsv_model_with_quadratic_drift/article_figures.py",
+      "paper_module": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/article_figures.py",
       "question": "How close are the densities from the first- and second-order expansions to simulation?",
       "parameters": {
         "figure": "IJTAF Fig. 6",
@@ -169,7 +169,7 @@
       "producer": "scripts.docs_analytics.logsv_model",
       "function": "produce_expected_qvar_vs_mc",
       "script": "examples/docs/volatility_distribution_and_moments.py",
-      "paper_module": "papers/logsv_model_with_quadratic_drift/moments_vol_qvar.py",
+      "paper_module": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/moments_vol_qvar.py",
       "question": "How does the expected quadratic variance evolve from a high and a low initial volatility, and does the truncated system agree with simulation?",
       "parameters": {
         "figure": "IJTAF Fig. 3",
@@ -226,7 +226,7 @@
       "producer": "scripts.docs_analytics.transforms",
       "function": "produce_expansion_odes",
       "script": "examples/docs/affine_expansion.py",
-      "paper_module": "papers/logsv_model_with_quadratic_drift/ode_sol_in_time.py",
+      "paper_module": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/ode_sol_in_time.py",
       "question": "How do the first-order expansion coefficients and the leading term evolve with maturity?",
       "parameters": {
         "figure": "IJTAF Fig. 4",
@@ -360,7 +360,7 @@
       ],
       "producer": "scripts.docs_analytics.paper_pdf",
       "function": "produce_pdf_crop",
-      "paper_module": "papers/logsv_model_with_quadratic_drift/paper/log-normal-stochastic-volatility-model-with-quadratic-drift.pdf",
+      "paper_module": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/paper/log-normal-stochastic-volatility-model-with-quadratic-drift.pdf",
       "question": "How well did weekly calibrations fit Bitcoin options from April 2019 to October 2023, and how did the fitted parameters move?",
       "parameters": {
         "figure": "IJTAF Fig. 7",
@@ -387,7 +387,7 @@
         "licence": "CC BY 4.0",
         "changes": "Cropped from the article PDF; sub-captions removed; the two rows stacked",
         "data": "Deribit Bitcoin options, weekly, April 2019 to October 2023; not distributable",
-        "producer_of_original": "papers/logsv_model_with_quadratic_drift/article_figures.py FIGURE7_BTC_CALIBRATIONS"
+        "producer_of_original": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/article_figures.py FIGURE7_BTC_CALIBRATIONS"
       }
     },
     "ijtaf_fig8_btc_fit.png": {
@@ -398,7 +398,7 @@
       ],
       "producer": "scripts.docs_analytics.paper_pdf",
       "function": "produce_pdf_crop",
-      "paper_module": "papers/logsv_model_with_quadratic_drift/paper/log-normal-stochastic-volatility-model-with-quadratic-drift.pdf",
+      "paper_module": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/paper/log-normal-stochastic-volatility-model-with-quadratic-drift.pdf",
       "question": "How closely does the calibrated model match the bid and ask quotes of the three most liquid Bitcoin slices?",
       "parameters": {
         "figure": "IJTAF Fig. 8",
@@ -419,7 +419,7 @@
         "licence": "CC BY 4.0",
         "changes": "Cropped from the article PDF; caption omitted",
         "data": "Deribit Bitcoin options; not distributable",
-        "producer_of_original": "papers/logsv_model_with_quadratic_drift/article_figures.py FIGURE8_9_FITTED_MODEL"
+        "producer_of_original": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/article_figures.py FIGURE8_9_FITTED_MODEL"
       }
     },
     "il_replication.png": {
@@ -433,7 +433,7 @@
       "script": "examples/docs/app_impermanent_loss_hedging.py",
       "question": "Do European payoffs replicate the impermanent loss, and how does its value depend on vol-of-vol?",
       "parameters": {
-        "params": "PARAMS of the canonical script, the example of papers/il_hedging/run_logsv_for_il_payoff.py",
+        "params": "PARAMS of the canonical script, the example of papers/unified_approach_for_hedging_il_df_2025/replication/run_logsv_for_il_payoff.py",
         "range": "P0 = 2200, PA = 2000, PB = 2400, TTM = 10 / 365",
         "volvols": [
           0.5,
@@ -490,7 +490,7 @@
       "producer": "scripts.docs_analytics.logsv_model",
       "function": "produce_logsv_drift_and_paths",
       "script": "examples/docs/logsv_model.py",
-      "paper_module": "papers/logsv_model_with_quadratic_drift/vol_drift.py",
+      "paper_module": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/vol_drift.py",
       "question": "How does the quadratic drift pull high volatility back faster, and what does that do to the paths of volatility?",
       "parameters": {
         "kappa1": 4.0,
@@ -588,7 +588,7 @@
       "producer": "scripts.docs_analytics.transforms",
       "function": "produce_qvar_option_smiles",
       "script": "examples/docs/quadratic_variance_options.py",
-      "paper_module": "papers/logsv_model_with_quadratic_drift/article_figures.py",
+      "paper_module": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/article_figures.py",
       "question": "What skew do call options on quadratic variance have, and do the MMA and inverse valuations agree with simulation?",
       "parameters": {
         "figure": "IJTAF Fig. 10",
@@ -627,7 +627,7 @@
       "producer": "scripts.docs_analytics.rates",
       "function": "produce_rdr_fig5_swaption_fit",
       "script": "examples/docs/app_swaptions_and_sofr_options.py",
-      "paper_module": "papers/sv_for_factor_hjm/calibration_fig_5_6_7.py",
+      "paper_module": "papers/sv_for_factor_hjm_rdr_2025/calibration_fig_5_6_7.py",
       "question": "Does one set of parameters per expiry fit the swaption smiles of three tenors?",
       "parameters": {
         "figure": "RDR Fig. 5",
@@ -653,7 +653,7 @@
       "producer": "scripts.docs_analytics.rates",
       "function": "produce_rdr_fig6_swaption_mc",
       "script": "examples/docs/app_swaptions_and_sofr_options.py",
-      "paper_module": "papers/sv_for_factor_hjm/calibration_fig_5_6_7.py",
+      "paper_module": "papers/sv_for_factor_hjm_rdr_2025/calibration_fig_5_6_7.py",
       "question": "Is the first-order expansion accurate against Monte Carlo at the 5y expiry?",
       "parameters": {
         "figure": "RDR Fig. 6",
@@ -682,7 +682,7 @@
       "producer": "scripts.docs_analytics.rates",
       "function": "produce_rdr_fig7_shock_scenarios",
       "script": "examples/docs/app_swaptions_and_sofr_options.py",
-      "paper_module": "papers/sv_for_factor_hjm/calibration_fig_5_6_7.py",
+      "paper_module": "papers/sv_for_factor_hjm_rdr_2025/calibration_fig_5_6_7.py",
       "question": "Does the first-order expansion stay accurate under the parameter shocks of Table 2?",
       "parameters": {
         "figure": "RDR Fig. 7",
@@ -731,7 +731,7 @@
       "producer": "scripts.docs_analytics.rates",
       "function": "produce_rdr_fig8_sofr_fit",
       "script": "examples/docs/app_swaptions_and_sofr_options.py",
-      "paper_module": "papers/sv_for_factor_hjm/calibration_fig_8_9.py",
+      "paper_module": "papers/sv_for_factor_hjm_rdr_2025/calibration_fig_8_9.py",
       "question": "Does the model fit the smiles of short-dated SOFR futures options?",
       "parameters": {
         "figure": "RDR Fig. 8",
@@ -758,7 +758,7 @@
       "producer": "scripts.docs_analytics.rates",
       "function": "produce_rdr_fig9_sofr_mc",
       "script": "examples/docs/app_swaptions_and_sofr_options.py",
-      "paper_module": "papers/sv_for_factor_hjm/calibration_fig_8_9.py",
+      "paper_module": "papers/sv_for_factor_hjm_rdr_2025/calibration_fig_8_9.py",
       "question": "Are the first- and second-order expansions accurate against Monte Carlo for SOFR options?",
       "parameters": {
         "figure": "RDR Fig. 9",
@@ -808,7 +808,7 @@
       "producer": "scripts.docs_analytics.transforms",
       "function": "produce_expansion_odes",
       "script": "examples/docs/affine_expansion.py",
-      "paper_module": "papers/logsv_model_with_quadratic_drift/ode_sol_in_time.py",
+      "paper_module": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/ode_sol_in_time.py",
       "question": "How do the second-order expansion coefficients evolve, and how small are the higher coefficients?",
       "parameters": {
         "figure": "IJTAF Fig. 5",
@@ -899,7 +899,7 @@
       "producer": "scripts.docs_analytics.logsv_model",
       "function": "produce_steady_state_density",
       "script": "examples/docs/volatility_distribution_and_moments.py",
-      "paper_module": "papers/logsv_model_with_quadratic_drift/steady_state_pdf.py",
+      "paper_module": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/steady_state_pdf.py",
       "question": "How does the quadratic mean reversion shape the steady-state density of volatility, its skewness and the kurtosis of returns?",
       "parameters": {
         "figure": "IJTAF Fig. 1",
@@ -970,7 +970,7 @@
       "producer": "scripts.docs_analytics.logsv_model",
       "function": "produce_vol_moments_vs_mc",
       "script": "examples/docs/volatility_distribution_and_moments.py",
-      "paper_module": "papers/logsv_model_with_quadratic_drift/moments_vol_qvar.py",
+      "paper_module": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/moments_vol_qvar.py",
       "question": "How accurate is the truncated moment system at orders four and eight against Monte Carlo simulation?",
       "parameters": {
         "figure": "IJTAF Fig. 2",

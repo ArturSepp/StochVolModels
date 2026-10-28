@@ -24,6 +24,7 @@ import importlib
 import importlib.metadata
 import json
 import platform
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -139,6 +140,19 @@ def build_bundle(output_root: Path, root: Path = ROOT,
     return manifest
 
 
+def _relocate_paper_paths(value: object, relocations: dict[str, str]) -> object:
+    """Compare relocated source labels without rewriting frozen provenance or numbers."""
+    if isinstance(value, str):
+        for old, new in sorted(relocations.items(), key=lambda item: len(item[0]), reverse=True):
+            value = re.sub(re.escape(old) + r"\b", lambda _match: new, value)
+        return value
+    if isinstance(value, dict):
+        return {key: _relocate_paper_paths(item, relocations) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_relocate_paper_paths(item, relocations) for item in value]
+    return value
+
+
 def verify_published(root: Path = ROOT) -> list[str]:
     """Compare the committed previews with the committed manifest and the current registry.
 
@@ -163,6 +177,15 @@ def verify_published(root: Path = ROOT) -> list[str]:
     errors = []
     if not manifest.get("complete"):
         errors.append(f"{MANIFEST}: the published bundle is partial.")
+    relocations = manifest.get("path_relocations", {})
+    if not isinstance(relocations, dict) or any(
+        not isinstance(old, str) or not isinstance(new, str)
+        or not old.startswith(("papers/", "papers."))
+        or not new.startswith(("papers/", "papers."))
+        for old, new in relocations.items()
+    ):
+        errors.append(f"{MANIFEST}: invalid paper path relocation mapping.")
+        relocations = {}
     recorded = manifest.get("exhibits", {})
     for name in sorted(set(committed) | set(exhibits) | set(recorded)):
         if name not in exhibits:
@@ -173,7 +196,7 @@ def verify_published(root: Path = ROOT) -> list[str]:
             continue
         spec = {key: value for key, value in recorded[name].items()
                 if key not in {"sha256", "tables", "checks"}}
-        if spec != exhibits[name]:
+        if _relocate_paper_paths(spec, relocations) != exhibits[name]:
             errors.append(f"{IMAGES}/{name}: registry entry changed since the bundle was built.")
         path = images / name
         if not path.is_file():

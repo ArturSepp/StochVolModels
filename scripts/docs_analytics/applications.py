@@ -2,7 +2,7 @@
 
 The impermanent-loss exhibit is computed with the page's canonical script, and the producer checks
 the script's value against the module that accompanies the paper,
-``papers/il_hedging/run_logsv_for_il_payoff.py``.
+``papers/unified_approach_for_hedging_il_df_2025/replication/run_logsv_for_il_payoff.py``.
 """
 
 from __future__ import annotations
@@ -57,7 +57,7 @@ def produce_il_replication(name: str, spec: dict, output_dir: Path) -> dict:
         ax_b.set_title("(B) Expected loss over ten days", color="darkblue")
         ax_b.legend(loc="upper right")
     save(fig, output_dir, name)
-    module = importlib.import_module("papers.il_hedging.run_logsv_for_il_payoff")
+    module = importlib.import_module("papers.unified_approach_for_hedging_il_df_2025.replication.run_logsv_for_il_payoff")
     module_value = module.logsv_il_pricer(params=base, ttm=script["TTM"], p1=script["P0"],
                                           p0=script["P0"], pa=script["PA"], pb=script["PB"],
                                           notional=1.0)

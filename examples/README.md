@@ -32,7 +32,7 @@ enum case and includes Numba compilation on first use.
 | `docs/app_impermanent_loss_hedging.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
 | `docs/app_positive_and_negative_skews.py` | canonical script of a documentation page | core only, five bundled chains | every case run by `test_docs_examples.py`; the VIX refit in the slow lane |
 | `docs/app_robust_volatility_models.py` | canonical script of a documentation page | core only, recorded parameters, no data | every case run by `test_docs_examples.py` |
-| `docs/app_swaptions_and_sofr_options.py` | canonical script of a documentation page | repository only, imports `papers/sv_for_factor_hjm` | every case run by `test_docs_examples.py`; the swaption fit and Monte Carlo cases in the slow lane |
+| `docs/app_swaptions_and_sofr_options.py` | canonical script of a documentation page | repository only, imports `papers/sv_for_factor_hjm_rdr_2025` | every case run by `test_docs_examples.py`; the swaption fit and Monte Carlo cases in the slow lane |
 | `docs/calibration.py` | canonical script of a documentation page | core only, bundled Bitcoin chain | every case run by `test_docs_examples.py`; the refit case in the slow lane |
 | `docs/european_option_pricing.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
 | `docs/factor_hjm_stochastic_volatility.py` | canonical script of a documentation page | core only, experimental `factor_hjm` module | every case run by `test_docs_examples.py` |

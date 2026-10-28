@@ -4,6 +4,19 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+### Changed
+
+- Renamed the IJTAF and RDR paper folders to identify their publication venues and years,
+  and grouped the Digital Finance IL manuscript and replication sources in one folder.
+  Updated live imports and links; explicit path relocations retain the figure bundle's
+  historical source identity, numerical checks and image hashes.
+
+### Added
+
+- Added the corrected IL author manuscript and self-contained LaTeX/PDF bundle under
+  `papers/unified_approach_for_hedging_il_df_2025`, plus offline theoretical figure
+  replication under `replication/` and independent numerical verification without private SS or empirical data.
+
 ### Fixed
 
 - Fixed `OptionChain.get_chain_atm_vols()` for unsorted strike arrays by sorting paired

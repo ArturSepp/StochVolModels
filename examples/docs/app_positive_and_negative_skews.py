@@ -3,7 +3,7 @@
 Every Python block on that page is a verbatim excerpt of this file, and every number the page
 quotes is asserted here. The log-normal SV model with quadratic drift is evaluated on option chains
 bundled with the package for five underlyings, with the parameters recorded in
-``papers/logsv_model_with_quadratic_drift/calibrations.py``. The refit of one of them takes minutes
+``papers/logsv_model_with_quadratic_drift_ijtaf_2023/calibrations.py``. The refit of one of them takes minutes
 and is listed in ``SLOW_CASES``. Select a case in ``Locals`` or run the file to execute every case.
 """
 from enum import Enum
@@ -15,7 +15,7 @@ from stochvolmodels.data import sample_option_chains as chains
 
 SLOW_CASES = ("REFIT_VIX",)
 
-# parameters recorded in papers/logsv_model_with_quadratic_drift/calibrations.py, fitted with
+# parameters recorded in papers/logsv_model_with_quadratic_drift_ijtaf_2023/calibrations.py, fitted with
 # PARAMS5 (kappa2 = kappa1 / theta) to the chains below
 FITTED = {
     "S&P 500 (SPY)": svm.LogSvParams(sigma0=0.2270, theta=0.2616, kappa1=4.9325, kappa2=18.8550,

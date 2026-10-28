@@ -175,3 +175,39 @@ def test_registry_is_valid_json_with_known_classes(analytics):
     assert loaded["exhibits"] == raw["exhibits"]
     assert set(raw["classes"]) == {"paper_replication", "paper_reproduction",
                                    "bundled_snapshot", "synthetic"}
+
+
+def test_paper_path_relocation_preserves_provenance_and_parameter_checks(tmp_path, analytics):
+    """Folder moves preserve historical records while parameter changes still fail."""
+    registry, run = analytics
+    images = tmp_path / registry.IMAGES
+    images.mkdir(parents=True)
+    (tmp_path / "docs/page.md").write_text("# Example\n", encoding="utf-8")
+    (images / "example.png").write_bytes(b"synthetic image checksum fixture")
+    original = {
+        "class": "synthetic", "pages": ["docs/page.md"],
+        "producer": "scripts.docs_analytics.logsv_model", "function": "example",
+        "question": "Relocated paper source", "conventions": "Synthetic inputs",
+        "parameters": {"source": "papers/old_paper/script.py", "scale": 1.0},
+        "paper_module": "papers/old_paper/script.py",
+    }
+    current = json.loads(json.dumps(original).replace("papers/old_paper/", "papers/new_paper/"))
+    registry_path = tmp_path / registry.REGISTRY
+    registry_path.parent.mkdir(parents=True)
+    active = {"schema_version": 1, "classes": {"synthetic": {}},
+              "exhibits": {"example.png": current}}
+    registry_path.write_text(json.dumps(active), encoding="utf-8")
+    historical = {
+        "complete": True,
+        "source": {"commit": "historical", "hashes": {"papers/old_paper/script.py": "frozen"}},
+        "exhibits": {"example.png": {**original, "sha256": registry.sha256(images / "example.png")}},
+        "path_relocations": {"papers/old_paper": "papers/new_paper"},
+    }
+    manifest_path = tmp_path / registry.MANIFEST
+    frozen_text = json.dumps(historical)
+    manifest_path.write_text(frozen_text, encoding="utf-8")
+    assert run.verify_published(tmp_path) == []
+    active["exhibits"]["example.png"]["parameters"]["scale"] = 2.0
+    registry_path.write_text(json.dumps(active), encoding="utf-8")
+    assert any("registry entry changed" in message for message in run.verify_published(tmp_path))
+    assert manifest_path.read_text(encoding="utf-8") == frozen_text

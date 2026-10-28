@@ -18,7 +18,7 @@ Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/bl
 Sepp and Rakhmonov (2025, Sections 7.5 to 7.7) calibrate the factor HJM model with a log-normal
 stochastic volatility driver to USD swaptions and to options on 3M SOFR futures, and check the
 first-order affine expansion against Monte Carlo simulation. The market data and the parameters are
-hard-coded in the modules that accompany the article, `papers/sv_for_factor_hjm/calibration_fig_5_6_7.py`
+hard-coded in the modules that accompany the article, `papers/sv_for_factor_hjm_rdr_2025/calibration_fig_5_6_7.py`
 and `calibration_fig_8_9.py`. This case study regenerates Figures 5 to 9 of the article from those
 modules and quotes the results by section. The parameters the modules record differ from the
 tables of the published article; the page says which results each set reproduces.

@@ -1,7 +1,7 @@
 """Producers of the factor HJM exhibits: M15 and RDR Figs. 5 to 9 for A3.
 
 The figures of Sepp and Rakhmonov (2025, Review of Derivatives Research) are regenerated offline
-through the A3 canonical script, which calls the modules in ``papers/sv_for_factor_hjm``; they are
+through the A3 canonical script, which calls the modules in ``papers/sv_for_factor_hjm_rdr_2025``; they are
 never cropped from the published PDF, whose licence is exclusive to Springer. The modules record
 parameters that differ from Tables 1 and 3 of the article; the A3 page says which figures they
 reproduce.

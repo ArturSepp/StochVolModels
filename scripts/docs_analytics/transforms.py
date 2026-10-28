@@ -1,7 +1,7 @@
 """Producers of the transform-pricing exhibits: affine expansion, Fourier, inverse and QV options.
 
 Paper replications regenerate figures of Sepp and Rakhmonov (2023) with the parameters of the
-paper's figure code, ``papers/logsv_model_with_quadratic_drift/article_figures.py``. Where the paper
+paper's figure code, ``papers/logsv_model_with_quadratic_drift_ijtaf_2023/article_figures.py``. Where the paper
 module can be imported (``ode_sol_in_time.py``) the producer calls its plotting function; where it
 cannot (``article_figures.py`` imports ``qis``, which is not a dependency) the producer computes the
 same quantities with the package and draws them itself. Supporting tables come from the page's
@@ -23,7 +23,7 @@ import stochvolmodels.utils.plots as plot
 from stochvolmodels.utils.funcs import set_seed
 from scripts.docs_analytics.common import figure_style, load_script, save, thin_ticks
 
-PAPER = "papers.logsv_model_with_quadratic_drift"
+PAPER = "papers.logsv_model_with_quadratic_drift_ijtaf_2023"
 ORDERS = {"FIRST": svm.ExpansionOrder.FIRST, "SECOND": svm.ExpansionOrder.SECOND}
 
 
