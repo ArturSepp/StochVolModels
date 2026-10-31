@@ -112,7 +112,7 @@ Core dependencies:
 - `matplotlib >= 3.8.0`
 - `seaborn >= 0.13.0`
 
-Version 2.6.1.dev0 and newer require Python 3.11 or newer. Python 3.12 is the development and
+Version 2.6.0 and newer require Python 3.11 or newer. Python 3.12 is the development and
 primary CI interpreter. Published version 2.5.0 retains its original Python 3.10 requirement.
 
 Optional extras:
@@ -258,7 +258,7 @@ price, implied_vol = svm.LogSVPricer().price_vanilla(
 print(f"price={price:.6f}, implied_vol={implied_vol:.6f}")
 ```
 
-Expected output on `main` (`2.6.1.dev1`, with the corrected coefficients), after the
+Expected output in `2.6.1` (with the corrected coefficients), after the
 initial Numba compilation:
 
 ```text
@@ -465,7 +465,7 @@ package in your research, please cite the software and the relevant papers:
   title={StochVolModels: Python Implementation of Stochastic Volatility Models},
   author={Sepp, Artur},
   year={2026},
-  version={2.6.1.dev1},
+  version={2.6.1},
   url={https://github.com/ArturSepp/StochVolModels},
   note={Python package for pricing analytics and Monte Carlo simulations}
 }

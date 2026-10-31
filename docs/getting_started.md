@@ -19,14 +19,14 @@ model, entirely offline. It demonstrates the stable `LogSvParams`, `LogSVPricer`
 
 ## Reproducible released workflow
 
-The reproducible workflow below uses **stochvolmodels 2.6.0** and requires Python 3.11
+The reproducible workflow below uses **stochvolmodels 2.6.1** and requires Python 3.11
 or newer. Install core without extras; save and run the package-owned script in a working
 directory outside synchronized folders:
 
 ```powershell
-python -m pip install "stochvolmodels==2.6.0"
+python -m pip install "stochvolmodels==2.6.1"
 python -c "from importlib.metadata import version; import stochvolmodels as p; print(version('stochvolmodels')); print(p.__file__)"
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/ArturSepp/StochVolModels/v2.6.0/examples/getting_started/quickstart.py' -OutFile quickstart.py
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/ArturSepp/StochVolModels/v2.6.1/examples/getting_started/quickstart.py' -OutFile quickstart.py
 python quickstart.py
 ```
 
@@ -120,15 +120,17 @@ chain_prices, chain_ivols = pricer.compute_chain_prices_with_vols(
 )
 ```
 
-On `main` (`2.6.1.dev1`), the corrected-coefficient reference run produces vanilla
+With `2.6.1`, the corrected-coefficient reference run produces vanilla
 price `0.197698`, vanilla implied volatility `1.001478`, and six-month at-the-money
 price/volatility `0.275623`/`0.997347`. The script asserts all four and independently
 reconstructs prices from implied volatilities using the Black formula. This is a
 price/volatility consistency check, not a bound on finite-expansion pricing error.
 
-The pinned `2.6.0` workflow above retains its earlier reference values:
-`0.197331`, `0.999577`, `0.275202` and `0.995757`, respectively. Each version's
-tagged script asserts its own results. Elapsed time is machine-dependent; the
+For comparison, `2.6.0` retains its earlier reference values: `0.197331`,
+`0.999577`, `0.275202` and `0.995757`, respectively. Use its
+[version-matched quickstart](https://github.com/ArturSepp/StochVolModels/blob/v2.6.0/examples/getting_started/quickstart.py)
+when reproducing that release. Each version's tagged script asserts its own results.
+Elapsed time is machine-dependent; the
 first process pays Numba compilation cost, so later calls are usually faster.
 
 Change `sigma0` and `theta` first to move the current and long-run volatility levels. Then change

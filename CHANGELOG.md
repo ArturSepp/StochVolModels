@@ -4,6 +4,14 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.6.1] - 2026-10-31
+
+This release includes the changes recorded under `2.6.1.dev0` and `2.6.1.dev1`
+below, including native quote diagnostics, rough split-step validation and
+provisional Heston path/transform analytics. The additional corrections below
+change LogSV numerical outputs; historical examples and figures are identified
+separately from current-code checks. Finite-expansion accuracy limitations remain.
+
 ### Changed
 
 - Updated executable LogSV documentation for the corrected coefficients, including
