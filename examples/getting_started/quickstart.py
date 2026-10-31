@@ -3,6 +3,7 @@
 from time import perf_counter
 
 import numpy as np
+from scipy.special import ndtr
 
 import stochvolmodels as svm
 
@@ -40,10 +41,24 @@ def main() -> None:
     )
 
     assert all(np.all(np.isfinite(values)) for values in (*chain_prices, *chain_ivols))
-    np.testing.assert_allclose(vanilla_price, 0.197331, rtol=5.0e-6, atol=1.0e-8)
-    np.testing.assert_allclose(vanilla_ivol, 0.999577, rtol=5.0e-6, atol=1.0e-8)
-    np.testing.assert_allclose(chain_prices[1][2], 0.275202, rtol=5.0e-6, atol=1.0e-8)
-    np.testing.assert_allclose(chain_ivols[1][2], 0.995757, rtol=5.0e-6, atol=1.0e-8)
+    np.testing.assert_allclose(vanilla_price, 0.197698, rtol=5.0e-6, atol=1.0e-8)
+    np.testing.assert_allclose(vanilla_ivol, 1.001478, rtol=5.0e-6, atol=1.0e-8)
+    np.testing.assert_allclose(chain_prices[1][2], 0.275623, rtol=5.0e-6, atol=1.0e-8)
+    np.testing.assert_allclose(chain_ivols[1][2], 0.997347, rtol=5.0e-6, atol=1.0e-8)
+    # Independent price/IV consistency checks; these do not bound expansion error.
+    np.testing.assert_allclose(
+        vanilla_price, 2.0 * ndtr(vanilla_ivol * np.sqrt(0.25) / 2.0) - 1.0,
+        rtol=0.0, atol=2.0e-12,
+    )
+    for ttm, forward, discount, strikes, types, prices, vols in zip(
+        chain.ttms, chain.forwards, chain.discfactors, chain.strikes_ttms,
+        chain.optiontypes_ttms, chain_prices, chain_ivols,
+    ):
+        sd = vols * np.sqrt(ttm)
+        d1 = np.log(forward / strikes) / sd + 0.5 * sd
+        calls = forward * ndtr(d1) - strikes * ndtr(d1 - sd)
+        expected = discount * (calls - np.where(types == "P", forward - strikes, 0.0))
+        np.testing.assert_allclose(prices, expected, rtol=0.0, atol=2.0e-12)
     print(f"stochvolmodels={svm.__version__}")
     print(f"maturities={chain.ttms.tolist()}")
     print(f"price_shapes={[values.shape for values in chain_prices]}")

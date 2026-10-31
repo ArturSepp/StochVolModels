@@ -258,20 +258,26 @@ price, implied_vol = svm.LogSVPricer().price_vanilla(
 print(f"price={price:.6f}, implied_vol={implied_vol:.6f}")
 ```
 
-Expected output after the initial Numba compilation:
+Expected output on `main` (`2.6.1.dev1`, with the corrected coefficients), after the
+initial Numba compilation:
 
 ```text
-price=0.197331, implied_vol=0.999577
+price=0.197698, implied_vol=1.001478
 ```
 
 The fuller [repository quickstart](examples/getting_started/quickstart.py) prices a two-maturity
 synthetic chain and prints two five-strike slices with deterministic reference values including
-`vanilla_price=0.197331` and `six_month_atm_price=0.275202`. Repository examples are not
+`vanilla_price=0.197698` and `six_month_atm_price=0.275623`. Repository examples are not
 included in the wheel, so clone the repository before running them:
 
 ```console
 python examples/getting_started/quickstart.py
 ```
+
+The pinned `2.6.0` release retains the earlier results: `vanilla_price=0.197331`,
+`vanilla_ivol=0.999577`, `six_month_atm_price=0.275202` and
+`six_month_atm_ivol=0.995757`. Use its version-matched tagged quickstart, as described
+in the [installation guide](docs/getting_started.md), when reproducing that release.
 
 The first call normally takes seconds because Numba compiles the numerical kernels.
 

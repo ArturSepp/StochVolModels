@@ -77,6 +77,7 @@ Linux, Windows and macOS.
 
 ```python
 import numpy as np
+from scipy.special import ndtr
 
 import stochvolmodels as svm
 ```
@@ -119,10 +120,16 @@ chain_prices, chain_ivols = pricer.compute_chain_prices_with_vols(
 )
 ```
 
-The deterministic reference run produces vanilla price `0.197331`, vanilla implied volatility
-`0.999577`, and six-month at-the-money price/volatility `0.275202`/`0.995757`; the script asserts
-all four. Elapsed time is machine-dependent. The first process pays Numba compilation cost, so
-later calls are usually faster.
+On `main` (`2.6.1.dev1`), the corrected-coefficient reference run produces vanilla
+price `0.197698`, vanilla implied volatility `1.001478`, and six-month at-the-money
+price/volatility `0.275623`/`0.997347`. The script asserts all four and independently
+reconstructs prices from implied volatilities using the Black formula. This is a
+price/volatility consistency check, not a bound on finite-expansion pricing error.
+
+The pinned `2.6.0` workflow above retains its earlier reference values:
+`0.197331`, `0.999577`, `0.275202` and `0.995757`, respectively. Each version's
+tagged script asserts its own results. Elapsed time is machine-dependent; the
+first process pays Numba compilation cost, so later calls are usually faster.
 
 Change `sigma0` and `theta` first to move the current and long-run volatility levels. Then change
 `beta` for return/volatility dependence and `volvol` for volatility-of-volatility. The symbols,

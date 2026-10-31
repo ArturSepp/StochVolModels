@@ -40,6 +40,10 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Fixed
 
+- Updated the source-checkout LogSV quickstart references for the corrected
+  coefficients, added independent Black price/IV checks, and made its repository
+  contract execute the example. Version-pinned 2.6.0 results
+  remain explicitly identified in the installation guide and README.
 - Updated the locked optional Jupyter dependency Tornado from 6.5.10 to 6.6.0 to
   resolve CVE-2026-116577, CVE-2026-115927 and CVE-2026-116578 in the dependency audit.
 - Aligned LogSV degree-four diffusion and inverse-measure linear coefficients with

@@ -6,6 +6,7 @@ import ast
 import importlib.metadata
 import json
 import re
+import runpy
 import subprocess
 import sys
 import tomllib
@@ -164,16 +165,19 @@ def test_release_metadata_versions_and_date_agree() -> None:
 
 @pytest.mark.repository_only
 @pytest.mark.skipif(REPOSITORY_ROOT is None, reason="README and example are absent from the wheel")
-def test_readme_first_result_matches_asserted_quickstart_values() -> None:
-    """The README's first result remains tied to assertions in the executable quickstart."""
+def test_readme_first_result_matches_asserted_quickstart_values(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The README matches the executed quickstart, including its numerical assertions."""
     assert REPOSITORY_ROOT is not None
     readme = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
-    quickstart = (
-        REPOSITORY_ROOT / "examples" / "getting_started" / "quickstart.py"
-    ).read_text(encoding="utf-8")
-    for value in ("0.197331", "0.275202"):
-        assert value in readme
-        assert value in quickstart
+    quickstart = REPOSITORY_ROOT / "examples" / "getting_started" / "quickstart.py"
+    runpy.run_path(str(quickstart), run_name="__main__")
+    output = capsys.readouterr().out
+    for label in ("vanilla_price", "six_month_atm_price"):
+        match = re.search(rf"^{label}=(\d+\.\d+)$", output, re.MULTILINE)
+        assert match is not None, output
+        assert match.group(1) in readme
 
 
 @pytest.mark.repository_only
