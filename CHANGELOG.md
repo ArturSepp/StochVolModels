@@ -19,6 +19,8 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Fixed
 
+- Updated the locked optional Jupyter dependency Tornado from 6.5.10 to 6.6.0 to
+  resolve CVE-2026-116577, CVE-2026-115927 and CVE-2026-116578 in the dependency audit.
 - Added the required `Locals` annotation to the IL figure runner dispatcher so the
   repository layout contract passes in source and minimum-dependency CI jobs.
 - Fixed `OptionChain.get_chain_atm_vols()` for unsorted strike arrays by sorting paired
