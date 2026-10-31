@@ -1,0 +1,21 @@
+{
+  "source": "lognormal_stoch_vol_final.tex",
+  "source_sha256": "43feff8ec11ee2dd1f7810d16de43d5e641b768666e41faa1140f88a5ca52489",
+  "output": "lognormal_stoch_vol_final_corrected_20261029.pdf",
+  "output_sha256": "aad3446d7c3884b8db8d24ec8b3f3e6e1334b3c49557ef0d8ed458d0e37fb233",
+  "compiler": "MiKTeX-pdfTeX 4.26 (MiKTeX 26.2)",
+  "passes": 4,
+  "figures": {
+    "final_figures/figure1_steady_state.PNG": "4dd7c30731a7458788fb82f29e40ba0e0d86abc5d5a0b9bf73112cb1a22e231b",
+    "final_figures/figure2_vol_moments.PNG": "1cefb6684e1e278aa75e830f232d11e4b58356bc6cee780cf70c5486de42439c",
+    "final_figures/figure3_qvar_exp.PNG": "3d60459a7846ea9c0198d7fcbc86e442278de236ddd812a75c44e89639f246b3",
+    "final_figures/figure4_first_order.PNG": "c27599a798b49fad2dec9dad13d388ce03c16dd7e5819967dcf8667090cce801",
+    "final_figures/figure5_second_order.PNG": "17477d82035e497d13b1e4657696600eff75b1e8b76936afc7639a7d22b7f037",
+    "final_figures/figure6_joint_pdf.PNG": "370282d31ed54504dc1b83eca29956d1c835900c4012a4215d41b861619463bf",
+    "final_figures/figure7_btc_calibrations.PNG": "84188b0405cecfddf2cd5896dd3a0bd516cf09f462951d22c3a0e1ea43d241be",
+    "final_figures/figure8_btc_fit.PNG": "c825035015f3bd7531449567197d3314909e1453534853e48d7890b275f3816b",
+    "final_figures/figure9_btc_mc_comp.PNG": "f6e025e955f0bbf91325af705906da7a0141bed7bdd06ae634cf65cb8f6c4940",
+    "final_figures/figure10_qvar.PNG": "4e24912ba9ff7ea853910d1dfbe85d6c61dd2abf67a9e0a6218da071ca3db499"
+  },
+  "figure_status": "Historical author figures; not recalibrated by this build"
+}

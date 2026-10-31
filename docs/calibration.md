@@ -21,7 +21,8 @@ weekly to Bitcoin options by minimising a vega-weighted squared error of implied
 the mean-reversion rates fixed beforehand and a martingale constraint. This article describes the
 objective, the choice of free parameters, the constraints and engines of
 `LogSVPricer.calibrate_model_params_to_chain`, and shows on the bundled Bitcoin chain how well the
-objective identifies each parameter and that a distant start finds the same optimum.
+objective changes around the historical parameter vector and tests a corrected-code refit
+from a distant starting point.
 
 ## Overview
 
@@ -108,8 +109,8 @@ simulation. The device is outside the paper.
 
 Every block below is an excerpt of [`examples/docs/calibration.py`](../examples/docs/calibration.py),
 which asserts every number quoted here. The chain is the bundled Bitcoin chain of 21 October 2021
-(four maturities, 49 options), and `FITTED` is the result of the [Bitcoin case
-study](app_bitcoin_options.md): `PARAMS4` with $\kappa_1 = 2.21$ and $\kappa_2 = 2.18$ from the paper,
+(four maturities, 49 options), and `FITTED` is the historical pre-erratum result of the
+[Bitcoin case study](app_bitcoin_options.md): `PARAMS4` with $\kappa_1 = 2.21$ and $\kappa_2 = 2.18$ from the paper,
 under `INVERSE_MARTINGALE`.
 
 ```python
@@ -121,27 +122,43 @@ def weighted_error(params: svm.LogSvParams, chain: svm.OptionChain,
     weights = [vega / np.sum(vega) for vega in vegas]
     model_vols = pricer.compute_model_ivols_for_chain(
         option_chain=chain, params=params, vol_scaler=pricer.set_vol_scaler(option_chain=chain))
-    return sum(np.nansum(w * np.square(model - mid))
+    if not all(np.all(np.isfinite(model)) for model in model_vols):
+        raise FloatingPointError("The calibration objective requires finite model volatilities")
+    return sum(np.sum(w * np.square(model - mid))
                for w, model, mid in zip(weights, model_vols, chain.get_mid_vols()))
 ```
 
-At the fit the objective is $5.03 \times 10^{-4}$, and $7.27 \times 10^{-4}$ with unit-maturity
-vegas. Moving one parameter at a time, the others held at the fit, shows how sharply the objective
-identifies each: changing $\sigma_0$ by 10% multiplies it by about 33, $\theta$ by about 9.5, the
-vol-of-vol $\varepsilon$ by about 1.3, and moving $\beta$ by 0.1 about doubles it. The level
-parameters are pinned by the at-the-money volatilities; the smile parameters by the wings, which
-carry little vega weight.
+At this historical parameter vector, the corrected implementation gives an objective of
+$5.50475\times10^{-4}$, or $8.38371\times10^{-4}$ with unit-maturity vegas (29 October 2026).
+The example independently reconstructs normalized weights from the Black-Scholes vega formula
+and checks the resulting objective. These are current repricing results, not a fresh calibration.
+
+Moving one parameter at a time while holding the others at the historical vector gives these
+objective ratios relative to the value at that vector:
+
+| Parameter perturbation | Lower value | Higher value |
+|---|---|---|
+| $\sigma_0$: -10%, +10% | 30.00 | 31.13 |
+| $\theta$: -10%, +10% | 7.25 | 9.96 |
+| $\varepsilon$: -10%, +10% | 1.145 | 1.830 |
+| $\beta$: $-0.1$, $+0.1$ | 1.688 | 2.373 |
+
+The level parameters remain more sensitive at these perturbations than the smile parameters.
+This local comparison does not establish parameter identification or show that the historical
+vector minimizes the corrected objective.
 
 [![Profiles of the calibration objective in the initial volatility, the mean volatility, the volatility beta and the vol-of-vol, each with its minimum at the fitted value.](images/calibration_objective_profiles.png)](images/calibration_objective_profiles.png)
 
-*Historical snapshot of 21 October 2021, bundled with the package. The objective of Eq. (6.3),
+*Historical pre-erratum calculation, retained without regeneration, for the bundled snapshot
+of 21 October 2021. The objective of Eq. (6.3),
 relative to its value at the fit, as one parameter moves and the others stay at the fit. Each profile
 has its minimum at the fitted value, marked by the dashed line.*
 
 The fit satisfies all three constraints with room: $\kappa_2 - \beta = 2.050$,
-$\kappa_2 - 2 \beta = 1.921$ and $\kappa_1 + \kappa_2 \theta - 1.5 \vartheta^2 = 0.477$, so on this
-chain the constraints do not bind and every constraint type gives the same fit. The script's slow case
-starts far from the fit, under the weaker money-market-account constraint:
+$\kappa_2 - 2 \beta = 1.921$ and $\kappa_1 + \kappa_2 \theta - 1.5 \vartheta^2 = 0.477$, so these constraints
+do not bind at the historical vector. This does not prove that all constrained
+optimizations have the same solution. The script's slow case refits the corrected implementation
+from a distant starting point under the money-market-account constraint:
 
 ```python
 def refit(chain: svm.OptionChain) -> svm.LogSvParams:
@@ -155,13 +172,14 @@ def refit(chain: svm.OptionChain) -> svm.LogSvParams:
         calibration_engine=svm.CalibrationEngine.ANALYTIC, is_vega_weighted=True)
 ```
 
-It returns the same $\sigma_0$, $\theta$, $\beta$ and $\varepsilon$ as the case study to $10^{-3}$.
-The fit against the bid and ask quotes is the case study's exhibit:
+The slow check requires finite admissible parameters and an objective improvement over the
+historical vector; it does not require the old fitted parameters to remain optimal. The figure
+below records the earlier fit against the bid and ask quotes:
 
 [![Model implied volatilities against bid and ask quotes for four Bitcoin maturities.](images/btc_case_fit.png)](images/btc_case_fit.png)
 
-*Historical snapshot of 21 October 2021: the fitted model against bid and ask implied
-volatilities, drawn by `LogSVPricer.plot_model_ivols_vs_bid_ask`; the exhibit of the Bitcoin case
+*Historical pre-erratum calculation on the snapshot of 21 October 2021: the fitted model
+against bid and ask implied volatilities, drawn by `LogSVPricer.plot_model_ivols_vs_bid_ask`; the exhibit of the Bitcoin case
 study. The legend's "mse" is a root-mean-square error.*
 
 For the variance-swap backbone, the strikes replicated from the chain, floored at the at-the-money

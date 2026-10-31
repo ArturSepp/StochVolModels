@@ -115,8 +115,10 @@ def first_price() -> tuple:
 ```
 
 With the quickstart parameters ($\sigma_0 = \theta = 1$, $\kappa_1 = \kappa_2 = 5$, $\beta = 0.2$,
-$\varepsilon = 2$) the three-month at-the-money call is worth 0.197331, an implied volatility of
-99.9577%. The Fourier formula can be written out with the package's grid and slice pricer:
+$\varepsilon = 2$) the three-month at-the-money call is worth 0.197698, an implied volatility of
+100.1478%, with the corrected coefficients (29 October 2026). The script also checks the
+independent Black-Scholes price/IV identity; this checks inversion consistency rather than
+accuracy of the finite LogSV expansion. The Fourier formula can be written out with the package's grid and slice pricer:
 
 ```python
 def fourier_prices(params: svm.LogSvParams, ttm: float, forward: float, strikes: np.ndarray,

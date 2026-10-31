@@ -107,18 +107,25 @@ def compare(chain: svm.OptionChain, params: svm.LogSvParams = FITTED, nb_path: i
             "mc_vols_up": mc_vols_up, "mc_vols_down": mc_vols_down}
 ```
 
-With 400,000 paths and daily steps, 21 of the 33 strikes of the two-week slice are inside the 95%
-interval, all of the one- and two-month slices, and 24 of the 0.43-year slice. With four steps a
-day on the same seed, every strike of the first three slices is inside: the two-week separation came
-from the simulation's time step. At 0.43 years only 3 of 33 strikes are inside, with $\vert z \vert$
-up to 6.0. The transform implied volatility is above the simulated one by 1.9 volatility points at
-four standard deviations below the forward, 0.5 points at the money and 3.6 points four deviations
-above, where the interval's half-width is 4.1 points against 0.3 near the money. The separation
-persists with finer steps, so it belongs to the expansion, whose error grows with maturity.
+Re-evaluating the historical parameter vector with the corrected coefficients on 29 October
+2026 gives 21 of 33 strikes inside the sampled 95% intervals at two weeks, all strikes at one
+and two months, and 11 of 33 at 0.43 years with 400,000 paths and daily steps. With four steps
+per day on the same seed, every strike of the first three slices is inside, but none of the
+longest slice is. Its maximum $\vert z\vert$ is 15.2. Transform implied volatilities exceed
+the simulated values by about 4.8 volatility points four standard deviations below the forward,
+0.9 points at the money and 6.5 points four deviations above. The Monte Carlo interval's
+half-width is about 0.7, 0.3 and 4.1 points at the reported wing/near-money locations.
+
+Agreement is worse on the longest slice than in the pre-erratum calculation (24 of 33 inside
+with daily steps, 3 of 33 with finer steps). Correcting retained coefficients does not guarantee
+that a finite expansion becomes more accurate. The persistent discrepancy after step refinement
+leaves this slice unvalidated; these intervals quantify sampling uncertainty and exclude residual
+time-discretisation error.
 
 [![Z-scores of transform against Monte Carlo prices across strikes for four Bitcoin maturities, transform and Monte Carlo implied volatilities at 0.43 years, and the width of the Monte Carlo interval in volatility.](images/analytic_vs_mc_btc.png)](images/analytic_vs_mc_btc.png)
 
-*Historical snapshot of 21 October 2021: the bundled chain's maturities and forwards, with 33
+*Historical pre-erratum calculation, retained without regeneration: the bundled Bitcoin
+snapshot of 21 October 2021, its maturities and forwards, with 33
 strikes out to four standard deviations and the fitted parameters of the Bitcoin case study.
 400,000 paths with 1,440 steps per year, seed 7. (A) $z$-scores of the price differences, with the
 95% band; (B) transform implied volatilities against the Monte Carlo interval at 0.43 years;
@@ -126,8 +133,9 @@ strikes out to four standard deviations and the fitted parameters of the Bitcoin
 forward and calls from the forward up; their standard errors differ, hence the step at the
 forward.*
 
-On the quoted strikes of the same chain, which lie closer to the money, the case study finds the
-Monte Carlo prices within two standard errors of the transform prices at all 49 quotes.
+The earlier claim of agreement at all 49 quoted strikes also referred to the pre-erratum
+implementation. The [Bitcoin case study](app_bitcoin_options.md) reports the current comparison
+on those narrower strikes.
 
 ## Implementation in stochvolmodels
 
@@ -147,7 +155,7 @@ comparison repeatable. Run the example from a checkout with
 ## Interpretation and limitations
 
 - **A check, not a proof.** Agreement on some options does not extend to others; the expansion error
-  grows with maturity and away from the money.
+  depends on parameters, maturity and strike, and coefficient correction alone does not control it.
 - **Refine the simulation first.** Increase the steps on the same seed before blaming the expansion;
   a two-week slice needs more than daily steps in the wings.
 - **The recentring hides forward errors.** Test the martingale condition separately.

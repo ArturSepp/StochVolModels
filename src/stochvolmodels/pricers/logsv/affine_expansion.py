@@ -83,7 +83,9 @@ def func_a_ode_quadratic_terms(theta: float,
 
         A^(k)_tau = A' M^(k) A + (L^(k)(p))' A + H^(k)(p),
 
-    with entries given by Eq. (4.17) at first order and Eq. (4.25) at second.
+    with the generator-consistent entries of Eq. (4.17) at first order and
+    Eq. (4.25) at second. The corrected source fixes the printed vartheta versus
+    vartheta-squared and q versus theta typos; see the paper's erratum README.
 
     Parameters
     ----------
@@ -106,9 +108,10 @@ def func_a_ode_quadratic_terms(theta: float,
     expansion_order : ExpansionOrder, default ExpansionOrder.FIRST
         Truncation order, which fixes the dimension n at 3 or 5.
     vol_backbone_eta : float, default 1.0
-        Multiplicative scaling of the mean volatility theta at this maturity. Not
-        part of the article, which fixes a single theta; 1.0 reproduces Eqs.
-        (4.17) and (4.25) exactly.
+        Multiplicative scaling of the return volatility sigma at this maturity.
+        It scales the return/QV source and leverage terms, not the volatility
+        diffusion. This extension is absent from the article; 1.0 reproduces its
+        generator-consistent equations, including the documented printed errata.
 
     Returns
     -------
@@ -169,9 +172,16 @@ def func_a_ode_quadratic_terms(theta: float,
 
     if expansion_order == ExpansionOrder.SECOND:
         L[1, 3] = 3.0*qv2
-        L[2, 3], L[2, 4] = 3.0 * (2.0 * qv - theta2 * beta * vol_backbone_eta * phi), 6.0 * qv2
-        L[3, 2], L[3, 3], L[3, 4] = -2.0 * (kappa2_p + beta * vol_backbone_eta * phi), 3.0 * (vartheta2 - kappa_p - 2.0 * theta * beta * vol_backbone_eta * phi), 4.0 * (3.0 * qv - theta2 * beta * vol_backbone_eta * phi)
-        L[4, 3], L[4, 4] = -3.0 * (kappa2_p + beta * vol_backbone_eta * phi), 2.0 * (vartheta2 - 2.0 * kappa_p - 4.0 * theta * beta * vol_backbone_eta * phi)
+        # Generator projection: the inverse-measure constant drift contributes
+        # 3*lambda and 4*lambda; sigma^2/2 * d_YY(A4*Y^4) contributes 6*vartheta^2.
+        L[2, 3] = 3.0 * (lamda + 2.0 * qv - theta2 * beta * vol_backbone_eta * phi)
+        L[2, 4] = 6.0 * qv2
+        L[3, 2] = -2.0 * (kappa2_p + beta * vol_backbone_eta * phi)
+        L[3, 3] = 3.0 * (vartheta2 - kappa_p - 2.0 * theta * beta * vol_backbone_eta * phi)
+        L[3, 4] = 4.0 * (lamda + 3.0 * qv - theta2 * beta * vol_backbone_eta * phi)
+        L[4, 3] = -3.0 * (kappa2_p + beta * vol_backbone_eta * phi)
+        L[4, 4] = 2.0 * (3.0 * vartheta2 - 2.0 * kappa_p
+                         - 4.0 * theta * beta * vol_backbone_eta * phi)
 
     # fill Hs
     H = np.zeros(n, dtype=np.complex128)
@@ -264,7 +274,7 @@ def solve_ode_for_a(ttm: float,
     dense_output : bool, default False
         Request a continuous solution from the solver.
     vol_backbone_eta : float, default 1.0
-        Maturity scaling of theta; 1.0 reproduces the article.
+        Multiplicative scaling of return volatility; 1.0 gives the article model.
 
     Returns
     -------
@@ -273,10 +283,19 @@ def solve_ode_for_a(ttm: float,
 
     Notes
     -----
-    Theorem 4.7 gives conditions under which A(tau) stays continuous on
-    [0, tau_0); the solution of a quadratic system can otherwise blow up in
-    finite time, and no check for that is performed here.
+    Theorem 4.7 is conditional: a finite expansion can fail even when the exact
+    model transform exists. Successful ODE integration checks do not bound the
+    approximation error.
+
+    Raises
+    ------
+    ValueError
+        If the maturity or initial coefficients are invalid.
+    FloatingPointError
+        If integration fails, stops before maturity, or returns nonfinite values.
     """
+    if not np.isfinite(ttm) or ttm < 0.0:
+        raise ValueError("ttm must be finite and nonnegative")
     M, L, H = func_a_ode_quadratic_terms(theta=theta,
                                          kappa1=kappa1,
                                          kappa2=kappa2,
@@ -290,6 +309,10 @@ def solve_ode_for_a(ttm: float,
 
     if a_t0 is None:
         a_t0 = np.zeros_like(H, dtype=np.complex128)
+    else:
+        a_t0 = np.asarray(a_t0, dtype=np.complex128)
+        if a_t0.shape != H.shape or not np.all(np.isfinite(a_t0)):
+            raise ValueError("a_t0 must contain one finite coefficient per expansion term")
 
     if is_stiff_solver:
         ode_sol = solve_ivp(fun=func_rhs, t_span=(0.0, ttm), y0=a_t0, args=(M, L, H),
@@ -300,6 +323,16 @@ def solve_ode_for_a(ttm: float,
         ode_sol = solve_ivp(fun=func_rhs, t_span=(0.0, ttm), y0=a_t0, args=(M, L, H),
                             dense_output=dense_output)
 
+    reached_maturity = (
+        len(ode_sol.t) > 0
+        and abs(ode_sol.t[-1] - ttm) <= 8.0 * np.finfo(float).eps * max(1.0, abs(ttm))
+    )
+    if not ode_sol.success or not reached_maturity or not np.all(np.isfinite(ode_sol.y)):
+        reached = ode_sol.t[-1] if len(ode_sol.t) else None
+        raise FloatingPointError(
+            f"LogSV coefficient integration failed for phi={phi}, psi={psi}; "
+            f"requested maturity={ttm}, reached={reached}: {ode_sol.message}"
+        )
     return ode_sol
 
 
@@ -339,7 +372,8 @@ def solve_analytic_ode_for_a(ttm: float,
     Notes
     -----
     Does not accept ``vol_backbone_eta``, so it is fixed at the article's flat
-    theta. The fixed point runs a fixed 10 iterations with no convergence test.
+    return-volatility backbone. The fixed point runs 10 iterations without a
+    convergence test; a finite result does not certify integration accuracy.
     """
     M, L, H = func_a_ode_quadratic_terms(theta=theta,
                                          kappa1=kappa1,
@@ -622,7 +656,8 @@ def compute_logsv_a_mgf_grid(ttm: float,
     is_spot_measure : bool, default True
         True for the MMA measure (p = 1), False for the inverse measure (p = -1).
     vol_backbone_eta : float, default 1.0
-        Maturity scaling of theta. Ignored on the analytic path.
+        Multiplicative scaling of return volatility. The semi-analytic path
+        supports only the flat backbone eta=1.
 
     Returns
     -------
@@ -634,8 +669,15 @@ def compute_logsv_a_mgf_grid(ttm: float,
     Raises
     ------
     NotImplementedError
-        If expansion_order is ExpansionOrder.ZERO.
+        If expansion_order is ExpansionOrder.ZERO, or a non-unit backbone is
+        requested with the semi-analytic path.
+    FloatingPointError
+        If the solver or contracted log transform returns nonfinite values.
     """
+    if not np.isfinite(ttm) or ttm < 0.0:
+        raise ValueError("ttm must be finite and nonnegative")
+    if is_analytic and vol_backbone_eta != 1.0:
+        raise NotImplementedError("The LogSV semi-analytic path requires vol_backbone_eta=1")
 
     if a_t0 is None:
         a_t0 = get_init_conditions_a(phi_grid=phi_grid,
@@ -682,4 +724,6 @@ def compute_logsv_a_mgf_grid(ttm: float,
 
     ys = ys + 1j * 0.0  # simple way to convert to complex array
     log_mgf = a_t1 @ ys
+    if not np.all(np.isfinite(a_t1)) or not np.all(np.isfinite(log_mgf)):
+        raise FloatingPointError("LogSV expansion returned nonfinite coefficients or log MGF")
     return a_t1, log_mgf

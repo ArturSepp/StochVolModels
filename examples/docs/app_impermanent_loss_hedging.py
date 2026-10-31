@@ -101,7 +101,8 @@ def run_local(local: Locals) -> None:
         value = expected_loss()
         mc, error = monte_carlo_loss()
         print(value, mc, error)
-        np.testing.assert_allclose(value, -0.017397, atol=1e-6)
+        # Corrected coefficient value, independently checked against simulated payoffs.
+        np.testing.assert_allclose(value, -0.017399, atol=1e-6)
         assert abs(value - mc) < 3.0 * error
 
     elif local == Locals.SENSITIVITY:

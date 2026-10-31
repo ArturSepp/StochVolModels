@@ -22,7 +22,7 @@ Quadratic Drift, International Journal of Theoretical and Applied Finance 26(8),
 """
 # package
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
@@ -45,7 +45,9 @@ from stochvolmodels.utils.funcs import (
 # stochvolmodels pricers
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 import stochvolmodels.pricers.logsv.affine_expansion as afe
-from stochvolmodels.pricers.model_pricer import ModelPricer, validate_optimization_result
+from stochvolmodels.pricers.model_pricer import (
+    CalibrationError, ModelPricer, validate_optimization_result,
+)
 from stochvolmodels.pricers.logsv.affine_expansion import ExpansionOrder
 from stochvolmodels.pricers.logsv.vol_moments_ode import fit_model_vol_backbone_to_varswaps
 from stochvolmodels.pricers.rough_logsv.kernel_fit import STEP_RULE_CONSTANT
@@ -223,7 +225,7 @@ def _compute_logsv_calibration_weights(
     return to_flat_np_array(normalized_vegas)
 
 
-@dataclass(frozen=True)
+@dataclass
 class _LogSvCalibrationObjective:
     """Callable fixed-input calibration objective for analytic and Monte Carlo engines."""
 
@@ -235,8 +237,27 @@ class _LogSvCalibrationObjective:
     calibration_engine: CalibrationEngine
     vol_scaler: float
     random_inputs: Optional[Tuple]
+    evaluations: int = field(default=0, init=False)
+    invalid_evaluations: int = field(default=0, init=False)
+    first_error: str = field(default="", init=False)
+    last_error: str = field(default="", init=False)
 
     def __call__(self, pars: np.ndarray, args: np.ndarray) -> float:
+        """Penalize numerical trials while retaining rejection diagnostics."""
+        self.evaluations += 1
+        try:
+            return self._evaluate(pars)
+        except FloatingPointError as error:
+            self.invalid_evaluations += 1
+            self.last_error = str(error)
+            if not self.first_error:
+                self.first_error = self.last_error
+            # A finite penalty permits SLSQP to retreat to a valid trial. It is
+            # never accepted as a final fit without independent revaluation.
+            return 1.0e12
+
+    def _evaluate(self, pars: np.ndarray) -> float:
+        """Value all usable quotes; model failures cannot remove residuals."""
         params = self.codec.parse(pars)
 
         if self.calibration_engine == CalibrationEngine.ANALYTIC:
@@ -293,9 +314,21 @@ class _LogSvCalibrationObjective:
         else:
             raise NotImplementedError(f"{self.calibration_engine}")
 
-        return np.nansum(
-            self.weights * np.square(to_flat_np_array(model_vols) - self.market_vols)
-        )
+        flat_vols = to_flat_np_array(model_vols)
+        if flat_vols.shape != self.market_vols.shape:
+            raise ValueError("LogSV model and market volatility vectors have different shapes")
+        # Preserve omission of missing market quotes and zero-weight observations,
+        # but never omit a failed model valuation at a usable market quote.
+        active = np.isfinite(self.market_vols) & np.isfinite(self.weights) & (self.weights != 0)
+        if not np.any(active):
+            raise CalibrationError("LogSV calibration has no finite nonzero-weight market quotes")
+        if not np.all(np.isfinite(flat_vols[active])):
+            raise FloatingPointError("LogSV model returned nonfinite IVs at usable market quotes")
+        with np.errstate(over="ignore", invalid="ignore"):
+            loss = np.sum(self.weights[active] * np.square(flat_vols[active] - self.market_vols[active]))
+        if not np.isfinite(loss):
+            raise FloatingPointError("LogSV calibration objective is nonfinite")
+        return float(loss)
 
 
 def _build_logsv_constraints(
@@ -483,7 +516,9 @@ class LogSVPricer(ModelPricer):
         with w_n set to Black-Scholes vega when ``is_vega_weighted`` is True, under
         the constraints selected by ``constraints_type``. Sec. 6.2 uses SLSQP;
         ``scipy.optimize.minimize`` is called with its default choice for the
-        given bounds and constraints here.
+        given bounds and constraints here. Numerically invalid trials receive a
+        finite penalty and are reported in a warning; the returned parameters
+        are repriced, and a numerically invalid final fit raises CalibrationError.
 
         Parameters
         ----------
@@ -574,8 +609,25 @@ class LogSVPricer(ModelPricer):
         if constraints is not None:
             optimizer_kwargs["constraints"] = constraints
 
-        result = minimize(objective, p0, **optimizer_kwargs)
-        return codec.parse(validate_optimization_result(result, bounds))
+        try:
+            result = minimize(objective, p0, **optimizer_kwargs)
+            fitted_vector = validate_optimization_result(result, bounds)
+            rejected_before = objective.invalid_evaluations
+            objective(fitted_vector, None)
+            if objective.invalid_evaluations != rejected_before:
+                raise CalibrationError(
+                    "LogSV final calibration failed numerical validation: " + objective.last_error
+                )
+            return codec.parse(fitted_vector)
+        finally:
+            if objective.invalid_evaluations:
+                warnings.warn(
+                    f"LogSV calibration rejected {objective.invalid_evaluations} of "
+                    f"{objective.evaluations} objective evaluations (including final validation). "
+                    f"First reason: {objective.first_error}; last reason: {objective.last_error}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
 
     @timer
     def simulate_vol_paths(self,

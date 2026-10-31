@@ -22,10 +22,10 @@ from stochvolmodels.utils.funcs import set_seed, compute_histogram_data
 import stochvolmodels.utils.plots as plot
 
 # implementations for paper
-import papers.logsv_model_with_quadratic_drift_ijtaf_2023 as mvq
-import papers.logsv_model_with_quadratic_drift_ijtaf_2023.steady_state_pdf as ssp
-import papers.logsv_model_with_quadratic_drift_ijtaf_2023.ode_sol_in_time as osi
-from papers.logsv_model_with_quadratic_drift_ijtaf_2023.model_fit_to_options_timeseries import report_calibration_timeseries
+from ..theory import moments_vol_qvar as mvq
+from ..theory import steady_state_pdf as ssp
+from ..theory import ode_sol_in_time as osi
+from ..calibration.model_fit_to_options_timeseries import report_calibration_timeseries
 from stochvolmodels import local_path as lp
 
 

@@ -107,7 +107,11 @@ def run_local(local: Locals) -> None:
     elif local == Locals.VARIANCE_SWAP:
         replicated = replicated_variance_swap()
         fair = np.sqrt(svm.compute_analytic_qvar(params=PARAMS, ttm=1.0 / 12.0, n_terms=4))
-        np.testing.assert_allclose([replicated, fair], [0.92030, 0.92034], atol=1e-5)
+        np.testing.assert_allclose([replicated, fair], [0.92037, 0.92034], atol=1e-5)
+        # Independently check the option strip against the finite moment closure.
+        # Both routes approximate quadratic-drift dynamics; neither is an exact benchmark.
+        # This is a finite-strip illustration, not exact continuous replication.
+        np.testing.assert_allclose(replicated**2, fair**2, rtol=1e-4)
 
     elif local == Locals.QV_OPTIONS:
         chain = qv_chain(ids=("1m",))

@@ -1288,6 +1288,12 @@
     "papers/il_hedging/logsv_figures.py": "papers/unified_approach_for_hedging_il_df_2025/replication/logsv_figures.py",
     "papers/il_hedging/run_logsv_for_il_payoff.py": "papers/unified_approach_for_hedging_il_df_2025/replication/run_logsv_for_il_payoff.py",
     "papers/logsv_model_with_quadratic_drift": "papers/logsv_model_with_quadratic_drift_ijtaf_2023",
+    "papers/logsv_model_with_quadratic_drift/article_figures.py": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/figures/article_figures.py",
+    "papers/logsv_model_with_quadratic_drift/calibrations.py": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/calibration/calibrations.py",
+    "papers/logsv_model_with_quadratic_drift/moments_vol_qvar.py": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/theory/moments_vol_qvar.py",
+    "papers/logsv_model_with_quadratic_drift/ode_sol_in_time.py": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/theory/ode_sol_in_time.py",
+    "papers/logsv_model_with_quadratic_drift/steady_state_pdf.py": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/theory/steady_state_pdf.py",
+    "papers/logsv_model_with_quadratic_drift/vol_drift.py": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/theory/vol_drift.py",
     "papers/sv_for_factor_hjm": "papers/sv_for_factor_hjm_rdr_2025"
   },
   "schema_version": 1,

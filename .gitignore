@@ -142,3 +142,7 @@ dmypy.json
 /papers/rough_volterra_lognormal_sv_model_2026
 /papers/il_hedging/agents
 /papers/sv_for_factor_hjm_rdr_2025/.private
+
+# Local volatility-review manuscript and replication work.
+/papers/review_volatility_models/
+/papers/robust_volatility_models/

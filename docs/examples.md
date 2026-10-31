@@ -177,7 +177,7 @@ extra, and several need local data. Their status and prerequisites are described
 
 | Directory | Entry point | Status |
 |---|---|---|
-| `logsv_model_with_quadratic_drift_ijtaf_2023` | `article_figures.py` | Published paper (IJTAF 2023) |
+| `logsv_model_with_quadratic_drift_ijtaf_2023` | `replication/figures/article_figures.py`, `replication/verification/run_checks.py` | Published paper (IJTAF 2023) |
 | `sv_for_factor_hjm_rdr_2025` | `calibration_fig_5_6_7.py`, `calibration_fig_8_9.py` | Published paper (Review of Derivatives Research 2025) |
 | `volatility_models`, `inverse_options` | `article_figures.py`, `compare_net_delta.py` | Supporting illustrations for public papers |
 | `unified_approach_for_hedging_il_df_2025` | `replication/replicate_figures.py`, `replication/verify_replication.py` | Corrected author manuscript and theoretical replication (Digital Finance 2025) |

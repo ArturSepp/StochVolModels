@@ -38,7 +38,11 @@ def produce_btc_case_fit(name: str, spec: dict, output_dir: Path) -> dict:
 
 
 def produce_btc_case_measures(name: str, spec: dict, output_dir: Path) -> dict:
-    """MMA and inverse implied volatilities against Monte Carlo on the bundled BTC chain."""
+    """Compare the historical BTC parameter vector with MC at the registered resolution.
+
+    The shared Bonferroni sampling check may fail when approximation or time-step
+    bias dominates sampling uncertainty; its threshold is never adjusted to pass.
+    """
     script = load_script(spec["script"])
     parameters = spec["parameters"]
     chain = get_btc_test_chain_data()
@@ -50,9 +54,13 @@ def produce_btc_case_measures(name: str, spec: dict, output_dir: Path) -> dict:
             option_chain=chain, params=script["FITTED"], nb_path=parameters["nb_path"],
             nb_steps=parameters["nb_steps"], vol_scaler=vol_scaler, figsize=(10.0, 8.5),
             xvar_format="{:,.0f}")
+    fig.suptitle("Historical parameters repriced with corrected coefficients", fontsize=12)
     thin_ticks(fig)
     save(fig, output_dir, name)
-    result = script["compare_measures"](chain)
+    # Replay the plot's exact simulation configuration for its numerical table.
+    result = script["compare_measures"](
+        chain, nb_path=parameters["nb_path"], seed=spec["seed"], nb_steps=parameters["nb_steps"])
+    diagnostics = script["sampling_diagnostics"](result)
     rows = []
     for slice_id, strikes, mma, inverse, mc, se in zip(chain.ids, chain.strikes_ttms,
                                                       result["mma"], result["inverse"],
@@ -60,13 +68,20 @@ def produce_btc_case_measures(name: str, spec: dict, output_dir: Path) -> dict:
         rows.append(pd.DataFrame({"slice": slice_id, "strike": strikes, "mma": mma,
                                   "inverse": inverse, "mc": mc, "mc_se": se}))
     table = pd.concat(rows, ignore_index=True)
-    z_scores = (table["mc"] - table["mma"]) / table["mc_se"]
-    return {"tables": {"prices": table},
-            "checks": {"mc_within_two_standard_errors": bool(np.max(np.abs(z_scores)) < 2.0)}}
+    table["z_score"] = (table["mc"] - table["mma"]) / table["mc_se"]
+    table["outside_two_se"] = np.abs(table["z_score"]) > 2.0
+    summary = pd.DataFrame([{**diagnostics, "nb_path": parameters["nb_path"],
+                             "nb_steps_per_year": parameters["nb_steps"], "seed": spec["seed"],
+                             "parameters": "historical pre-erratum vector; not refitted"}])
+    print("BTC measure sampling diagnostic (not a bound on approximation bias):")
+    print(summary.to_string(index=False))
+    return {"tables": {"prices": table, "sampling_diagnostics": summary},
+            "checks": {"mc_within_bonferroni_sampling_threshold": bool(
+                diagnostics["max_absolute_z"] < diagnostics["sampling_95_threshold"])}}
 
 
 def produce_calibration_objective_profiles(name: str, spec: dict, output_dir: Path) -> dict:
-    """The calibration objective on the bundled BTC chain as each fitted parameter moves."""
+    """Current objective profiles around a historical BTC vector, without claiming an optimum."""
     import matplotlib.pyplot as plt
     import seaborn as sns
 
@@ -74,6 +89,8 @@ def produce_calibration_objective_profiles(name: str, spec: dict, output_dir: Pa
     fitted = script["FITTED"]
     chain = get_btc_test_chain_data()
     base = script["weighted_error"](fitted, chain)
+    if not np.isfinite(base) or base <= 0.0:
+        raise FloatingPointError("The historical-reference objective must be finite and positive")
     grids = {"sigma0": fitted.sigma0 * np.linspace(0.7, 1.3, 13),
              "theta": fitted.theta * np.linspace(0.7, 1.3, 13),
              "beta": fitted.beta + np.linspace(-0.6, 0.6, 13),
@@ -81,21 +98,47 @@ def produce_calibration_objective_profiles(name: str, spec: dict, output_dir: Pa
     labels = {"sigma0": r"$\sigma_0$", "theta": r"$\theta$", "beta": r"$\beta$",
               "volvol": r"$\varepsilon$"}
     frames = {}
+    summaries = []
     with figure_style(), sns.axes_style("darkgrid"):
         fig, axs = plt.subplots(2, 2, figsize=(10.0, 7.5), layout="constrained")
+        fig.suptitle("Corrected objective around the historical parameter vector", fontsize=12)
         for ax, (key, values) in zip(axs.ravel(), grids.items()):
-            ratios = script["profile"](chain, key, values) / base
-            frames[key] = pd.Series(ratios, index=values, name=key)
+            objectives = script["profile"](chain, key, values)
+            if not np.all(np.isfinite(objectives)) or np.any(objectives <= 0.0):
+                raise FloatingPointError(f"{key}: profile objectives must be finite and positive")
+            ratios = objectives / base
+            reference = getattr(fitted, key)
+            idx = int(np.argmin(objectives))
+            frames[key] = pd.DataFrame({"parameter_value": values, "objective": objectives,
+                                         "ratio_to_historical_reference": ratios})
+            summaries.append({"parameter": key, "historical_parameter": reference,
+                              "historical_objective": base,
+                              "grid_minimum_parameter": values[idx],
+                              "grid_minimum_objective": objectives[idx],
+                              "grid_minimum_ratio": ratios[idx],
+                              "historical_is_grid_minimum": bool(abs(values[idx]-reference) < 1e-12)})
             ax.semilogy(values, ratios, marker="o", markersize=4, linewidth=1.6)
-            ax.axvline(getattr(fitted, key), color="0.4", linestyle="--", linewidth=1.1)
+            ax.axvline(reference, color="0.4", linestyle="--", linewidth=1.1,
+                       label="historical parameter")
+            ax.plot(values[idx], ratios[idx], marker="x", color="tab:red", markersize=8,
+                    linestyle="none", label="sampled grid minimum")
             ax.set_xlabel(labels[key])
-            ax.set_ylabel("objective / objective at the fit")
+            ax.set_ylabel("objective / historical-vector objective")
             ax.set_title(f"Profile in {labels[key]}", color="darkblue")
+            ax.legend(fontsize=9)
     save(fig, output_dir, name)
-    minima = {key: float(series.idxmin()) for key, series in frames.items()}
-    at_fit = all(abs(minima[key] - getattr(fitted, key)) < 1e-12 for key in minima)
-    return {"tables": {key: series.to_frame() for key, series in frames.items()},
-            "checks": {"minimum_at_the_fit_in_every_profile": bool(at_fit)}}
+    summary = pd.DataFrame(summaries).set_index("parameter")
+    reference_recovered = True
+    for key, frame in frames.items():
+        selected = np.isclose(frame["parameter_value"], getattr(fitted, key))
+        reference_recovered &= bool(selected.sum() == 1 and np.isclose(
+            frame.loc[selected, "objective"], base, rtol=1e-9, atol=1e-12).all())
+    print("Current profile grid minima; historical parameters were not refitted:")
+    print(summary.to_string())
+    return {"tables": {**frames, "profile_minima": summary},
+            "checks": {"historical_reference_recovered_in_profiles": bool(reference_recovered),
+                       "sampled_minima_no_worse_than_reference": bool(
+                           (summary["grid_minimum_ratio"] <= 1.0+1e-9).all())}}
 
 
 def produce_smile_fitter_fit(name: str, spec: dict, output_dir: Path) -> dict:
@@ -167,9 +210,12 @@ def produce_cross_asset_calibrations(name: str, spec: dict, output_dir: Path) ->
         for ax, (asset, params) in zip(axs.ravel(), script["FITTED"].items()):
             chain = script["CHAINS"][asset]()
             idx = list(chain.ids).index(slice_id)
+            prefix = svm.OptionChain.get_slices_as_chain(chain, list(chain.ids[:idx+1]))
             model = pricer.compute_model_ivols_for_chain(
-                option_chain=chain, params=params,
-                vol_scaler=pricer.set_vol_scaler(option_chain=chain))[idx]
+                option_chain=prefix, params=params,
+                vol_scaler=pricer.set_vol_scaler(option_chain=chain))[-1]
+            if not np.all(np.isfinite(model)):
+                raise FloatingPointError(f"{asset} {slice_id}: non-finite model implied volatilities")
             strikes = chain.strikes_ttms[idx] / chain.forwards[idx]
             # whole-percent ticks mislabel half-percent steps on the narrower smiles
             span = np.nanmax(chain.ask_ivs[idx]) - np.nanmin(chain.bid_ivs[idx])
@@ -194,7 +240,7 @@ def produce_cross_asset_calibrations(name: str, spec: dict, output_dir: Path) ->
         ax.set_title("Fitted parameters", color="darkblue")
         ax.legend(loc="lower right", fontsize=9)
     save(fig, output_dir, name)
-    module = importlib.import_module("papers.logsv_model_with_quadratic_drift_ijtaf_2023.calibrations")
+    module = importlib.import_module("papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.calibration.calibrations")
     recorded = {asset.value: params for asset, params in module.CALIBRATED_PARAMS.items()}
     keys = {"S&P 500 (SPY)": "S&P500", "Gold (GLD)": "Gold", "Bitcoin": "Bitcoin",
             "-3x Nasdaq (SQQQ)": "-3x Nasdaq", "VIX": "Vix"}

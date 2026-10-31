@@ -26,7 +26,7 @@ papers are cited as such.
 
 | Paper | Status | In the repository | Documentation pages |
 |---|---|---|---|
-| Sepp and Rakhmonov (2023), Log-normal stochastic volatility model with quadratic drift, *International Journal of Theoretical and Applied Finance* 26(8), 2450003, [DOI 10.1142/S0219024924500031](https://doi.org/10.1142/S0219024924500031) | Published, open access (CC BY 4.0) | PDF and LaTeX in `papers/logsv_model_with_quadratic_drift_ijtaf_2023/paper/`; figure code in that directory | [Log-normal SV model](logsv_model.md), [steady state and moments](volatility_distribution_and_moments.md), [martingale conditions](martingale_conditions_and_skews.md), [affine expansion](affine_expansion.md), [Fourier pricing](european_option_pricing.md), [inverse options](inverse_options.md), [QV options](quadratic_variance_options.md), [Monte Carlo schemes](monte_carlo_simulation.md), [analytic versus Monte Carlo](analytic_vs_monte_carlo.md), [calibration](calibration.md), [Bitcoin options](app_bitcoin_options.md) |
+| Sepp and Rakhmonov (2023), Log-normal stochastic volatility model with quadratic drift, *International Journal of Theoretical and Applied Finance* 26(8), 2450003, [DOI 10.1142/S0219024924500031](https://doi.org/10.1142/S0219024924500031) | Published, open access (CC BY 4.0) | PDF and LaTeX in `papers/logsv_model_with_quadratic_drift_ijtaf_2023/paper/`; figure code in `replication/figures/`, with theory, calibration, empirical and verification modules under `replication/` | [Log-normal SV model](logsv_model.md), [steady state and moments](volatility_distribution_and_moments.md), [martingale conditions](martingale_conditions_and_skews.md), [affine expansion](affine_expansion.md), [Fourier pricing](european_option_pricing.md), [inverse options](inverse_options.md), [QV options](quadratic_variance_options.md), [Monte Carlo schemes](monte_carlo_simulation.md), [analytic versus Monte Carlo](analytic_vs_monte_carlo.md), [calibration](calibration.md), [Bitcoin options](app_bitcoin_options.md) |
 | Sepp and Rakhmonov (2025), Stochastic volatility for factor Heath-Jarrow-Morton framework, *Review of Derivatives Research* 28, article 12, [DOI 10.1007/s11147-025-09217-4](https://doi.org/10.1007/s11147-025-09217-4) | Published, exclusive licence to Springer | PDF and LaTeX in `papers/sv_for_factor_hjm_rdr_2025/paper/`; figure code in that directory | [Factor HJM rates](factor_hjm_stochastic_volatility.md), [USD swaptions and SOFR options](app_swaptions_and_sofr_options.md) |
 | Lucic and Sepp (2024), Valuation and hedging of cryptocurrency inverse options, *Quantitative Finance* 24(7), 851-869, [DOI 10.1080/14697688.2024.2364804](https://doi.org/10.1080/14697688.2024.2364804) | Published | Code in `papers/inverse_options/` | [Inverse options](inverse_options.md) |
 | Lipton, Lucic and Sepp (2025), Unified approach for hedging impermanent loss of liquidity provision, *Digital Finance* 7(3), 429-477, [DOI 10.1007/s42521-025-00144-5](https://doi.org/10.1007/s42521-025-00144-5) | Published | Code in `papers/unified_approach_for_hedging_il_df_2025/` | [Impermanent loss hedging](app_impermanent_loss_hedging.md) |
@@ -75,7 +75,7 @@ python -m scripts.docs_analytics.run --verify
 canonical script, which runs offline, for example `python examples/docs/app_swaptions_and_sofr_options.py`;
 the [examples page](examples.md) lists them all. The narrow offline test lane of the IJTAF results
 runs with `pytest -m paper_replication`. The paper directories' own entry points run from the
-repository root, for example `python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.article_figures`;
+repository root, for example `python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.figures.article_figures`;
 read `papers/README.md` and the README of the directory first.
 
 ## Reproducibility record
@@ -107,12 +107,16 @@ synthetic option-chain examples, package tests, and built documentation are the 
 
 ## Known issues of the paper directories
 
-These are recorded in the documentation audits and have not been changed; the pages that use the
-code say how they work around them.
+The following notes distinguish corrected implementation defects from remaining limitations;
+the pages that use the code describe their verification and workarounds.
 
-- **`logsv_model_with_quadratic_drift_ijtaf_2023`.** `article_figures.py` draws Figs. 6 and 10 through `qis`.
-  In `steady_state_pdf.py`, `vol_moment` inverts the scale factor, so absolute moments are wrong;
-  Fig. 1, which shows skewness and kurtosis, is not affected. The docstring of `calibrations.py`
+- **`logsv_model_with_quadratic_drift_ijtaf_2023`.** `replication/figures/article_figures.py` draws Figs. 6 and 10 through `qis`.
+  The stationary-moment scale in `replication/theory/steady_state_pdf.py` is corrected to
+  $(q/b)^{r/2}$, including the inverse-gamma limit at zero quadratic mean reversion.
+  The `--quick` verification entry point checks orders zero through four against independent
+  density quadrature at non-unit scales and checks divergent inverse-gamma moments.
+  This scale correction does not change the standardized skewness and kurtosis of Fig. 1.
+  The docstring of `replication/calibration/calibrations.py`
   refers to figures and a table that the published article does not contain; the
   [skews case study](app_positive_and_negative_skews.md) uses its recorded parameters as a package
   illustration.

@@ -117,9 +117,9 @@ def run_local(local: Locals) -> None:
         result = price_under_both_measures()
         price_gap = np.max(np.abs(result["mma"] - result["inverse"]))
         vol_gap = np.max(np.abs(result["mma_vols"] - result["inverse_vols"]))
-        # the page quotes the two gaps as 1.5e-5 in price and 1.3e-4 in implied volatility
-        assert 1.4e-5 < price_gap < 1.55e-5, price_gap
-        assert 1.25e-4 < vol_gap < 1.35e-4, vol_gap
+        # Numeraire equivalence: the former nonzero gap was a coefficient defect.
+        assert price_gap < 1e-12, price_gap
+        assert vol_gap < 1e-10, vol_gap
         np.testing.assert_array_equal(result["inverse"], result["inverse_codes"])
         try:
             svm.LogSVPricer().price_slice(params=PARAMS, ttm=1.0 / 12.0, forward=1.0,

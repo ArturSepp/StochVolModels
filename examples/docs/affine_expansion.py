@@ -4,7 +4,8 @@ Every Python block on that page is a verbatim excerpt of this file, and every nu
 quotes is asserted here. The affine expansion of the moment generating function of Section 4 of
 Sepp and Rakhmonov (2023) is solved with the package, checked against exact results (the
 martingale conditions, the log-normal limit, the exact moments at kappa2 = 0), and compared with
-the second-order system as printed in Eq. (4.25). Select a case in ``Locals`` or run the file to
+the independently derived second-order system. Historical pre-erratum results are replayed
+only through ``legacy_linear_terms``. Select a case in ``Locals`` or run the file to
 execute every case.
 """
 from enum import Enum
@@ -34,6 +35,9 @@ def coefficients(params: svm.LogSvParams, phi: complex, ttm: float = 1.0,
     solution = svm.solve_ode_for_a(ttm=ttm, theta=params.theta, kappa1=params.kappa1,
                                    kappa2=params.kappa2, beta=params.beta, volvol=params.volvol,
                                    phi=phi, psi=0j, expansion_order=order, is_stiff_solver=True)
+    if (not solution.success or not np.isclose(solution.t[-1], ttm, rtol=0.0, atol=1e-12)
+            or not np.all(np.isfinite(solution.y[:, -1]))):
+        raise FloatingPointError("Coefficient integration did not reach a finite terminal state")
     return solution.y[:, -1]
 
 
@@ -58,6 +62,9 @@ def solve_system(params: svm.LogSvParams, phi: complex = 0j, psi: complex = 0j,
     a0[1] = -theta_t
     solution = solve_ivp(svm.func_rhs, (0.0, ttm), a0, args=(quadratic, linear, free),
                          rtol=1e-12, atol=1e-14)
+    if (not solution.success or not np.isclose(solution.t[-1], ttm, rtol=0.0, atol=1e-12)
+            or not np.all(np.isfinite(solution.y[:, -1]))):
+        raise FloatingPointError("Coefficient integration did not reach a finite terminal state")
     return solution.y[:, -1]
 
 
@@ -82,6 +89,18 @@ def paper_linear_terms(params: svm.LogSvParams, phi: complex, is_spot_measure: b
                                 - (kappa_p + 2.0 * theta * beta * phi) * j)
             elif j == k - 1:
                 linear[k, j] = -(kappa2_p + beta * phi) * j
+    return linear
+
+
+def legacy_linear_terms(params: svm.LogSvParams, phi: complex, is_spot_measure: bool = True,
+                        n: int = 5) -> np.ndarray:
+    """Replay only the pre-29-October-2026 coefficient defects for historical comparisons."""
+    linear = paper_linear_terms(params, phi=phi, is_spot_measure=is_spot_measure, n=n)
+    if n == 5:
+        linear[4, 4] -= 4.0 * (params.beta ** 2 + params.volvol ** 2)
+        lamda = 0.0 if is_spot_measure else params.beta * params.theta ** 2
+        linear[2, 3] -= 3.0 * lamda
+        linear[3, 4] -= 4.0 * lamda
     return linear
 
 
@@ -128,7 +147,7 @@ def exact_moments(params: svm.LogSvParams, ttm: float) -> dict:
 
 def implied_vols(params: svm.LogSvParams, ttm: float, strikes: np.ndarray,
                  linear_terms=None) -> np.ndarray:
-    """Second-order implied volatilities under the MMA measure, from package or paper L terms."""
+    """Second-order MMA implied volatilities using current, independent or legacy linear terms."""
     phi_grid = svm.get_phi_grid(vol_scaler=set_vol_scaler(sigma0=params.sigma0, ttm=ttm))
     log_mgf = np.array([solve_system(params, phi=phi, ttm=ttm, linear_terms=linear_terms)
                         @ (params.sigma0 - params.theta) ** np.arange(5) for phi in phi_grid])
@@ -205,10 +224,12 @@ def run_local(local: Locals) -> None:
         first = coefficients(FIG45_PARAMS, phi)
         second = coefficients(FIG45_PARAMS, phi, order=svm.ExpansionOrder.SECOND)
         np.testing.assert_allclose(first, [-1.8986 + 0.1060j, -0.3691 + 0.0216j, 0.0], atol=1e-4)
-        np.testing.assert_allclose(second[:2], first[:2], atol=3e-3)
+        independent = solve_system(FIG45_PARAMS, phi=phi, linear_terms=paper_linear_terms)
+        np.testing.assert_allclose(second, independent, atol=1e-5, rtol=5e-4)
+        assert np.max(np.abs(second[:2] - first[:2])) < 6e-3
         assert np.max(np.abs(second[2:])) < 1e-4
         np.testing.assert_allclose(leading_term(FIG45_PARAMS, first), 0.1593 + 0.0163j, atol=1e-4)
-        np.testing.assert_allclose(leading_term(FIG45_PARAMS, second), 0.1589 + 0.0162j,
+        np.testing.assert_allclose(leading_term(FIG45_PARAMS, second), 0.1584 + 0.0162j,
                                    atol=1e-4)
         # the parameters of Eq. (6.4) give a different A^(0)(1): the published Fig. 4 used the above
         eq64 = svm.LogSvParams(sigma0=0.4083, theta=0.3789, kappa1=2.21, kappa2=2.18, beta=0.5010,
@@ -241,16 +262,16 @@ def run_local(local: Locals) -> None:
         errors = {}
         for label, kwargs in (("first", {"order": svm.ExpansionOrder.FIRST}),
                               ("second", {"order": svm.ExpansionOrder.SECOND}),
-                              ("paper", {"order": svm.ExpansionOrder.SECOND,
-                                         "linear_terms": paper_linear_terms})):
+                              ("legacy", {"order": svm.ExpansionOrder.SECOND,
+                                          "linear_terms": legacy_linear_terms})):
             moments = expansion_moments(params, ttm=0.75, **kwargs)
             for name in moments:  # every system reproduces the means
                 np.testing.assert_allclose(moments[name][0], exact[name][0], atol=1e-5)
             errors[label] = [moments[name][1] / exact[name][1] - 1.0
                              for name in ("sigma", "X", "I")]
         np.testing.assert_allclose(errors["first"], [0.0, -0.089, -0.404], atol=5e-4)
-        np.testing.assert_allclose(errors["second"], [0.0, -0.027, -0.081], atol=5e-4)
-        np.testing.assert_allclose(errors["paper"], [0.0, 0.0, 0.0], atol=1e-4)
+        np.testing.assert_allclose(errors["legacy"], [0.0, -0.027, -0.081], atol=5e-4)
+        np.testing.assert_allclose(errors["second"], [0.0, 0.0, 0.0], atol=1e-4)
         print(errors)
 
     elif local == Locals.SECOND_ORDER_TERMS:
@@ -264,15 +285,16 @@ def run_local(local: Locals) -> None:
                     is_spot_measure=is_spot_measure, expansion_order=order)
                 paper = paper_linear_terms(FIG45_PARAMS, phi=phi, is_spot_measure=is_spot_measure,
                                            n=n)
+                np.testing.assert_allclose(linear, paper, atol=1e-12, rtol=0.0)
+                legacy = legacy_linear_terms(FIG45_PARAMS, phi=phi,
+                                              is_spot_measure=is_spot_measure, n=n)
                 differing = [tuple(int(i) for i in ij)
-                             for ij in np.argwhere(np.abs(linear - paper) > 1e-12)]
-                if n == 3:
-                    expected = []
-                else:
-                    expected = [(4, 4)] if is_spot_measure else [(2, 3), (3, 4), (4, 4)]
+                             for ij in np.argwhere(np.abs(legacy - paper) > 1e-12)]
+                expected = [] if n == 3 else (
+                    [(4, 4)] if is_spot_measure else [(2, 3), (3, 4), (4, 4)])
                 assert differing == expected, (order, is_spot_measure, differing)
-                if n == 5:  # package: vartheta^2 in the A^(4) entry; (4.25): 3 vartheta^2
-                    np.testing.assert_allclose(paper[4, 4] - linear[4, 4], 4.0 * vartheta2,
+                if n == 5:
+                    np.testing.assert_allclose(paper[4, 4] - legacy[4, 4], 4.0 * vartheta2,
                                                atol=1e-12)
         # (4.17), entry of A^(2): vartheta^2 - 2 kappa - 4 theta beta Phi in code and derivation
         _, linear, _ = svm.func_a_ode_quadratic_terms(
@@ -286,13 +308,13 @@ def run_local(local: Locals) -> None:
         for ttm, gap in ((1.0 / 12.0, 5e-5), (1.0, 1.42e-2)):
             deviation = BTC_PARAMS.sigma0 * np.sqrt(ttm)
             strikes = np.exp(np.linspace(-2.5 * deviation, 2.5 * deviation, 11))
-            package = implied_vols(BTC_PARAMS, ttm, strikes)
-            paper = implied_vols(BTC_PARAMS, ttm, strikes, linear_terms=paper_linear_terms)
-            print(ttm, np.max(np.abs(package - paper)))
-            np.testing.assert_allclose(np.max(np.abs(package - paper)), gap, rtol=0.1)
+            current = implied_vols(BTC_PARAMS, ttm, strikes)
+            legacy = implied_vols(BTC_PARAMS, ttm, strikes, linear_terms=legacy_linear_terms)
+            print(ttm, np.max(np.abs(legacy - current)))
+            np.testing.assert_allclose(np.max(np.abs(legacy - current)), gap, rtol=0.1)
         mc, upper, lower = monte_carlo_vols(BTC_PARAMS, 1.0, strikes)
         half_width = 0.5 * (upper - lower)
-        for vols, rmse, inside in ((package, 0.0099, 6), (paper, 0.0017, 11)):
+        for vols, rmse, inside in ((legacy, 0.0099, 6), (current, 0.0017, 11)):
             print(np.sqrt(np.mean((vols - mc) ** 2)), np.sum(np.abs(vols - mc) <= half_width))
             np.testing.assert_allclose(np.sqrt(np.mean((vols - mc) ** 2)), rmse, atol=5e-4)
             assert np.sum(np.abs(vols - mc) <= half_width) == inside
@@ -307,7 +329,9 @@ def run_local(local: Locals) -> None:
         noise = np.sum(np.sqrt(2.0 * second * (1.0 - second) / (np.pi * 400000)))
         distances = np.abs(first - mc).sum(), np.abs(second - mc).sum()
         print(distances, noise)
-        np.testing.assert_allclose(distances, [0.0138, 0.0125], atol=5e-4)
+        # Compare with the independent histogram at its sampling scale, not old code values.
+        assert np.all(first >= -1e-10) and np.all(second >= -1e-10)
+        assert max(distances) <= 1.25 * noise
         np.testing.assert_allclose(noise, 0.0127, atol=5e-4)
 
     elif local == Locals.SEMI_ANALYTIC_PATH:
@@ -315,12 +339,19 @@ def run_local(local: Locals) -> None:
         pricer = svm.LogSVPricer()
         params = svm.LogSvParams(sigma0=1.0, theta=1.0, kappa1=5.0, kappa2=5.0, beta=0.2,
                                  volvol=2.0)
-        price, _ = pricer.price_vanilla(params=params, ttm=0.25, forward=1.0, strike=1.0,
-                                        optiontype="C", is_analytic=True)
-        assert not np.isfinite(price)
-        price, _ = pricer.price_vanilla(params=params, ttm=0.25, forward=1.0, strike=1.0,
+        try:
+            pricer.price_vanilla(params=params, ttm=0.25, forward=1.0, strike=1.0,
+                                 optiontype="C", is_analytic=True)
+        except FloatingPointError:
+            pass
+        else:
+            raise AssertionError("The known nonfinite fixed-point path must be rejected")
+        price, iv = pricer.price_vanilla(params=params, ttm=0.25, forward=1.0, strike=1.0,
                                         optiontype="C")
-        np.testing.assert_allclose(price, 0.197331, atol=1e-6)
+        independent_iv = implied_vols(params, 0.25, np.array([1.0]),
+                                      linear_terms=paper_linear_terms)[0]
+        assert np.isfinite(price) and 0.0 < price < 1.0
+        np.testing.assert_allclose(iv, independent_iv, atol=5e-4, rtol=0.0)
 
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
 """Producers of the log-normal SV model exhibits.
 
 Paper replications regenerate figures of Sepp and Rakhmonov (2023) by calling the paper's own
-plotting module under ``papers/logsv_model_with_quadratic_drift_ijtaf_2023`` with the parameters of the
-paper's orchestrator, ``article_figures.py``. The panels are laid out for the web instead of the
+plotting modules under ``papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/theory`` with the parameters of the
+paper's orchestrator, ``replication/figures/article_figures.py``. The panels are laid out for the web instead of the
 print page. Supporting tables come from the page's canonical script, and each producer checks
 that the paper module and the script agree.
 """
@@ -23,7 +23,7 @@ import stochvolmodels.pricers.logsv.vol_moments_ode as vmo
 from stochvolmodels.utils.funcs import set_seed
 from scripts.docs_analytics.common import figure_style, load_script, save
 
-PAPER = "papers.logsv_model_with_quadratic_drift_ijtaf_2023"
+PAPER = "papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.theory"
 
 
 def _mc_error_bars(ax: plt.Axes) -> list[pd.DataFrame]:

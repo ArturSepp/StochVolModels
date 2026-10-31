@@ -88,9 +88,9 @@ The expected loss is reported per unit of the initial value of the position.
 
 The portfolio pays minus the impermanent loss to $10^{-12}$ at every terminal price from 1,500 to
 3,000, and the loss is zero at the initial price and negative elsewhere. The expected loss over ten
-days is 1.7397% of the initial value of the position, 17,397 on a position of 1,000,000, the value
-the module computes. A simulation of 400,000 paths gives 1.7378% with a standard error of 0.0037%,
-within one standard error.
+days is about 1.74% of the initial value of the position, or 17,400 on a position of 1,000,000,
+using the corrected LogSV coefficients. A simulation of 400,000 paths also gives 1.74%, with
+a standard error of 0.00372 percentage points; the transform value differs by 0.551 standard errors.
 
 At a fixed total vol-of-vol $\vartheta$, moving the volatility beta from -1 to 1 changes the
 expected loss little: 1.726%, 1.742% and 1.734% for $\beta = -1, 0, 1$. The residual vol-of-vol
@@ -100,7 +100,8 @@ the smile, which the vol-of-vol controls; the tilt that $\beta$ adds changes it 
 
 [![Impermanent loss against the terminal price with minus the payoff of the replicating portfolio, and the expected loss against the vol-of-vol for three volatility betas.](images/il_replication.png)](images/il_replication.png)
 
-*Synthetic teaching exhibit. (A) Impermanent loss at the horizon in % of the initial position value
+*Historical synthetic teaching exhibit, generated before the 29 October 2026 coefficient
+correction; the pricing panel has not been regenerated. (A) Impermanent loss at the horizon in % of the initial position value
 against the terminal price, with the range shaded and the initial price dashed; the dots are minus
 the payoff of the replicating portfolio. (B) Expected loss over ten days in % of the initial
 position value against the residual vol-of-vol, for three volatility betas at the module's other

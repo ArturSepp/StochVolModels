@@ -27,13 +27,18 @@ which:
 
 ## Conventions
 
+The stored previews involving LogSV transform pricing predate the 29 October 2026
+coefficient correction. Their result rows describe the saved exhibits, rather than
+new validation of the corrected pricer. The linked articles distinguish current
+numerical checks from these historical previews, whose image hashes are preserved.
+
 | Item | Convention |
 |---|---|
 | Measure | The money-market-account (MMA) measure unless a caption names another: the inverse measure, or the annuity and forward measures of the rates exhibits |
 | Volatility | Annualised; implied volatilities are Black-Scholes-Merton, except in the rates exhibits, which show normal volatilities in basis points |
 | Monte Carlo | Seeded; the number of paths, the steps per year and the seed are in the caption and the registry |
 | Error measure | Root-mean-square difference of implied volatilities, labelled "mse" in the package's plot legends |
-| One calculation | A figure's tables and the numbers its article quotes come from the same functions of the page's canonical script |
+| One calculation | Within a newly generated bundle, each figure and its supporting tables use the same configuration; historical previews are distinguished from current numerical checks in the linked articles |
 | Provenance | [`analytics_manifest.json`](images/analytics_manifest.json) records the configuration, the source commit and hashes, the package versions, the numerical checks and the image hashes |
 
 Regenerate every exhibit into a new directory outside the checkout, validate it, and verify the
@@ -74,7 +79,7 @@ The registry is
 | Class | Paper replication, IJTAF Fig. 1 |
 | Parameters | $\theta = 1$, $\vartheta = 1.5$; density for $\kappa_1 = 4$ and $\kappa_2 = 0, 4, 8$; skewness and kurtosis for $\kappa_1 = 1, 4, 8$ |
 | Result | Excess kurtosis of returns 28.5, 2.05 and 1.26 for $\kappa_2 = 0, 4, 8$ with $\kappa_1 = 4$ |
-| Paper module | `papers/logsv_model_with_quadratic_drift_ijtaf_2023/steady_state_pdf.py` |
+| Paper module | `papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/theory/steady_state_pdf.py` |
 | Producer | `scripts/docs_analytics/logsv_model.py`, `produce_steady_state_density` |
 | Article | [Steady-state distribution, moments and expected QV](volatility_distribution_and_moments.md) |
 
@@ -88,7 +93,7 @@ The registry is
 | Class | Paper replication, IJTAF Fig. 2 |
 | Parameters | $\sigma_0 = 1.5$, $\theta = 1$, $\kappa_1 = \kappa_2 = 4$, $\vartheta = 1$; 100,000 paths, seed 37 |
 | Result | At long horizons, order eight matches the stationary moments within 0.2%, order four within 6% |
-| Paper module | `papers/logsv_model_with_quadratic_drift_ijtaf_2023/moments_vol_qvar.py` |
+| Paper module | `papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/theory/moments_vol_qvar.py` |
 | Producer | `scripts/docs_analytics/logsv_model.py`, `produce_vol_moments_vs_mc` |
 | Article | [Steady-state distribution, moments and expected QV](volatility_distribution_and_moments.md) |
 
@@ -102,7 +107,7 @@ The registry is
 | Class | Paper replication, IJTAF Fig. 3 |
 | Parameters | $\kappa_1 = 4$, $\kappa_2 = 0, 4, 8$, $\theta = 1$, $\vartheta = 1.5$, $\sigma_0 = 1.5$ and 0.5; 25,000 paths (the paper used 100,000), seed 37 |
 | Result | From $\sigma_0 = 1.5$, the two-year expected QV is 1.55, 1.07 and 1.02 for $\kappa_2 = 0, 4, 8$ |
-| Paper module | `papers/logsv_model_with_quadratic_drift_ijtaf_2023/moments_vol_qvar.py` |
+| Paper module | `papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/theory/moments_vol_qvar.py` |
 | Producer | `scripts/docs_analytics/logsv_model.py`, `produce_expected_qvar_vs_mc` |
 | Article | [Steady-state distribution, moments and expected QV](volatility_distribution_and_moments.md) |
 
@@ -146,7 +151,7 @@ The registry is
 | Class | Paper replication, IJTAF Fig. 4 |
 | Parameters | $\Phi = -0.5 + 2i$, MMA measure; $\sigma_0 = 0.8327$, $\theta = 1.0139$, $\kappa_1 = 4.8606$, $\kappa_2 = 4.7938$, $\beta = 0.1985$, $\varepsilon = 2.369$, those of the paper's figure code (the caption cites Eq. (6.4)) |
 | Result | $A^{(0)}(1) = -1.8986 + 0.1060i$ and $E^{[1]}(1) = 0.1593 + 0.0163i$ |
-| Paper module | `papers/logsv_model_with_quadratic_drift_ijtaf_2023/ode_sol_in_time.py` |
+| Paper module | `papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/theory/ode_sol_in_time.py` |
 | Producer | `scripts/docs_analytics/transforms.py`, `produce_expansion_odes` |
 | Article | [The moment generating function and its affine expansion](affine_expansion.md) |
 
@@ -160,7 +165,7 @@ The registry is
 | Class | Paper replication, IJTAF Fig. 5 |
 | Parameters | As for Fig. 4 |
 | Result | $A^{(2)}$, $A^{(3)}$ and $A^{(4)}$ stay below $10^{-4}$ at one year; $E^{[2]}(1) = 0.1589 + 0.0162i$ |
-| Paper module | `papers/logsv_model_with_quadratic_drift_ijtaf_2023/ode_sol_in_time.py` |
+| Paper module | `papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/theory/ode_sol_in_time.py` |
 | Producer | `scripts/docs_analytics/transforms.py`, `produce_expansion_odes` |
 | Article | [The moment generating function and its affine expansion](affine_expansion.md) |
 
@@ -396,13 +401,16 @@ The registry is
 
 ### One model on five underlyings
 
+This preview retains its pre-erratum provenance. The [current diagnostics](app_positive_and_negative_skews.md#results)
+reject two long gold maturities and report revised fit metrics; the preview has not been regenerated.
+
 [![Model implied volatilities against bid and ask at two months for five underlyings, and the fitted volatility beta and quadratic mean reversion of each.](images/cross_asset_calibrations.png)](images/cross_asset_calibrations.png)
 
 | | |
 |---|---|
 | Question | Does one parameterisation fit equity, VIX, gold and inverse-ETF skews? |
 | Class | Historical snapshots: SPY, GLD, SQQQ and VIX of 15 July 2022; Bitcoin of 21 October 2021 |
-| Parameters | `FITTED` of the canonical script, recorded in `papers/logsv_model_with_quadratic_drift_ijtaf_2023/calibrations.py`; the two-month maturity |
+| Parameters | `FITTED` of the canonical script, recorded in `papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/calibration/calibrations.py`; the two-month maturity |
 | Result | $\beta$ negative for SPY only; every fit satisfies $\kappa_2 \ge 2 \beta$ |
 | Script | [`examples/docs/app_positive_and_negative_skews.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/app_positive_and_negative_skews.py) |
 | Producer | `scripts/docs_analytics/calibration.py`, `produce_cross_asset_calibrations` |

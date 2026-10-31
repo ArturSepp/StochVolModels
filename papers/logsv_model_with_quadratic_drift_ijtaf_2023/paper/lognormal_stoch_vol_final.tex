@@ -1,7 +1,7 @@
-\documentclass[pdftex,11pt,a4paper] {article}
+\documentclass[11pt,a4paper] {article}
 \usepackage{amsmath,amsfonts,amsthm,amssymb,amscd}
 \usepackage{latexsym}
-\usepackage[pdftex]{graphicx}
+\usepackage{graphicx}
 \usepackage{float}
 \usepackage{xcolor}
 \usepackage{multirow}
@@ -18,7 +18,7 @@
  left=25mm,
  top=25mm,
  }
-\graphicspath{{../../draft/figures/}}
+\graphicspath{{./}}
 
 \newtheorem{corollary}{Corollary}[section]
 \newtheorem{lemma}{Lemma}[section]
@@ -47,7 +47,7 @@
 
 
 \usepackage[nodayofweek]{datetime}
-\newdate{date}{16}{02}{2024}
+\newdate{date}{29}{10}{2026}
 \date{\displaydate{date}}
 
 \usepackage{hyperref}  %added
@@ -70,9 +70,22 @@
 \maketitle
 
 \begin{center}
-Forthcoming in International Journal of Theoretical and Applied Finance
+Corrected author manuscript of the article published in\\
+International Journal of Theoretical and Applied Finance, 26(8), 2450003
 \end{center}
 
+
+\noindent\textbf{Correction note, 29 October 2026.}
+This author revision corrects printed coefficient symbols, the transformed
+remainder equations and their error estimates, and the affected appendix proofs.
+It also distinguishes the finite transform approximation from the exact model.
+The publisher's version is preserved separately. The figures and empirical
+calibration numbers retained below are historical exhibits from that version;
+they are not newly recalibrated results from the corrected implementation.
+The accompanying replication package records coefficient and independent
+PDE/Monte Carlo checks. Correcting coefficients does not establish uniform
+accuracy or global existence of the truncated coefficient system.
+\medskip
 
 \begin{abstract}
 We introduce the log-normal stochastic volatility (SV) model with a quadratic drift to allow arbitrage-free valuation of options on assets under money-market account and inverse martingale measures. We show that the proposed volatility process has the unique strong solution, despite non-Lipschitz quadratic drift, and we establish the corresponding Feynman-Kac partial differential equation (PDE) for computation of conditional expectations under this SV model. We derive conditions for arbitrage-free valuations when return-volatility correlation is positive to preclude the ``loss of martingality'', which occurs in many traditional SV models. Importantly, we develop an analytic approach to compute an affine expansion for the moment generating function of the log-price, its quadratic variance (QV) and the instantaneous volatility. Our solution allows for semi-analytic valuation of vanilla options under log-normal SV models closing a gap in existing studies.
@@ -1276,6 +1289,25 @@ where $M^{(k)}$, $L^{(k)}$, $H^{(k)}$ are infinite-dimensional sparse matrices a
 We note the similarity between the current ansatz (\ref{eq:gc1}) for problem (\ref{eq:mgf1}) and the problem of computing the moments of the volatility process addressed in Proposition \ref{pr:vol_moments}. There we first represent the recursive solution to the moments as an infinite dimensional vector in Eq (\ref{eq:mvp5}). We then obtain an approximate solution by a truncation of infinite series and specifying a boundary condition to reduce the problem to a finite-dimensional vector (\ref{eq:mvp8}), which can be solved using analytical methods. Here we follow this insight for solving PDE (\ref{eq:mgf1}) and term our (truncated) solution as the affine expansion for a given order.
 
 
+After factoring $G=e^{-\Phi X-\Psi I}g$, the reduced transform operator is
+\begin{equation*}
+\begin{split}
+\mathcal A_{\Phi,\Psi,p} f
+={}&\frac12\vartheta^2(Y+\theta)^2f_{YY}
+ +\left[\mu_p(Y)-\beta\Phi(Y+\theta)^2\right]f_Y\\
+&+\frac12(\Phi^2+p\Phi-2\Psi)(Y+\theta)^2f,\\
+\mu_p(Y)={}&\lambda^{(p)}-\kappa^{(p)}Y-\kappa_2^{(p)}Y^2.
+\end{split}
+\end{equation*}
+Thus $g_\tau=\mathcal A_{\Phi,\Psi,p}g$ and $g(0,Y)=e^{-\Theta Y}$.
+The cross derivative in \eqref{eq:pdeLY1} produces the term
+$-\beta\Phi(Y+\theta)^2f_Y$; the transform of $X$ and $I$ produces the
+zero-order potential. Both terms must also be retained in the remainder equation.
+The infinite series is a formal coefficient construction unless its convergence
+is established. The finite expansions below are defined on the maximal interval
+of their coefficient ODE solution and have the stated exact remainder whenever
+the required transformed expectations exist.
+
 \subsubsection{First-order Expansion}
  
 \begin{theorem}\label{pr:b1} [First-order affine expansion] The MGF in Eq \eqref{eq:mgf} can be decomposed as follows
@@ -1284,7 +1316,7 @@ We note the similarity between the current ansatz (\ref{eq:gc1}) for problem (\r
 G(\tau,X,I,Y; \Phi,\Psi,\Theta;\,p)&= \exp \left\{-\Phi X-\Psi I \right\}  \left[E^{[1]}(\tau,Y; \Phi,\Psi,\Theta;\,p) + R^{[1]}(\tau,Y; \Phi,\Psi,\Theta;\,p) \right],
 \end{split}
 \end{equation}
- where $E^{[1]}$ is the leading first-order term and $R^{[1]}$ is the remainder term, such that $E^{[1]}(\tau=0)=1$ and $R^{[1]}(\tau=0)=0$. The leading term $E^{[1]}$ is given by the exponential-affine form
+ where $E^{[1]}$ is the leading first-order term and $R^{[1]}$ is the remainder term, such that $E^{[1]}(0,Y)=e^{-\Theta Y}$ and $R^{[1]}(\tau=0)=0$. The leading term $E^{[1]}$ is given by the exponential-affine form
 \begin{equation}\label{eq:b12}
 \begin{split}
 & E^{[1]}(\tau,Y; \Phi,\Psi,\Theta;\,p)= \exp \left\{\sum^{2}_{k=0}A^{(k)}(\tau;\Phi,\Psi,\Theta;\,p)Y^{k}  \right\},
@@ -1320,7 +1352,7 @@ L^{(k)}(p)&=\left\{\begin{pmatrix} % linear terms
 0 \\ -\kappa^{(p)}-2\theta\beta\Phi \\ 2(\lambda^{(p)}+\theta\vartheta^2-\theta^2\beta\Phi)\\
 \end{pmatrix},
 \begin{pmatrix} % linear terms 
-0 \\  -\beta\Phi-\kappa_2^{(p)}\\ \vartheta-2\kappa^{(p)}-4\theta\beta\Phi
+0 \\  -\beta\Phi-\kappa_2^{(p)}\\ \vartheta^2-2\kappa^{(p)}-4\theta\beta\Phi
 \end{pmatrix}
 \right\},\\
 H^{(k)}(p)&=\left\{
@@ -1335,22 +1367,22 @@ with the initial condition $\mathbf{A}(0)=( 0, \ -\Theta, \ 0 )^\top$.
 The remainder term $R^{[1]}$ solves the following PDE (omitting arguments):
 \begin{equation}\label{eq:OrigMGFLogAndQVOrd1Rem1}
 \begin{split}
- -&R^{[1]}_\tau + \mathcal{L}^{(Y;\,p)} R^{[1]}=- E^{[1]} F^{[1]}(Y,A^{(1)},A^{(2)})\\
+ -&R^{[1]}_\tau + \mathcal A_{\Phi,\Psi,p} R^{[1]}=- E^{[1]} F^{[1]}(Y,A^{(1)},A^{(2)})\\
 &R^{[1]}(0,Y; \Phi,\Psi;\,p)=0,
 \end{split}
 \end{equation}
-with operator $\mathcal{L}^{(Y)}$ defined in Eq (\ref{eq:pdeLY1}) and residual $F^{[1]}$ defined by
+with the reduced transform operator $\mathcal A_{\Phi,\Psi,p}$ defined above and residual $F^{[1]}$ given by
 \begin{equation}\label{eq:OrigMGFLogAndQVOrd1Rem2}
 \begin{split}
 & F^{[1]}(Y,A^{(1)},A^{(2)})=\sum^{4}_{n=3}C^{(n)}(\tau; A^{(1)}, A^{(2)}) Y^n,\\
-& C^{(3)}(\tau)  = 2 A^{(2)} \left(\vartheta^2 \left(2 \theta A^{(2)}+A^{(1)}\right)-\beta  \Phi -\kappa_2\right),\quad C^{(4)}(\tau)  = 2 \vartheta ^2 (A^{(2)})^2.
+& C^{(3)}(\tau)  = 2 A^{(2)} \left(\vartheta^2 \left(2 \theta A^{(2)}+A^{(1)}\right)-\beta  \Phi -\kappa_2^{(p)}\right),\quad C^{(4)}(\tau)  = 2 \vartheta ^2 (A^{(2)})^2.
 \end{split}
 \end{equation}
 \end{theorem}
 
 \begin{proof}
 We take as an ansatz the leading term $E^{[1]}(\tau,Y; \Phi,\Psi,\Theta;p)$ in decomposition \eqref{eq:b12} and substitute it into the PDE \eqref{eq:mgf1}. 
-To obtain the ODEs \eqref{eq:OrigMGFLogAndQVFirsOrder} for $A^{(k)}$, we match terms with $Y^k$, $k = 0,1,2$. To obtain the PDE for the remainder term  $R^{[1]}$, we account for higher powers of $Y^k$, $k = 0,1,2$. Finally, initial conditions for ODEs  \eqref{eq:OrigMGFLogAndQVFirsOrder} and PDE \eqref{eq:OrigMGFLogAndQVOrd1Rem1} are set to reproduce conditions of Eq \eqref{eq:mgf1}.
+To obtain the ODEs \eqref{eq:OrigMGFLogAndQVFirsOrder} for $A^{(k)}$, we match terms with $Y^k$, $k = 0,1,2$. To obtain the PDE for the remainder term $R^{[1]}$, we retain the discarded powers $Y^3$ and $Y^4$. Finally, initial conditions for ODEs  \eqref{eq:OrigMGFLogAndQVFirsOrder} and PDE \eqref{eq:OrigMGFLogAndQVOrd1Rem1} are set to reproduce conditions of Eq \eqref{eq:mgf1}.
 \end{proof}
 
 
@@ -1378,28 +1410,40 @@ In Figure \ref{first_order_fig}, we show the real and imaginary parts of ODE sol
 
 
 
-\begin{corollary} \label {pr:ar1} [Estimate of the first-order remainder term]. We obtain the following estimate for the remainder term $R^{[1]}$ in Eq (\ref{eq:OrigMGFLogAndQVOrd1Rem1})
-\begin{equation} \label {eq:rem1}
+\begin{corollary}\label{pr:ar1}[Conditional first-order remainder estimate]
+Fix a horizon $T$ before coefficient explosion and assume the following
+expectation is integrable. For the remainder in
+\eqref{eq:OrigMGFLogAndQVOrd1Rem1},
+\begin{equation}\label{eq:rem1}
 \begin{split}
-\left| R^{[1]}(\tau,Y; \Phi,\Psi,\Theta;p) \right|  & \leq  \sum^{4}_{n=3}C^{(4)}(\tau^{*})\times M^{(n)}_{\sigma}(\tau^{*}),
+|R^{[1]}(T,Y)|\leq \int_0^T\mathbb E_Y^{(p)}\!\left[
+  |W_s|\,|E^{[1]}(T-s,Y_s)|
+  \sum_{n=3}^4|C^{(n)}(T-s)|\,|Y_s|^n\right]ds,
 \end{split}
 \end{equation}
-where $M^{(n)}_{\sigma}(\tau)$ is the $n$-th central moment of the volatility defined by:
+where $W_s=\exp(-\Phi X_s-\Psi I_s)$, $X_0=I_0=0$, and
+the expectation follows the joint model under measure $p$ starting from $Y_0=Y$.
+For comparison, the signed central moments are
 \begin{equation}\label{eq:central_mom_vol}
-M^{(n)}_{\sigma}(\tau) \equiv \mathbb{E}\left[(\sigma(\tau)-\theta)^n\right] = \mathbb{E}\left[Y^n(\tau)\right].
+M^{(n)}_{\sigma}(t)=\mathbb E[(\sigma_t-\theta)^n]=\mathbb E[Y_t^n].
 \end{equation}
+These signed moments cannot replace the weighted absolute moments in
+\eqref{eq:rem1} without additional estimates.
 \end{corollary}
 \begin{proof}
-The proof is analogous to the second-order expansion in Proposition (\ref{pr:ar2}).
+Apply the transformed Duhamel representation and triangle inequality as in
+Corollary \ref{pr:ar2}, with residual degrees three and four.
 \end{proof}
+
+
 
 \begin{corollary} \label {pr:emgf1} First-order affine expansion for the MGF \eqref{eq:mgf} is obtained by using the leading term $E^{[1]}$ in Eq (\ref{eq:b11})
 \begin{equation}\label{eq:emgf1}
 \begin{split}
-& G(\tau,X,I,Y; \Phi,\Psi,\Theta;\,p) = \exp \left\{-\Phi X-\Psi I \right\}  E^{[1]}(\tau,Y; \Phi,\Psi,\Theta;\,p),
+& G^{[1]}(\tau,X,I,Y; \Phi,\Psi,\Theta;\,p) := \exp \left\{-\Phi X-\Psi I \right\}  E^{[1]}(\tau,Y; \Phi,\Psi,\Theta;\,p),
 \end{split}
 \end{equation}
-where the approximation error arises from the truncation of the infinite dimensional affine anzats in Eq (\ref{eq:gc1}) with the error magnitude estimated using Eq (\ref{eq:rem1}).
+This defines an approximation to $G$, with $G-G^{[1]}=e^{-\Phi X-\Psi I}R^{[1]}$. The conditional estimate is given by \eqref{eq:rem1}.
 \end{corollary}
 
 In Figure \ref{pdfs_btc}, we illustrate that the first-order approximation (\ref{eq:emgf1}) for the MGF produces valid and accurate PDFs for all three state variables.
@@ -1414,7 +1458,7 @@ In Figure \ref{pdfs_btc}, we illustrate that the first-order approximation (\ref
 G(\tau,X,I,Y; \Phi,\Psi,\Theta;\,p)& = \exp \left\{-\Phi X-\Psi I \right\}\left[ E^{[2]}(\tau,Y; \Phi,\Psi,\Theta;\,p)+ R^{[2]}(\tau,Y; \Phi,\Psi,\Theta;\,p)  \right],
 \end{split}
 \end{equation}
-where $E^{[2]}$ is the leading term such that $E^{[2]}(\tau=0)=1$  and $R^{[2]}(\tau=0)=0$ is the remainder term.
+where $E^{[2]}$ is the leading term such that $E^{[2]}(0,Y)=e^{-\Theta Y}$  and $R^{[2]}(\tau=0)=0$ is the remainder term.
 
 
 The leading term $E^{[2]}(\tau,Y; \Phi,\Psi;\,p)$ is given by the exponential-affine form:
@@ -1485,7 +1529,7 @@ L^{(k)}(p)&= \left\{
 0 \\ -\kappa^{(p)}-2\theta\beta\Phi \\ 2(\lambda^{(p)}+\theta\vartheta^2-\theta^2\beta\Phi) \\ 3\theta^2\vartheta^2 \\ 0
 \end{pmatrix},
 \begin{pmatrix} % linear terms 
-0 \\ -\beta\Phi-\kappa_2^{(p)} \\ \vartheta^2-2\kappa^{(p)}-4\theta\beta\Phi \\ 3(2q\vartheta^2+\lambda^{(p)}-\theta^2\beta\Phi) \\ 6\theta^2\vartheta^2
+0 \\ -\beta\Phi-\kappa_2^{(p)} \\ \vartheta^2-2\kappa^{(p)}-4\theta\beta\Phi \\ 3(2\theta\vartheta^2+\lambda^{(p)}-\theta^2\beta\Phi) \\ 6\theta^2\vartheta^2
 \end{pmatrix},\right.\\
 &\left.\begin{pmatrix} % linear terms 
 0 \\ 0 \\ -2(\beta\Phi+\kappa_2^{(p)}) \\ 3(\vartheta^2-\kappa^{(p)}-2\theta\beta\Phi) \\ 4(3\theta\vartheta^2+\lambda^{(p)}-\theta^2\beta\Phi) \\
@@ -1511,11 +1555,11 @@ with initial condition $\mathbf{A}(0)=(0, -\Theta, 0, 0, 0)^\top$.
 The remainder term $R^{[2]}$ solves the following PDE (omitting arguments)
 \begin{equation}\label{eq:OrigMGFLogAndQVOrd2Rem1}
 \begin{split}
- -&R^{[2]}_\tau +  \mathcal{L}^{(Y;\,p)} R^{[2]}=-E^{[2]}F^{[2]}\\
+ -&R^{[2]}_\tau +  \mathcal A_{\Phi,\Psi,p} R^{[2]}=-E^{[2]}F^{[2]}\\
 &R^{[2]}(0,Y; \Phi,\Psi,\Theta;\,p)=0,
 \end{split}
 \end{equation}
-with operator $\mathcal{L}^{(Y)}$ defined in Eq (\ref{eq:pdeLY1}) and function $F^{[2]}$ defined by
+with the same reduced transform operator $\mathcal A_{\Phi,\Psi,p}$ and residual $F^{[2]}$ given by
 \begin{equation}\label{eq:OrigMGFLogAndQVOrd2Rem2Coeffs}
 \begin{split}
 &F^{[2]}(\tau,Y;A^{(1)},A^{(2)},A^{(3)},A^{(4)})=\sum_{k=5}^8 C^{(k)}(\tau;A^{(1)},A^{(2)},A^{(3)},A^{(4)})Y^k\vspace*{-1\baselineskip}
@@ -1523,7 +1567,7 @@ with operator $\mathcal{L}^{(Y)}$ defined in Eq (\ref{eq:pdeLY1}) and function $
 \end{equation}\vspace*{-1\baselineskip}
 \begin{equation*}
 \begin{split}
-C^{(5)}(\tau) &=3 \vartheta ^2 A^{(3)} \left(3 \theta A^{(3)}+2 A^{(2)}\right)+4 A^{(4)} \left(\vartheta ^2 \left(3\theta^2 A^{(3)}+4 \theta A^{(2)}+A^{(1)}\right)-\kappa_2\right) ,\\
+C^{(5)}(\tau) &=3 \vartheta ^2 A^{(3)} \left(3 \theta A^{(3)}+2 A^{(2)}\right)+4 A^{(4)} \left(\vartheta ^2 \left(3\theta^2 A^{(3)}+4 \theta A^{(2)}+A^{(1)}\right)-\kappa_2^{(p)}-\beta\Phi\right) ,\\
 C^{(6)}(\tau) &=\frac{1}{2} \vartheta ^2 \left(16 \theta^2 (A^{(4)})^2+16 A^{(4)} \left(3 \theta A^{(3)}+A^{(2)}\right)+9 (A^{(3)})^2\right) ,\\
 C^{(7)}(\tau) &=4 \vartheta ^2 A^{(4)} \left(4 \theta A^{(4)}+3 A^{(3)}\right),\ C^{(8)}(\tau) = 8 \vartheta ^2 \left(A^{(4)}\right)^2.\vspace*{-1\baselineskip} 
 \end{split}
@@ -1560,42 +1604,59 @@ In Figure \ref{second_order_fig}, we show the real and imaginary parts of $\math
 \label{second_order_fig}
 \end{figure}
 
-\begin{corollary} \label{pr:ar2}[Estimate of the second-order remainder term]. We obtain the following estimate for the remainder term $R^{[2]}$ which solves Eq \eqref{eq:OrigMGFLogAndQVOrd2Rem1}: 
-\begin{equation} \label{eq:rem2}
+\begin{corollary}\label{pr:ar2}[Conditional second-order remainder estimate]
+Fix $T$ before coefficient explosion and assume the weighted expectation below
+is integrable. The remainder in \eqref{eq:OrigMGFLogAndQVOrd2Rem1} satisfies
+\begin{equation}\label{eq:rem2}
 \begin{split}
-\left| R^{[2]}(\tau,X; \Phi,\Psi,\Theta;p) \right|  & \leq  \sum^{8}_{n=5}C_{n}(\tau^{*})\times M^{(n)}_{\sigma}(\tau^{*}),\vspace*{-1.0\baselineskip} 
+|R^{[2]}(T,Y)|\leq\int_0^T\mathbb E_Y^{(p)}\!\left[
+ |W_s|\,|E^{[2]}(T-s,Y_s)|
+ \sum_{n=5}^8|C^{(n)}(T-s)|\,|Y_s|^n\right]ds,
 \end{split}
 \end{equation}
-where $M^{(n)}_{\sigma}$ is the $n$-th central moment of the volatility defined by \eqref{eq:central_mom_vol}.
+with $W_s=\exp(-\Phi X_s-\Psi I_s)$ and $X_0=I_0=0$.
 \end{corollary}
-
-
 \begin{proof}
-The formal solution for the remainder term $R^{[2]}$ solving Problem \eqref{eq:OrigMGFLogAndQVOrd2Rem1} is obtained by applying the Feynman-Kac formula and is given by
-\begin{equation} \label {eq:rtr1}
+For the reduced transformed semigroup, Duhamel's formula gives
+\begin{equation}\label{eq:rtr1}
 \begin{split}
-R^{[2]}(\tau,Y; \Phi,\Psi)&  = \int^{\tau}_{0}\int^{\infty}_{-\theta}\left[ E^{[2]}(\tau-t,Y'; \Phi,\Psi) F^{[2]}(\tau-t,Y') \right]P(t,Y;Y')dtdY',
+R^{[2]}(T,Y)
+&=\int_0^T e^{s\mathcal A_{\Phi,\Psi,p}}
+      [E^{[2]}(T-s,\cdot)F^{[2]}(T-s,\cdot)](Y)\,ds\\
+&=\int_0^T\mathbb E_Y^{(p)}\!
+ [W_sE^{[2]}(T-s,Y_s)F^{[2]}(T-s,Y_s)]\,ds.
 \end{split}
 \end{equation}
-where $P(t,Y;Y')$ is PDF of $Y'=Y(t)$ conditional on $Y$. $P$ solves PDE (\ref{eq:pdeY}), subject to initial condition $P(0,Y;Y')=\delta(Y'-Y)$. Using Eq (\ref{eq:rtr1}), we obtain
-\begin{equation} \label {eq:rt22}
-\begin{split}
-&\left| R^{[2]}(\tau,Y; \Phi,\Psi) \right|   \leq  \int^{\tau}_{0}\int^{\infty}_{-\theta} \left|E^{[2]}(\tau-t,Y'; \Phi,\Psi)F^{[2]}(\tau-t,Y') P(t,Y;Y')  \right|dtdY'\\
-& \leq \int^{\tau}_{0}\int^{\infty}_{-\theta} \left| F^{[2]}(\tau-t,Y') P(t,Y;Y')  \right|dtdY'.\end{split}
+This identity follows first for stopped processes on bounded domains; the stated
+integrability and the corresponding dominated convergence justify removing the
+stopping. The joint transform weight must be retained: its correlation with
+$Y_s$ prevents replacement by the unweighted volatility transition density.
+The triangle inequality and
+\begin{equation}\label{eq:rt22}
+|F^{[2]}(t,Y)|\leq\sum_{n=5}^8|C^{(n)}(t)|\,|Y|^n
 \end{equation}
-Here, we apply the bound on the MGF $\left|E^{[2]}(\tau-t,Y'; \Phi,\Psi) \right|\leq 1$ and integrate out the log-return $X$ and the QV $I$. 
-Next we substitute the polynomial function $F^{[2]}$ in Eq \eqref{eq:OrigMGFLogAndQVOrd2Rem2Coeffs}. We use the continuity of functions $A^{(k)}$, $k=1,2,3,4$, and apply the first mean value theorem for definite integrals to estimate the time integral. Finally, we approximate the expected moments of the mean-adjusted volatility by its steady-state $n$-th order central moments $M^{(n)}_{\sigma}$ specified in Eq \eqref{eq:central_mom_vol}.
-
+give \eqref{eq:rem2}.
 \end{proof}
+\begin{remark}[Scope of the error estimate]
+Equations \eqref{eq:rem1} and \eqref{eq:rem2} are conditional weighted estimates,
+not global accuracy certificates. In particular, a finite expansion need not
+obey $|E^{[m]}|\leq1$, even on a contour where the normalized exact return
+transform has modulus at most one. Signed odd moments and possibly complex
+residual coefficients do not provide an absolute error bound. Replacing
+conditional moments by stationary moments is an approximation and does not
+establish an inequality. Numerical use therefore requires independent pricing
+checks at the chosen parameters and maturities.
+\end{remark}
+
 
 
 \begin{corollary} \label {pr:emgf2} Second-order affine expansion for the MGF \eqref{eq:mgf} is obtained by using the leading term $E^{[2]}$ in Eq (\ref{eq:b22}) as
 \begin{equation}\label{eq:emgf2}
 \begin{split}
-& G(\tau,X,I,Y; \Phi,\Psi,\Theta;p) =  \exp \left\{-\Phi X-\Psi I \right\} E^{[2]}(\tau,Y; \Phi,\Psi,\Theta;p),\vspace*{-1.0\baselineskip}
+& G^{[2]}(\tau,X,I,Y; \Phi,\Psi,\Theta;p) :=  \exp \left\{-\Phi X-\Psi I \right\} E^{[2]}(\tau,Y; \Phi,\Psi,\Theta;p),\vspace*{-1.0\baselineskip}
 \end{split}
 \end{equation}
-where the approximation error arises from the truncation of the infinite dimensional affine anzats in (\ref{eq:gc1}) with the error magnitude estimated by Eq (\ref{eq:rem2}).
+This defines an approximation to $G$, with $G-G^{[2]}=e^{-\Phi X-\Psi I}R^{[2]}$. The conditional estimate is given by \eqref{eq:rem2}.
 \end{corollary}
 
 In Figure \ref{pdfs_btc}, we illustrate that the second-order approximation (\ref{eq:emgf2}) for the MGF produces valid and accurate PDFs for all three state variables.
@@ -1617,12 +1678,12 @@ Assume following conditions are satisfied:
 \begin{enumerate}%[label=(\roman*)]
 \item \label{assump:blow_up_uppbound}  $\tau_+(\Phi;\Re \mathbf{A})\ge \tau_+(\Re \Phi; \mathbf{A})$, $\Phi\in \mathbb{C}$, i.e. real part of  $\mathbf{A}(\tau;\Phi)$ cannot blow up before $\mathbf{A}(\tau;\Re\Phi)$.
 
-\item \label{assump:lead_term_infin} $\sum_{k=0}^{2m} A_k(\tau;\Phi;p)Y^k \to +\infty$ as $\tau\uparrow \tau_+(\Phi)$, $\Phi\in \mathbb{R}$, i.e. leading term of the affine expansion does not vanish as we approach blow-up time when transform variable $\Phi$ is real. 
+\item \label{assump:lead_term_infin} $\sum_{k=0}^{2m} A_k(\tau;\Phi;p)Y^k \to +\infty$ as $\tau\uparrow \tau_+(\Phi)$, $\Phi\in \mathbb{R}$, i.e. the exponent at the specified initial volatility tends to positive infinity at any finite real-parameter explosion time.
 
 \item \label{assump:rem_term_bound} $\lim_{\tau\uparrow \tau_+(\Phi)}R^{[n]}(\tau;\Phi)>-\infty$, $\Phi\in \mathbb{R}$, i.e. remainder term is uniformly bounded from below.
 \end{enumerate}
 
-If MGF in Eq \eqref{eq:mgf1} is finite with $G(\tau_0;X,I,Y; \Psi=\Re \Phi,\Psi=0,\Theta=0)<\infty$, 
+Assume also that the exact transform $G(\tau;X,I,Y;\Phi=\Re\Phi,\Psi=0,\Theta=0)$ is locally bounded in $\tau$ on $[0,\tau_0)$. Under these conditions,
 then continuous solution $A(\tau;\Phi,\Psi=0,\Theta=0)$ of Eq \eqref{eq:OrigMGFLogAndQVFirsOrder} and of Eq \eqref{eq:OrigMGFLogAndQVOrd2} exists on $[0,\tau_0)$.
 \end{theorem}
 
@@ -1630,13 +1691,13 @@ then continuous solution $A(\tau;\Phi,\Psi=0,\Theta=0)$ of Eq \eqref{eq:OrigMGFL
 See Appendix \ref{app:contin_solutions}.
 \end{proof}
 
-By Theorem \ref{thm:contin_solutions}, we obtain that continuous solution $\mathbf{A}(\tau)$ for the first- and second-order affine expansions in Eqs (\ref{eq:b12}) and (\ref{eq:b22}), respectively, exists on $[0, +\infty)$ if \ref{assump:blow_up_uppbound}, \ref{assump:lead_term_infin}, \ref{assump:rem_term_bound} hold.
+These hypotheses are assumptions on the truncated system and its remainder; they are not verified merely by the existence of the exact transform. On the vanilla valuation contour the exact normalized transform is bounded under the stated martingale assumptions. By Theorem \ref{thm:contin_solutions}, the continuous solution $\mathbf{A}(\tau)$ for the first- and second-order affine expansions in Eqs (\ref{eq:b12}) and (\ref{eq:b22}), respectively, exists on $[0, +\infty)$ if \ref{assump:blow_up_uppbound}, \ref{assump:lead_term_infin}, \ref{assump:rem_term_bound} hold.
 
 
 
 \subsection{Properties of Affine Expansions}
 
-We now consider the key properties of the affine expansion of the MGF. For brevity, we focus on the properties of the second-order expansion, which is our key development. For the first order expansion, martingale conditions stated in Proposition \ref{pr:mart2} hold, and the consistency with the expected values (but not with their variances) of three state variables is ascertained in the same way as for the second-order expansion.
+We now consider the key properties of the affine expansion of the MGF. For brevity, we focus on the properties of the second-order expansion, which is our key development. The first-order expansion has the same normalization identities as Proposition \ref{pr:mart2}. Under MMA dynamics with $\kappa_2=0$, its degree-two exponent also recovers the first moments; the log-price and QV second moments can require degree four, as shown in the appendix.
 
 \begin{proposition}\label{pr:mart2} [Martingale conditions] Assuming that hypotheses \ref{assump:blow_up_uppbound},  \ref{assump:lead_term_infin}, \ref{assump:rem_term_bound} in Theorem \ref{thm:contin_solutions} hold, the second-order expansion of the MGF in \eqref{eq:emgf2} with $E^{[2]}$ defined in Eq \eqref{eq:b22} satisfies the martingale conditions for log-return $X_\tau$
 \begin{equation}\label{eq:mart21}
@@ -1644,12 +1705,15 @@ G^{[2]}(\tau,Y; \Phi=0,\Psi=0,\Theta=0;p) \equiv E^{[2]}(\tau,Y; \Phi=0,\Psi=0,\
 \end{equation}
 \begin{equation}\label{eq:mart22}
 \begin{split}
-&\mathbb{E}\left[e^{X_\tau}\right] \equiv e^{X_0} E^{[2]}(\tau,Y; \Phi=-1,\Psi=0,\Theta=0;\,p=1)=e^{X_0},\\
-&\tilde{\mathbb{E}}\left[e^{-X_\tau}\right] \equiv e^{-X_0} E^{[2]}(\tau,Y; \Phi=1,\Psi=0,\Theta=0;\,p=-1)=e^{-X_0}.
+& e^{X_0} E^{[2]}(\tau,Y; \Phi=-1,\Psi=0,\Theta=0;\,p=1)=e^{X_0},\\
+& e^{-X_0} E^{[2]}(\tau,Y; \Phi=1,\Psi=0,\Theta=0;\,p=-1)=e^{-X_0}.
 \end{split}
 \end{equation}
 \end{proposition}
-
+These are normalization identities of the approximate transform. Identifying
+them with expectations of the underlying price requires the separate
+martingale conditions established for the SDE; they do not certify the
+approximation at other transform arguments.
 
 \begin{proof}
 For $\Phi=\Psi=\Theta=0$, we obtain $H^{(p)}\equiv 0$ in \eqref{eq:OrigMGFLogAndQVOrd2}. Given zero initial conditions, $A^{(k)}(\tau;\Phi=0,\Psi=0,\Theta=0;\,p)\equiv 0$ due to the uniqueness of the solution. Similarly, for $\Phi=-1$ and $\Theta=\Psi=0$, we obtain that $H^{(1)}\equiv 0$, hence $A^{(k)}(\tau;\Phi=-1,\Psi=0,\Theta=0;\,p=1)\equiv 0$. 
@@ -1657,14 +1721,14 @@ Similarly, for $\Phi=1$ and $\Psi=0$ we obtain that $H^{(-1)}\equiv 0$, hence $A
 \end{proof}
 
 
-\begin{proposition}\label{pr:volmoment} [Volatility moments] The MGF in Eq \eqref{eq:emgf2} with  the second-order affine term $E^{[2]}$ in \eqref{eq:b22} reproduces exactly the expected value and the variance of the volatility for $\kappa_{2}=0$.
+\begin{proposition}\label{pr:volmoment} [Volatility moments] The MGF in Eq \eqref{eq:emgf2} with  the second-order affine term $E^{[2]}$ in \eqref{eq:b22} reproduces exactly the expected value and the variance of the volatility under the MMA measure ($p=1$) for $\kappa_{2}=0$.
 \end{proposition}
 
 
-\begin{proposition}\label{pr:logmoment} [Log-price moments] The MGF in Eq \eqref{eq:emgf2} with the second-order affine term reproduces exactly the expected value and the variance of the log-price for $\kappa_{2}=0$.
+\begin{proposition}\label{pr:logmoment} [Log-price moments] The MGF in Eq \eqref{eq:emgf2} with the second-order affine term reproduces exactly the expected value and the variance of the log-price under the MMA measure ($p=1$) for $\kappa_{2}=0$.
 \end{proposition}
 
-\begin{proposition}\label{pr:qvarmoment} [QV moments] The MGF in Eq \eqref{eq:emgf2} with the second-order affine term  reproduces exactly the expected value and the variance of QV for $\kappa_{2}=0$.
+\begin{proposition}\label{pr:qvarmoment} [QV moments] The MGF in Eq \eqref{eq:emgf2} with the second-order affine term  reproduces exactly the expected value and the variance of QV under the MMA measure ($p=1$) for $\kappa_{2}=0$.
 \end{proposition}
 
 \begin{proof}
@@ -1672,7 +1736,7 @@ Proposition \ref{pr:volmoment} and \ref{pr:logmoment} are proved in Appendix \re
 \end{proof}
 
 \begin{remark}\label{rem:volmoment2}
-In Remark \ref{rem:volmoment} we noted that the system of volatility moments \eqref{eq:mvp8} is solved exactly for $\kappa_{2}=0$ , otherwise the solution is approximate. Thus, we cannot generalize above statements for $\kappa_{2}>0$. However, it is our hypothesis that moments obtained using \eqref{eq:b22} correspond to moments computed in \eqref{eq:mvp8} using truncation order $k^{*}=4$ and that truncation error as function of $\kappa_{2}$ is very small. 
+In Remark \ref{rem:volmoment} we noted that the system of volatility moments \eqref{eq:mvp8} is solved exactly for $\kappa_{2}=0$ , otherwise the solution is approximate. Thus, we cannot generalize above statements for $\kappa_{2}>0$. For $\kappa_2>0$, higher polynomial degrees couple into lower ones, so neither moment consistency nor a small truncation error follows from this argument. These properties must be assessed at the actual parameters and maturity. Under the inverse measure, the corresponding degree-preserving condition concerns $\kappa_2^{(-1)}$, not $\kappa_2$ alone.
 \end{remark}
 
 
@@ -2312,172 +2376,57 @@ f_{\Phi}(0)= -\mathbb{E}[Z] \ , \  f_{\Phi\Phi}(0)= \mathbb{V}ar[Z].
 
 \subsubsection{Proof of Proposition \ref{pr:volmoment}}\label{app:volmoment}
 
-We set $\Phi=\Psi=0$ in the second-order expansion in Proposition \ref{pr:volmoment} and suppress arguments for brevity. We consider $R^{[2]}(\tau, Y;\Theta)$ in Eq \eqref{eq:OrigMGFLogAndQVOrd2Rem1}. 
-Differentiating it w.r.t. $\Theta$, we see that remainder term  $R_{\Theta}^{[2]}$ solves the following problem
-\begin{equation}\label{eq:mv3}
-\begin{split}
--R_{\Theta,\tau}^{[2]}+\mathcal{L}^{(Y)}R_{\Theta}^{[2]}=
--\sum_{k=5}^8Y^k\left[C_{\Theta}^{(k)}(\tau;\Theta)E^{[2]}+C^{(k)}(\tau;\Theta)E_{\Theta}^{[2]}\right],\vspace*{-1.0\baselineskip}
-\end{split}
-\end{equation}
-subject to boundary condition $R_{\Theta}^{[2]}(0,Y;\Theta)=0$, where $C^{(k)}(\tau;\Theta)$ are given by Eq \eqref{eq:OrigMGFLogAndQVOrd2Rem2Coeffs}. We note that $A^{(k)}(\tau; \Theta)$ vanish at $\Theta=0$\vspace*{-0.5\baselineskip}
-\begin{equation}\label{eq:mv_bc2}
-A^{(k)}(\tau; \Theta=0)=0.\vspace*{-0.5\baselineskip}
-\end{equation}
-
-Calculating $C^{(k)}_{\Theta}(\tau; \Theta)$ and taking into account conditions \eqref{eq:mv_bc2} at $\Theta=0$:
-\begin{equation}\label{eq:mv31}
-\left.C^{(k)}_{\Theta}(\tau; \Theta)\right|_{\Theta=0}=
-\begin{cases}
--4\kappa_2 \left. A^{(4)}_{\Theta}(\tau; \Theta)\right|_{\Theta=0}, & k=5,\\
-0, & k\ge 6
-\end{cases}
-\end{equation}
-
-
-Using condition $C^{(k)}(\tau; \Theta=0)\equiv 0$, we simplify problem \eqref{eq:mv3} at $\Theta=0$:
-\begin{equation}\label{eq:mv4}
--R_{\Theta,\tau}^{[2]}+\mathcal{L}^{(Y)}R_{\Theta}^{[2]}=4\kappa_2 A_{\Theta}^{(4)}Y^5,\quad 
-R_{\Theta}^{[2]}(0,Y;\Theta)=0,\vspace*{-0.5\baselineskip}
-\end{equation}
-
-We see that $R_{\Theta}^{[2]}(\tau,Y;\Theta=0)\equiv 0$ when $\kappa_2=0$. Hence, second order decomposition $E^{[2]}(\tau,Y; \Theta)$ is consistent with expected value of $Y_t$ for $\kappa_2=0$. 
-
-To prove the consistency for variance, we first differentiate \eqref{eq:OrigMGFLogAndQVOrd2} w.r.t. $\Theta$ to obtain that $A^{(k)}_{\Theta}(\tau,\Theta)$ solve the system of ODEs \eqref{eq:mv1}  at $\Theta=0$ as functions of $\tau$
-\begin{equation}\label{eq:mv1}
-\begin{split}
-A^{(0)}_{\Theta, \tau}=&\theta^2\vartheta^2A_{\Theta}^{(2)}+\lambda(p) A_{\Theta}^{(1)},\\
-A^{(1)}_{\Theta, \tau}=&-\kappa A_{\Theta}^{(1)} +2(\theta\vartheta^2+\lambda(p)) A_{\Theta}^{(2)}+3\theta^2\vartheta^2 A_{\Theta}^{(3)},\\
-A^{(2)}_{\Theta, \tau}=&-\kappa_2A_{\Theta}^{(1)}+(\vartheta^2-2\kappa)A_{\Theta}^{(2)}+6\theta\vartheta^2 A_{\Theta}^{(3)}+3\lambda(p) A_{\Theta}^{(3)}+6\theta A_{\Theta}^{(4)},\\
-A^{(3)}_{\Theta, \tau}=&-2\kappa_2A_{\Theta}^{(2)}+3(\vartheta^2-\kappa)A_{\Theta}^{(4)}+12\theta\vartheta^2 A_{\Theta}^{(4)}+4\lambda(p) A_{\Theta}^{(4)},\\
-A^{(4)}_{\Theta, \tau}=&-3\kappa_2A_{\Theta}^{(3)}+2(3\vartheta^2-2\kappa)A_{\Theta}^{(4)},
-\end{split}
-\end{equation}
-with boundary condition: $\left.A^{(1)}_{\Theta}(\tau; \Theta)\right|_{\Theta=0}=-1$, $\left.A^{(k')}_{\Theta}(\tau; \Theta)\right|_{\Theta=0}=0$, $k'\neq 1$.
-
-We verify that last two functions in solution of Eq \eqref{eq:mv1} are zero for $\kappa_{2}=0$:
-\begin{equation}\label{eq:mv_bc3}
-A^{(3)}(\tau; \Theta)\equiv A^{(4)}(\tau; \Theta)\equiv 0.
-\end{equation}
-
-Now, taking the second derivative w.r.t. $\Theta$ in \eqref{eq:OrigMGFLogAndQVOrd2Rem1}, we obtain for $R_{\Theta\Theta}^{[2]}$
-\begin{equation*}%\label{eq:mv5}
--R_{\Theta\Theta,\tau}^{[2]}+\mathcal{L}^{(Y)}R_{\Theta\Theta}^{[2]}=
--\sum_{k=5}^8\left\{Y^k\left[C_{\Theta\Theta}^{(k)}(\tau;\Theta)E^{[2]} + 2C_{\Theta}^{(k)}(\tau;\Theta)E_{\Theta}^{[2]} + C^{(k)}(\tau;\Theta)E_{\Theta\Theta}^{[2]}\right]\right\}
+We work under the MMA measure with $\kappa_2=0$. The volatility generator is
+\begin{equation*}
+\mathcal L_0 f=-\kappa_1Yf_Y+\frac12\vartheta^2(Y+\theta)^2f_{YY}.
 \end{equation*}
-with $R_{\Theta\Theta}^{[2]}(0,Y;\Theta)=0$. Taking the second derivative of $C^{(k)}(\tau;\Theta)$ in \eqref{eq:OrigMGFLogAndQVOrd2Rem2Coeffs} wrt $\Theta$, and accounting for conditions \eqref{eq:mv_bc2} and \eqref{eq:mv_bc3} at $\Theta=0$, we find that
-\begin{equation}\label{eq:mv51}
-\left.C^{(k)}_{\Theta\Theta}(\tau; \Theta)\right|_{\Theta=0}=
-\begin{cases}
--4\kappa_2 \left. A^{(4)}_{\Theta}(\tau; \Theta)\right|_{\Theta=0}, & k=5,\\
-0, & k\ge 6.
-\end{cases}
+It preserves each space of polynomials of degree at most $n$. Relevant
+finite-time polynomial moments exist for this linear-drift volatility process.
+Transform derivatives at the origin can equivalently be understood through
+characteristic or one-sided Laplace derivatives; a two-sided neighbourhood of
+finite exponential moments is not assumed.
+
+Let $P=\log g$, and let $B=\partial_\Theta P|_0$ and
+$D=\partial_{\Theta\Theta}P|_0$, where all transform variables are zero at
+evaluation. Differentiating the log-transform equation gives
+\begin{equation}\label{eq:mv1}
+\begin{aligned}
+B_\tau&=\mathcal L_0B, & B(0,Y)&=-Y,\\
+D_\tau&=\mathcal L_0D+\vartheta^2(Y+\theta)^2(B_Y)^2,
+&D(0,Y)&=0.
+\end{aligned}
 \end{equation}
-
-We note that following straightforward relationships are valid:
-\begin{equation}\label{eq:mv52}
-\begin{split}
-\left.E^{[2]}(\tau;\Theta)\right|_{\Theta=0}=1, \quad 
-\left.E_{\Theta}^{[2]}(\tau;\Theta)\right|_{\Theta=0}=-Y.
-\end{split}
-\end{equation}
-
-Combining Eqs \eqref{eq:mv51}, \eqref{eq:mv31}, and \eqref{eq:mv52}, we simplify Eq \eqref{eq:mv4} at $\Theta=0$:
-\begin{equation}\label{eq:mv6}
--R_{\Theta\Theta,\tau}^{[2]}+\mathcal{L}^{(Y)}R_{\Theta\Theta}^{[2]}=4\kappa_2\left(Y^5 A_{\Theta\Theta}^{(4)}-2Y^6 A_{\Theta}^{(4)}\right),\quad 
-R_{\Theta\Theta}^{[2]}(0,Y;\Theta)=0.
-\end{equation}
-Thus, when $\kappa_2=0$, $R_{\Theta\Theta}^{[2]}(\tau,Y;\Theta=0)\equiv 0$, and $E^{[2]}(\tau; \Theta)$ reproduces the variance of $Y_t$. 
-
-
-
+The first equation preserves degree one. Its source in the second equation has
+degree at most two, so $D$ has degree at most two. Coefficient matching in the
+degree-four approximation therefore discards no term contributing to either
+derivative. By \eqref{eq:mmg4}, it reproduces the expected volatility and its
+variance. This argument also proves these two volatility-moment identities for
+the degree-two exponent when $\kappa_2=0$.
 
 \subsubsection{Proof of Proposition \ref{pr:logmoment}}\label{app:logmoment}
 
-
-We proceed as in Proposition \ref{pr:volmoment}. We set $\Theta=\Psi=0$ and consider the remainder term $R^{[2]}(\tau, Y;\Phi)$ in \eqref{eq:OrigMGFLogAndQVOrd2Rem1}. 
-Differentiating it w.r.t. $\Phi$, we see that $R_{\Phi}^{[2]}$ solves following problem:
-\begin{equation}\label{eq:mpr3}
-\begin{split}
-&-R_{\Phi,\tau}^{[2]}+\mathcal{L}^{(Y)}R_{\Phi}^{[2]}=
--\frac{\partial}{\partial\Phi}\left[\sum_{k=5}^8C^{(k)}(\tau;\Phi)E^{[2]}Y^k\right]=\\
-&=-\sum_{k=5}^8Y^k \left[C_{\Phi}^{(k)}(\tau;\Phi)E^{[2]}+ C^{(k)}(\tau;\Phi)E^{[2]}_{\Phi}\right],\\
-& R_{\Phi}^{[2]}(0,Y;\Phi)=0,
-\end{split}
-\end{equation}
-where $C^{(k)}(\tau;\Phi)$ are given by \eqref{eq:OrigMGFLogAndQVOrd2Rem2Coeffs}. We note that $A^{(k)}(\tau; \Phi)$ vanish at $\Phi=0$:
-\begin{equation}\label{eq:mpr_bc2}
-\left.A^{(k)}(\tau; \Phi)\right|_{\Phi=0}=0.
-\end{equation}
-
-Differentiating $C^{(k)}(\tau;\Phi)$ w.r.t. $\Phi$ and considering \eqref{eq:mpr_bc2} at $\Phi=0$, we find
-\begin{equation}\label{eq:mpr31}
-\left.C^{(k)}_{\Phi}(\tau; \Phi)\right|_{\Phi=0}=
-\begin{cases}
--4\kappa_2 \left. A^{(4)}_{\Phi}(\tau; \Phi)\right|_{\Phi=0}, & k=5,\\
-0, & k\ge 6
-\end{cases}
-\end{equation}
-
-Due to condition $C^{(k)}(\tau; \Phi=0)= 0$, we simplify Eq \eqref{eq:mpr3} at $\Phi=0$ as:
-\begin{equation}\label{eq:mpr4}
--R_{\Phi,\tau}^{[2]}+\mathcal{L}^{(Y)}R_{\Phi}^{[2]}=4\kappa_2 A_{\Phi}^{(4)}Y^5,\quad 
-R_{\Phi}^{[2]}(0,Y;\Phi)=0.
-\end{equation}
-
-We see that $R_{\Phi}^{[2]}(\tau,Y;\Phi=0)\equiv 0$ when $\kappa_2=0$. Hence, the second-order expansion term $E^{[2]}(\tau,Y; \Phi)$ is consistent with the expected value of $X_{\tau}$ for $\kappa_2=0$. 
-
-
-To show that the second-order expansion reproduces the variance of the log-price, we differentiate Eq \eqref{eq:OrigMGFLogAndQVOrd2} with respect to $\Phi$ and find that $A^{(k)}_{\Phi}(\tau,\Phi)$ solve the system of ODEs \eqref{eq:mpr1} at $\Phi=0$ as functions of $\tau$:
+Again take $p=1$ and $\kappa_2=0$. For the log-price transform set
+$B=\partial_\Phi P|_0$ and $D=\partial_{\Phi\Phi}P|_0$. Both initial
+conditions are zero; they are not the initial condition $-Y$ of the terminal
+volatility transform. Direct differentiation gives
 \begin{equation}\label{eq:mpr1}
 \begin{split}
-A^{(0)}_{\Phi, \tau}=&\theta^2\vartheta^2A_{\Phi}^{(2)}+\lambda(p) A_{\Phi}^{(1)}+\frac{1}{2}\theta^2,\\
-A^{(1)}_{\Phi, \tau}=&-\kappa A_{\Phi}^{(1)} +2(\theta\vartheta^2+\lambda(p)) A_{\Phi}^{(2)}+3\theta^2\vartheta^2 A_{\Phi}^{(3)}+\theta,\\
-A^{(2)}_{\Phi, \tau}=&-\kappa_2A_{\Phi}^{(1)}+(\vartheta^2-2\kappa)A_{\Phi}^{(2)}+6\theta\vartheta^2 A_{\Phi}^{(3)}+3\lambda(p) A_{\Phi}^{(3)}+6\theta A_{\Phi}^{(4)}+\frac{1}{2},\\
-A^{(3)}_{\Phi, \tau}=&-2\kappa_2A_{\Phi}^{(2)}+3(\vartheta^2-\kappa)A_{\Phi}^{(4)}+12\theta\vartheta^2 A_{\Phi}^{(4)}+4\lambda(p) A_{\Phi}^{(4)},\\
-A^{(4)}_{\Phi, \tau}=&-3\kappa_2A_{\Phi}^{(3)}+2(3\vartheta^2-2\kappa)A_{\Phi}^{(4)},\vspace*{-0.5\baselineskip}
+B_\tau&=\mathcal L_0B+\frac12(Y+\theta)^2,\qquad B(0,Y)=0,\\
+D_\tau&=\mathcal L_0D+\vartheta^2(Y+\theta)^2(B_Y)^2
+ -2\beta(Y+\theta)^2B_Y+(Y+\theta)^2,\qquad D(0,Y)=0.
 \end{split}
 \end{equation}
-with boundary condition
-\begin{equation}\label{eq:mpr_bc}
-\left.A^{(k)}_{\Phi}(\tau; \Phi)\right|_{\Phi=0}=
-\begin{cases}
--1, & k=1,\\
-0, & k\neq 1.\vspace*{-0.5\baselineskip}
-\end{cases}
-\end{equation}
+Here $B$ has degree at most two and the source for $D$ has degree at most four.
+Thus the degree-four coefficient system retains every term needed for these
+derivatives, including the leverage contribution. The resulting cumulants give
+the exact first two log-price moments by \eqref{eq:mmg4}.
 
-Now, taking the second derivative in \eqref{eq:OrigMGFLogAndQVOrd2Rem1} wrt $\Phi$, we obtain for $R_{\Phi\Phi}^{[2]}$
-\begin{equation}\label{eq:mpr5}
-\begin{split}
-&-R_{\Phi\Phi,\tau}^{[2]}+\mathcal{L}^{(Y)}R_{\Phi\Phi}^{[2]}=
--\frac{\partial^2}{\partial\Phi^2}\left[\sum_{k=5}^8C^{(k)}(\tau;\Phi)E^{[2]}Y^k\right]=\\
-&=-\sum_{k=5}^8\left\{Y^k\left[C_{\Phi\Phi}^{(k)}(\tau;\Phi)E^{[2]} + 2C_{\Phi}^{(k)}(\tau;\Phi)E_{\Phi}^{[2]} + C^{(k)}(\tau;\Phi)E_{\Phi\Phi}^{[2]}\right]\right\},\\
-&R_{\Phi\Phi}^{[2]}(0,Y;\Phi)=0.
-\end{split}
-\end{equation}
-
-Calculating $C_{\Phi\Phi}^{(k)}(\tau;\Phi)$ in \eqref{eq:OrigMGFLogAndQVOrd2Rem2Coeffs} and taking into account boundary conditions \eqref{eq:mpr_bc2} at $\Phi=0$, we find that
-\begin{equation}\label{eq:mpr51}
-\left.C^{(k)}_{\Phi\Phi}(\tau; \Phi)\right|_{\Phi=0}=
-\begin{cases}
--4\kappa_2 \left. A^{(4)}_{\Phi}(\tau; \Phi)\right|_{\Phi=0}, & k=5,\\
-0, & k\ge 6\vspace*{-0.5\baselineskip}
-\end{cases}
-\end{equation}
-We note that following straightforward relationships are valid:
-\begin{equation}\label{eq:mpr52}
-\left.E^{[2]}(\tau;\Phi)\right|_{\Phi=0}=1,\quad 
-\left.E_{\Phi}^{[2]}(\tau;\Phi)\right|_{\Phi=0}=0.
-\end{equation}
-
-Combining conditions \eqref{eq:mpr51}, \eqref{eq:mpr31}, and \eqref{eq:mpr52}, we are able to simplify the problem \eqref{eq:mpr4} at $\Phi=0$ as follows
-\begin{equation}\label{eq:mpr6}
--R_{\Phi\Phi,\tau}^{[2]}+\mathcal{L}^{(Y)}R_{\Phi\Phi}^{[2]}=4\kappa_2\left(Y^5 A_{\Phi\Phi}^{(4)}-2Y^6 A_{\Phi}^{(4)}\right),\quad 
-R_{\Phi\Phi}^{[2]}(0,Y;\Phi)=0.
-\end{equation}
-Thus, when $\kappa_2=0$, $R_{\Phi\Phi}^{[2]}(\tau,Y;\Phi=0)\equiv 0$, so that $E^{[2]}(\tau,Y; \Phi)$ is consistent with the variance of $X_t$. 
-
+For Proposition \ref{pr:qvarmoment}, replace the forcing in the first equation
+by $-(Y+\theta)^2$ and retain only
+$\vartheta^2(Y+\theta)^2(B_Y)^2$ as the additional source in the second.
+The same degree-two/degree-four closure proves the QV moment claim.
+The argument is specific to the degree-preserving case; the quadratic drift
+with $\kappa_2>0$ does not preserve these polynomial spaces.
 
 
 
@@ -2492,20 +2441,35 @@ We combine $d$ non-linear ODEs in \eqref{eq:ODE_syst} into single (non-linear) v
 \begin{equation}\label{eq:ODE_comb}
 \partial_{\tau} A(\tau; \Gamma)=M(A(\tau; \Gamma))+LA(\tau; \Gamma)+H,\quad A(0,u)=A_0,
 \end{equation}
-where $M:\mathbb{R}^d\to\mathbb{R}^d$ is a vector-valued function of argument $A\in\mathbb{R}^d$. For convenience, we denote the right-hand side of \eqref{eq:ODE_comb} as follows
+where $M:\mathbb C^d\to\mathbb C^d$ is the quadratic map with components $A^\top M_iA$. For convenience, we denote the right-hand side of \eqref{eq:ODE_comb} as follows
 \begin{equation}
 R(A):=M(A)+LA+H.
 \end{equation} 
 
 
 \begin{lemma}\label{lemm:bound2}
-There exists finite and non-negative function $g$ such that
-\begin{equation}
-\|A(\tau; \Gamma)\|^2\le \|A_0\|^2+\|A_0\|^2 \int_0^t h(s)e^{\int_0^s h(r)dr}ds,\quad h(s)=g(\Re(A(\tau; \Gamma))
+Write $A=x+iy$ and use Euclidean vector norms and induced matrix norms. Let
+$c_M=(\sum_i\|M_i\|^2)^{1/2}$ and
+$h(t)=6c_M\|x(t)\|+2\|L\|+1$. On any interval of existence,
+\begin{equation}\label{eq:ode_energy_bound}
+\|A(t)\|^2\leq \|A_0\|^2e^{\int_0^t h(r)dr}
++\int_0^t\|H\|^2e^{\int_s^t h(r)dr}\,ds.
 \end{equation}
+In particular, boundedness of $\Re A$ on a finite time interval precludes
+explosion of the full complex vector on that interval.
 \end{lemma}
 \begin{proof}
-The proof is essentially contained in \cite{Mayerhofer2015} and based on the application of Gronwall's inequality. 
+Because every $M_i$ is real and symmetric,
+\begin{equation*}
+\Re\sum_i\overline A_i A^\top M_iA
+=\sum_i x_i(x^\top M_ix-y^\top M_iy)
+ +2\sum_i y_ix^\top M_iy
+\leq3c_M\|x\|\,\|A\|^2.
+\end{equation*}
+Cauchy--Schwarz and $2\|A\|\|H\|\leq\|A\|^2+\|H\|^2$ yield
+$\partial_t\|A\|^2\leq h(t)\|A\|^2+\|H\|^2$.
+The inhomogeneous Gronwall inequality gives \eqref{eq:ode_energy_bound}.
+The forcing integral is essential when $A_0=0$ and $H\ne0$.
 \end{proof}
 
 
@@ -2520,64 +2484,45 @@ Assume that following conditions are satisfied:
 Then solution $A(\tau; \Gamma)$ of the system \eqref{eq:ODE_comb} remain real for real $\Gamma\in\mathbb{R}^d$. 
 \end{lemma}
 \begin{proof}
-The proof is available upon request.
+For real transform parameters, the vector field has real coefficients and the initial condition is real. The real solution also solves the complex system; local uniqueness therefore keeps the solution real throughout its interval of existence.
 \end{proof}
 
 
-We now consider the problem of continuity of solutions of quadratic differential systems arising in option valuation problem. It is important to highlight that linear $L(p)$ and free terms $H(p)$ satisfy assumptions of the Lemma \eqref{lemm:real_sol} when we set $p=1$ and restrict $\Re \Phi=-1/2$, $\Phi=\Psi=0$ for pricing vanilla options under MMA measure. We use same argument  for the inverse options when we set $p=-1$ and restrict $\Re \Phi=1/2$, $\Phi=\Psi=0$. We omit straightforward calculations. 
-
-We use $\tau_+(\Phi;A)$ and $\tau_+(\Re\Phi;A_R)$ to denote blow-up times $\tau_+(\Gamma;A)$ and $\tau_+(\Re\Gamma;A_R)$ when $\Gamma=(\Phi, \Psi=0, \Theta=0)$ and $\Re\Gamma=(\Re\Phi, \Psi=0, \Theta=0)$. 
+For real transform parameters, the linear and free terms satisfy
+Lemma \ref{lemm:real_sol}. In particular this applies to the real contour point
+$\Phi=-p/2$, with $\Psi=\Theta=0$. For a complex contour point, real and
+imaginary components interact and this lemma alone does not provide a comparison.
+The comparison in hypothesis \ref{assump:blow_up_uppbound} remains an explicit
+assumption of Theorem \ref{thm:contin_solutions}.
 
 
 
 \begin{proof}[Theorem \ref{thm:contin_solutions}]
-We assume first that $\Phi\in \mathbb{R}$. We denote
-\begin{equation*}
-D(\tau):=\left\{\Phi\in \mathbb{R} : \tau < \tau_+(\Phi;A)\right\},\quad 
-M(\tau):=\left\{\Phi\in \mathbb{R} : G(\tau; X,I,Y; \Phi)<\infty\right\}.
-\end{equation*}
-We argue by contradiction. We assume that solution $A(\tau;\Phi)$ blows up before $\tau_0$:
-\begin{equation}\label{eq:contin_contrad}
-\tau_+(\Gamma; A)<\tau_0
-\end{equation}
+First let $\Phi$ be real. Suppose its coefficient solution has an explosion
+time $t_*<\tau_0$. Hypothesis \ref{assump:lead_term_infin} makes the leading
+exponential term tend to positive infinity at the specified initial $Y$ as
+$t\uparrow t_*$. Hypothesis \ref{assump:rem_term_bound} prevents cancellation
+by a remainder tending to negative infinity. The exact decomposition
+\eqref{eq:b11} or \eqref{eq:b21} would therefore force the exact transform to
+become unbounded near $t_*$, contradicting the assumed local boundedness.
+Consequently the real-parameter solution exists on $[0,\tau_0)$.
 
-We set $\alpha^*:=\sup\{\alpha\ge 0: \alpha\Gamma\in D(\tau)\}$. Then assumption \eqref{eq:contin_contrad} implies that $\alpha^*<1$. On the one hand:
+For completeness, the correctly normalized Jensen relation for a real transform
+and $0<\alpha<1$ is
 \begin{equation}\label{eq:contin_contrad2}
-\begin{split}
-&G(\tau;X,I,Y; \alpha\Phi,\Psi=0,\Theta=0)\le G(\tau;X,I,Y; \alpha\Phi,\Psi=0,\Theta=0)^\alpha <\infty
-\end{split}
+G(t;X,I,Y;\alpha\Phi,0,0)
+\leq G(t;X,I,Y;\Phi,0,0)^\alpha,
 \end{equation}
-for all $\alpha<\alpha^*<1$ due to Jensen inequality. On the other hand, we have
-\begin{equation*}
-\begin{split}
-G(\tau;X,I,Y; \alpha\Phi,\Psi=0,\Theta=0)=&\exp\left\{-\alpha\Phi X+\sum_{k=0}^{2n} A_k(\tau;\alpha\Phi,\Psi=0,\Theta=0)Y^k\right\}\\
-+ &\exp\left\{-\alpha\Phi X\right\}R^{[2]}(\tau;X,I,Y;\alpha\Phi,\Psi=0,\Theta=0)
-\end{split}
-\end{equation*}
+whenever the right side is finite. This pointwise inequality does not by itself
+verify the hypotheses on the truncated solution or its remainder.
 
-Thus, we obtain
-\begin{equation}\label{eq:contin_contrad3}
-\begin{split}
-&\lim_{\alpha\uparrow\alpha^*}G(\tau;X,I,Y; \alpha\Phi,\Psi=0,\Theta=0)=+\infty
-\end{split}
-\end{equation}
-under assumptions \ref{assump:zero_im_linterm} and \ref{assump:zero_init_cond}. Comparing \eqref{eq:contin_contrad2} and \eqref{eq:contin_contrad3} we get contradiction, so
-\begin{equation}\label{eq:contin_contrad4}
-\tau_+(\Phi;A)\ge \tau_0\vspace*{-0.5\baselineskip}
-\end{equation}
-
-
-Now, we let $\Phi\in \mathbb{C}$ be complex. Due to assumption \ref{assump:blow_up_uppbound} and Lemma \ref{lemm:bound2}, we have 
-$
-\tau_+(\Phi;A)\ge \tau_+(\Phi; A_R)\ge \tau(\Re\Phi;A). 
-$
-Repeating the first part of the proof for $\Re\Phi$, leads to \eqref{eq:contin_contrad4}, so that 
-$
-\tau_+(\Re\Phi;A)\ge \tau_0. 
-$
-Hence, solution $A(\tau;\Phi,\Psi=0,\Theta=0)$ must remain continuous on $[0,\tau_0)$. 
+For complex $\Phi$, hypothesis \ref{assump:blow_up_uppbound} says that the real
+part of its coefficient vector cannot explode earlier than the coefficient
+solution at $\Re\Phi$. The first part of the proof makes the latter solution
+finite on $[0,\tau_0)$. Lemma \ref{lemm:bound2} then prevents the full complex
+vector from exploding on any compact subinterval. This proves the conditional
+continuation claim.
 \end{proof}
-
 
 
 

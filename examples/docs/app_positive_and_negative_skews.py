@@ -1,10 +1,10 @@
 """Canonical script of docs/app_positive_and_negative_skews.md.
 
-Every Python block on that page is a verbatim excerpt of this file, and every number the page
-quotes is asserted here. The log-normal SV model with quadratic drift is evaluated on option chains
-bundled with the package for five underlyings, with the parameters recorded in
-``papers/logsv_model_with_quadratic_drift_ijtaf_2023/calibrations.py``. The refit of one of them takes minutes
-and is listed in ``SLOW_CASES``. Select a case in ``Locals`` or run the file to execute every case.
+Every Python block on that page is a verbatim excerpt of this file. Current
+diagnostics are asserted here; pre-erratum fit and refit numbers are historical
+evidence, not current baselines. The recorded parameters are in the paper's
+``replication/calibration/calibrations.py`` module. The optional refit takes
+minutes and is listed in ``SLOW_CASES``. Select a case in ``Locals`` or run every case.
 """
 from enum import Enum
 
@@ -15,7 +15,7 @@ from stochvolmodels.data import sample_option_chains as chains
 
 SLOW_CASES = ("REFIT_VIX",)
 
-# parameters recorded in papers/logsv_model_with_quadratic_drift_ijtaf_2023/calibrations.py, fitted with
+# parameters recorded in papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/calibration/calibrations.py, fitted with
 # PARAMS5 (kappa2 = kappa1 / theta) to the chains below
 FITTED = {
     "S&P 500 (SPY)": svm.LogSvParams(sigma0=0.2270, theta=0.2616, kappa1=4.9325, kappa2=18.8550,
@@ -37,18 +37,32 @@ CHAINS = {"S&P 500 (SPY)": chains.get_spy_test_chain_data,
 
 
 def fit_quality(asset: str) -> dict:
-    """Per slice: RMSE of model against mid implied vols and share of quotes inside bid-ask."""
+    """Report per-slice fit metrics or rejection; never use an incomplete transform."""
     chain = CHAINS[asset]()
     pricer = svm.LogSVPricer()
-    model_vols = pricer.compute_model_ivols_for_chain(
-        option_chain=chain, params=FITTED[asset],
-        vol_scaler=pricer.set_vol_scaler(option_chain=chain))
+    scaler = pricer.set_vol_scaler(option_chain=chain)
     out = {}
-    for slice_id, model, bid, ask in zip(chain.ids, model_vols, chain.bid_ivs, chain.ask_ivs):
-        mid = 0.5 * (bid + ask)
-        out[slice_id] = {"rmse": np.sqrt(np.nanmean(np.square(model - mid))),
-                         "inside": np.mean((model >= bid) & (model <= ask))}
-    return out
+    # A failed long slice must not hide earlier slices. Retain the same transform
+    # grid and maturity stepping, retrying successively shorter chain prefixes.
+    for stop in range(len(chain.ids), 0, -1):
+        prefix = svm.OptionChain.get_slices_as_chain(chain, list(chain.ids[:stop]))
+        try:
+            model_vols = pricer.compute_model_ivols_for_chain(
+                option_chain=prefix, params=FITTED[asset], vol_scaler=scaler)
+        except FloatingPointError as exc:
+            out[chain.ids[stop-1]] = {"status": "rejected", "reason": str(exc),
+                                     "rmse": None, "inside": None}
+            continue
+        for slice_id, model, bid, ask in zip(prefix.ids, model_vols, prefix.bid_ivs, prefix.ask_ivs):
+            if not np.all(np.isfinite(model)):
+                out[slice_id] = {"status": "rejected", "reason": "Non-finite model implied volatilities",
+                                 "rmse": None, "inside": None}
+                continue
+            mid = 0.5 * (bid + ask)
+            out[slice_id] = {"status": "solved", "rmse": np.sqrt(np.mean(np.square(model-mid))),
+                             "inside": np.mean((model >= bid) & (model <= ask))}
+        break
+    return {slice_id: out[slice_id] for slice_id in chain.ids}
 
 
 def weighted_error(params: svm.LogSvParams, chain: svm.OptionChain) -> float:
@@ -57,7 +71,9 @@ def weighted_error(params: svm.LogSvParams, chain: svm.OptionChain) -> float:
     weights = [vega / np.sum(vega) for vega in chain.get_chain_vegas(is_unit_ttm_vega=False)]
     model_vols = pricer.compute_model_ivols_for_chain(
         option_chain=chain, params=params, vol_scaler=pricer.set_vol_scaler(option_chain=chain))
-    return sum(np.nansum(w * np.square(model - mid))
+    if any(not np.all(np.isfinite(model)) for model in model_vols):
+        raise FloatingPointError("Non-finite model implied volatilities in objective")
+    return sum(np.sum(w * np.square(model - mid))
                for w, model, mid in zip(weights, model_vols, chain.get_mid_vols()))
 
 
@@ -102,16 +118,20 @@ def run_local(local: Locals) -> None:
 
     elif local == Locals.FIT_QUALITY:
         quality = {asset: fit_quality(asset) for asset in FITTED}
-        rmse = {a: [q["rmse"] for q in slices.values()] for a, slices in quality.items()}
-        inside = {a: [q["inside"] for q in slices.values()] for a, slices in quality.items()}
-        print({a: np.round(v, 4) for a, v in rmse.items()})
-        print({a: np.round(v, 3) for a, v in inside.items()})
-        np.testing.assert_allclose([min(v) for v in rmse.values()],
-                                   [0.0047, 0.0072, 0.0097, 0.0176, 0.0158], atol=1e-4)
-        np.testing.assert_allclose([max(v) for v in rmse.values()],
-                                   [0.0104, 0.0096, 0.0132, 0.0343, 0.0482], atol=1e-4)
-        # the SPY spreads are narrower than its errors; most SQQQ quotes are matched within them
-        assert max(inside["S&P 500 (SPY)"]) < 0.09 and min(inside["-3x Nasdaq (SQQQ)"]) > 0.79
+        print(quality)
+        # Corrected coefficients expose the recorded GLD fit's long-maturity
+        # integration failure. Historical full-chain RMSE ranges are not baselines.
+        assert quality["Gold (GLD)"]["12m"]["status"] == "rejected"
+        for asset, slices in quality.items():
+            for slice_id, result in slices.items():
+                if asset == "Gold (GLD)" and slice_id in {"5m", "12m"}:
+                    assert result["rmse"] is None and result["inside"] is None
+                    expected = "integration failed" if slice_id == "12m" else "Non-finite"
+                    assert result["status"] == "rejected" and expected in result["reason"]
+                else:
+                    assert result["status"] == "solved", (asset, slice_id, result)
+                    assert np.isfinite(result["rmse"]) and 0 <= result["rmse"] < 0.2
+                    assert 0 <= result["inside"] <= 1
 
     elif local == Locals.ADMISSIBILITY:
         results = {asset: admissibility(params) for asset, params in FITTED.items()}
@@ -132,15 +152,13 @@ def run_local(local: Locals) -> None:
             option_chain=chain, params0=start,
             model_calibration_type=svm.LogsvModelCalibrationType.PARAMS5,
             constraints_type=svm.ConstraintsType.MMA_MARTINGALE_MOMENT4)
-        errors = [weighted_error(fit, chain), weighted_error(FITTED["VIX"], chain)]
-        print(fit, errors)
-        # the refit does not return the recorded parameters: it halves their objective, with a
-        # larger beta and a smaller residual vol-of-vol, and the fourth-moment inequality binds
-        np.testing.assert_allclose([fit.beta, fit.volvol], [2.80, 0.34], atol=0.01)
-        np.testing.assert_allclose(errors, [0.0017, 0.0032], atol=5e-5)
-        np.testing.assert_allclose(fit.kappa1 + fit.kappa2 * fit.theta,
-                                   1.5 * (fit.beta ** 2 + fit.volvol ** 2), rtol=1e-6)
-        assert fit.kappa2 >= 2.0 * fit.beta
+        errors = [weighted_error(fit, chain), weighted_error(start, chain),
+                  weighted_error(FITTED["VIX"], chain)]
+        print(fit, {"fit_start_recorded_objectives": errors})
+        # Check the current optimization and constraints, not the pre-erratum optimum.
+        assert np.all(np.isfinite(errors)) and errors[0] <= errors[1] + 1e-8
+        assert fit.kappa2 >= 2.0 * fit.beta - 1e-7
+        assert fit.kappa1 + fit.kappa2 * fit.theta >= 1.5 * (fit.beta**2 + fit.volvol**2) - 1e-7
 
 
 if __name__ == "__main__":

@@ -119,9 +119,14 @@ def replicated_variance_swap(params: svm.LogSvParams = PARAMS, ttm: float = 1.0 
     return compute_var_swap_strike(puts=puts, calls=calls, forward=1.0, ttm=ttm)
 ```
 
-Replicated from 201 model option prices within five standard deviations, the one-month strike is
-92.030%, against 92.034% from the expected QV: the Fourier prices of vanilla options and the
-moment system agree on the variance of the model.
+Replicated from 201 model option prices within five initial-volatility standard deviations,
+the one-month strike and the moment-based strike both round to 92.0%. With the corrected
+coefficients, the option strip is 0.264 basis points of volatility above the moment result.
+This independently compares option valuation with the volatility moment system. With quadratic
+drift, the moment calculation itself uses a finite closure (`n_terms=4`), so the agreement is a
+consistency check between approximations. The finite strike range, strike spacing and transform
+approximation also leave numerical error; the continuous replication identity is not an exact
+identity for this discrete strip.
 
 The options on QV use the packaged QV chain, with the forward of each slice set to the expected QV
 and the strikes from 75% to 150% of it:
@@ -146,7 +151,10 @@ def qv_option_vols(chain: svm.OptionChain, params: svm.LogSvParams = PARAMS,
     return ivols
 ```
 
-At one month, the implied volatility of calls on QV rises from 176.9% at 75% of the expected QV to
+The stored QV illustration below and the following quoted diagnostics predate the
+29 October 2026 coefficient correction. They require regeneration before being used as
+validation of the corrected pricer. In that illustration, at one month, the implied volatility
+of calls on QV rises from 176.9% at 75% of the expected QV to
 182.5% at the money and 186.1% at 150%: an upward skew, the pattern of options on volatility when
 volatility has a heavy right tail. The inverse measure gives the same implied volatilities to
 $5 \times 10^{-4}$. A Monte Carlo valuation with 400,000 paths and 5,760 steps per year puts every
@@ -160,7 +168,8 @@ options on one day in 2023, at one week, two weeks and one month:
 
 [![Implied volatilities of calls on quadratic variance for one week, two weeks and one month under the MMA and inverse measures, against Monte Carlo confidence intervals.](images/qvar_option_smiles.png)](images/qvar_option_smiles.png)
 
-*IJTAF Fig. 10, regenerated with the package: Black implied volatilities of calls on QV under the
+*Historical regeneration of IJTAF Fig. 10, before the 29 October 2026 coefficient correction:
+Black implied volatilities of calls on QV under the
 MMA and inverse measures for Eq. (6.4) ($\sigma_0 = 0.4083$, $\theta = 0.3789$, $\kappa_1 = 2.21$,
 $\kappa_2 = 2.18$, $\beta = 0.501$, $\varepsilon = 3.0633$), against 95% Monte Carlo intervals from
 400,000 paths with 5,760 steps per year, seed 13. The one-week smile rises from 344% at 75% of the

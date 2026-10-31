@@ -13,7 +13,7 @@ import stochvolmodels as svm
 from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
 from stochvolmodels.utils.funcs import set_seed
 
-# the fitted parameters of the Bitcoin case study
+# Historical fitted parameters, re-evaluated with the corrected coefficient system.
 FITTED = svm.LogSvParams(sigma0=0.8626, theta=1.0418, kappa1=2.21, kappa2=2.18, beta=0.1296,
                          volvol=1.6286)
 
@@ -47,6 +47,8 @@ def agreement(result: dict) -> dict:
     out = {}
     for idx, (price, mc, error) in enumerate(zip(result["prices"], result["mc"],
                                                  result["errors"])):
+        assert np.all(np.isfinite(price)) and np.all(np.isfinite(mc))
+        assert np.all(np.isfinite(error)) and np.all(error > 0.0)
         z = (price - mc) / error
         out[idx] = {"z": z, "inside": np.mean(np.abs(z) <= 1.96)}
     return out
@@ -65,20 +67,23 @@ def run_local(local: Locals) -> None:
         stats = agreement(compare(chain))
         inside = [stats[idx]["inside"] for idx in stats]
         print(inside)
-        # with daily steps the two-week wings separate: the simulation's time step is too coarse
-        np.testing.assert_allclose(inside, [21 / 33, 1.0, 1.0, 24 / 33], atol=1e-12)
+        # Dated corrected-code replay, not an accuracy acceptance criterion: the longest
+        # slice has fewer strikes inside than the historical pre-erratum result (24/33).
+        np.testing.assert_allclose(inside, [21 / 33, 1.0, 1.0, 11 / 33], atol=1e-12)
 
     elif local == Locals.FINE_STEPS:
         result = compare(chain, nb_steps=1440)
         stats = agreement(result)
         inside = [stats[idx]["inside"] for idx in stats]
         print(inside, [np.max(np.abs(stats[idx]["z"])) for idx in stats])
-        # four steps a day: every strike agrees up to two months; at 0.43 years the wings separate
-        np.testing.assert_allclose(inside, [1.0, 1.0, 1.0, 3 / 33], atol=1e-12)
-        np.testing.assert_allclose(np.max(np.abs(stats[3]["z"])), 6.0, atol=0.1)
+        # Independent simulated prices reject the corrected approximation at every strike
+        # of the longest slice; passing this regression must not be called validation there.
+        np.testing.assert_allclose(inside, [1.0, 1.0, 1.0, 0.0], atol=1e-12)
+        np.testing.assert_allclose(np.max(np.abs(stats[3]["z"])), 15.2, atol=0.1)
+        assert np.all(np.abs(stats[3]["z"]) > 1.96)
         difference = result["vols"][3] - result["mc_vols"][3]
         half_width = 0.5 * (result["mc_vols_up"][3] - result["mc_vols_down"][3])
-        np.testing.assert_allclose(difference[[0, 16, 32]], [0.019, 0.005, 0.036], atol=1e-3)
+        np.testing.assert_allclose(difference[[0, 16, 32]], [0.048, 0.009, 0.065], atol=1e-3)
         np.testing.assert_allclose(half_width[[0, 15, 32]], [0.007, 0.003, 0.041], atol=1e-3)
         np.testing.assert_allclose(chain.ttms[3], 0.4318, atol=1e-4)
 

@@ -17,7 +17,7 @@ from stochvolmodels.utils.funcs import set_seed
 
 BASE = dict(v0=0.04, theta=0.04, kappa=4.0, volvol=0.4)  # 20% volatility, Feller satisfied
 LOG_MONEYNESS = np.linspace(-0.3, 0.3, 13)  # at 0.5 years; scaled by sqrt(ttm / 0.5) otherwise
-# the log-normal SV fit of the Bitcoin case study, kappa1 and kappa2 fixed at the paper's values
+# pre-erratum LogSV calibration; fixed parameters are re-evaluated, not refitted here
 LOGSV_BTC_FIT = svm.LogSvParams(sigma0=0.8626, theta=1.0418, kappa1=2.21, kappa2=2.18, beta=0.1296,
                                 volvol=1.6286)
 
@@ -176,11 +176,14 @@ def run_local(local: Locals) -> None:
         logsv_vols = pricer.compute_model_ivols_for_chain(
             option_chain=chain, params=LOGSV_BTC_FIT,
             vol_scaler=pricer.set_vol_scaler(option_chain=chain))
-        rmse = [[100 * np.sqrt(np.nanmean((v[i] - mid[i]) ** 2)) for i in range(len(mid))]
+        assert all(np.all(np.isfinite(v)) for vols in (heston_vols, logsv_vols) for v in vols)
+        rmse = [[100 * np.sqrt(np.mean((v[i] - mid[i]) ** 2)) for i in range(len(mid))]
                 for v in (heston_vols, logsv_vols)]
         print(fit, rmse)
         np.testing.assert_allclose(rmse[0], [1.10, 0.65, 0.80, 0.78], atol=0.01)
-        np.testing.assert_allclose(rmse[1], [2.04, 1.00, 0.83, 1.24], atol=0.01)
+        # This compares a current Heston refit with historical LogSV parameters;
+        # it is a residual comparison, not a fair model-ranking experiment.
+        assert np.all(np.asarray(rmse[0]) < np.asarray(rmse[1]))
         # the Feller condition binds: the stationary variance is exponential, with its mode at zero
         np.testing.assert_allclose(2.0 * fit.kappa * fit.theta, fit.volvol ** 2, rtol=1e-6)
         np.testing.assert_allclose([fit.volvol, fit.rho], [4.09, 0.09], atol=0.01)

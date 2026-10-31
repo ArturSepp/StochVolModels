@@ -127,10 +127,11 @@ def price_under_both_measures(params: svm.LogSvParams = PARAMS) -> dict:
             "mma_vols": mma_vols, "inverse_vols": inv_vols}
 ```
 
-On this one-month slice the two valuations differ by at most $1.5 \times 10^{-5}$ in price and
-$1.3 \times 10^{-4}$ in implied volatility. The residual comes from the numerical approximations,
-which are applied to a different transform under each measure. The inverse codes return exactly
-the vanilla values. The MMA branch of the
+On this one-month slice the corrected valuations agree within $10^{-12}$ in price and
+$10^{-10}$ in implied volatility. The previously reported nonzero gap was caused by incorrect
+coefficient tensors, rather than an unavoidable difference between the two measures. This
+numeraire check does not establish the finite expansion's accuracy against the full model.
+The inverse codes return exactly the vanilla values. The MMA branch of the
 LogSV Fourier pricer rejects `"IC"` and `"IP"` with `ValueError`, while the BSM functions price them
 with the call and put formulas.
 

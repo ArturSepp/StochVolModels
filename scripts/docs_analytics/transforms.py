@@ -1,7 +1,7 @@
 """Producers of the transform-pricing exhibits: affine expansion, Fourier, inverse and QV options.
 
 Paper replications regenerate figures of Sepp and Rakhmonov (2023) with the parameters of the
-paper's figure code, ``papers/logsv_model_with_quadratic_drift_ijtaf_2023/article_figures.py``. Where the paper
+paper's figure code, ``papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/figures/article_figures.py``. Where the paper
 module can be imported (``ode_sol_in_time.py``) the producer calls its plotting function; where it
 cannot (``article_figures.py`` imports ``qis``, which is not a dependency) the producer computes the
 same quantities with the package and draws them itself. Supporting tables come from the page's
@@ -23,7 +23,7 @@ import stochvolmodels.utils.plots as plot
 from stochvolmodels.utils.funcs import set_seed
 from scripts.docs_analytics.common import figure_style, load_script, save, thin_ticks
 
-PAPER = "papers.logsv_model_with_quadratic_drift_ijtaf_2023"
+PAPER = "papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.theory"
 ORDERS = {"FIRST": svm.ExpansionOrder.FIRST, "SECOND": svm.ExpansionOrder.SECOND}
 
 
@@ -89,7 +89,12 @@ def _qv_density(params: svm.LogSvParams, ttm: float, grid: np.ndarray, order: sv
 
 
 def produce_expansion_pdfs_vs_mc(name: str, spec: dict, output_dir: Path) -> dict:
-    """IJTAF Fig. 6: densities of X, I / tau and sigma from E^[1] and E^[2] against simulation."""
+    """IJTAF Fig. 6 using current coefficients, checked against independent simulation.
+
+    The stored documentation preview remains a historical pre-erratum output until separately
+    rebuilt and reviewed. Current log-return validation uses the canonical example's sampling
+    scale, not the old implementation's recorded L1 distances.
+    """
     script = load_script(spec["script"])
     parameters = spec["parameters"]
     params = _params(parameters["params"])
@@ -147,11 +152,34 @@ def produce_expansion_pdfs_vs_mc(name: str, spec: dict, output_dir: Path) -> dic
                            index=["mass_first", "mass_second", "mass_mc", "l1_first",
                                   "l1_second"]).T
     x_first, x_second = distances["log_return"]
-    return {"tables": {"summary": summary, **tables},
+    x_probabilities = tables["log_return"][["first", "second"]].to_numpy()
+    valid_probabilities = bool(np.all(np.isfinite(x_probabilities))
+                               and np.all(x_probabilities >= -1e-10)
+                               and np.all(x_probabilities <= 1.0 + 1e-10))
+    # Expected histogram L1 sampling scale, using the second-order probabilities as in the
+    # canonical example. The comparison itself is to independently simulated paths above.
+    # Clipping here only accommodates the permitted floating-point boundary roundoff.
+    p_second = np.clip(x_probabilities[:, 1], 0.0, 1.0)
+    sampling_scale = (np.sum(np.sqrt(2.0 * p_second * (1.0 - p_second)
+                                     / (np.pi * parameters["nb_path"])))
+                      if valid_probabilities else np.nan)
+    sampling_multiplier = 1.25  # A case-specific diagnostic, not a global accuracy bound.
+    validation = pd.DataFrame(
+        {"coefficient_status": ["current corrected", "current corrected"],
+         "l1_distance_to_mc": [x_first, x_second],
+         "histogram_l1_sampling_scale": sampling_scale,
+         "l1_to_sampling_scale": np.array([x_first, x_second]) / sampling_scale,
+         "maximum_sampling_scale_multiple": sampling_multiplier},
+        index=pd.Index(["first", "second"], name="expansion"))
+    return {"tables": {"summary": summary, "log_return_validation": validation, **tables},
             "checks": {
                 "masses_match_mc": bool(np.all([abs(m[1] - m[2]) < 5e-3 for m in masses.values()])),
-                "log_return_distances_match_canonical_script": bool(
-                    abs(x_first - 0.0138) < 1e-3 and abs(x_second - 0.0125) < 1e-3),
+                "log_return_probabilities_are_valid": valid_probabilities,
+                "log_return_masses_match_mc": bool(np.allclose(
+                    masses["log_return"][:2], masses["log_return"][2], atol=1e-4, rtol=0.0)),
+                "log_return_distances_within_sampling_scale": bool(
+                    np.isfinite(sampling_scale) and sampling_scale > 0.0
+                    and max(x_first, x_second) <= sampling_multiplier * sampling_scale),
                 "script_parameters_used": bool(all(
                     getattr(script["FIG6_PARAMS"], key) == getattr(params, key)
                     for key in ("sigma0", "theta", "kappa1", "kappa2", "beta", "volvol")))}}

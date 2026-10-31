@@ -21,8 +21,9 @@ log-price has no closed form. Sepp and Rakhmonov (2023, Section 4) approximate i
 expansion, an exponential of a polynomial in the mean-adjusted volatility whose coefficients solve
 a small system of quadratic ordinary differential equations (ODEs). This article states the MGF and
 its partial differential equation (PDE), derives the first- and second-order expansions, lists the
-properties they keep exactly, and shows how the package solves them. Every option price computed
-by `LogSVPricer` goes through this expansion.
+properties they keep exactly, and shows how the package solves them. Its transform-based pricing
+route uses this expansion; the Monte Carlo route simulates the model directly. The coefficient corrections dated 29 October 2026 are implemented in the
+current source; see the [paper errata](https://github.com/ArturSepp/StochVolModels/blob/main/papers/logsv_model_with_quadratic_drift_ijtaf_2023/paper/README.md).
 
 ## Overview
 
@@ -31,12 +32,14 @@ variables, and its coefficients solve Riccati equations. In the log-normal SV mo
 has terms in $\sigma^2$ and $\sigma^3$, so no finite exponential-affine form solves the PDE. The
 expansion writes the logarithm of the MGF as a power series in $Y = \sigma - \theta$, truncates it
 at $Y^2$ (first order) or $Y^4$ (second order), and solves the resulting quadratic ODE system for
-the coefficients. The error is a remainder term driven by the central moments of volatility.
+the coefficients. The discarded terms drive a transformed remainder equation; the error requires
+a weighted expectation estimate rather than a signed-central-moment formula.
 
-The expansion is exact for the properties that valuation relies on most: it gives an expected
-price equal to the forward under both valuation measures, and at $\kappa_2 = 0$ the second-order
-expansion reproduces the mean and variance of the log-price, the quadratic variance (QV) and the
-volatility. Option prices, densities and QV options then follow by Fourier inversion (the
+The expansion preserves normalization identities at the martingale transform arguments.
+Identifying these with asset expectations still requires the model's martingale conditions.
+Under the MMA measure at $\kappa_2 = 0$, the corrected second-order expansion reproduces the
+mean and variance of the log-price, the quadratic variance (QV) and volatility. Option prices,
+densities and QV options then follow by Fourier inversion (the
 [Fourier pricing article](european_option_pricing.md), [inverse options](inverse_options.md) and
 [QV options](quadratic_variance_options.md)).
 
@@ -134,29 +137,52 @@ $\vartheta^2 - 2 \kappa^{(p)} - 4 \theta \beta \Phi$, which is the entry of the 
 
 ### The remainder
 
-The dropped powers leave a remainder $R^{[m]}$ that solves the same PDE with a source
-$-E^{[m]} F^{[m]}$, where $F^{[m]}$ is a polynomial in $Y$ of degrees 3 to 4 at first order and 5 to
-8 at second order, Eqs. (4.18), (4.19), (4.26) and (4.27). Its bound, Eqs. (4.20) and (4.28), is a
-sum of the coefficients of $F^{[m]}$ times the central moments $E[Y^n]$ of volatility. The expansion
-is therefore accurate when volatility is concentrated around $\theta$, and loses accuracy with a
-large vol-of-vol, a long maturity or weak mean reversion.
+After factoring $G=e^{-\Phi X-\Psi I}g$, the reduced operator is
+
+$$
+\mathcal A_{\Phi,\Psi,p}f = \frac12\vartheta^2(Y+\theta)^2 f_{YY}
+\quad + \left[\lambda^{(p)}-\kappa^{(p)}Y-\kappa_2^{(p)}Y^2-\beta\Phi(Y+\theta)^2\right]f_Y
+\quad + \frac12(\Phi^2+p\Phi-2\Psi)(Y+\theta)^2 f .
+$$
+
+The remainder satisfies $-R_\tau+\mathcal A_{\Phi,\Psi,p}R=-EF$, with zero initial
+condition. The published (4.18) and (4.26) omit the transformed drift and potential;
+the corrected author source restores them. The residual polynomial has degrees three
+to four at first order and five to eight at second order. The corrected $C_5$ also retains
+the leverage term $-4\beta\Phi A^{(4)}$ and the measure-adjusted quadratic drift.
+
+Before coefficient explosion, and under the integrability needed to remove localization,
+Duhamel's formula gives
+
+$$
+R(T)=\int_0^T e^{s\mathcal A_{\Phi,\Psi,p}}[E(T-s)F(T-s)]\thinspace ds .
+$$
+
+Equivalently this is a joint expectation weighted by $e^{-\Phi X_s-\Psi I_s}$,
+starting at $X_0=I_0=0$. Taking absolute values requires $|E|$ and
+$\sum_n|C_n|\thinspace |Y_s|^n$ inside that weighted expectation and retains the time integral.
+The published central-moment bounds (4.20), (4.28)-(4.30) are not valid global
+error certificates: the coefficients can be complex, odd moments can be signed,
+and the finite approximation need not satisfy the exact transform's modulus bound.
+Stationary-moment substitution is an approximation, not an inequality. Independent
+PDE or Monte Carlo pricing checks are required for the chosen parameter regime.
 
 ### Properties that hold exactly
 
 - **Martingale conditions** (Proposition 4.3, Eqs. (4.32) and (4.33)). For $\Phi = \Psi = \Theta = 0$,
   for $\Phi = -1$ under the MMA measure and for $\Phi = 1$ under the inverse measure, every
-  $H^{(k)}$ vanishes, so $\mathbf{A} \equiv 0$ and $E^{[m]} = 1$: the expected price is the forward
-  under both measures at any order.
+  $H^{(k)}$ vanishes, so $\mathbf{A} \equiv 0$ and $E^{[m]} = 1$. These are identities of the
+  approximate transform, not an independent proof of the price process's martingale property.
 - **Moments at $\kappa_2 = 0$** (Propositions 4.4 to 4.6). The second-order expansion reproduces the
-  mean and the variance of $\sigma_\tau$, $X_\tau$ and $I_\tau$ exactly. The first-order expansion
-  reproduces the means; in the check below it also reproduces the variance of $\sigma_\tau$, but
+  mean and the variance of $\sigma_\tau$, $X_\tau$ and $I_\tau$ exactly under the MMA measure.
+  The first-order expansion reproduces the means; in the check below it also reproduces the variance of $\sigma_\tau$, but
   not those of $X_\tau$ and $I_\tau$.
 - **Log-normal limit.** With $\beta = \varepsilon = 0$ and $\sigma_0 = \theta$ volatility is
   constant, $M^{(k)} = 0$, and $A^{(0)}(\tau) = \frac{1}{2} \theta^2 \tau (\Phi^2 + p \Phi)$ is the
   log-normal MGF.
 - **Existence of the solution.** A quadratic ODE system can blow up in finite time. Theorem 4.7
-  gives conditions under which the solution stays continuous for the valuation contours; the code
-  does not check them.
+  is conditional on assumptions about the truncated coefficients and remainder. Solver checks
+  reject reported integration failures but do not establish these theoretical assumptions.
 
 ## Worked example
 
@@ -171,6 +197,9 @@ def coefficients(params: svm.LogSvParams, phi: complex, ttm: float = 1.0,
     solution = svm.solve_ode_for_a(ttm=ttm, theta=params.theta, kappa1=params.kappa1,
                                    kappa2=params.kappa2, beta=params.beta, volvol=params.volvol,
                                    phi=phi, psi=0j, expansion_order=order, is_stiff_solver=True)
+    if (not solution.success or not np.isclose(solution.t[-1], ttm, rtol=0.0, atol=1e-12)
+            or not np.all(np.isfinite(solution.y[:, -1]))):
+        raise FloatingPointError("Coefficient integration did not reach a finite terminal state")
     return solution.y[:, -1]
 
 
@@ -185,8 +214,8 @@ $\theta = 1.0139$, $\kappa_1 = 4.8606$, $\kappa_2 = 4.7938$, $\beta = 0.1985$, $
 and $\Phi = -0.5 + 2i$, the first-order coefficients at $\tau = 1$ are
 $A^{(0)} = -1.8986 + 0.1060i$, $A^{(1)} = -0.3691 + 0.0216i$ and $A^{(2)}$ below $10^{-4}$, and
 $E^{[1]} = 0.1593 + 0.0163i$. The second-order expansion changes $A^{(0)}$ and $A^{(1)}$ by less than
-$0.003$, keeps $A^{(2)}$, $A^{(3)}$ and $A^{(4)}$ below $10^{-4}$, and gives
-$E^{[2]} = 0.1589 + 0.0162i$. The coefficients $A^{(1)}$ and $A^{(2)}$ settle within a few months,
+$0.006$, keeps $A^{(2)}$, $A^{(3)}$ and $A^{(4)}$ below $10^{-4}$, and gives
+$E^{[2]} = 0.1584 + 0.0162i$. The coefficients $A^{(1)}$ and $A^{(2)}$ settle within a few months,
 while $A^{(0)}$ grows linearly and carries the maturity dependence.
 
 [![Real and imaginary parts of the first-order coefficients over one year, and the real and imaginary parts of the leading term, which decays from one.](images/first_order_odes.png)](images/first_order_odes.png)
@@ -198,8 +227,9 @@ $A^{(0)}(1) = -0.3482 + 0.0517i$, far from the published value of about $-1.9$.*
 
 [![Real and imaginary parts of the five second-order coefficients over one year, and the leading term.](images/second_order_odes.png)](images/second_order_odes.png)
 
-*IJTAF Fig. 5, regenerated: the second-order coefficients of Eq. (4.25) with the same parameters.
-The higher coefficients $A^{(3)}$ and $A^{(4)}$ stay close to zero.*
+*Historical preview of IJTAF Fig. 5, regenerated before the 29 October 2026 coefficient
+correction. It is retained as provenance, not as a current corrected-coefficient output. The
+numerical values in the text above are checked with the current source.*
 
 The script checks the exact properties. For $\Phi = 0$, $\Phi = -1$ under the MMA measure and
 $\Phi = 1$ under the inverse measure, the integrated coefficients stay at zero to $10^{-14}$. With
@@ -216,20 +246,22 @@ means to $10^{-5}$. The relative errors of the variances are:
 | Expansion | $\sigma_\tau$ | $X_\tau$ | $I_\tau$ |
 |---|---|---|---|
 | First order, package | 0.0% | -8.9% | -40.4% |
-| Second order, package | 0.0% | -2.7% | -8.1% |
-| Second order, Eq. (4.25) as printed | 0.0% | 0.0% | 0.0% |
+| Second order, legacy coefficients | 0.0% | -2.7% | -8.1% |
+| Second order, corrected package and derivation | 0.0% | 0.0% | 0.0% |
 
-The second-order system as printed reproduces Propositions 4.5 and 4.6; the package's does not, for
-the reason given under [Implementation](#second-order-linear-terms).
+The corrected second-order system reproduces the MMA moment identities at this parameter
+point; the legacy implementation does not, for the reasons given under
+[Implementation](#second-order-linear-terms).
 
 The expansion also gives densities by Fourier inversion, Eq. (5.5). At one month, with the
-parameters of the paper's Fig. 6 code, the densities of $X_\tau$ from $E^{[1]}$ and $E^{[2]}$ differ
-from a histogram of 400,000 simulated paths by 0.0138 and 0.0125 in total absolute probability over
-200 cells, about the 0.0127 expected from sampling noise alone.
+parameters of the paper's Fig. 6 code, the script compares the current first- and second-order
+return densities with a histogram of 400,000 simulated paths over 200 cells. Both total absolute
+differences must lie within 1.25 times the expected histogram sampling scale (about 0.0127 in
+this example). This is a case-specific comparison, not an accuracy bound.
 
 [![Densities of the log-return, the annualised quadratic variance and the volatility at one month from the first- and second-order expansions, over Monte Carlo histograms.](images/expansion_pdfs_vs_mc.png)](images/expansion_pdfs_vs_mc.png)
 
-*IJTAF Fig. 6, regenerated with the package: densities of $X_\tau$, $I_\tau / \tau$ and $\sigma_\tau$
+*Historical IJTAF Fig. 6 preview, regenerated before the coefficient correction: densities of $X_\tau$, $I_\tau / \tau$ and $\sigma_\tau$
 at $\tau = 1/12$ from $E^{[1]}$ and $E^{[2]}$ against histograms of 400,000 Monte Carlo paths with
 daily steps, seed 37. Parameters of the paper's figure code: Eq. (6.4) with the vol-of-vol scaled
 by 0.6 ($\sigma_0 = 0.4083$, $\theta = 0.3789$, $\kappa_1 = 2.21$, $\kappa_2 = 2.18$, $\beta = 0.501$,
@@ -258,16 +290,18 @@ integrated once up to the last maturity. The default integrator is `solve_ivp` w
 tolerances. The argument `vol_backbone_eta` scales $\theta$ by maturity for the variance-swap
 backbone of calibration; it is not part of the article and equals one by default.
 
-In the checks for this article, the fixed-point path (`is_analytic=True`) returned a non-finite
-price for the quickstart option, whose default price is 0.197331: its explicit treatment of the
-quadratic term overflows at large transform values. The pages of this site use the default path.
+The fixed-point path (`is_analytic=True`) can overflow at large transform values. The current
+wrapper rejects the known nonfinite quickstart case with `FloatingPointError`; it does not return
+a usable price. The default numerical path is compared with tighter integration and independently
+derived linear coefficients. Successful integration alone does not certify the polynomial approximation.
 Run the example from a checkout with `python examples/docs/affine_expansion.py`.
 
 ### Second-order linear terms
 
-The package's first-order system matches the derivation above in every entry, under both measures.
-Its second-order linear terms differ from the derivation and from the printed Eq. (4.25) in three
-entries. The script builds the derived terms:
+The current first- and second-order systems match the generator derivation under both measures.
+The script builds the linear terms independently and checks every retained entry. Its explicitly
+named `legacy_linear_terms` helper reintroduces the three pre-erratum defects only to reproduce
+historical comparisons; it is not used by the production pricer:
 
 ```python
 def paper_linear_terms(params: svm.LogSvParams, phi: complex, is_spot_measure: bool = True,
@@ -294,35 +328,40 @@ def paper_linear_terms(params: svm.LogSvParams, phi: complex, is_spot_measure: b
     return linear
 ```
 
-| Entry | Derivation and Eq. (4.25) | Package |
+| Entry | Corrected package and derivation | Legacy implementation |
 |---|---|---|
 | $L^{(4)}_4$, both measures | $2(3 \vartheta^2 - 2 \kappa^{(p)} - 4 \theta \beta \Phi)$ | $2(\vartheta^2 - 2 \kappa^{(p)} - 4 \theta \beta \Phi)$ |
 | $L^{(2)}_3$, inverse measure | $3(2 \theta \vartheta^2 + \lambda^{(p)} - \theta^2 \beta \Phi)$ | without $\lambda^{(p)}$ |
 | $L^{(3)}_4$, inverse measure | $4(3 \theta \vartheta^2 + \lambda^{(p)} - \theta^2 \beta \Phi)$ | without $\lambda^{(p)}$ |
 
-Eq. (4.25) prints the $\lambda^{(p)}$ entry of $L^{(2)}$ as $3(2 q \vartheta^2 + \ldots)$, where $q$
-stands for $\theta$. The consequences are the variance errors of the table above at $\kappa_2 = 0$,
-and differences in option prices that grow with maturity. For the fitted parameters of the
-[Bitcoin case study](app_bitcoin_options.md), the implied volatilities from the two systems differ
-by at most $5 \times 10^{-5}$ at one month and 1.4 volatility points at one year, over strikes
-within 2.5 standard deviations. At one year, against 400,000 Monte Carlo paths, the root-mean-square
-difference is 0.17 volatility points for Eq. (4.25) and 0.99 for the package, with 11 and 6 of the
-11 strikes inside the 95% interval. The comparison is the slow case `PRICE_IMPACT` of the script.
-The prices quoted elsewhere on this site are the package's.
+Equation (4.25) separately prints $3(2q\vartheta^2+\ldots)$ where the correct symbol is
+$\theta$, not the paper's stationary-density parameter $q$. This paper typo is distinct from
+the three implementation defects listed above. The corrected source also repairs the remainder
+equations and qualifies their bounds; see the
+[errata](https://github.com/ArturSepp/StochVolModels/blob/main/papers/logsv_model_with_quadratic_drift_ijtaf_2023/paper/README.md).
+
+For the fitted parameters of the [Bitcoin case study](app_bitcoin_options.md), the legacy and
+corrected systems differ by about $5\times10^{-5}$ in maximum implied-volatility deviation at one month and
+1.4 volatility points at one year, over 11 strikes within 2.5 standard deviations. Against
+400,000 Monte Carlo paths at one year, the root-mean-square difference is about 0.17 volatility
+points for the corrected system and 0.99 for the legacy system, with 11 and 6 strikes inside
+the sampled 95% intervals. The slow `PRICE_IMPACT` case explicitly replays both versions.
+This particular improvement does not imply that coefficient correction improves every case:
+truncation error can remain large and the corrected ODE can fail before the requested maturity.
 
 ## Interpretation and limitations
 
-- **An expansion, not a closed form.** The remainder bound grows with the central moments of
-  volatility, so accuracy falls with the vol-of-vol and the maturity. Compare with Monte Carlo when
-  parameters are extreme, as the [analytic versus Monte Carlo](analytic_vs_monte_carlo.md) page
-  describes.
+- **Approximation error.** The weighted remainder estimate requires integrability and does not
+  supply a global error certificate. Validate prices against Monte Carlo or a full-state PDE at
+  the fitted parameters, strikes and maturities. Increasing order need not improve accuracy.
 - **Blow-up.** The coefficient system is quadratic and can blow up in finite time; the conditions of
   Theorem 4.7 are not checked by the code.
 - **Existence of the transforms.** The pricers use fixed contours: $\Re \Phi = \mp 1/2$ and, for QV
   options, $\Re \Psi = -1/2$. Theorem 4.3 guarantees the QV transform there when
   $\kappa_2 > \vartheta$.
-- **Orders.** The first-order expansion is cheaper and keeps the martingale conditions, but not the
-  variances; the second order is the default.
+- **Orders.** Both orders preserve the normalization identities. For MMA dynamics with
+  $\kappa_2=0$, degree two recovers volatility variance, while log-price and QV variances can
+  require degree four. These moment identities do not establish option-pricing accuracy.
 
 ## See also
 

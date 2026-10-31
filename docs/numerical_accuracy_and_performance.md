@@ -22,8 +22,8 @@ a number, and records how long the main operations take on one machine.
 
 | Source | Size and behaviour | Control | Measured on |
 |---|---|---|---|
-| Truncation of the MGF expansion | Grows with maturity, vol-of-vol and distance from the money; for the Bitcoin fit, up to about 2 volatility points four deviations out at 0.43 years | Expansion order; compare with Monte Carlo | [Affine expansion](affine_expansion.md), [analytic versus Monte Carlo](analytic_vs_monte_carlo.md) |
-| Second-order linear terms | The package's system differs from Eq. (4.25) in three entries; up to 1.4 volatility points at one year for the Bitcoin fit | None in the pricer | [Affine expansion](affine_expansion.md#second-order-linear-terms) |
+| Truncation of the MGF expansion | Depends on parameters, maturity and strike; coefficient correction does not remove it, and higher order need not improve it | Compare with Monte Carlo or the independent replication PDE; reject failed coefficient solves | [Affine expansion](affine_expansion.md), [analytic versus Monte Carlo](analytic_vs_monte_carlo.md) |
+| Historical coefficient defects | Corrected in current source; replaying legacy coefficients changes the Bitcoin-fit one-year IVs by up to 1.4 volatility points | Independent generator checks; legacy replay is documentation-only | [Affine expansion](affine_expansion.md#second-order-linear-terms) |
 | Transform grid | Aliasing of order $e^{-\pi / (2 \Delta y)}$; below $10^{-6}$ in price at 40% volatility, but several volatility points when $\sigma_0 \sqrt{\tau}$ is small | `vol_scaler`, partly | [Fourier pricing](european_option_pricing.md#interpretation-and-limitations) |
 | Implied-volatility inversion | Returns `NaN` outside 1% to 500%; magnifies small price errors where vega is small | Compare prices | [Fourier pricing](european_option_pricing.md#implied-volatilities) |
 | Monte Carlo sampling | Standard error falling as $1 / \sqrt{N}$ | `nb_path` | [Monte Carlo schemes](monte_carlo_simulation.md) |
@@ -40,6 +40,13 @@ price, refine the step on the same seed before adding paths, because the standar
 contain the discretisation error. Report absolute and relative price errors; implied-volatility
 errors amplify small price differences where vega is small. For a calibration, restart from another
 point and reprice the chain with the fitted parameters.
+
+The corrected retained coefficients are checked against the model generator. This removes
+implementation defects, but the published central-moment remainder formulas are not rigorous
+global accuracy bounds as written. The [errata](https://github.com/ArturSepp/StochVolModels/blob/main/papers/logsv_model_with_quadratic_drift_ijtaf_2023/paper/README.md)
+replace them with conditional transformed-expectation estimates. Current ODE guards reject
+reported solver failure, incomplete horizons and nonfinite states; they cannot establish
+accuracy of a finite approximation that happens to return a finite price.
 
 ## Performance
 

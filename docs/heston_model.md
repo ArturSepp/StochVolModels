@@ -156,13 +156,18 @@ points at one and two years. The low-strike wing is higher under the log-normal 
 points at one year and 0.40 at two, the heavier right tail of volatility passing to low strikes
 through the negative correlation.
 
-**A fit to the bundled Bitcoin chain.** Calibrated to the Bitcoin chain of 21 October 2021, with all
-five parameters free, the Heston model fits with root-mean-square errors of 1.10, 0.65, 0.80 and
-0.78 volatility points for the four maturities, against 2.04, 1.00, 0.83 and 1.24 for the log-normal
-SV fit of the [Bitcoin case study](app_bitcoin_options.md), which fixes $\kappa_1$ and $\kappa_2$ at
-the paper's estimates. The fit sets $\rho = 0.09$ and $\vartheta = 4.09$, and the Feller condition
-binds: the stationary variance is exponential, and volatility falls below 20% with probability 3.5%
-in the long run.
+**A fit to the bundled Bitcoin chain.** On 29 October 2026, recalibrating Heston to the bundled
+21 October 2021 chain with all five parameters free gave root-mean-square errors of 1.10, 0.65,
+0.80 and 0.78 volatility points. Evaluating the historical LogSV parameters with the corrected
+expansion gives 2.04, 1.00, 0.87 and 1.58 points; the pre-erratum values were 2.04, 1.00, 0.83 and
+1.24. The [Bitcoin case study](app_bitcoin_options.md) fixes LogSV's mean-reversion parameters and
+has not recalibrated its other parameters here. Its independent PDE calculation gives a longest-
+expiry RMSE of 1.13 points, demonstrating that the finite expansion inflates part of the apparent
+fit difference. This is a comparison of these configurations, not a model-ranking experiment.
+
+The Heston fit sets $\rho = 0.09$ and $\vartheta = 4.09$, and the Feller condition binds: the
+stationary variance is exponential, and volatility falls below 20% with probability 3.5% in the
+long run.
 
 [![Heston smiles for three correlations, stationary densities of volatility under Heston and the log-normal SV model at the same mean and variance, and the difference of their smiles.](images/heston_vs_logsv.png)](images/heston_vs_logsv.png)
 
@@ -256,8 +261,9 @@ branches do not extend the model's moment-existence domain.
 
 ## Interpretation and limitations
 
-- **A fit is not the test.** On one date the Heston model fitted the Bitcoin chain more closely than
-  the constrained log-normal SV fit, but only with a binding Feller condition and a stationary law
+- **A fit is not the test.** The Heston refit has smaller residuals than the historical LogSV
+  parameters in this comparison; LogSV was not refitted and its longest-expiry expansion has
+  material pricing error. The Heston result has a binding Feller condition and a stationary law
   that puts mass near zero volatility. The argument of Sepp and Rakhmonov for log-normal dynamics
   concerns the behaviour of volatility over time, not a single smile.
 - **Tails of volatility.** Square-root dynamics give a light right tail of volatility; when the

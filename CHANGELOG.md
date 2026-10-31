@@ -6,12 +6,33 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Changed
 
+- Updated executable LogSV documentation for the corrected coefficients, including
+  independent pricing checks, invalid-slice diagnostics and explicit labeling of
+  historical plots and remaining finite-expansion approximation error.
+
+- Organized the IJTAF LogSV paper code into `replication` subpackages for theory,
+  calibration, figures, empirics, legacy experiments and independent verification.
+  Completed the move by removing redundant paper-root Python wrappers and updating
+  live references; canonical paths are documented in the paper guide.
+
 - Renamed the IJTAF and RDR paper folders to identify their publication venues and years,
   and grouped the Digital Finance IL manuscript and replication sources in one folder.
   Updated live imports and links; explicit path relocations retain the figure bundle's
   historical source identity, numerical checks and image hashes.
 
 ### Added
+
+- Added repository-only long-maturity LogSV diagnostics, a deterministic PDE
+  calibration pilot and mapped Chebyshev reference solver. State/time/domain/Fourier
+  convergence and independent Monte Carlo checks distinguish finite-expansion
+  truncation bias from integration error; no production pricing default changes.
+
+- Added the corrected 29 October 2026 IJTAF LogSV author manuscript, a separate
+  reproducible PDF build with historical figure assets, and published-version
+  errata distinguishing printed errors from implementation defects.
+- Added an independent log-volatility finite-difference transform PDE and offline
+  coefficient/Black/Monte Carlo verification, including a stress case that exposes
+  the remaining finite-expansion pricing error.
 
 - Added the corrected IL author manuscript and self-contained LaTeX/PDF bundle under
   `papers/unified_approach_for_hedging_il_df_2025`, plus offline theoretical figure
@@ -21,6 +42,17 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 - Updated the locked optional Jupyter dependency Tornado from 6.5.10 to 6.6.0 to
   resolve CVE-2026-116577, CVE-2026-115927 and CVE-2026-116578 in the dependency audit.
+- Aligned LogSV degree-four diffusion and inverse-measure linear coefficients with
+  the paper; independent generator tests cover both measures and non-unit backbones.
+- Reject failed, incomplete or nonfinite LogSV coefficient integrations, and reject
+  unsupported non-unit backbones in the semi-analytic wrapper.
+- Calibration rejects numerical trial failures without silently omitting failed
+  model IVs from the objective; warnings report rejections and the final fit is repriced.
+- Corrected the paper stationary-moment scale and inverse-gamma limit, validated
+  independently by quadrature.
+- Corrected the paper replication's linearized ODE matrix-exponential solution and
+  figure imports. Optional Yahoo download imports are deferred until requested.
+
 - Added the required `Locals` annotation to the IL figure runner dispatcher so the
   repository layout contract passes in source and minimum-dependency CI jobs.
 - Fixed `OptionChain.get_chain_atm_vols()` for unsorted strike arrays by sorting paired

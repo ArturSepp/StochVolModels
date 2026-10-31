@@ -19,7 +19,7 @@ Equity-index options price a skew in which puts are dearer than calls; options o
 on leveraged-short exchange-traded funds price the opposite. This case study evaluates one
 parameterisation of the log-normal stochastic volatility (SV) model with quadratic drift on option
 chains of five underlyings bundled with the package, using the parameters recorded in the module
-`papers/logsv_model_with_quadratic_drift_ijtaf_2023/calibrations.py`. It is an illustration of the package on
+`papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/calibration/calibrations.py`. It is an illustration of the package on
 dated historical snapshots, not the replication of a published result: the published article
 calibrates the model to Bitcoin options only (see the
 [Bitcoin case study](app_bitcoin_options.md)).
@@ -76,23 +76,38 @@ gold. The recorded parameters are:
 
 The companion script
 [`examples/docs/app_positive_and_negative_skews.py`](../examples/docs/app_positive_and_negative_skews.py)
-asserts every number quoted below. The fit is measured against the mid of bid and ask, and against
-the spread itself:
+checks the current numerical diagnostics below. Pre-erratum values are retained explicitly
+as historical evidence. A fit is scored only when its transform reaches the requested maturity
+and every model implied volatility is finite:
 
 ```python
 def fit_quality(asset: str) -> dict:
-    """Per slice: RMSE of model against mid implied vols and share of quotes inside bid-ask."""
+    """Report per-slice fit metrics or rejection; never use an incomplete transform."""
     chain = CHAINS[asset]()
     pricer = svm.LogSVPricer()
-    model_vols = pricer.compute_model_ivols_for_chain(
-        option_chain=chain, params=FITTED[asset],
-        vol_scaler=pricer.set_vol_scaler(option_chain=chain))
+    scaler = pricer.set_vol_scaler(option_chain=chain)
     out = {}
-    for slice_id, model, bid, ask in zip(chain.ids, model_vols, chain.bid_ivs, chain.ask_ivs):
-        mid = 0.5 * (bid + ask)
-        out[slice_id] = {"rmse": np.sqrt(np.nanmean(np.square(model - mid))),
-                         "inside": np.mean((model >= bid) & (model <= ask))}
-    return out
+    # A failed long slice must not hide earlier slices. Retain the same transform
+    # grid and maturity stepping, retrying successively shorter chain prefixes.
+    for stop in range(len(chain.ids), 0, -1):
+        prefix = svm.OptionChain.get_slices_as_chain(chain, list(chain.ids[:stop]))
+        try:
+            model_vols = pricer.compute_model_ivols_for_chain(
+                option_chain=prefix, params=FITTED[asset], vol_scaler=scaler)
+        except FloatingPointError as exc:
+            out[chain.ids[stop-1]] = {"status": "rejected", "reason": str(exc),
+                                     "rmse": None, "inside": None}
+            continue
+        for slice_id, model, bid, ask in zip(prefix.ids, model_vols, prefix.bid_ivs, prefix.ask_ivs):
+            if not np.all(np.isfinite(model)):
+                out[slice_id] = {"status": "rejected", "reason": "Non-finite model implied volatilities",
+                                 "rmse": None, "inside": None}
+                continue
+            mid = 0.5 * (bid + ask)
+            out[slice_id] = {"status": "solved", "rmse": np.sqrt(np.mean(np.square(model-mid))),
+                             "inside": np.mean((model >= bid) & (model <= ask))}
+        break
+    return {slice_id: out[slice_id] for slice_id in chain.ids}
 ```
 
 and the parameters against the conditions of Theorem 3.7 and the fourth-moment inequality:
@@ -117,11 +132,29 @@ for Bitcoin (0.20), SQQQ (1.32) and VIX (2.34): opposite in sign to the skew mea
 For gold, whose skew changes sign, the fit takes a small $\beta$ of 0.15 and carries the smile by
 the residual vol-of-vol, $\varepsilon = 2.80$.
 
-**Fit quality.** The root-mean-square error against mid implied volatilities ranges over the
-maturities from 0.47 to 1.04 volatility points for SPY, 0.72 to 0.96 for gold, 0.97 to 1.32 for
-Bitcoin, 1.76 to 3.43 for SQQQ and 1.58 to 4.82 for VIX. The SPY spreads are narrower than these
-errors, so fewer than 9% of SPY model volatilities fall inside bid and ask at any maturity; for
-SQQQ, whose spreads are wide, at least 79% do.
+**Current fit diagnostics (29 October 2026).** The corrected expansion gives the following
+results at the recorded parameters. RMSE is in volatility points and covers only solved slices.
+Gold's five-month slice has non-finite model implied volatilities; its twelve-month coefficient
+ODE fails before reaching maturity. Both are rejected, without reporting fit metrics.
+
+| Underlying | Solved maturities | Rejected maturities | RMSE range, volatility points | Quotes inside bid-ask, range |
+|---|---|---|---|---|
+| SPY | 2w, 1m, 2m, 6m | None | 0.48–1.02 | 4.3%–9.5% |
+| GLD | 1m, 2m | 5m, 12m | 0.94–1.25 | 0.0%–5.9% |
+| Bitcoin | 2w, 1m, 2m, 3m | None | 0.78–1.67 | 6.7%–77.8% |
+| SQQQ | 2w, 1m, 2m, 6m | None | 1.78–3.40 | 79.1%–97.1% |
+| VIX | 2w, 1m, 2m, 6m | None | 3.75–4.55 | 9.7%–68.8% |
+
+Solving the finite expansion and obtaining finite implied volatilities are necessary numerical
+checks, not independent validation of price accuracy. These parameters have not been recalibrated
+here. The [paper verification](../papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/verification/run_checks.py)
+compares selected reference cases with a state-grid PDE and Monte Carlo simulation.
+
+**Historical fit metrics.** Before the coefficient correction and solver guards, this page
+reported full-chain RMSE ranges of 0.47–1.04 points for SPY, 0.72–0.96 for gold, 0.97–1.32 for
+Bitcoin, 1.76–3.43 for SQQQ and 1.58–4.82 for VIX, with fewer than 9% of SPY quotes and at least
+79% of SQQQ quotes inside bid-ask. Those historical ranges are not validated by the corrected
+code; the corrected valuation rejects the long gold maturities instead of assigning fit metrics.
 
 **Admissibility.** Every recorded fit satisfies $\kappa_2 \ge 2 \beta$ and therefore
 $\kappa_2 \ge \beta$: the price is a martingale under the MMA measure and its inverse under the
@@ -129,30 +162,31 @@ inverse measure, including for VIX, where $\kappa_2 = 8.70$ against $2 \beta = 4
 fourth-moment inequality holds for every asset except gold, which the module fits without
 constraints.
 
-**The recorded VIX fit is not the optimum of its configuration.** Repeating the module's VIX
-calibration, from its starting point and under its constraints, returns $\beta = 2.80$ and
-$\varepsilon = 0.34$ instead of 2.34 and 1.02, with a weighted error of 0.0017 against 0.0032 at the
-recorded parameters; the fourth-moment inequality binds at the refit. Both points have a positive
-$\beta$ and satisfy both martingale conditions, so the conclusions above do not depend on which is
-used.
+**Historical VIX refit.** The pre-erratum calculation returned $\beta = 2.80$ and
+$\varepsilon = 0.34$, with weighted errors 0.0017 at the refit and 0.0032 at the recorded
+parameters. These values have not been revalidated under the corrected expansion. The optional
+`REFIT_VIX` case now checks finite objectives, improvement over its starting point and the
+requested admissibility constraints, and reports its actual result without asserting that old
+optimum. The sign and martingale checks of the recorded parameters remain directly verifiable.
 
 [![Model implied volatilities against bid and ask at two months for five underlyings, and the fitted volatility beta and quadratic mean reversion of each.](images/cross_asset_calibrations.png)](images/cross_asset_calibrations.png)
 
-*Bundled snapshots of 15 July 2022 (SPY, GLD, SQQQ, VIX) and 21 October 2021 (Bitcoin). Model
+*Pre-erratum preview, retained with its original provenance; it has not been refreshed for the
+corrected coefficients. Bundled snapshots of 15 July 2022 (SPY, GLD, SQQQ, VIX) and 21 October 2021 (Bitcoin). Model
 implied volatilities of the recorded parameters against bid and ask at the two-month maturity,
 against strike over forward, and (bottom right) the fitted $\beta$ and $\kappa_2 / 10$ of each
 underlying.*
 
 ## What the study does and does not show
 
-- **It shows** that one model, with a quadratic drift and five fitted parameters, describes dated
-  chains whose skews have opposite signs, that $\beta$ takes the sign the skew requires, and that the
-  positive-beta fits satisfy the martingale conditions of Theorem 3.7.
+- **It shows** that the recorded parameters cover both signs of volatility beta and satisfy
+  the martingale conditions of Theorem 3.7. The corrected expansion provides finite fit
+  diagnostics for 18 of the 20 slices; this is not a validated fit of every chain.
 - **It does not show** that the parameters are stable over time: each underlying is one snapshot.
   The [Bitcoin case study](app_bitcoin_options.md) reports weekly calibrations over four and a half
   years for one underlying.
-- **Identification.** $\beta$ and $\varepsilon$ both shape the smile, and the VIX refit shows that
-  different pairs fit the same chain; the sign of $\beta$ is the robust result, not its value.
+- **Identification.** $\beta$ and $\varepsilon$ both shape the smile. The historical VIX refit
+  is a motivation to reassess identification after recalibration, not current numerical evidence.
 - **It is not a paper replication.** The published article does not report these five fits; the
   parameters are those recorded with the package.
 
@@ -164,8 +198,9 @@ Run the companion script from a checkout:
 python examples/docs/app_positive_and_negative_skews.py
 ```
 
-The `REFIT_VIX` case repeats the module's VIX calibration, about eight minutes; it is listed in
-`SLOW_CASES` and runs in the slow test lane. The other cases take seconds. The module's
+The optional `REFIT_VIX` case repeats the module's VIX calibration; it is listed in
+`SLOW_CASES` and runs in the slow test lane. It was not rerun for the diagnostic update above.
+The other cases report market skews, admissibility and current per-slice numerical status. The module's
 `calibrate_logsv_model` runs the calibration of each underlying with the configuration above.
 
 ## See also

@@ -8,6 +8,7 @@ the size of the integration grid. Select a case in ``Locals`` or run the file to
 from enum import Enum
 
 import numpy as np
+from scipy.special import ndtr
 
 import stochvolmodels as svm
 from stochvolmodels.pricers.logsv_pricer import set_vol_scaler
@@ -95,7 +96,13 @@ def run_local(local: Locals) -> None:
     """Run one case and assert its documented results."""
     if local == Locals.FIRST_PRICE:
         price, ivol = first_price()
-        np.testing.assert_allclose([price, ivol], [0.197331, 0.999577], atol=1e-6)
+        # Corrected retained coefficients, re-evaluated on 29 October 2026. This records
+        # the implementation's output; the independent inversion identity below checks units.
+        np.testing.assert_allclose([price, ivol], [0.197698, 1.001478], atol=1e-6)
+        assert 0.0 < price < 1.0 and ivol > 0.0
+        # At F = K = 1, the undiscounted Black-Scholes call is 2 Phi(sigma sqrt(T)/2) - 1.
+        np.testing.assert_allclose(price, 2.0 * ndtr(0.5 * ivol * np.sqrt(0.25)) - 1.0,
+                                   atol=1e-12, rtol=0.0)
 
     elif local == Locals.SAME_AS_PRICE_SLICE:
         strikes, optiontypes = strike_grid(0.25, vol=1.0)

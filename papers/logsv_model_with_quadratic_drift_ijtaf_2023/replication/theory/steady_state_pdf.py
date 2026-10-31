@@ -46,11 +46,31 @@ def integral_x_over_sigma(x_grid: np.ndarray,
 
 
 def vol_moment(params: LogSvParams, r: int = 1):
+    """Return the stationary raw moment in published IJTAF Eq. (3.39).
+
+    The scale is ``(q/b)**(r/2)`` for positive quadratic mean reversion.
+    At ``kappa2=0`` the law is inverse gamma, with shape
+    ``alpha=1+2*kappa1/vartheta2``: the moment is infinite for ``r>=alpha``.
+    This helper assumes finite parameters with theta and kappa1 positive,
+    and kappa2 nonnegative. Zero volatility of volatility gives the point
+    mass at theta. Scaled Bessel functions avoid common exponential underflow.
+    """
+    values = (params.theta, params.kappa1, params.kappa2, params.beta, params.volvol, r)
+    if (not np.all(np.isfinite(values)) or params.theta <= 0.0
+            or params.kappa1 <= 0.0 or params.kappa2 < 0.0):
+        raise ValueError("Stationary moments require finite parameters, theta>0, kappa1>0, kappa2>=0.")
+    if params.vartheta2 == 0.0:
+        return np.power(params.theta, r)
     nu = 2.0 * (params.kappa2 * params.theta - params.kappa1) / params.vartheta2 - 1.0
     q = 2.0 * params.kappa1 * params.theta / params.vartheta2
     b = 2.0 * params.kappa2 / params.vartheta2
-    y = np.power(b/q, r/2.0) * sps.kv(nu+r, 2.0*np.sqrt(q*b)) / sps.kv(nu, 2.0*np.sqrt(q*b))
-    return y
+    if b == 0.0:
+        alpha = -nu
+        if r >= alpha:
+            return np.inf
+        return np.exp(r*np.log(q) + sps.gammaln(alpha-r) - sps.gammaln(alpha))
+    z = 2.0*np.sqrt(q*b)
+    return np.power(q/b, r/2.0) * sps.kve(nu+r, z) / sps.kve(nu, z)
 
 
 def vol_skeweness(params: LogSvParams):
@@ -77,7 +97,7 @@ def steady_state(sigma: np.ndarray,
         else:
             c = np.power(q, -nu) / sps.gamma(-nu)
     else:
-        raise NotImplementedError(f"kappa1 = 0 is not implemented")
+        raise NotImplementedError("kappa1 = 0 is not implemented")
     g = c*np.power(sigma, nu-1.0)*np.exp(-q*np.reciprocal(sigma)-b*sigma)
     return g
 

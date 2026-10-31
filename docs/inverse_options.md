@@ -132,19 +132,23 @@ def inverse_values(params: svm.LogSvParams = PARAMS) -> tuple:
 ```
 
 With `LOGSV_BTC_PARAMS` ($\kappa_2 = 3.058$ above $2 \beta = 0.303$), a forward of 60,000 dollars and a
-one-month maturity, the at-the-money inverse call is worth 0.1023 coins and the vanilla call 6,139.4
-dollars. Over seven strikes from 45,000 to 80,000, the dollar values from the two measures agree to
-a relative $3 \times 10^{-4}$, and their implied volatilities to $1.5 \times 10^{-4}$. Simulating
+one-month maturity, the at-the-money inverse call is worth about 0.102 coins and the vanilla
+call 6,140 dollars. With the corrected coefficient tensors, over seven strikes from 45,000 to
+80,000 the dollar values from the two measures agree to a relative $10^{-10}$, and their
+implied volatilities to $10^{-10}$. This checks the numeraire identity; it does not establish
+the accuracy of the finite expansion against the full stochastic model. Simulating
 400,000 paths under each measure, the Monte Carlo coin values under $\tilde{\mathbb{Q}}$ and dollar
 values under $\mathbb{Q}$ are within 1.5 standard errors of the Fourier values at every strike.
 
-On the bundled Bitcoin chain the same comparison holds across four maturities, as the
-[Bitcoin case study](app_bitcoin_options.md) shows:
+The [Bitcoin case study](app_bitcoin_options.md) also contains this stored comparison across
+four maturities of its bundled historical chain:
 
 [![Bitcoin implied volatilities from the MMA and inverse valuations against the Monte Carlo confidence interval for four maturities.](images/btc_case_measures.png)](images/btc_case_measures.png)
 
 *Historical snapshot of 21 October 2021, bundled with the package; the exhibit of the Bitcoin case
-study, with its fitted parameters. MMA and inverse implied volatilities against 95% Monte Carlo
+study, with its fitted parameters. This preview predates the 29 October 2026 coefficient
+correction and has not been regenerated; its diagnostics are historical. MMA and inverse
+implied volatilities against 95% Monte Carlo
 intervals from 400,000 paths with daily steps, seed 7. The legend's "mse" is a root-mean-square
 difference to the Monte Carlo implied volatility.*
 

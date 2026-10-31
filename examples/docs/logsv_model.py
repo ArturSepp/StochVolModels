@@ -12,7 +12,7 @@ import numpy as np
 import stochvolmodels as svm
 from stochvolmodels.utils.funcs import set_seed, set_time_grid
 
-# the drift cases of the paper module papers/logsv_model_with_quadratic_drift_ijtaf_2023/vol_drift.py
+# the drift cases of the paper module papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/theory/vol_drift.py
 DRIFT_KAPPA2S = (0.0, 4.0, 8.0)
 
 

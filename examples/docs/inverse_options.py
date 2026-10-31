@@ -81,10 +81,10 @@ def run_local(local: Locals) -> None:
     if local == Locals.VALUES:
         coin, usd, ivols_inverse, ivols_vanilla = inverse_values()
         np.testing.assert_allclose(coin[3], 0.1023, atol=1e-4)  # at-the-money inverse call, in BTC
-        np.testing.assert_allclose(usd[3], 6139.4, atol=0.1)  # at-the-money vanilla call, in USD
-        # both expansions give the same USD values to about 1e-4 in implied volatility
-        assert np.max(np.abs(ivols_inverse - ivols_vanilla)) < 1.5e-4
-        np.testing.assert_allclose(coin * FORWARD, usd, rtol=3e-4)
+        np.testing.assert_allclose(usd[3], 6140.2, atol=0.1)  # at-the-money vanilla call, in USD
+        # Corrected tensors respect the numeraire identity at numerical precision.
+        assert np.max(np.abs(ivols_inverse - ivols_vanilla)) < 1e-10
+        np.testing.assert_allclose(coin * FORWARD, usd, rtol=1e-10, atol=1e-8)
 
     elif local == Locals.MONTE_CARLO:
         coin, usd, _, _ = inverse_values()

@@ -32,6 +32,8 @@ def plot_ode_sol_in_t(params: LogSvParams,
     plot real and imag parts of given solution
     """
     t = np.linspace(0.0, ttm, 300)
+    if not ode_sol.success or ode_sol.t[-1] < ttm:
+        raise FloatingPointError("The coefficient solver did not reach the plotted horizon.")
     z = ode_sol.sol(t)
 
     if expansion_order == ExpansionOrder.FIRST:
@@ -139,9 +141,13 @@ def solve_approximate_solutions(ttm: float,
                                          phi=phi,
                                          psi=psi,
                                          expansion_order=expansion_order)
-    L = np.transpose(L)
-    term = (sla.expm(ttm*L) - la.pinv(L))*H
-    return term
+    # Exact solution of the linearized system A' = L A + H, A(0) = 0.
+    # An augmented exponential handles the singular A0 mode without inverting L.
+    n = len(H)
+    augmented = np.zeros((n + 1, n + 1), dtype=np.complex128)
+    augmented[:n, :n] = L
+    augmented[:n, n] = H
+    return sla.expm(ttm * augmented)[:n, n]
 
 
 def plot_approximate_solutions(params: LogSvParams,
@@ -155,7 +161,7 @@ def plot_approximate_solutions(params: LogSvParams,
     """
 
     ttms = np.linspace(0.0, ttm, 100)
-    apr_sol = np.ndarray((len(ttms), get_expansion_n(expansion_order)))
+    apr_sol = np.empty((len(ttms), get_expansion_n(expansion_order)), dtype=np.complex128)
     for t, ttm in enumerate(ttms):
         apr_sol[t] = solve_approximate_solutions(ttm=ttm,
                                                  theta=params.theta,
@@ -165,7 +171,7 @@ def plot_approximate_solutions(params: LogSvParams,
                                                  volvol=params.volvol,
                                                  phi=phi,
                                                  psi=0.0 + 0.0j,
-                                                 expansion_order=expansion_order)[0]
+                                                 expansion_order=expansion_order)
 
     ode_sol = solve_ode_for_a(ttm=ttm,
                               theta=params.theta,
@@ -251,9 +257,12 @@ def detect_ode_explosion(params: LogSvParams,
         eigenvals = la.eigvals(L)
         if np.max(np.real(eigenvals)) > 0.0:
             pos_eigenvals[j_phi] = True
+        if not ode_sol.success or ode_sol.t[-1] < ttm:
+            is_explosion[j_phi] = True
+            continue
         z = ode_sol.sol(t)
         for zk in z:
-            if np.max(zk) >= 1.0e16:
+            if not np.all(np.isfinite(zk)) or np.max(np.abs(zk)) >= 1.0e16:
                 is_explosion[j_phi] = True
                 break
     return is_explosion, pos_eigenvals

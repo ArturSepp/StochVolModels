@@ -4,15 +4,16 @@ The case study quotes the paper's Bitcoin results by section and never recompute
 the Deribit data behind them cannot be distributed. This script applies the paper's calibration
 configuration (Sepp and Rakhmonov, 2023, Section 6.2) to the Bitcoin chain bundled with the
 package, quoted on 21 October 2021, and asserts the mechanisms the paper reports: a fit within the
-bid-ask spread for most maturities, a constrained positive volatility beta, agreement of the MMA
-and inverse valuations, and agreement of both with Monte Carlo simulation.
+average bid-ask width for most maturities, a constrained positive volatility beta, agreement of
+the MMA and inverse valuations, and sampling diagnostics against Monte Carlo simulation.
 
 The calibration takes minutes, so the ``CALIBRATE`` case is listed in ``SLOW_CASES`` and runs in
-the slow test lane; the other cases use its recorded result, ``FITTED``.
+the slow test lane; the other cases evaluate the pre-erratum parameters ``FITTED``.
 """
 from enum import Enum
 
 import numpy as np
+from scipy.stats import norm
 
 import stochvolmodels as svm
 from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
@@ -23,7 +24,7 @@ SLOW_CASES = ("CALIBRATE",)
 # mean-reversion rates estimated in the paper from the autocorrelation of volatility, Section 6.2
 KAPPA1, KAPPA2 = 2.21, 2.18
 
-# the result of calibrate() on the bundled chain, asserted by the CALIBRATE case
+# historical pre-erratum calibration on the bundled chain; not a current optimizer baseline
 FITTED = svm.LogSvParams(sigma0=0.8626, theta=1.0418, kappa1=KAPPA1, kappa2=KAPPA2,
                          beta=0.1296, volvol=1.6286)
 
@@ -50,6 +51,8 @@ def fit_quality(option_chain: svm.OptionChain, params: svm.LogSvParams = FITTED)
     quality = {}
     for slice_id, model, bid, ask in zip(option_chain.ids, model_vols,
                                          option_chain.bid_ivs, option_chain.ask_ivs):
+        if not np.all(np.isfinite(model)):
+            raise FloatingPointError(f"{slice_id}: non-finite model implied volatilities")
         mid = 0.5 * (bid + ask)
         quality[slice_id] = {"rmse": np.sqrt(np.mean((model - mid) ** 2)),
                              "spread": np.mean(ask - bid)}
@@ -57,8 +60,8 @@ def fit_quality(option_chain: svm.OptionChain, params: svm.LogSvParams = FITTED)
 
 
 def compare_measures(option_chain: svm.OptionChain, params: svm.LogSvParams = FITTED,
-                     nb_path: int = 50000, seed: int = 3) -> dict:
-    """Prices under the MMA and inverse measures, and seeded Monte Carlo prices with errors."""
+                     nb_path: int = 50000, seed: int = 3, nb_steps: int = 360) -> dict:
+    """MMA/inverse prices and seeded Monte Carlo estimates; nb_steps is steps per year."""
     pricer = svm.LogSVPricer()
     vol_scaler = pricer.set_vol_scaler(option_chain=option_chain)
     mma = pricer.price_chain(option_chain=option_chain, params=params, vol_scaler=vol_scaler)
@@ -66,8 +69,34 @@ def compare_measures(option_chain: svm.OptionChain, params: svm.LogSvParams = FI
                                  is_spot_measure=False, vol_scaler=vol_scaler)
     set_seed(seed)
     mc, mc_se = pricer.model_mc_price_chain(option_chain=option_chain, params=params,
-                                            nb_path=nb_path, nb_steps=360)
+                                            nb_path=nb_path, nb_steps=nb_steps)
     return {"mma": mma, "inverse": inverse, "mc": mc, "mc_se": mc_se}
+
+
+def sampling_diagnostics(result: dict) -> dict:
+    """Summarize simultaneous normal sampling discrepancies, excluding discretization bias.
+
+    Bonferroni's union bound does not require independent quotes. The Monte Carlo
+    standard errors use a normal approximation; this is not a bound on finite-
+    expansion or time-step error and is not an independent pricing validation.
+    """
+    if not (len(result["mc"]) == len(result["mma"]) == len(result["mc_se"])):
+        raise ValueError("Monte Carlo, model and standard-error slices must match")
+    scores = []
+    for mc, model, se in zip(result["mc"], result["mma"], result["mc_se"]):
+        mc, model, se = np.asarray(mc), np.asarray(model), np.asarray(se)
+        if not (mc.shape == model.shape == se.shape):
+            raise ValueError("Monte Carlo, model and standard-error quote shapes must match")
+        if (not np.all(np.isfinite(mc)) or not np.all(np.isfinite(model))
+                or not np.all(np.isfinite(se)) or np.any(se <= 0)):
+            raise FloatingPointError("Finite prices and positive finite standard errors required")
+        scores.extend(((mc-model)/se).ravel())
+    scores = np.asarray(scores)
+    if scores.size == 0 or not np.all(np.isfinite(scores)):
+        raise FloatingPointError("Finite nonempty standardized residuals required")
+    return {"quote_count": int(scores.size), "max_absolute_z": float(np.max(np.abs(scores))),
+            "outside_two_se": int(np.count_nonzero(np.abs(scores) > 2)),
+            "sampling_95_threshold": float(norm.isf(0.05 / (2*scores.size)))}
 
 
 class Locals(Enum):
@@ -84,16 +113,17 @@ def run_local(local: Locals) -> None:
     if local == Locals.CALIBRATE:
         fitted = calibrate(option_chain)
         values = (fitted.sigma0, fitted.theta, fitted.beta, fitted.volvol)
-        recorded = (FITTED.sigma0, FITTED.theta, FITTED.beta, FITTED.volvol)
-        np.testing.assert_allclose(values, recorded, atol=1e-3)
-        assert fitted.kappa2 >= 2.0 * fitted.beta  # the inverse-measure constraint holds
-        print(fitted)
+        assert np.all(np.isfinite(values)) and min(fitted.sigma0, fitted.theta, fitted.volvol) > 0
+        np.testing.assert_allclose([fitted.kappa1, fitted.kappa2], [KAPPA1, KAPPA2])
+        assert fitted.kappa2 >= 2.0 * fitted.beta - 1e-7
+        print(fitted, fit_quality(option_chain, fitted))
 
     elif local == Locals.FIT_QUALITY:
         quality = fit_quality(option_chain)
         rmse = [quality[slice_id]["rmse"] for slice_id in option_chain.ids]
         spread = [quality[slice_id]["spread"] for slice_id in option_chain.ids]
-        np.testing.assert_allclose(rmse, [0.0204, 0.0100, 0.0083, 0.0124], atol=5e-5)
+        assert np.all(np.isfinite(rmse)) and np.all(np.asarray(rmse) >= 0)
+        # Keep the market widths fixed; assess the residual relation, not old model outputs.
         np.testing.assert_allclose(spread, [0.0211, 0.0173, 0.0147, 0.0112], atol=5e-5)
         # the fit is inside the average spread for the first three maturities, not the last
         assert [r < s for r, s in zip(rmse, spread)] == [True, True, True, False]
@@ -109,10 +139,10 @@ def run_local(local: Locals) -> None:
             model_prices=result["inverse"])
         vol_gap = max(np.max(np.abs(a - b)) for a, b in zip(mma_vols, inverse_vols))
         assert price_gap < 1e-4 and vol_gap < 4e-4, (price_gap, vol_gap)
-        z_scores = np.concatenate([(mc - mma) / se for mc, mma, se
-                                   in zip(result["mc"], result["mma"], result["mc_se"])])
-        assert z_scores.size == 49 and np.max(np.abs(z_scores)) < 2.0, z_scores
-        print(price_gap, vol_gap, np.max(np.abs(z_scores)))
+        diagnostic = sampling_diagnostics(result)
+        assert diagnostic["quote_count"] == 49
+        assert diagnostic["max_absolute_z"] < diagnostic["sampling_95_threshold"], diagnostic
+        print({"price_measure_gap": price_gap, "iv_measure_gap": vol_gap, **diagnostic})
 
 
 if __name__ == "__main__":

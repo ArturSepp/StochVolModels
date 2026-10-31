@@ -19,7 +19,9 @@ stochastic volatility model with quadratic drift to Bitcoin options every week f
 years, and how they compared valuation under the money-market-account (MMA) and inverse measures.
 Their Deribit data cannot be distributed, so the paper's figures are reproduced under its
 open-access licence and its numbers are quoted by section. A companion script applies the same
-calibration configuration to the Bitcoin chain bundled with the package.
+calibration configuration to the Bitcoin chain bundled with the package. The current
+diagnostics below re-evaluate historical parameters with the corrected coefficient system;
+the published empirical figures have not been recalibrated.
 
 ## Overview
 
@@ -87,11 +89,11 @@ def calibrate(option_chain: svm.OptionChain) -> svm.LogSvParams:
 | SLSQP | the optimiser of `LogSVPricer.calibrate_model_params_to_chain` |
 | Second-order affine expansion | the default expansion order of the LogSV pricer |
 
-The calibration of the bundled chain takes a few minutes. The script records its result, and the
-other cases start from it:
+The script retains the pre-erratum calibration parameters below. The current diagnostic cases
+evaluate this historical record without asserting that a new calibration returns it:
 
 ```python
-# the result of calibrate() on the bundled chain, asserted by the CALIBRATE case
+# historical pre-erratum calibration on the bundled chain; not a current optimizer baseline
 FITTED = svm.LogSvParams(sigma0=0.8626, theta=1.0418, kappa1=KAPPA1, kappa2=KAPPA2,
                          beta=0.1296, volvol=1.6286)
 ```
@@ -152,8 +154,9 @@ these options (Section 6.3).
 
 ### The same configuration on the bundled chain
 
-The companion script applies the configuration to the chain of 21 October 2021. The fit gives
-$\sigma_0 = 0.863$, $\theta = 1.04$, $\beta = 0.130$ and $\varepsilon = 1.63$. The volatility
+The companion chain is dated 21 October 2021. Its pre-erratum calibration recorded
+$\sigma_0 = 0.863$, $\theta = 1.04$, $\beta = 0.130$ and $\varepsilon = 1.63$. These parameters
+are re-evaluated below, not asserted to be the corrected solver's optimum. The volatility
 beta is positive, as the paper finds in bullish periods, and the constraint holds with a margin:
 $\kappa_2 - 2 \beta = 1.92$.
 
@@ -167,34 +170,52 @@ def fit_quality(option_chain: svm.OptionChain, params: svm.LogSvParams = FITTED)
     quality = {}
     for slice_id, model, bid, ask in zip(option_chain.ids, model_vols,
                                          option_chain.bid_ivs, option_chain.ask_ivs):
+        if not np.all(np.isfinite(model)):
+            raise FloatingPointError(f"{slice_id}: non-finite model implied volatilities")
         mid = 0.5 * (bid + ask)
         quality[slice_id] = {"rmse": np.sqrt(np.mean((model - mid) ** 2)),
                              "spread": np.mean(ask - bid)}
     return quality
 ```
 
-| Expiry | Root-mean-square error | Average bid-ask spread |
-|---|---|---|
-| Two weeks | 2.04% | 2.11% |
-| One month | 1.00% | 1.73% |
-| Two months | 0.83% | 1.47% |
-| Three months | 1.24% | 1.12% |
+The following diagnostics were recomputed on 29 October 2026 at those fixed parameters.
+All entries are in volatility points. The PDE column uses an independent state grid in log
+volatility, without the polynomial expansion.
 
-The error is inside the average spread for the first three expiries and slightly above it for the
-three-month expiry, the longest. The paper notes that a term structure of the mean volatility
-$\theta$ improves the fit around the money (Section 6.2); the package supports one through
-`LogSvParams.vol_backbone`.
+| Expiry | Corrected expansion RMSE | Independent PDE RMSE | Average bid-ask spread |
+|---|---|---|---|
+| Two weeks | 2.04 | 2.04 | 2.11 |
+| One month | 1.00 | 1.01 | 1.73 |
+| Two months | 0.87 | 0.86 | 1.47 |
+| Three months | 1.58 | 1.13 | 1.12 |
+
+The pre-erratum expansion RMSEs were 2.04, 1.00, 0.83 and 1.24 points; they remain historical
+values, not regression targets for the corrected implementation. The corrected expansion's
+RMSE is below the average spread width for the first three expiries and above it for the last.
+This compares aggregate errors with average widths; it does not count quotes inside bid-ask.
+
+The independent calculation used 801 spatial nodes and 512 time steps, then 1,601 nodes and
+1,024 steps, on a log-volatility domain of half-width six. The maximum grid-refinement change
+was 0.00349 basis points of discounted forward. Expansion-minus-PDE price discrepancies reached
+0.0067, 0.1103, 0.8867 and 16.0914 basis points across the four expiries. At the longest expiry,
+the maximum implied-volatility discrepancy was 1.668 points: a material truncation error
+despite successful coefficient integration. The implementation is in
+[`replication/verification/logvol_pde.py`](https://github.com/ArturSepp/StochVolModels/blob/main/papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/verification/logvol_pde.py).
+
+The paper notes that a term structure of mean volatility improves the fit around the money
+(Section 6.2). A richer calibration cannot substitute for validating the pricing approximation.
 
 [![Fitted model implied volatility against bid and ask quotes for four Bitcoin expiries of 21 October 2021.](images/btc_case_fit.png)](images/btc_case_fit.png)
 
-*Historical snapshot: the Bitcoin chain of 21 October 2021 bundled with the package. Model implied
+*Pre-erratum preview, retained with its original provenance and not refreshed for the corrected
+coefficients. Historical snapshot: the Bitcoin chain of 21 October 2021 bundled with the package. Model implied
 volatilities (line) with the parameters `FITTED`, against bid and ask quotes. The legend's "mse" is
 the root-mean-square difference to mid volatility. Drawn by `LogSVPricer.plot_model_ivols_vs_bid_ask`.*
 
 ```python
 def compare_measures(option_chain: svm.OptionChain, params: svm.LogSvParams = FITTED,
-                     nb_path: int = 50000, seed: int = 3) -> dict:
-    """Prices under the MMA and inverse measures, and seeded Monte Carlo prices with errors."""
+                     nb_path: int = 50000, seed: int = 3, nb_steps: int = 360) -> dict:
+    """MMA/inverse prices and seeded Monte Carlo estimates; nb_steps is steps per year."""
     pricer = svm.LogSVPricer()
     vol_scaler = pricer.set_vol_scaler(option_chain=option_chain)
     mma = pricer.price_chain(option_chain=option_chain, params=params, vol_scaler=vol_scaler)
@@ -202,17 +223,33 @@ def compare_measures(option_chain: svm.OptionChain, params: svm.LogSvParams = FI
                                  is_spot_measure=False, vol_scaler=vol_scaler)
     set_seed(seed)
     mc, mc_se = pricer.model_mc_price_chain(option_chain=option_chain, params=params,
-                                            nb_path=nb_path, nb_steps=360)
+                                            nb_path=nb_path, nb_steps=nb_steps)
     return {"mma": mma, "inverse": inverse, "mc": mc, "mc_se": mc_se}
 ```
 
-Across the 49 quotes, the MMA and inverse valuations differ by less than $10^{-4}$ of the forward
-in price and less than $4 \times 10^{-4}$ in implied volatility. The Monte Carlo prices, from 50,000
-paths with daily steps, lie within two standard errors of the MMA prices at every strike.
+Across the 49 quotes, the corrected MMA and inverse expansion valuations agree to
+$3.32 \times 10^{-15}$ of the forward in price and $5.04 \times 10^{-14}$ in implied volatility
+in this run. This is a consistency check between representations of the same approximation.
+
+The 50,000-path Monte Carlo calculation with 360 steps per year and seed 3 has a largest absolute
+discrepancy of 2.177 standard errors against the expansion; one quote exceeds two standard errors.
+The historical statement that every quote lies within two standard errors no longer holds.
+The script reports a 95% Bonferroni threshold of 3.285 for 49 simultaneous normal sampling
+comparisons, rather than treating 49 pointwise two-standard-error intervals as a joint bound.
+That sampling diagnostic does not bound discretization or finite-expansion bias. Against the
+independent PDE, all 49 Monte Carlo discrepancies were below 1.44 standard errors; the PDE
+comparison above exposes the expansion's long-maturity error more clearly.
+
+Repeating the registered preview configuration with the corrected code (400,000 paths, seed 7,
+360 steps per year) gives a maximum discrepancy of 5.756 standard errors, with six of 49 quotes
+outside two standard errors. It exceeds the simultaneous threshold of 3.285. The producer
+therefore reports a failed accuracy comparison for that configuration; the frozen historical
+preview below must not be read as validation of the corrected expansion.
 
 [![Implied volatilities under the MMA and inverse measures against Monte Carlo confidence bounds for four Bitcoin expiries.](images/btc_case_measures.png)](images/btc_case_measures.png)
 
-*Historical snapshot: the Bitcoin chain of 21 October 2021. Implied volatilities under the MMA
+*Pre-erratum preview with its original provenance; it is not the updated 50,000-path diagnostic
+above. Historical snapshot: the Bitcoin chain of 21 October 2021. Implied volatilities under the MMA
 measure and the inverse measure, which overlap, against the 95% confidence bounds of a Monte Carlo
 simulation with 400,000 paths, daily steps and seed 7. The legend's "mse" is the root-mean-square
 difference to the Monte Carlo implied volatility. Drawn by
@@ -220,7 +257,7 @@ difference to the Monte Carlo implied volatility. Drawn by
 
 ## What the study does and does not show
 
-The study shows that, with the mean-reversion rates fixed, four parameters fit the liquid
+The published study reports that, with the mean-reversion rates fixed, four parameters fit the liquid
 short-dated Bitcoin smile across four and a half years of changing regimes, including periods of
 positive volatility beta, and that the quadratic drift keeps both valuation measures consistent
 while $\beta$ is positive.
@@ -246,11 +283,14 @@ Run the companion script from a checkout:
 python examples/docs/app_bitcoin_options.py
 ```
 
-The `CALIBRATE` case repeats the calibration and asserts that it reproduces `FITTED`; it is listed
-in `SLOW_CASES` and runs in the slow test lane. The other cases take seconds.
+The optional `CALIBRATE` case repeats the calibration and checks finite fitted values, fixed
+mean-reversion rates, the inverse-martingale constraint and finite model implied volatilities.
+It no longer asserts the pre-erratum optimizer result `FITTED`. It is listed in `SLOW_CASES`
+and was not rerun for this diagnostic update. `FIT_QUALITY` and `MEASURES` evaluate the
+recorded parameters and report current residual and sampling diagnostics.
 
 The paper's figures come from
-[`papers/logsv_model_with_quadratic_drift_ijtaf_2023/article_figures.py`](https://github.com/ArturSepp/StochVolModels/blob/main/papers/logsv_model_with_quadratic_drift_ijtaf_2023/article_figures.py).
+[`papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/figures/article_figures.py`](https://github.com/ArturSepp/StochVolModels/blob/main/papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/figures/article_figures.py).
 Fig. 7 reads a local file of weekly calibration results, and Figs. 8 and 9 load a Deribit chain
 from local Tardis data through the `research` extra; neither input is distributed. The paper
 directories and their prerequisites are described in
