@@ -50,6 +50,36 @@ def test_research_extra_requires_and_locks_oca_6() -> None:
     assert tuple(map(int, locked["certifi"].split("."))) >= (2026, 10, 19)
 
 
+@pytest.mark.parametrize(
+    ("version", "accepted"),
+    [("5.99.0", False), ("6.0.0rc1", False), ("6.0.0", True), ("6.0.1", True), ("6.1.0", True)],
+)
+def test_research_oca_lock_contract_checks_floor_not_exact_version(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, version: str, accepted: bool,
+) -> None:
+    """Reject releases below the floor while allowing live dependency upgrades."""
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\ndependencies = []\n[project.optional-dependencies]\n'
+        'research = ["option-chain-analytics[cboe]>=6.0.0"]\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "README.md").write_text(
+        "option-chain-analytics[cboe] >= 6.0.0", encoding="utf-8",
+    )
+    (tmp_path / "uv.lock").write_text(
+        f'[[package]]\nname = "option-chain-analytics"\nversion = "{version}"\n'
+        '[[package]]\nname = "pillow"\nversion = "13.0.0"\n'
+        '[[package]]\nname = "certifi"\nversion = "2026.10.19"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setitem(globals(), "REPOSITORY_ROOT", tmp_path)
+    if accepted:
+        test_research_extra_requires_and_locks_oca_6()
+    else:
+        with pytest.raises(AssertionError):
+            test_research_extra_requires_and_locks_oca_6()
+
+
 def _has_collected_test(path: Path) -> bool:
     """Return whether a test-shaped module declares a pytest test candidate."""
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
