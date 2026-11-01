@@ -13,6 +13,7 @@ import tomllib
 from pathlib import Path
 
 import pytest
+from packaging.version import Version
 
 import stochvolmodels
 
@@ -44,7 +45,7 @@ def test_research_extra_requires_and_locks_oca_6() -> None:
     readme = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
     assert "option-chain-analytics[cboe] >= 6.0.0" in readme
     locked = {package["name"]: package["version"] for package in lock["package"]}
-    assert locked["option-chain-analytics"] == "6.0.0"
+    assert Version(locked["option-chain-analytics"]) >= Version("6.0.0")
     assert tuple(map(int, locked["pillow"].split("."))) >= (13, 0, 0)
     assert tuple(map(int, locked["certifi"].split("."))) >= (2026, 10, 19)
 

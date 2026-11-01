@@ -4,6 +4,12 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix the OCA research-dependency repository contract so scheduled compatibility
+  checks accept releases satisfying the declared `>=6.0.0` floor. Pillow and
+  Certifi security floors remain checked.
+
 ## [2.6.1] - 2026-10-31
 
 This release includes the changes recorded under `2.6.1.dev0` and `2.6.1.dev1`
