@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
+from typing import Callable
 
 import pytest
 
@@ -179,14 +180,16 @@ def test_development_runner_layout() -> None:
 @pytest.mark.skipif(
     REPOSITORY_ROOT is None, reason="examples and papers are absent from installed wheels"
 )
-def test_repository_plural_dispatchers_use_current_api() -> None:
+def test_repository_plural_dispatchers_use_current_api(
+    repository_files: Callable[[Path, str], list[Path]],
+) -> None:
     """Plural example and paper dispatchers use ``Locals`` and ``run_local(local=...)``."""
     assert REPOSITORY_ROOT is not None
     failures: list[str] = []
-    search_roots = (REPOSITORY_ROOT / "examples", REPOSITORY_ROOT / "papers")
-
-    for search_root in search_roots:
-        for path in sorted(search_root.rglob("*.py")):
+    for directory in ("examples", "papers"):
+        for path in repository_files(REPOSITORY_ROOT, directory):
+            if path.suffix != ".py":
+                continue
             relative = path.relative_to(REPOSITORY_ROOT).as_posix()
             tree = _tree(path)
             classes = {

@@ -6,6 +6,10 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Fixed
 
+- Exclude ignored private paper folders from repository paper-classification and
+  dispatcher checks. Tracked files, untracked public additions and source-archive
+  contents remain checked.
+
 - Fix the OCA research-dependency repository contract so scheduled compatibility
   checks accept releases satisfying the declared `>=6.0.0` floor. Pillow and
   Certifi security floors remain checked.

@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import Callable
 
 import pytest
 
@@ -158,16 +159,22 @@ def test_every_root_example_has_a_reviewer_lane() -> None:
     assert len(listed) == len(set(listed)), "an example is classified more than once"
 
 
-def test_every_paper_directory_has_exactly_one_status_row() -> None:
-    """Published, development, and exploratory paper directories are all classified once."""
+def test_every_paper_directory_has_exactly_one_status_row(
+    repository_files: Callable[[Path, str], list[Path]],
+) -> None:
+    """Every public paper directory is classified exactly once."""
     papers_readme = PAPERS_README_PATH.read_text(encoding="utf-8")
     table = papers_readme.split("## Papers", maxsplit=1)[1].split("## Running", maxsplit=1)[0]
     listed = re.findall(r"^\| `([^`]+)` \|", table, re.MULTILINE)
-    directories = sorted(
-        path.name
-        for path in (REPOSITORY_ROOT / "papers").iterdir()
-        if path.is_dir() and path.name != "__pycache__"
+    paper_paths = (
+        path.relative_to(REPOSITORY_ROOT / "papers")
+        for path in repository_files(REPOSITORY_ROOT, "papers")
     )
+    directories = sorted({
+        path.parts[0]
+        for path in paper_paths
+        if len(path.parts) > 1 and path.parts[0] != "__pycache__"
+    })
     assert sorted(listed) == directories
     assert len(listed) == len(set(listed)), "a paper directory is classified more than once"
 
