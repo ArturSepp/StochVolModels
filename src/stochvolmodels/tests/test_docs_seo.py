@@ -106,18 +106,8 @@ def test_page_titles_end_with_the_project_name_not_the_site_title(tmp_path):
     # Furo would end every title with the full html_title, which search results cut off.
     pytest.importorskip("furo")
     conf = _load_docs_conf()
-    templates = [
-        str(REPOSITORY_ROOT / "docs" / path) for path in getattr(conf, "templates_path", [])
-    ]
     source = tmp_path / "source"
     source.mkdir()
-    (source / "conf.py").write_text(
-        "html_theme = 'furo'\n"
-        f"templates_path = {templates!r}\n"
-        f"project = {conf.project!r}\n"
-        f"html_title = {conf.html_title!r}\n",
-        encoding="utf-8",
-    )
     (source / "index.rst").write_text(
         "Home\n====\n\n.. toctree::\n\n   heston\n", encoding="utf-8"
     )
@@ -126,7 +116,8 @@ def test_page_titles_end_with_the_project_name_not_the_site_title(tmp_path):
     )
     output = tmp_path / "html"
     result = subprocess.run(
-        [sys.executable, "-m", "sphinx", "-W", "-q", "-b", "html", str(source), str(output)],
+        [sys.executable, "-m", "sphinx", "-W", "-q", "-b", "html",
+         "-c", str(REPOSITORY_ROOT / "docs"), str(source), str(output)],
         capture_output=True,
         text=True,
         timeout=120,
@@ -139,3 +130,9 @@ def test_page_titles_end_with_the_project_name_not_the_site_title(tmp_path):
 
     assert head_titles("index") == [conf.html_title]
     assert head_titles("heston") == [f"The Heston model - {conf.project}"]
+    for name in ("index", "heston"):
+        head = (output / f"{name}.html").read_text(encoding="utf-8").split("</head>")[0]
+        assert head.count('content="cddUZk3Gsd1MySw42Rwuq_rMzUDcMNkJWekObx-QS9Y"') == 1
+    assert conf.myst_html_meta["google-site-verification"] == (
+        "WJen7v3RzYStpnJNMjZL5X35cuWl__U-MBvZtgN65-g"
+    )

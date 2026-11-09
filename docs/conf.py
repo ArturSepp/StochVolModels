@@ -33,6 +33,8 @@ myst_heading_anchors = 3
 myst_fence_as_directive = ["mermaid"]
 # Keep each diagram's own aspect ratio instead of the extension's fixed-height box.
 mermaid_height = "auto"
+# Preserve the earlier verification tag while adding the maintainer account.
+GOOGLE_SITE_VERIFICATION = "cddUZk3Gsd1MySw42Rwuq_rMzUDcMNkJWekObx-QS9Y"
 myst_html_meta = {
     "google-site-verification": "WJen7v3RzYStpnJNMjZL5X35cuWl__U-MBvZtgN65-g",
 }
@@ -99,7 +101,11 @@ def _canonical_page_url(base_url: str, target_uri: str) -> str:
 
 
 def _normalize_canonical_page_url(app, pagename, templatename, context, doctree) -> None:
-    """Keep the homepage canonical aligned with the trailing-slash sitemap URL."""
+    """Keep the root canonical and the maintainer's verification tag in every page head."""
+    context["metatags"] = (
+        context.get("metatags", "")
+        + f'<meta name="google-site-verification" content="{GOOGLE_SITE_VERIFICATION}" />\n'
+    )
     page_url = context.get("pageurl")
     if isinstance(page_url, str) and page_url.endswith("/index.html"):
         context["pageurl"] = page_url[: -len("index.html")]
