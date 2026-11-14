@@ -1,4 +1,4 @@
-"""Repository-only regressions for the BTC, impermanent-loss and IJTAF PDE replays."""
+"""Repository-only regressions for the stochastic-volatility paper PDE replays."""
 
 import json
 from pathlib import Path
@@ -124,3 +124,48 @@ def test_ijtaf_figure3_expected_variance(monkeypatch):
         assert len(case["ode"]) == len(case["curve_times"]) == 1442
         assert case["grid_indices"] == [*range(0, 1442, 15), 1441]
         np.testing.assert_allclose([case["times"][0], case["times"][-1]], [0.0, 2.0])
+
+
+def test_barrier_paper_partition(monkeypatch):
+    monkeypatch.syspath_prepend(str(ROOT))
+    from papers.barriers.verify_pde import check_independent, check_partition
+
+    example = check_partition()
+    assert example["survivor"] == pytest.approx(0.5736505196, abs=1e-9)
+    assert example["lower_exit"] == pytest.approx(0.4247287729, abs=1e-9)
+    assert example["upper_exit"] == pytest.approx(0.0016207075, abs=1e-9)
+    assert example["max_partition_gap"] == pytest.approx(0.01883667357, abs=1e-9)
+    comparisons = check_independent()
+    for case in ("constant", "time_varying"):
+        rows = [r for r in comparisons if r["case"] == case]
+        assert [r["nt"] for r in rows] == [10, 20, 40]
+        assert rows[-1]["max_partition_gap"] < 0.3 * rows[0]["max_partition_gap"]
+
+
+def test_barrier_endpoints_and_single_interval(monkeypatch):
+    monkeypatch.syspath_prepend(str(ROOT))
+    from papers.barriers.pde_adapter import BarrierPde1D
+
+    x = np.linspace(-0.05, 0.05, 101)
+    a = BarrierPde1D(x)
+    drift, var = np.zeros(2), np.full(2, 0.04)
+    for x0, expected in [(x[0], [1.0, 0.0]), (x[-1], [0.0, 1.0])]:
+        law = a.green(0.04, 199, drift, var, x0=x0)
+        np.testing.assert_array_equal(law.density, 0.0)
+        np.testing.assert_allclose([law.lower_exit[0], law.upper_exit[0]], expected, atol=1e-13)
+    # Brownian motion killed at ±a, started at the midpoint (odd sine modes).
+    odd = np.arange(1, 100, 2)
+    exact = np.sum(
+        4
+        * (-1.0) ** ((odd - 1) // 2)
+        / (np.pi * odd)
+        * np.exp(-0.5 * var[1] * 0.04 * (np.pi * odd / (x[-1] - x[0])) ** 2)
+    )
+    law = a.green(0.04, 199, drift, var)
+    np.testing.assert_allclose(law.surviving_mass, exact, rtol=0, atol=1e-4)
+    np.testing.assert_allclose([law.lower_exit, law.upper_exit], (1 - exact) / 2, rtol=0, atol=5e-5)
+    historical = a.survival(0.04, 199, drift, var, partition="historical")[:, 0]
+    np.testing.assert_array_equal(historical, np.r_[0.0, np.ones(100)])
+    full = a.survival(0.04, 199, drift, var)[:, 0]
+    np.testing.assert_allclose(full[[0, -1]], [0.0, 1.0])
+    np.testing.assert_allclose(full[50], (1 + exact) / 2, atol=5e-5, rtol=0)

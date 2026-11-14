@@ -103,6 +103,32 @@ def compute_heston_pde_barrier(t: float,
     return avg_values
 
 
+def _figure_pde(engine, *, partition="historical", **inputs):
+    """Select the conditional PDE for the existing Green, survival and call panels."""
+    if engine == "paper":
+        if partition != "historical":
+            raise ValueError("select pde_engine='adapter' for full-horizon backward survival")
+        return compute_heston_pde_barrier(**inputs)
+    if engine != "adapter":
+        raise ValueError("pde_engine must be 'paper' or 'adapter'")
+    from .pde_adapter import BarrierPde1D
+
+    x = inputs["x_grid"]
+    adapter = BarrierPde1D(x)
+    maturity = inputs["t"]
+    variance = (1.0 - inputs["rho"]**2) * inputs["vt"]
+    args = maturity, inputs["mt_"], inputs["mt"], variance
+    kind = inputs.get("function_type", mcv.FunctionType.GREEN)
+    discount = np.exp(-inputs.get("rfrate", 0.0) * maturity)
+    if kind is mcv.FunctionType.SURVIVAL_PROB:
+        return discount * adapter.survival(*args, partition=partition).mean(axis=1)
+    # The active replication's forward kernel always starts at the node nearest zero.
+    law = adapter.green(*args)
+    if kind is mcv.FunctionType.CALL:
+        return law.call_prices(inputs["log_strikes"], discount)
+    return law.density.mean(axis=1)
+
+
 def plot_heston_barrier_green(t: float,
                               psi0: float,
                               x0: float,
@@ -118,7 +144,8 @@ def plot_heston_barrier_green(t: float,
                               steps_per_day: int = 6,
                               seed_id: int = 3,
                               mc_color: str = 'lightblue',
-                              is_title: bool = False
+                              is_title: bool = False,
+                              *, pde_engine: str = "paper"
                               ) -> (plt.Figure, plt.Figure):
     # get all on same grid
     x_grid = np.linspace(psi0, xmax, nb_x_grid)
@@ -135,7 +162,7 @@ def plot_heston_barrier_green(t: float,
 
     # pde
     tic = time.perf_counter()
-    pde_sol_2s = compute_heston_pde_barrier(t=t,
+    pde_sol_2s = _figure_pde(pde_engine, t=t,
                                             x0=x0,
                                             v0=v0,
                                             theta=theta,
@@ -250,7 +277,8 @@ def plot_heston_barrier_survival(t: float,
                                  nb_mc_path: int = 10000,
                                  steps_per_day: int = 6,
                                  seed_id: int = 3,
-                                 mc_color: str = 'lightblue'
+                                 mc_color: str = 'lightblue',
+                                 *, pde_engine: str = "paper", partition: str = "historical"
                                  ) -> (plt.Figure, plt.Figure):
     # get all on same grid
     x_grid = np.linspace(psi0, xmax, nb_x_grid)
@@ -267,7 +295,7 @@ def plot_heston_barrier_survival(t: float,
 
     # pde
     tic = time.perf_counter()
-    pde_sol_2s = compute_heston_pde_barrier(t=t,
+    pde_sol_2s = _figure_pde(pde_engine, partition=partition, t=t,
                                             x0=x0,
                                             v0=v0,
                                             theta=theta,
@@ -377,7 +405,8 @@ def plot_heston_barrier_call(t: float,
                              nb_mc_path: int = 10000,
                              steps_per_day: int = 6,
                              seed_id: int = 3,
-                             mc_color: str = 'lightblue'
+                             mc_color: str = 'lightblue',
+                             *, pde_engine: str = "paper"
                              ) -> (plt.Figure, plt.Figure):
     # get all on same grid
     strikes = np.exp(log_strikes)
@@ -395,7 +424,7 @@ def plot_heston_barrier_call(t: float,
 
     # pde
     tic = time.perf_counter()
-    pde_sol_2s = compute_heston_pde_barrier(t=t,
+    pde_sol_2s = _figure_pde(pde_engine, t=t,
                                             x0=x0,
                                             v0=v0,
                                             theta=theta,

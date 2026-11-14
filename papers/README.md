@@ -72,6 +72,42 @@ The original replication modules use a `UnitTests` enum with a `run_unit_test(un
 the file. The jump-risk-premia development modules instead use `Locals` and `run_local`,
 the same pattern as root `examples/`.
 
+### Barrier PDE verification
+
+The barrier study includes an opt-in conditional PDE adapter. It builds the centered
+finite-difference generator and its quadrature-weighted adjoint from the package's 1D
+operator and uses the paper's compiled tridiagonal kernels for batches of volatility
+paths. The adapter accepts advection and instantaneous variance at the original time
+nodes. On each interval it uses the right endpoint and takes `mt + 1` Crank–Nicolson
+steps. [Barrier adapter](barriers/pde_adapter.py)
+
+`BarrierPde1D.green` returns the killed density, surviving interior mass and both exit
+masses for each path. For a down barrier, the left exit is a knockout and the right
+exit measures truncation of the log-price domain. Discounted calls use the paper's
+payoff convolution on the interior. Backward survival fixes the endpoint values at
+zero and one. Its full-horizon value at the starting node equals the interior mass
+plus the upper exit. The centered stencil preserves the original signed values.
+
+Use `survival(..., partition="historical")` to reproduce the original reverse loop,
+which stops after reaching the first positive time node. The default `partition="full"`
+also takes the earliest interval. On the ten-interval verification case this adds
+0.006 years and reduces survival at log-price zero from 0.593313 to 0.575271.
+The forward density and its payoff convolution already use all ten intervals.
+[Historical solver](barriers/green_solutions.py)
+
+The three `plot_heston_barrier_*` functions in the figure driver accept
+`pde_engine="adapter"`. The survival figure also accepts `partition="full"`.
+Its default preserves the historical curve. [Figure driver](barriers/article_figures.py)
+
+Run the verification from the repository root. The optional `--path-batches` flag
+requires the research extra and adds the seeded Green, survival and call figure runs.
+The JSON records the independent Volterra and analytic comparisons, time refinement,
+endpoint diagnostics, and warmed wall times for both implementations.
+
+```console
+python -m papers.barriers.verify_pde --path-batches --output agents/barrier_pde.json
+```
+
 ## Paths
 
 Figures, fitted parameters, and local research inputs resolve through the package-wide path module
