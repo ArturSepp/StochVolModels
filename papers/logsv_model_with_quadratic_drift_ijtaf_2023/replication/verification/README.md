@@ -35,6 +35,48 @@ conditional Monte Carlo estimates check one expiry of each beta sign. The thresh
 in the runner apply to these fixed inputs and meshes. See the package
 [pricing contract](../../../../docs/software_design.md#logsv-vanilla-pde-valuation).
 
+## IJTAF Figure 6 marginals and Figure 3 expected quadratic variance
+
+Run the two overlays from the source checkout. The option `--figure 3` or
+`--figure 6` selects one figure. Each run writes the compared values and grid
+diagnostics to JSON and the overlay to PNG. The command below also evaluates
+both of the paper's Figure 6 Fourier expansions.
+
+```console
+python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.figure_density --expansions --output-dir agents/ijtaf-figures
+```
+
+**Figure 6.** The one-month run replays 400,000 paths using the paper's seed of
+37. It integrates the joint forward law over the other coordinate and apportions
+each control cell's mass by its overlap with the original 199 histogram bins.
+Each probability vector contains the lower tail, the bins, and the upper tail.
+The first entry of the historical plotted histogram is padding. The Fourier
+function returns bin width times density at each edge, so the overlay averages
+adjacent ordinates before comparing them with bin masses. The optional expansion
+replay uses the recorded transform scaler 0.08132646901248997 from the original
+BTC hourly observation at 10:00 UTC on 30 June 2023. It can be reproduced with
+`load_tardis_hourly_option_chain` and `LogSVPricer.set_vol_scaler` as in the
+article driver. The two-dimensional law supplies panels A and C.
+
+**Figure 3.** Under all six parameter sets the volatility evolves autonomously
+and the price loading equals one. The one-dimensional forward solver supplies
+the second moment of volatility. Integrating it over time and dividing by
+maturity gives annualized expected variance, with initial value σ₀². The report
+compares that curve with the order-four moment ODE. For the MC check it also
+forms the arithmetic mean of PDE moments at exactly the simulation fixings,
+including time zero. The simulator returns 1,442 dates over two years. The
+ODE and PDE curves are compared at all 1,442 dates. The MC check uses every
+fifteenth date and adds the two-year endpoint. The
+historical error bars are ±3.92 standard errors of the pathwise expanding means.
+The replay sets NumPy's seed to 37 for this Python-side simulator. The original
+driver seeds Numba's separate random stream.
+
+The runner varies the time partition, spatial resolution and domain. Linear
+mean reversion (κ₂ = 0) needs a wider upper volatility boundary to resolve the
+second moment. Its moment equations close exactly. For positive κ₂ the paper's
+order-four curve is a truncation. The checks use separate bounds for those
+two cases and report the MC gaps in both variance units and standard errors.
+
 ## Recommendation
 
 Use the full-state PDE for calibration when a finite expansion has not been

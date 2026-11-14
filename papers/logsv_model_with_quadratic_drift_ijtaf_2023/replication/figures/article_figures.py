@@ -23,6 +23,7 @@ import stochvolmodels.utils.plots as plot
 
 # implementations for paper
 from ..theory import moments_vol_qvar as mvq
+from .figure_inputs import FIGURE_SEED, FIGURE3_TTM, FIGURE6_TTM, figure3_cases, figure6_params
 from ..theory import steady_state_pdf as ssp
 from ..theory import ode_sol_in_time as osi
 from ..calibration.model_fit_to_options_timeseries import report_calibration_timeseries
@@ -236,24 +237,11 @@ def run_unit_test(unit_test: UnitTests):
 
     elif unit_test == UnitTests.FIGURE3_QVAR_EXP:
 
-        set_seed(37)
-
-        VOLVOL = 1.5
-        SIGMA0P = 1.5
-
-        TEST_PARAMS = {
-            '$(\kappa_{1}=4, \kappa_{2}=0), \sigma_{0}=1.5$': LogSvParams(sigma0=SIGMA0P, theta=1.0, kappa1=4.0, kappa2=0.0, beta=0.0, volvol=VOLVOL),
-            '$(\kappa_{1}=4, \kappa_{2}=4), \sigma_{0}=1.5$': LogSvParams(sigma0=SIGMA0P, theta=1.0, kappa1=4.0, kappa2=4.0, beta=0.0, volvol=VOLVOL),
-            '$(\kappa_{1}=4, \kappa_{2}=8), \sigma_{0}=1.5$': LogSvParams(sigma0=SIGMA0P, theta=1.0, kappa1=4.0, kappa2=8.0, beta=0.0, volvol=VOLVOL)}
-
-        TEST_PARAMS2 = {
-            '$(\kappa_{1}=4, \kappa_{2}=0), \sigma_{0}=0.5$': LogSvParams(sigma0=0.5, theta=1.0, kappa1=4.0, kappa2=0.0, beta=0.0, volvol=VOLVOL),
-            '$(\kappa_{1}=4, \kappa_{2}=4), \sigma_{0}=0.5$': LogSvParams(sigma0=0.5, theta=1.0, kappa1=4.0, kappa2=4.0, beta=0.0, volvol=VOLVOL),
-            '$(\kappa_{1}=4, \kappa_{2}=8), \sigma_{0}=0.5$': LogSvParams(sigma0=0.5, theta=1.0, kappa1=4.0, kappa2=8.0, beta=0.0, volvol=VOLVOL)}
+        set_seed(FIGURE_SEED)
 
         with sns.axes_style('darkgrid'):
             fig, ax = plt.subplots(1, 1, figsize=(18, 6), tight_layout=True)
-            mvq.plot_qvar_vs_mc(params=(TEST_PARAMS | TEST_PARAMS2), ttm=2.0, is_vol=False,
+            mvq.plot_qvar_vs_mc(params=figure3_cases(), ttm=FIGURE3_TTM, is_vol=False,
                             title=r'Expected quadratic variance at time $\tau$', n_terms=4, ax=ax)
 
         plot.save_fig(fig=fig, local_path=local_path, file_name='figure3_qvar_exp')
@@ -274,9 +262,9 @@ def run_unit_test(unit_test: UnitTests):
         plot.save_fig(fig=fig, local_path=local_path, file_name="figure5_second_order", extension='eps', dpi=600)
 
     elif unit_test == UnitTests.FIGURE6_JOINT_PDF:
-        set_seed(37)
+        set_seed(FIGURE_SEED)
 
-        params = LogSvParams(sigma0=0.4083, theta=0.3789, kappa1=2.21, kappa2=2.18, beta=0.5010, volvol=0.6 * 3.0633)
+        params = figure6_params()
         params.print_vol_moments_stability(n_terms=4)
 
         logsv_pricer = LogSVPricer()
@@ -284,7 +272,7 @@ def run_unit_test(unit_test: UnitTests):
 
         with sns.axes_style("darkgrid"):
             fig, axs = plt.subplots(1, 3, figsize=(18, 6), tight_layout=True)
-        plot_var_pdfs(params=params, ttm=1.0/12.0, vol_scaler=vol_scaler, axs=axs)
+        plot_var_pdfs(params=params, ttm=FIGURE6_TTM, vol_scaler=vol_scaler, axs=axs)
         plot.set_subplot_border(fig=fig, n_ax_rows=1, n_ax_col=3)
 
         plot.save_fig(fig=fig, local_path=local_path, file_name="figure6_joint_pdf")
