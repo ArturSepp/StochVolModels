@@ -231,10 +231,15 @@ class Locals(Enum):
     LINEARIZED = 'linearized'
     STATIONARY = 'stationary'
     PRICING = 'pricing'
+    DENSITY = 'density'
 
 
 def run_local(local: Locals):
     """Execute one group; numerical-reference failures raise an exception."""
+    if local is Locals.DENSITY:
+        from .density_pricer_check import density_pricer_checks
+
+        return density_pricer_checks()
     return {Locals.COEFFICIENTS: coefficient_checks, Locals.BLACK: black_and_endpoint_checks,
             Locals.LINEARIZED: linearized_ode_check, Locals.STATIONARY: stationary_moment_checks,
             Locals.PRICING: pricing_checks}[local]()
@@ -243,19 +248,28 @@ def run_local(local: Locals):
 def main():
     """Write reproducible numerical evidence to a requested output file."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--quick', action='store_true', help='Skip the slower PDE/MC price checks.')
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--density', action='store_true',
+                       help='Run only the opt-in real-space vanilla price comparison.')
+    group.add_argument('--quick', action='store_true', help='Skip the slower PDE/MC price checks.')
     parser.add_argument('--output', type=Path, default=None)
     args = parser.parse_args()
-    target = args.output or Path(local_path.get_output_path())/'logsv_paper_verification.json'
+    filename = 'logsv_density_verification.json' if args.density else 'logsv_paper_verification.json'
+    target = args.output or Path(local_path.get_output_path())/filename
     target = target.expanduser().resolve()
     target.parent.mkdir(parents=True, exist_ok=True)
-    result = dict(scope='MMA flat-backbone reference pricing; both-measure coefficient algebra',
-                  source_sha256=hashlib.sha256(Path(afe.__file__).read_bytes()).hexdigest(),
-                  simulation=dict(scrambles=4, power=15, fine_steps=512, coarse_steps=256,
-                                  seeds=[291026,291027,291028,291029]), checks={})
-    for local in Locals:
-        if args.quick and local is Locals.PRICING:
-            continue
+    if args.density:
+        groups = [Locals.DENSITY]
+        result = dict(scope='Undiscounted MMA density vs IJTAF transform, spectral and MC',
+                      checks={})
+    else:
+        groups = [local for local in Locals if local is not Locals.DENSITY
+                  and not (args.quick and local is Locals.PRICING)]
+        result = dict(scope='MMA flat-backbone reference pricing; both-measure coefficient algebra',
+                      source_sha256=hashlib.sha256(Path(afe.__file__).read_bytes()).hexdigest(),
+                      simulation=dict(scrambles=4, power=15, fine_steps=512, coarse_steps=256,
+                                      seeds=[291026,291027,291028,291029]), checks={})
+    for local in groups:
         result['checks'][local.value] = run_local(local)
         target.write_text(json.dumps(result, indent=2, allow_nan=False), encoding='utf-8')
         print(f'{local.value}: passed', flush=True)

@@ -345,6 +345,10 @@ def _resolve_save_indices(times: FloatArray, save_times: tuple[float, ...]) -> s
     tolerance = 64.0 * np.finfo(np.float64).eps * scale
     for requested in save_times:
         value = float(requested)
+        index = np.searchsorted(times, value)
+        if index < times.size and times[index] == value:
+            indices.add(int(index))
+            continue
         matches = np.flatnonzero(np.abs(times - value) <= tolerance)
         if matches.size != 1:
             raise ValueError(f"saved time {value} is not an exact member of time_grid")

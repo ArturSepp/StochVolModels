@@ -92,6 +92,29 @@ densities. Inspect per-step negative mass as well as total mass and refine the d
 and time steps for the observable of interest. The module docstring includes a runnable
 one-dimensional mass check.
 
+### LogSV vanilla PDE valuation
+
+Import `LogSvPdePricer` from `stochvolmodels.pricers.logsv_pde_pricer`. Calling
+`LogSvPdePricer().price_chain(chain, params)` returns one array of quote-currency
+prices per expiry, in the input strike order. The model adapter takes a detached
+`LogSvModel` parameter snapshot. It supports the money-market measure, $H=1/2$,
+a unit price backbone and the martingale condition $\kappa_2 \geq \beta$.
+
+The pricer evolves the undiscounted law of normalized log-forward and volatility
+once through the exact chain expiries. At each expiry it evaluates the product
+payoff at $F_T \exp(X_T)$ and multiplies the expectation by $D_T$. The method
+accepts ordinary C/P contracts. Use `price_chain_detailed` to inspect the package
+Black IVs and `invalid_iv` masks alongside the raw prices. Each expiry reports
+mass, normalized forward (target one), negative mass and the largest discounted
+put–call parity error relative to the market forward. `steps` and
+`peak_negative_mass` also capture signed densities between expiries.
+
+The default spatial mesh and 128 Douglas steps per expiry interval are starting
+values. Supply `grid`, `steps_per_interval` and `adi` to vary domain, spacing and
+time resolution independently. Check the wings against quote spreads and check the
+forward moment under refinement. The IJTAF replication includes a runnable
+fixed-parameter [comparison](https://github.com/ArturSepp/StochVolModels/tree/main/papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/verification).
+
 ### Model, pricer, product and data ownership
 
 The directory names reflect two stages of development. The original `pricers/` modules bundle

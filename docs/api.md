@@ -229,6 +229,8 @@ names are reached by deep imports from the experimental `stochvolmodels.pricers.
 
 The provisional [finite-difference solvers](software_design.md#generic-finite-difference-solvers)
 are available as `stochvolmodels.pde_solvers.PDE1DSolver` and `PDE2DADISolver`.
+The provisional `stochvolmodels.pricers.logsv_pde_pricer.LogSvPdePricer` uses the
+2D solver for ordinary European LogSV chains under the money-market measure.
 
 The [software design](software_design.md#models-without-an-article) page says which of these
 surfaces have no article yet, and why.

@@ -4,6 +4,22 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-11-14
+
+### Added
+
+- The provisional `LogSvPdePricer` prices ordinary European calls and puts from a single
+  forward LogSV density. Its detailed result reports raw prices, Black implied volatilities,
+  failed inversions, forward moments, market parity errors and per-step negative mass.
+- The IJTAF verification runner accepts `--density` for fixed-parameter comparisons against
+  the independent log-volatility PDE, spectral collocation and conditional Monte Carlo.
+
+### Fixed
+
+- Black IV inversion for integer strike arrays now retains fractional volatilities
+  and NaN for unbracketed prices. Exact neighboring observation times remain
+  distinguishable in the PDE solvers.
+
 ## [2.7.0] - 2026-11-14
 
 ### Added

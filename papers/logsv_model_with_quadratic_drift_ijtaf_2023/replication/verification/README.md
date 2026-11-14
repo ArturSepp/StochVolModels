@@ -10,6 +10,31 @@ solvers that retain the volatility state. They support a deterministic
 finite-difference PDE/Fourier calibration workflow for ordinary European calls
 and puts. The production `LogSVPricer` is unchanged by these experiments.
 
+## Opt-in two-dimensional density comparison
+
+From the source checkout, run:
+
+```console
+python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.run_checks --density
+```
+
+The report is written to `logsv_density_verification.json` in the configured output
+directory. Use `--output` to select a file. The run prices the published 12-day SPY
+parameters over five strikes with a non-unit discount and the long-maturity study's
+positive-beta BTC control parameters on all 49 original quotes. The BTC comparison
+holds the control vector fixed throughout. PV errors are expressed in basis points
+of each expiry's discounted forward. For BTC, the run also converts each quoted bid
+and ask Black IV to a PV and divides the price difference by this full price spread.
+
+The report includes the public default grid alongside the specified fine grid.
+It retains individual signed errors, expiry forward and parity diagnostics,
+peak joint negative mass, failed coarse-grid IVs and solve times. It varies the
+spatial grid, time steps and outer boundaries individually. The paper transform is
+the price reference. Chebyshev collocation and four independently scrambled
+conditional Monte Carlo estimates check one expiry of each beta sign. The thresholds
+in the runner apply to these fixed inputs and meshes. See the package
+[pricing contract](../../../../docs/software_design.md#logsv-vanilla-pde-valuation).
+
 ## Recommendation
 
 Use the full-state PDE for calibration when a finite expansion has not been

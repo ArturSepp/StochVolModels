@@ -344,10 +344,15 @@ class OptionChain:
         if forwards is None:
             forwards = self.forwards
 
+        # The inversion kernel allocates each IV slice with zeros_like(strikes).
+        # Float strikes preserve fractional IVs and NaN for failed inversions.
+        strikes = self.strikes_ttms
+        if any(np.asarray(k).dtype != np.float64 for k in strikes):
+            strikes = List(np.ascontiguousarray(k, dtype=np.float64) for k in strikes)
         model_ivols = bsm.infer_bsm_ivols_from_model_chain_prices(ttms=self.ttms,
                                                                   forwards=forwards,
                                                                   discfactors=self.discfactors,
-                                                                  strikes_ttms=self.strikes_ttms,
+                                                                  strikes_ttms=strikes,
                                                                   optiontypes_ttms=self.optiontypes_ttms,
                                                                   model_prices_ttms=model_prices)
         return model_ivols
