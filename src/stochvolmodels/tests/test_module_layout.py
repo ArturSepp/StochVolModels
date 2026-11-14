@@ -93,13 +93,12 @@ def _imports_run_local(path: Path) -> bool:
     return False
 
 
-def test_pytest_modules_are_central_and_automated() -> None:
+def test_pytest_modules_are_central_and_automated(package_modules: list[Path]) -> None:
     """Test-shaped modules are central pytest modules without executable runners."""
     candidates = sorted(
         path
-        for path in PACKAGE_ROOT.rglob("*.py")
+        for path in package_modules
         if path.name.startswith("test_") or path.name.endswith("_test.py")
-        if "pde_solvers" not in path.parts
     )
     failures: list[str] = []
     for path in candidates:
@@ -130,11 +129,9 @@ def test_pytest_modules_are_central_and_automated() -> None:
 
 @pytest.mark.repository_only
 @pytest.mark.skipif(REPOSITORY_ROOT is None, reason="run_local is absent from installed wheels")
-def test_development_runner_layout() -> None:
+def test_development_runner_layout(package_modules: list[Path]) -> None:
     """Development runners use one source-adjacent, discoverable execution contract."""
-    python_modules = sorted(
-        path for path in PACKAGE_ROOT.rglob("*.py") if "pde_solvers" not in path.parts
-    )
+    python_modules = package_modules
     run_local_modules = [
         path
         for path in python_modules
@@ -233,13 +230,13 @@ def test_repository_plural_dispatchers_use_current_api(
 @pytest.mark.skipif(
     REPOSITORY_ROOT is None, reason="source checkout is absent from installed wheel"
 )
-def test_production_modules_do_not_own_or_import_development_dispatchers() -> None:
+def test_production_modules_do_not_own_or_import_development_dispatchers(package_modules: list[Path]) -> None:
     """Production code remains independent of checkout-only development runners."""
     failures: list[str] = []
     legacy_names = {"LocalTest", "LocalTests", "run_local_test", "local_test"}
-    for path in sorted(PACKAGE_ROOT.rglob("*.py")):
+    for path in package_modules:
         relative_parts = path.relative_to(PACKAGE_ROOT).parts
-        excluded = {"pde_solvers", "tests", "run_local"}
+        excluded = {"tests", "run_local"}
         if excluded.intersection(relative_parts):
             continue
         relative = path.relative_to(PACKAGE_ROOT).as_posix()

@@ -61,8 +61,36 @@ importing it compiles no numba code. The estimation suite stands alone.
 
 Two couplings cross this picture: the log-normal SV parameters import the rough-kernel module to
 approximate kernels when $H < 1/2$, and the regime-switching pricer imports the regime models of
-the provisional stack. `pde_solvers/` is a private staging directory: it is ignored by Git and
-excluded from the wheel and the source distribution.
+the provisional stack.
+
+### Generic finite-difference solvers
+
+The provisional `stochvolmodels.pde_solvers` module in the 2.7.0 source and distribution
+provides `PDE1DSolver` for theta stepping and `PDE2DADISolver` for Douglas, Craig–Sneyd
+and Hundsdorfer–Verwer ADI. Import them directly from this module. The caller supplies the
+model coefficients, grid and terminal value or initial density. A pricer owns payoff units and
+discounting conventions.
+
+Pass `solve(grid, coefficient_provider, boundaries, direction, time_grid, values)` an
+increasing grid of calendar times. `PDEDirection.BACKWARD` starts from the final time and
+propagates values to the first. `PDEDirection.FORWARD` starts from the first time and
+propagates a pointwise density using the quadrature-weighted discrete adjoint.
+`grid.project_delta` supplies a point initial condition. The result carries the final array,
+per-step diagnostics and any states requested at exact grid times via `save_times`.
+
+In `PDE1DCoefficients` and `PDE2DCoefficients`, each pure second-derivative coefficient
+is half the corresponding instantaneous variance. The mixed-derivative coefficient is the
+full cross covariance. A deterministic coordinate requires zero cross covariance. A positive
+discount coefficient introduces killing into the evolution.
+
+Backward solves accept natural, fixed-value and linear boundary relations. Geometric
+extrapolation continues the slope of the two nearest interior nodes at either end of an axis
+with at least four nodes. Forward solves support natural boundaries. A natural endpoint
+retains mass arriving along that axis at zero discount, so counting its mass as surviving
+would affect barrier valuations. The two-dimensional mixed stencil can produce signed
+densities. Inspect per-step negative mass as well as total mass and refine the domain, mesh
+and time steps for the observable of interest. The module docstring includes a runnable
+one-dimensional mass check.
 
 ### Model, pricer, product and data ownership
 
@@ -127,7 +155,7 @@ The [repository research utilities](examples.md#research-diagnostics) combine re
 saved evidence, generate paired synthetic challenges and verify frozen studies. They live
 under `examples/calibration`, with tests in source CI, and are excluded from the installed
 wheel. Their noise scenarios and caller-supplied statistical limits do not become production
-warning policies. Historical session archives and the private PDE staging code are outside
+warning policies. Historical session archives and the private LSV calibration experiments are outside
 these maintained public interfaces.
 
 ## The pricer interface

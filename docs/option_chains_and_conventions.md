@@ -270,7 +270,7 @@ the LaTeX source. The paper directories are described in
 | Stable | `stochvolmodels.__all__` | Pricers, parameters, chains, enums, BSM and Bachelier analytics, expected QV | Tested by the API contract; changes are recorded in the changelog |
 | Advanced | Package root, outside `__all__` | `ExpansionOrder` and the affine-expansion functions, `HawkesJDParams` and `HawkesJDPricer`, the fixed-random Monte Carlo functions | Documented on this site; research interfaces |
 | Compatibility | Package root, outside `__all__` | Historical names such as plotting helpers, sample chains, transform-grid utilities and preset parameters | Kept importable; not the recommended starting point |
-| Provisional | Direct module imports | `stochvolmodels.models`, `stochvolmodels.valuation`, `stochvolmodels.products.payoffs` and the regime-switching LogSV stack | Outside `__all__` until their contracts are stabilised |
+| Provisional | Direct module imports | `stochvolmodels.pde_solvers`, `stochvolmodels.models`, `stochvolmodels.valuation`, `stochvolmodels.products.payoffs` and the regime-switching LogSV stack | Outside `__all__` until their contracts are stabilised |
 | Experimental | Deep module imports | `stochvolmodels.pricers.rough_logsv` and `stochvolmodels.pricers.factor_hjm` | Research surfaces that may evolve between minor releases |
 
 The [API reference](api.md) groups the stable and advanced names by the page that explains them.

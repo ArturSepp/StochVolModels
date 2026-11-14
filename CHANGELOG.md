@@ -4,6 +4,14 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-11-14
+
+### Added
+
+- The provisional `stochvolmodels.pde_solvers` module provides `PDE1DSolver` for theta
+  stepping and `PDE2DADISolver` for Douglas, Craig–Sneyd and Hundsdorfer–Verwer ADI.
+  Both support backward values, forward densities, exact observation times and step diagnostics.
+
 ### Fixed
 
 - Exclude ignored private paper folders from repository paper-classification and

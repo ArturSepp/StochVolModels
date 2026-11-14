@@ -6,13 +6,13 @@ import argparse
 import tarfile
 from pathlib import Path
 
-from check_wheel_contents import REQUIRED_RUNTIME_FILES
+from check_wheel_contents import REQUIRED_RUNTIME_FILES, SOURCE_TEST_ROOT, check_pde_files
 
 
 def check_sdist(sdist_path: Path) -> None:
     """Raise ``AssertionError`` when *sdist_path* violates the artifact contract."""
     with tarfile.open(sdist_path, mode="r:*") as archive:
-        members = tuple(member.name.rstrip("/") for member in archive.getmembers())
+        members = tuple(member.name for member in archive.getmembers() if not member.isdir())
 
     roots = {member.split("/", 1)[0] for member in members if member}
     assert len(roots) == 1, f"expected one sdist root, found: {sorted(roots)}"
@@ -25,6 +25,8 @@ def check_sdist(sdist_path: Path) -> None:
         "sdist contains an absolute, empty, or parent-traversing member"
     )
 
+    check_pde_files(member.removeprefix("src/") for member in payload if member.startswith("src/"))
+
     forbidden_prefixes = (
         "agents/",
         "docs/",
@@ -33,7 +35,6 @@ def check_sdist(sdist_path: Path) -> None:
         "papers/",
         "resources/",
         "volatility_book/",
-        "src/stochvolmodels/pde_solvers/",
     )
     forbidden = [member for member in payload if member.startswith(forbidden_prefixes)]
     assert not forbidden, f"repository-only files entered sdist: {forbidden[:10]}"
@@ -63,8 +64,10 @@ def check_sdist(sdist_path: Path) -> None:
         for member in payload
         if member.startswith("src/stochvolmodels/tests/test_") and member.endswith(".py")
     }
-    assert len(test_modules) == 32, (
-        f"expected exactly 32 automated test modules, found {len(test_modules)}"
+    expected_tests = {f"src/stochvolmodels/tests/{p.name}" for p in SOURCE_TEST_ROOT.glob("test_*.py")}
+    assert expected_tests and test_modules == expected_tests, (
+        f"sdist test inventory differs: missing={sorted(expected_tests - test_modules)}, "
+        f"unexpected={sorted(test_modules - expected_tests)}"
     )
     baselines = {member for member in payload if member.endswith(".npz")}
     assert baselines == {

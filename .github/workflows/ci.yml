@@ -166,8 +166,9 @@ jobs:
         run: |
           uv build --sdist --clear --out-dir dist
           uv build --wheel dist/*.tar.gz --out-dir dist
-      - name: Assert wheel contents
+      - name: Assert source and wheel contents
         run: |
+          uv run --no-project python scripts/check_sdist_contents.py dist/*.tar.gz
           uv run --no-project python scripts/check_wheel_contents.py dist/*.whl
       - name: Install core wheel and test tools in a clean environment
         run: |

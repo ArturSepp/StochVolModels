@@ -87,9 +87,10 @@ against an adaptive SciPy solver; analytic moments and prices against fixed-rand
 and successful synthetic GMM and Student-t calibration recovery. These independent numerical
 contracts are the reason for the ratchet—the percentage is a summary, not a substitute for them.
 
-Stable maintained docstrings are gated at 100%. Factor HJM, rough LogSV, and the private PDE
-worktree remain explicitly experimental and are reported separately rather than presented as
-stable API coverage.
+The provisional generic PDE modules participate in the package-wide coverage and docstring
+checks. Their tests cover nonuniform boundaries, covariance admissibility, Black and Gaussian
+limits, and discrete forward/backward duality. The stable coverage scope excludes these
+provisional solvers. The private LSV experiments remain outside both distribution artifacts.
 
 The `paper_replication` lane is intentionally narrow and offline. It verifies the published LogSV
 MGF normalization, moment-stability conditions, constant-volatility limit, and analytic-versus-

@@ -10,7 +10,32 @@ from zipfile import ZipFile
 SOURCE_TEST_ROOT = Path(__file__).resolve().parents[1] / "src/stochvolmodels/tests"
 
 
-REQUIRED_RUNTIME_FILES = {
+# Exact distribution contract for the reviewed PDE foundation.
+PDE_FILES = {
+    "stochvolmodels/pde_solvers/__init__.py",
+    "stochvolmodels/pde_solvers/adi.py",
+    "stochvolmodels/pde_solvers/boundaries.py",
+    "stochvolmodels/pde_solvers/coefficients.py",
+    "stochvolmodels/pde_solvers/diagnostics.py",
+    "stochvolmodels/pde_solvers/grids.py",
+    "stochvolmodels/pde_solvers/operators_1d.py",
+    "stochvolmodels/pde_solvers/operators_2d.py",
+    "stochvolmodels/pde_solvers/solver_1d.py",
+    "stochvolmodels/pde_solvers/solver_2d.py",
+    "stochvolmodels/pde_solvers/tridiagonal.py",
+}
+
+
+def check_pde_files(members) -> None:
+    """Reject missing modules and checkout-only PDE material in either distribution."""
+    actual = {name for name in members if name.startswith("stochvolmodels/pde_solvers/")}
+    assert actual == PDE_FILES, (
+        f"PDE file inventory differs: missing={sorted(PDE_FILES - actual)}, "
+        f"unexpected={sorted(actual - PDE_FILES)}"
+    )
+
+
+REQUIRED_RUNTIME_FILES = PDE_FILES | {
     "stochvolmodels/__init__.py",
     "stochvolmodels/data/model_paths.py",
     "stochvolmodels/models/__init__.py",
@@ -31,6 +56,7 @@ def check_wheel(wheel_path: Path) -> None:
     with ZipFile(wheel_path) as wheel:
         members = tuple(wheel.namelist())
 
+    check_pde_files(members)
     unexpected_roots = {
         member.split("/", 1)[0]
         for member in members
@@ -51,7 +77,6 @@ def check_wheel(wheel_path: Path) -> None:
         "volatility_book/",
         "docs/",
         "resources/",
-        "stochvolmodels/pde_solvers/",
     )
     forbidden = [member for member in members if member.startswith(forbidden_prefixes)]
     assert not forbidden, f"repository-only files entered wheel: {forbidden[:10]}"

@@ -5,6 +5,7 @@
   "stable": {
     "minimum_percent": 86.5,
     "exclude_path_fragments": [
+      "/pde_solvers/",
       "/pricers/factor_hjm/",
       "/pricers/rough_logsv/",
       "/pricers/hawkes_jd_pricer.py",

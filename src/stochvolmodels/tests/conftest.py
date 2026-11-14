@@ -42,3 +42,13 @@ def repository_files() -> Callable[[Path, str], list[Path]]:
         return sorted({path for path in paths if path.is_file()})
 
     return collect
+
+
+@pytest.fixture
+def package_modules(repository_files) -> list[Path]:
+    """Inspect visible source modules in a checkout and actual files in an installed wheel."""
+    package = Path(__file__).resolve().parents[1]
+    root = package.parents[1]
+    if package.parent.name == "src" and (root / "pyproject.toml").is_file():
+        return [p for p in repository_files(root, "src/stochvolmodels") if p.suffix == ".py"]
+    return sorted(package.rglob("*.py"))

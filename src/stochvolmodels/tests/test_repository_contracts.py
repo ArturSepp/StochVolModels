@@ -107,13 +107,12 @@ def _project_version(pyproject_text: str) -> str:
     return match.group(1)
 
 
-def test_every_shipped_test_shaped_module_is_automated_and_collectable() -> None:
+def test_every_shipped_test_shaped_module_is_automated_and_collectable(package_modules: list[Path]) -> None:
     """Only the central automated suite may use pytest's filename patterns."""
     candidates = sorted(
         path
-        for path in PACKAGE_ROOT.rglob("*.py")
+        for path in package_modules
         if path.name.startswith("test_") or path.name.endswith("_test.py")
-        if "pde_solvers" not in path.parts
     )
     assert len(candidates) >= 19, "the shipped automated suite unexpectedly disappeared"
 

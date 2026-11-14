@@ -227,6 +227,9 @@ names are reached by deep imports from the experimental `stochvolmodels.pricers.
 
 ## Provisional and experimental surfaces
 
+The provisional [finite-difference solvers](software_design.md#generic-finite-difference-solvers)
+are available as `stochvolmodels.pde_solvers.PDE1DSolver` and `PDE2DADISolver`.
+
 The [software design](software_design.md#models-without-an-article) page says which of these
 surfaces have no article yet, and why.
 
