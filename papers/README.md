@@ -72,6 +72,42 @@ The original replication modules use a `UnitTests` enum with a `run_unit_test(un
 the file. The jump-risk-premia development modules instead use `Locals` and `run_local`,
 the same pattern as root `examples/`.
 
+### Forward-variance vanilla PDE comparison
+
+From the source checkout, run the BTC forward-variance replication with the research
+extra installed. The optional `--case` selects `varswap_fit`, `calibrated` or
+`mc_smile`. All three cases fit their backbones on the original BTC chain. The
+first two price its 49 quotes. The fixed-parameter smile uses the driver's 31
+display strikes at each of the four expiries.
+
+```console
+python -m papers.forward_var.verify_pde --output agents/forward_variance_pde.json
+```
+
+The fitter returns a piecewise-constant **volatility loading**. A value indexed by
+$T_i$ applies on $(T_{i-1}, T_i]$. The forward PDE carries the joint law of
+log-forward and volatility across each knot. The loading scales the return variance
+and drift by its square and the return–volatility covariance linearly. The volatility
+dynamics retain their original parameters. The paper adapter checks the MMA
+martingale condition on each interval and projects discounted calls and puts on the
+input strikes. It uses the original fitter's short-maturity square-root convention.
+[Replication inputs](forward_var/calibrate_forward_var.py) · [Comparison runner](forward_var/verify_pde.py)
+
+The JSON includes price differences in basis points of discounted forward, time-step
+and spatial refinements, a wider-domain run, and the original expansion and 100,000-path Monte Carlo
+prices. Monte Carlo uses the replication's forward recentering. Twelve independently
+seeded batches at 720 simulation steps per year give a second estimate of sampling
+error. The runner also composes the same expansion ODEs backward from each expiry
+to measure sensitivity to the historical ascending interval order. The original
+expansion supplies the reported replication benchmark. The fitted smile's 31-strike
+display grid has no bid–ask quotes, so price-spread comparisons use the market grids.
+
+The largest difference on the historical BTC chain is the calibrated 80,000 call
+at the final knot. Its PDE price is 14,194.74 and its expansion price is 14,377.40,
+a gap of 25.87 bp of discounted forward or 2.62 bid–ask spreads. Reversing the
+expansion's interval order leaves a 25.00 bp maximum gap at that knot. Across all
+222 prices the largest time-step refinement shift is 0.71 bp.
+
 ### Barrier PDE verification
 
 The barrier study includes an opt-in conditional PDE adapter. It builds the centered

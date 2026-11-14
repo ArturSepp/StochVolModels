@@ -169,3 +169,94 @@ def test_barrier_endpoints_and_single_interval(monkeypatch):
     full = a.survival(0.04, 199, drift, var)[:, 0]
     np.testing.assert_allclose(full[[0, -1]], [0.0, 1.0])
     np.testing.assert_allclose(full[50], (1 + exact) / 2, atol=5e-5, rtol=0)
+
+
+def test_forward_variance_backbone_black(monkeypatch):
+    """An unquoted knot and two off-knot expiries exercise loading lookup and state carry."""
+    from numba.typed import List
+    import pandas as pd
+    from scipy.special import ndtr
+    from stochvolmodels import LogSvParams, OptionChain
+    from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
+
+    monkeypatch.syspath_prepend(str(ROOT))
+    from papers.forward_var.verify_pde import price_backbone_chain
+
+    ts = np.array([0.04, 0.15, 0.3])
+    chain = OptionChain(
+        ttms=ts,
+        forwards=np.array([106.0, 81.0, 123.0]),
+        discfactors=np.array([0.99, 0.97, 0.95]),
+        ids=None,
+        strikes_ttms=List(
+            [np.array([101.0, 106.0]), np.array([80.0, 85.0]), np.array([120.0, 123.0])]
+        ),
+        optiontypes_ttms=List([np.array(["C", "P"]) for _ in ts]),
+    )
+    params = LogSvParams(
+        sigma0=0.5,
+        theta=0.5,
+        beta=0.0,
+        volvol=0.0,
+        kappa1=0.0,
+        kappa2=0.0,
+        vol_backbone=pd.Series([0.7, 1.8, 0.9], index=[0.04, 0.1, 0.3]),
+    )
+    grid = TensorGrid2D(Grid1D.uniform(-2.0, 2.0, 401), Grid1D.uniform(0.0, 1.0, 5))
+    prices, intervals = price_backbone_chain(chain, params, grid, steps=96)
+    np.testing.assert_array_equal([s["end"] for s in intervals], [0.04, 0.1, 0.15, 0.3])
+    for i, variance_time in enumerate(
+        [
+            0.04 * 0.7**2,
+            0.04 * 0.7**2 + 0.06 * 1.8**2 + 0.05 * 0.9**2,
+            0.04 * 0.7**2 + 0.06 * 1.8**2 + 0.2 * 0.9**2,
+        ]
+    ):
+        f, d, k = chain.forwards[i], chain.discfactors[i], chain.strikes_ttms[i]
+        sd = params.sigma0 * np.sqrt(variance_time)
+        d1 = np.log(f / k) / sd + 0.5 * sd
+        calls = f * ndtr(d1) - k * ndtr(d1 - sd)
+        expected = np.where(chain.optiontypes_ttms[i] == "C", calls, calls - f + k)
+        np.testing.assert_allclose(prices[i] / (f * d), expected / f, rtol=0.0, atol=2e-4)
+
+    params.beta = 1.0
+    params.kappa2 = 1.5
+    with pytest.raises(ValueError, match="eta \\* beta"):
+        price_backbone_chain(chain, params, grid, steps=2)
+
+
+def test_forward_variance_backbone_generator():
+    from stochvolmodels import LogSvParams
+    from stochvolmodels.models.logsv_pde import _mma_coefficients
+    from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
+
+    grid = TensorGrid2D(Grid1D.uniform(-1, 1, 3), Grid1D.uniform(0.0, 1.0, 5))
+    params = LogSvParams(beta=0.4, volvol=0.9)
+    eta, sigma = 1.6, grid.y_mesh
+    c = _mma_coefficients(params, grid, eta)
+    np.testing.assert_allclose(c.variance_x, (eta * sigma) ** 2 / 2)
+    np.testing.assert_allclose(c.drift_x, -((eta * sigma) ** 2) / 2)
+    np.testing.assert_allclose(c.covariance_xy, eta * params.beta * sigma**2)
+    np.testing.assert_allclose(c.variance_y, params.vartheta2 * sigma**2 / 2)
+    np.testing.assert_allclose(
+        c.drift_y, (params.kappa1 + params.kappa2 * sigma) * (params.theta - sigma)
+    )
+
+
+def test_forward_variance_paper_smile(monkeypatch):
+    pytest.importorskip("qis")
+    monkeypatch.syspath_prepend(str(ROOT))
+    from papers.forward_var import calibrate_forward_var as paper
+    from papers.forward_var.verify_pde import compare_case, verify_case
+
+    chain, params = paper.mc_smile_inputs(paper.sv.get_btc_test_chain_data())
+    case = compare_case(chain, params, diagnostics=False)
+    verify_case(case)
+    assert [row["id"] for row in case["slices"]] == ["2w", "1m", "2m", "3m"]
+    assert [len(row["strikes"]) for row in case["slices"]] == [31] * 4
+    np.testing.assert_allclose(
+        [r["eta"] for r in case["slices"]],
+        [1.02500436, 1.11975866, 1.23471716, 1.25955165],
+        rtol=0,
+        atol=2e-7,
+    )
