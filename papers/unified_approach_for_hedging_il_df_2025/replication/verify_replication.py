@@ -7,7 +7,9 @@ static replication, nonzero carry via an explicit wrapper, and a constant-vol
 limit of the LogSV Fourier pricer. Failures cause a nonzero exit status.
 """
 
+import argparse
 import json
+from pathlib import Path
 
 import numpy as np
 from scipy.integrate import quad
@@ -152,4 +154,19 @@ def run_checks():
 
 
 if __name__ == "__main__":
-    run_checks()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--figure8-density", action="store_true",
+                        help="Compare the real-space density with both Figure 8 panels.")
+    parser.add_argument("--output", type=Path, help="Write the selected verification report to JSON.")
+    args = parser.parse_args()
+    if args.figure8_density:
+        from figure8_density import compare_figure8
+        result = compare_figure8(quadrature)
+        if args.output is None:
+            print(json.dumps(result, indent=2, allow_nan=False))
+    else:
+        result = run_checks()
+    if args.output is not None:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(result, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+        print(f"Verification saved: {args.output}")

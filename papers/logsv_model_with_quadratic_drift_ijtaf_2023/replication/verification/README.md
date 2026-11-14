@@ -167,6 +167,26 @@ The final parameters are initial volatility **0.861662866**, mean volatility
 expansion at these same parameters gives objective **0.000577205**: calibration
 and final valuation must use consistent, validated pricing.
 
+### Real-space replay of the final BTC fit
+
+Run the following from the checkout to replay all 49 original contracts. The
+optional `--pilot` reads the full-precision parameters and fine transform grid
+from `phases.final_fine` and checks the freshly computed reference prices, IVs
+and objective against the saved arrays. Without this argument the runner uses
+the recorded final parameter vector and grid. Both modes hold the parameters
+fixed and use the pilot's original slice-normalized vega weights.
+
+```console
+python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.final_fit_density --pilot agents/logsv-long/pde_calibration_pilot.json --output agents/logsv-long/final_fit_density.json
+```
+
+The 181 by 121 density grid uses 96 Douglas steps per expiry interval. The
+largest absolute price gap was 1.378 bp of discounted forward, or at worst
+13.94% of a full bid–ask price spread. The density objective was 0.000473267294
+and the fresh transform objective was 0.000496641409. Both use the same fitted
+parameters. The report records each signed gap, expiry forward and mass, peak
+negative mass, and the input pilot's SHA-256 when supplied.
+
 ## Reproduction
 
 Run from the repository root using the configured external interpreter. Set

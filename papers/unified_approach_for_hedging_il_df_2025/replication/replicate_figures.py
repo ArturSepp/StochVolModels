@@ -193,21 +193,32 @@ def logsv_premium_curve(params, ranges, p0=P0, ttm=TTM):
     return np.array(premiums)
 
 
-def logsv_figure(output):
-    """Figure 8: model-generated smiles and premiums using fixed synthetic inputs."""
-    from stochvolmodels import LogSVPricer, LogSvParams, OptionChain
+def figure8_inputs():
+    """Return the original Figure 8 vanilla chain, log half-widths and parameter sets."""
+    from stochvolmodels import LogSvParams, OptionChain
 
     strikes = np.linspace(0.6, 1.4, 31)
     chain = OptionChain.get_uniform_chain(ttms=np.array([TTM]), ids=np.array(["2w"]),
                                          strikes=strikes)
-    pricer = LogSVPricer()
     ranges = 0.5 * np.sqrt(TTM) * np.linspace(0.5, 5.0, 19)
+    parameters = [LogSvParams(sigma0=sigma0, theta=sigma0, kappa1=2.21, kappa2=2.18,
+                              beta=0.0, volvol=volvol)
+                  for volvol, sigma0 in ((1.0, 0.5), (2.0, 0.495), (3.0, 0.49))]
+    return chain, ranges, parameters
+
+
+def logsv_figure(output):
+    """Figure 8: model-generated smiles and premiums using fixed synthetic inputs."""
+    from stochvolmodels import LogSVPricer
+
+    chain, ranges, parameters = figure8_inputs()
+    strikes = chain.strikes_ttms[0]
+    pricer = LogSVPricer()
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.7), constrained_layout=True)
     smiles, premiums = {"strike": strikes}, {"log_range": ranges}
-    for volvol, sigma0 in ((1.0, 0.5), (2.0, 0.495), (3.0, 0.49)):
+    for params in parameters:
+        volvol = params.volvol
         print(f"Computing synthetic LogSV volvol={volvol:.1f}", flush=True)
-        params = LogSvParams(sigma0=sigma0, theta=sigma0, kappa1=2.21, kappa2=2.18,
-                             beta=0.0, volvol=volvol)
         ivols = pricer.compute_model_ivols_for_chain(option_chain=chain, params=params)[0]
         apr = logsv_premium_curve(params, ranges)
         label = f"Vol of vol = {volvol:.1f}"

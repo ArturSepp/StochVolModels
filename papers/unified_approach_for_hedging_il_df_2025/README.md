@@ -60,6 +60,28 @@ its `analysis/paper/hedging_il_paper.py`, `il_hedging_plots.py` and
 analytics remain in their existing packages. The BSM extraction replaces the retired
 package-root `is_intrinsic` lookup with its supported `black_scholes` module import.
 
+### Figure 8 forward-density comparison
+
+This optional check prices the two original panels on their synthetic 14-day
+inputs. One terminal joint density per parameter set and mesh supplies all 31
+vanilla strikes and 19 LP ranges. Protection APR is the negative expected P&L
+of the borrowed LP at unit initial quote notional, divided by time in years.
+The smile uses normalized strikes, the original C/P codes and package Black IV
+inversion. The figure driver and comparison share their parameter definitions.
+
+```console
+python papers/unified_approach_for_hedging_il_df_2025/replication/verify_replication.py --figure8-density --output agents/il/figure8_density.json
+```
+
+The report compares both panels to their original transforms on the 101 by 61
+mesh with 80 time steps. It also reports coarse, time-refined and wider-domain
+results. The largest fine-grid protection gap was 0.0468 annualized percentage
+points. The largest smile gap was 0.877 IV percentage points at strike/forward
+0.60, versus 0.0834 points over 0.80–1.20. A constant-volatility check compares
+all 19 premiums against an independent integral of the AMM inventory payoff.
+The per-mesh diagnostics include negative mass at expiry and the peak during
+propagation.
+
 ## Run
 
 Use Python 3.11 or later with this checkout installed and its existing core
