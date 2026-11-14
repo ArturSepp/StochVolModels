@@ -260,3 +260,50 @@ def test_forward_variance_paper_smile(monkeypatch):
         rtol=0,
         atol=2e-7,
     )
+
+
+def test_review_density_projection_and_objective(monkeypatch):
+    from types import SimpleNamespace
+
+    monkeypatch.syspath_prepend(str(ROOT))
+    from papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification import (
+        review_density as review,
+    )
+
+    # On a uniform spot grid with equal interior weights, node premiums are quadratic.
+    spot = np.linspace(0.5, 1.5, 21)
+    weights = np.full(21, 0.05)
+    weights[[0, -1]] = 0.025
+    strikes = np.array([0.823, 0.98, 1.141, 1.26])
+    kinds = np.array(["P", "C", "P", "C"])
+    raw, smooth = review._project(spot, weights, strikes, kinds)
+    direct = [sum(weights * np.maximum((spot - k) * (1 if side == "C" else -1), 0))
+              for k, side in zip(strikes, kinds)]
+    np.testing.assert_allclose(raw, direct, rtol=0, atol=1e-15)
+    np.testing.assert_allclose(smooth, 0.5 * np.where(kinds == "C", 1.5 - strikes, strikes - 0.5)**2,
+                               rtol=0, atol=1e-14)
+    bid = [np.array([0.19]), np.full(3, 0.33)]
+    ask = [b + 0.02 for b in bid]
+    chain = SimpleNamespace(strikes_ttms=[np.ones(1), np.ones(3)], bid_ivs=bid, ask_ivs=ask,
+                            get_mid_vols=lambda: [0.5 * (b + a) for b, a in zip(bid, ask)])
+    score = review._score([np.array([0.23]), np.full(3, 0.34)], chain)
+    assert score["rmse_pp"] == pytest.approx(3.0 / np.sqrt(2))
+    assert score["within_bidask_percent"] == 75.0
+
+
+@pytest.mark.parametrize("case", ["SPXW", "GLD", "TLT", "TLT+"])
+def test_local_review_fixed_parameters(monkeypatch, case):
+    review_root = ROOT / "papers" / "robust_volatility_models" / "replication"
+    if not review_root.is_dir():
+        pytest.skip("requires the local review's frozen surfaces")
+    monkeypatch.syspath_prepend(str(ROOT))
+    from papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification import (
+        review_density as review,
+    )
+
+    report = review.replay(review_root, case)
+    count = review.CASES[case][2]
+    assert len(report["quotes"]) == count == report["comparison"]["within_review_limits"]
+    assert abs(report["reference_score"]["rmse_pp"] - report["density_score"]["rmse_pp"]) < 0.005
+    assert all(q["objective_weight"] > 0 for q in report["quotes"])
+    assert sum(q["objective_weight"] for q in report["quotes"]) == pytest.approx(1)
