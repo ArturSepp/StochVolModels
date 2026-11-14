@@ -231,6 +231,10 @@ The provisional [finite-difference solvers](software_design.md#generic-finite-di
 are available as `stochvolmodels.pde_solvers.PDE1DSolver` and `PDE2DADISolver`.
 The provisional `stochvolmodels.pricers.logsv_pde_pricer.LogSvPdePricer` uses the
 2D solver for ordinary European LogSV chains under the money-market measure.
+The provisional `stochvolmodels.models.local_vol.LocalVolSurface` supplies deterministic
+volatility to `stochvolmodels.pricers.local_vol_pde_pricer.LocalVolPdePricer`.
+See [local-volatility pricing](software_design.md#deterministic-local-volatility) for units
+and bucket conventions.
 
 The [software design](software_design.md#models-without-an-article) page says which of these
 surfaces have no article yet, and why.

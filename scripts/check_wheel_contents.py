@@ -42,6 +42,8 @@ REQUIRED_RUNTIME_FILES = PDE_FILES | {
     "stochvolmodels/models/inverse_gamma_normal.py",
     "stochvolmodels/models/logsv.py",
     "stochvolmodels/models/logsv_pde.py",
+    "stochvolmodels/models/local_vol.py",
+    "stochvolmodels/pricers/local_vol_pde_pricer.py",
     "stochvolmodels/pricers/logsv_pde_pricer.py",
     "stochvolmodels/models/regime_logsv.py",
     "stochvolmodels/models/regime_logsv_simulation.py",

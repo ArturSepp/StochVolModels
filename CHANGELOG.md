@@ -4,6 +4,14 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.9.0] - 2026-11-14
+
+### Added
+
+- The provisional `LocalVolSurface` represents deterministic time-bucketed volatility
+  on log-forward or absolute-level nodes. `LocalVolPdePricer` prices European calls and
+  puts on the original chain and reports mass, forward and discounted parity diagnostics.
+
 ## [2.8.0] - 2026-11-14
 
 ### Added

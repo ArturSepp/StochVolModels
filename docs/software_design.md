@@ -115,6 +115,30 @@ time resolution independently. Check the wings against quote spreads and check t
 forward moment under refinement. The IJTAF replication includes a runnable
 fixed-parameter [comparison](https://github.com/ArturSepp/StochVolModels/tree/main/papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/verification).
 
+### Deterministic local volatility
+
+The provisional `LocalVolSurface` stores annualized volatility. Each row applies
+through its maturity, including the right endpoint. Subsequent times use the last
+row. Volatility interpolates linearly between spatial nodes and stays constant
+beyond either end. `from_parametric_slices` samples the flat, skew, smile, product
+and wing formulas on a supplied log-forward grid.
+
+The default coordinate is normalized log-forward, $X=\log(S/F)$. Its drift
+is minus half the local variance. Each expiry uses its
+own market forward to convert grid points to spot. `CoordinateSystem.LEVEL`
+instead uses absolute asset prices with zero drift and a constant forward
+across expiries. Both apply the supplied discount once at payoff projection.
+The pricing grid may differ from the surface interpolation grid.
+
+`price_chain(chain, surface)` returns one array of quote-currency premiums per expiry.
+The 1D theta solver splits at every interior bucket end and quoted maturity, carries
+the undiscounted density between them, and uses the package's ordinary C/P payoffs.
+`price_chain_detailed` adds Black IVs and inversion failure masks, expiry mass and
+negative mass, the forward moment divided by the market forward, the largest absolute
+discounted market parity error, and the peak negative mass across all steps.
+Refine the grid, boundaries and steps for the time horizon and strikes of interest.
+The pricer's module docstring includes an executable two-bucket pricing example.
+
 ### Model, pricer, product and data ownership
 
 The directory names reflect two stages of development. The original `pricers/` modules bundle

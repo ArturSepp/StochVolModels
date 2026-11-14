@@ -12,7 +12,7 @@ authors:
 repository-code: "https://github.com/ArturSepp/StochVolModels"
 url: "https://pypi.org/project/stochvolmodels/"
 license: MIT
-version: "2.8.0"
+version: "2.9.0"
 date-released: "2026-11-14"
 keywords:
   - stochastic-volatility
