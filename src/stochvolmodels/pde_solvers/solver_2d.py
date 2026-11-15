@@ -9,6 +9,7 @@ negativity, boundary, and operator diagnostics.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import lru_cache, partial
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -24,6 +25,7 @@ from stochvolmodels.pde_solvers.diagnostics import boundary_residuals
 from stochvolmodels.pde_solvers.grids import TensorGrid2D
 from stochvolmodels.pde_solvers.operators_1d import PDEDirection
 from stochvolmodels.pde_solvers.operators_2d import SplitOperator2D
+from stochvolmodels.pde_solvers.poisson import FixedXJump, _forward_translation
 from stochvolmodels.pde_solvers.solver_1d import (
     CoefficientEvaluation,
     DensityPolicy,
@@ -72,6 +74,7 @@ class PDEDiagnostics2D:
     renormalized: bool
     negative_tolerance_exceeded: bool
     mass_tolerance_exceeded: bool
+    jump_clamped_mass: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,9 +138,26 @@ class PDE2DADISolver:
         values: ArrayLike,
         *,
         save_times: tuple[float, ...] = (),
+        forward_x_jump: FixedXJump | None = None,
     ) -> PDESolution2D:
-        """Propagate an initial density forward or a terminal value backward."""
+        """Propagate an initial density forward or a terminal value backward.
+
+        For a forward fixed-size x jump, supply the continuous coefficients (including
+        any model drift compensation) and the jump law. Apply a compound-Poisson
+        half-step before and after each ADI step. Diagnostics and saved states use
+        the completed step. Boundary rates describe its continuous generator.
+        """
         self._validate_inputs(grid, coefficient_provider, boundaries, direction)
+        translation = None
+        if forward_x_jump is not None:
+            if direction is not PDEDirection.FORWARD:
+                raise ValueError("forward_x_jump requires forward density propagation")
+            rate, size = float(forward_x_jump.intensity), float(forward_x_jump.jump_size)
+            if not np.isfinite(rate) or rate < 0 or not np.isfinite(size):
+                raise ValueError("fixed x jumps require a finite nonnegative rate and finite size")
+            if rate > 0 and size != 0:
+                build_translation = partial(_forward_translation, grid.x, rate, size)
+                translation = lru_cache(maxsize=8)(build_translation)
         boundaries = BoundarySet2D(boundaries.x._on_grid(grid.x), boundaries.y._on_grid(grid.y))
         times = _validated_time_grid(time_grid)
         state = np.array(grid.validate_shape(values), dtype=np.float64, copy=True, order="C")
@@ -186,11 +206,20 @@ class PDE2DADISolver:
             else:
                 operator = cached_operator
 
-            raw_state = adi_step(operator, state, direction, step_size, self.config)
-            if direction is PDEDirection.FORWARD:
-                expected_mass = self._expected_forward_mass(
-                    grid, operator, state, step_size
+            half_jump = translation(0.5 * step_size) if translation is not None else None
+            diffusion_input = state if half_jump is None else half_jump.matrix @ state
+            raw_state = adi_step(operator, diffusion_input, direction, step_size, self.config)
+            clamped_mass = None
+            if half_jump is not None:
+                clamped_mass = half_jump.clamped_mass(state, grid.y) + half_jump.clamped_mass(
+                    raw_state, grid.y
                 )
+                raw_state = half_jump.matrix @ raw_state
+            if direction is PDEDirection.FORWARD:
+                mass_input = state
+                if half_jump is not None and np.any(operator.coefficients.discount):
+                    mass_input = diffusion_input
+                expected_mass = self._expected_forward_mass(grid, operator, mass_input, step_size)
                 state, renormalized = self._apply_density_policy(
                     grid, raw_state, expected_mass
                 )
@@ -215,6 +244,7 @@ class PDE2DADISolver:
                 renormalized=renormalized,
                 negativity_tolerance=self.density_policy.negativity_tolerance,
                 mass_error_tolerance=self.density_policy.mass_error_tolerance,
+                jump_clamped_mass=clamped_mass,
             )
             if self.density_policy.fail_on_violation and (
                 diagnostic.negative_tolerance_exceeded
@@ -330,6 +360,7 @@ def _make_step_diagnostics(
     renormalized: bool,
     negativity_tolerance: float,
     mass_error_tolerance: float,
+    jump_clamped_mass: float | None = None,
 ) -> PDEDiagnostics2D:
     """Build immutable diagnostics for one completed PDE step."""
     accepted = grid.validate_shape(values)
@@ -412,6 +443,7 @@ def _make_step_diagnostics(
         renormalized=bool(renormalized),
         negative_tolerance_exceeded=negative_exceeded,
         mass_tolerance_exceeded=mass_exceeded,
+        jump_clamped_mass=jump_clamped_mass,
     )
 
 

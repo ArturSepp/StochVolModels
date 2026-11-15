@@ -265,8 +265,7 @@ at each step. When enabled, each first-half path has its Gaussian antithetic par
 in the second half. Jump counts are independent Poisson draws for each path.
 `FixedLogForwardJump(intensity, jump_size)` specifies an optional model law in
 events per year and log-forward units. Its forward drift correction is
-`-intensity * expm1(jump_size)`. Jump simulation needs no spatial grid. The vanilla
-PDE pricer currently supports diffusions.
+`-intensity * expm1(jump_size)`. Jump simulation needs no spatial grid.
 
 `LSVMonteCarloPricer.price_chain_detailed(chain, model)` simulates the expiries jointly,
 evaluates each call or put at its quoted forward and discounts its payoff once.
@@ -274,6 +273,27 @@ It returns raw premiums, Black IVs, failed-inversion masks, price confidence int
 forward diagnostics and the underlying paths. Standard errors use independent pair
 means under antithetic sampling. To use the generic `value_paths` on these paired
 paths, pass `independent_group_ids=np.tile(np.arange(n_paths // 2), 2)`.
+
+### Jump-aware LSV PDE pricing
+
+Pass an `LSVModel` carrying a `FixedLogForwardJump` to `LogSvPdePricer.price_chain`
+or `price_chain_detailed`. The jump moves normalized log-forward by a constant amount
+and leaves volatility unchanged. The pricer adds the martingale compensator to the
+continuous log-forward drift and applies a compound-Poisson half-step on either
+side of each ADI step. Leverage and backbone maturity knots partition the evolution.
+
+For each Poisson count, translate by its total displacement and distribute the
+source node's quadrature mass between the adjacent x nodes. Out-of-domain moves
+land at the nearest endpoint. The Poisson series uses a tail tolerance of `1e-14`;
+retained probabilities sum to one. Zero intensity or zero displacement uses the
+diffusion path. In `PDE2DADISolver.solve`, the optional `forward_x_jump` specifies
+the translation alone. Supply any drift compensation through the local coefficients.
+
+Each completed step reports `jump_clamped_mass`, the positive incoming mass moved
+outside the grid across its two half-steps. An expiry's `normalized_forward` checks
+the forward moment against one. Clamping preserves total mass, so inspect both when
+choosing the domain. The default price grid includes jump-count tails. Refine the
+space and time grids for the required premium accuracy.
 
 ### Model, pricer, product and data ownership
 

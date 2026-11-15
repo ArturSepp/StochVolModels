@@ -4,6 +4,14 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.15.0] - 2026-11-15
+
+### Added
+
+- The provisional `LogSvPdePricer` prices European calls and puts on LSV models
+  with compensated fixed log-forward jumps. Step diagnostics include mass
+  translated beyond the price grid.
+
 ## [2.14.0] - 2026-11-15
 
 ### Added

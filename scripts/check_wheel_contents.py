@@ -20,6 +20,7 @@ PDE_FILES = {
     "stochvolmodels/pde_solvers/grids.py",
     "stochvolmodels/pde_solvers/operators_1d.py",
     "stochvolmodels/pde_solvers/operators_2d.py",
+    "stochvolmodels/pde_solvers/poisson.py",
     "stochvolmodels/pde_solvers/solver_1d.py",
     "stochvolmodels/pde_solvers/solver_2d.py",
     "stochvolmodels/pde_solvers/tridiagonal.py",

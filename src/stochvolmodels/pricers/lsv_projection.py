@@ -343,7 +343,7 @@ def _advance_lsv(
     diagnostics = []
     for stop in ends:
         times = np.unique(np.linspace(state.time, stop, steps + 1))
-        fixed = StaticCoefficientProvider2D(model.evaluate(stop, grid))
+        fixed = StaticCoefficientProvider2D(model.continuous_coefficients(stop, grid))
         law = solver.solve(
             grid,
             fixed,
@@ -351,6 +351,7 @@ def _advance_lsv(
             PDEDirection.FORWARD,
             times,
             state.values,
+            forward_x_jump=model.jump,
         )
         offset = len(diagnostics)
         diagnostics.extend(replace(d, step_index=offset + i) for i, d in enumerate(law.diagnostics))

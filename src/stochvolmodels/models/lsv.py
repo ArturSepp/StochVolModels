@@ -212,11 +212,18 @@ class LSVModel:
         return eta if surface is None else eta * surface.evaluate(time, x)
 
     def evaluate(self, time: float, grid: TensorGrid2D) -> PDE2DCoefficients:
-        """Build the diffusion-only PDE generator for this leverage and backbone bucket."""
+        """Supply a complete local generator when the model has no active jumps."""
         if self.jump is not None and self.jump.intensity > 0 and self.jump.jump_size != 0:
-            raise ValueError("the LSV PDE pricer requires a diffusion-only model")
+            raise ValueError("active LSV jumps require split propagation; use LogSvPdePricer")
+        return self.continuous_coefficients(time, grid)
+
+    def continuous_coefficients(self, time: float, grid: TensorGrid2D) -> PDE2DCoefficients:
+        """Supply the local part of the LSV generator, including jump drift compensation."""
         self.validate_mma(time)
         loading = self.return_loading(time, grid.x.nodes)
         if isinstance(loading, np.ndarray):
             loading = loading[:, None]
-        return _mma_coefficients(self.dynamics.params, grid, loading)
+        local = _mma_coefficients(self.dynamics.params, grid, loading)
+        if self.jump is not None and self.jump.compensator != 0.0:
+            local = replace(local, drift_x=local.drift_x + self.jump.compensator)
+        return local

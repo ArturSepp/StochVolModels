@@ -6,10 +6,11 @@ from numbers import Integral
 import numpy as np
 from numba.typed import List
 from numpy.typing import ArrayLike
+from scipy.stats import poisson
 
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.models.logsv import LogSvMeasure, LogSvModel
-from stochvolmodels.models.lsv import LSVModel
+from stochvolmodels.models.lsv import FixedLogForwardJump, LSVModel
 from stochvolmodels.models.logsv_pde import LogSvPdeCoefficients
 from stochvolmodels.pde_solvers import (
     ADIConfig,
@@ -66,7 +67,10 @@ class LogSvPdeResult:
 
 
 def _default_grid(
-    params: LogSvParams, chain: OptionChain, return_loading: float = 1.0
+    params: LogSvParams,
+    chain: OptionChain,
+    return_loading: float = 1.0,
+    jump: FixedLogForwardJump | None = None,
 ) -> TensorGrid2D:
     """Construct an initial mesh containing the initial state and every quoted strike."""
     scale = max(params.theta, params.sigma0)
@@ -75,7 +79,17 @@ def _default_grid(
         np.max(np.abs(np.log(k) - np.log(f))) for k, f in zip(chain.strikes_ttms, chain.forwards)
     )
     width = max(8.0 * stdev, 1.25 * wing)
-    x = Grid1D.concentrated(-width, width, 121, 0.0, stdev)
+    lower_x, upper_x = -width, width
+    if jump is not None and jump.intensity > 0 and jump.jump_size != 0:
+        maturity = chain.ttms[-1]
+        # Cover count tails under both the probability and forward-moment weights.
+        count_mean = maturity * max(jump.intensity, jump.intensity - jump.compensator)
+        count = max(1.0, poisson.isf(1e-10, count_mean))
+        drift = maturity * jump.compensator
+        displacement = count * jump.jump_size
+        lower_x += min(0.0, drift) + min(0.0, displacement)
+        upper_x += max(0.0, drift) + max(0.0, displacement)
+    x = Grid1D.concentrated(lower_x, upper_x, 121, 0.0, stdev)
     # Split a single sinh map at sigma0. Both sides then have comparable spacing
     # at the initial delta, even with an asymmetric volatility domain.
     upper = 8.0 * scale
@@ -101,6 +115,8 @@ class LogSvPdePricer(ModelPricer):
     for the maturity, wings and accuracy required. Pass an LSVModel to use a
     leverage surface with optional backbone. Each leverage or backbone knot also
     splits the integration interval and receives steps_per_interval steps.
+    Fixed log-forward jumps use compensated drift and symmetric compound-Poisson
+    splitting. Each step reports positive mass translated outside the x grid.
     """
 
     grid: TensorGrid2D | None = None
@@ -144,7 +160,7 @@ class LogSvPdePricer(ModelPricer):
                     ends[(ends > 0) & (ends < option_chain.ttms[-1])], option_chain.ttms[-1]
                 ]
                 loading = max(params.max_return_loading(t) for t in ends)
-            grid = _default_grid(snapshot, option_chain, loading)
+            grid = _default_grid(snapshot, option_chain, loading, params.jump if lsv else None)
         if not isinstance(grid, TensorGrid2D):
             raise TypeError("grid must be a TensorGrid2D")
         if not (

@@ -36,6 +36,7 @@ include src/stochvolmodels/pde_solvers/diagnostics.py
 include src/stochvolmodels/pde_solvers/grids.py
 include src/stochvolmodels/pde_solvers/operators_1d.py
 include src/stochvolmodels/pde_solvers/operators_2d.py
+include src/stochvolmodels/pde_solvers/poisson.py
 include src/stochvolmodels/pde_solvers/solver_1d.py
 include src/stochvolmodels/pde_solvers/solver_2d.py
 include src/stochvolmodels/pde_solvers/tridiagonal.py

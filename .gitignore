@@ -147,6 +147,7 @@ dmypy.json
 !/src/stochvolmodels/pde_solvers/grids.py
 !/src/stochvolmodels/pde_solvers/operators_1d.py
 !/src/stochvolmodels/pde_solvers/operators_2d.py
+!/src/stochvolmodels/pde_solvers/poisson.py
 !/src/stochvolmodels/pde_solvers/solver_1d.py
 !/src/stochvolmodels/pde_solvers/solver_2d.py
 !/src/stochvolmodels/pde_solvers/tridiagonal.py

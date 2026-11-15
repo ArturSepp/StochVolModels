@@ -115,8 +115,9 @@ def test_compensated_grid_free_jump_matches_conditional_black_prices():
         np.testing.assert_allclose(result.paths.states["quadratic_variance"][:, i + 1], 0.04 * t)
         sl = result.expiries[i]
         assert abs(sl.forward_mean - f) < 4 * sl.forward_standard_error
-    with pytest.raises(ValueError, match="diffusion-only"):
-        LogSvPdePricer().price_chain(chain, model)
+    pde = LogSvPdePricer().price_chain(chain, model)
+    for pv, mc, se in zip(pde, result.prices, result.standard_errors):
+        assert np.all(abs(pv - mc) < 4 * se)
 
 
 def test_raw_zero_payoff_and_failed_black_inversion():

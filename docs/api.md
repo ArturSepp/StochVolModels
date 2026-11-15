@@ -255,6 +255,8 @@ The provisional `stochvolmodels.models.lsv_simulation.LSVMonteCarloEngine` gener
 `ModelPaths` from a fitted `LSVModel`. The corresponding
 `stochvolmodels.pricers.lsv_mc_pricer.LSVMonteCarloPricer` prices ragged European
 chains and reports sampling uncertainty. See [LSV Monte Carlo](software_design.md#lsv-monte-carlo).
+The same `LSVModel` with `FixedLogForwardJump` can be priced by `LogSvPdePricer`.
+See [jump-aware LSV PDE pricing](software_design.md#jump-aware-lsv-pde-pricing).
 
 The [software design](software_design.md#models-without-an-article) page says which of these
 surfaces have no article yet, and why.
