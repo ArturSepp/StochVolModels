@@ -1,4 +1,4 @@
-"""Continuous Dupire inversion of discounted European calls on an absolute-strike grid.
+"""Dupire inversion of discounted European calls on an absolute-strike grid.
 
 Examples
 --------
@@ -28,6 +28,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from stochvolmodels.models.local_vol import LocalVolSurface
+from stochvolmodels.models.lsv import FixedLogForwardJump
 from stochvolmodels.pde_solvers import Grid1D
 
 FloatArray = NDArray[np.float64]
@@ -89,6 +90,26 @@ class DupireRepairPolicy:
 
 
 @dataclass(frozen=True, slots=True)
+class DupireJumpAdjustment:
+    """Compensated jump contribution to the call numerator and its extrapolated nodes."""
+
+    jump: FixedLogForwardJump
+    values: FloatArray
+    extrapolated_mask: BoolArray
+
+    def __post_init__(self) -> None:
+        """Own the finite correction and its matching maturity-by-strike mask."""
+        if not isinstance(self.jump, FixedLogForwardJump):
+            raise TypeError("jump must be a FixedLogForwardJump")
+        values = _readonly_array(self.values, name="jump contribution", ndim=2)
+        mask = _readonly_bool_array(self.extrapolated_mask, name="extrapolated_mask")
+        if values.shape != mask.shape:
+            raise ValueError("jump contribution and extrapolation mask must align")
+        object.__setattr__(self, "values", values)
+        object.__setattr__(self, "extrapolated_mask", mask)
+
+
+@dataclass(frozen=True, slots=True)
 class DupireResult:
     """Raw derivatives, quality masks, and optionally repaired local variance."""
 
@@ -104,6 +125,7 @@ class DupireResult:
     valid_mask: BoolArray
     interior_mask: BoolArray
     repaired_mask: BoolArray
+    jump_adjustment: DupireJumpAdjustment | None = None
 
     def __post_init__(self) -> None:
         """Validate and normalize a newly constructed ``DupireResult`` instance."""
@@ -122,6 +144,8 @@ class DupireResult:
             for name in float_names
         }
         shape = self.call_surface.calls.shape
+        if self.jump_adjustment is not None and self.jump_adjustment.values.shape != shape:
+            raise ValueError("jump adjustment must have the call surface shape")
         if any(array.shape != shape for array in arrays.values()):
             raise ValueError("all Dupire result arrays must have the same shape")
         for name in ("valid_mask", "interior_mask", "repaired_mask"):
@@ -195,6 +219,32 @@ class DupireRecoverer:
         valid_mask requires both terms to exceed their tolerances. An optional
         policy floors invalid nodes and clips valid values after raw recovery.
         """
+        return self._recover(surface, repair_policy, jump=None)
+
+    def jump_adjusted(
+        self,
+        surface: CallSurface,
+        jump: FixedLogForwardJump,
+        *,
+        repair_policy: DupireRepairPolicy | None = None,
+    ) -> DupireResult:
+        """Recover diffusion variance after removing the compensated fixed-log-jump term.
+
+        The interpolation uses absolute strikes and endpoint slopes in the wings.
+        Inspect jump_adjustment.extrapolated_mask before using a wing estimate.
+        Repricing the recovered diffusion requires including the same jump law.
+        """
+        if not isinstance(jump, FixedLogForwardJump):
+            raise TypeError("jump must be a FixedLogForwardJump")
+        return self._recover(surface, repair_policy, jump)
+
+    def _recover(
+        self,
+        surface: CallSurface,
+        repair_policy: DupireRepairPolicy | None,
+        jump: FixedLogForwardJump | None,
+    ) -> DupireResult:
+        """Differentiate at fixed strike and apply the selected numerator before repair."""
         if not isinstance(surface, CallSurface):
             raise TypeError("surface must be a CallSurface")
         call_time = _differentiate(surface.calls, surface.times, axis=0, order=1)
@@ -209,6 +259,10 @@ class DupireRecoverer:
             + dividend_rate[:, None] * surface.calls
             + forward_growth[:, None] * surface.strikes[None, :] * call_strike
         )
+        adjustment = None
+        if jump is not None:
+            adjustment = _jump_adjustment(surface, call_strike, jump)
+            numerator = numerator - adjustment.values
         denominator = 0.5 * surface.strikes[None, :] ** 2 * call_strike_second
         with np.errstate(divide="ignore", invalid="ignore"):
             raw_variance = numerator / denominator
@@ -257,7 +311,32 @@ class DupireRecoverer:
             valid_mask=valid,
             interior_mask=interior,
             repaired_mask=repaired,
+            jump_adjustment=adjustment,
         )
+
+
+def _jump_adjustment(
+    surface: CallSurface,
+    call_strike: FloatArray,
+    jump: FixedLogForwardJump,
+) -> DupireJumpAdjustment:
+    """Apply the discounted call generator for a compensated Poisson translation."""
+    calls, strikes = surface.calls, surface.strikes
+    if jump.intensity == 0 or jump.jump_size == 0:
+        return DupireJumpAdjustment(jump, np.zeros_like(calls), np.zeros_like(calls, dtype=bool))
+    factor = np.exp(jump.jump_size)
+    with np.errstate(divide="ignore", over="ignore"):
+        shifted = strikes / factor
+    # At K/exp(j), use the adjacent call segment, extending the end segments linearly.
+    # Scaling before interpolation also covers exp(j) underflow for large down-jumps.
+    left = np.clip(np.searchsorted(strikes, shifted, side="right") - 1, 0, strikes.size - 2)
+    slopes = np.diff(calls, axis=1) / np.diff(strikes)
+    scaled_change = (
+        factor * (calls[:, left] - calls) + (strikes - factor * strikes[left]) * slopes[:, left]
+    )
+    values = jump.intensity * (scaled_change + np.expm1(jump.jump_size) * strikes * call_strike)
+    outside = (shifted < strikes[0]) | (shifted > strikes[-1])
+    return DupireJumpAdjustment(jump, values, np.broadcast_to(outside, calls.shape))
 
 
 def _differentiate(

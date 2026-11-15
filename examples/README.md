@@ -43,6 +43,7 @@ enum case and includes Numba compilation on first use.
 | `docs/logsv_smile_fitter.py` | canonical script of a documentation page | core only, generated chain | every case run by `test_docs_examples.py` |
 | `docs/surface_diagnostics.py` | fit, strike and calendar checks, native tick-scale handoff and portable research audits | core only, synthetic chains/scores and a temporary JSON report | every case run by `test_docs_examples.py`, including `NATIVE_QUOTES` and `RESEARCH_TOOLS` |
 | `calibration/oca_surface_diagnostics.py` | advanced source-to-fit quality, parity and surface reports | research extra, OCA 5.3, synthetic only | optional cross-package integration test |
+| `calibration/frozen_btc_lsv.py` | baseline and adverse-start LSV calibration | core only, bundled BTC chain | slow price and acceptance regressions |
 | `calibration/_svi_benchmark.py` | internal support module for the research comparison | core only, SVI/SSVI formulae and constrained fits | independent formula/derivative contracts in `test_smile_fitter_benchmark.py`; imported by the comparison runner |
 | `calibration/_svi_wing_benchmark.py` | opt-in constrained raw-SVI research helper with IV or half-spread price objective, training-IV seeding and optional fixed IV-anchor regularization | core only, training-domain density/call-slope constraints and explicit prediction limits | independent price/anchor gradients, combined-loss selection, seed/refit accounting, domain rejection and leakage contracts in `test_smile_fitter_benchmark.py`; imported by both comparison runners |
 | `calibration/_svi_shared_benchmark.py` | opt-in joint raw-SVI fit with one rho and four parameters per expiry | core only, uniform training-IV loss and existing finite-domain strike constraints | independent joint Jacobian, recovery, failure and prediction contracts in `test_svi_shared_benchmark.py`; imported by both runners |
@@ -85,6 +86,15 @@ OCA 5 with its CBOE/Parquet support and supports the credential-free
 `calibration/run_oca_logsv_calibration.py` bridge. The CBOE time-series lane also needs local
 normalized SPX/VIX caches; its directory README gives the setup. Paper-replication code under
 `papers/` also uses `research`.
+
+## Frozen BTC calibration
+
+Run `python -m examples.calibration.frozen_btc_lsv` to fit the packaged 21 October
+2021 BTC chain from the reference and adverse starts. The replay uses an independent
+101 × 61 PDE grid and 100,000 antithetic Monte Carlo paths. The baseline passes all
+seven final checks, with 35 of 44 common-strike IVs inside bid/ask. The adverse
+start covers 12 of 44 and fails the target-IV, PDE–MC IV, negative-mass and spread
+checks. The runner also reports the price gap at each expiry on the 49 original quotes.
 
 ## LSV propagation stresses
 

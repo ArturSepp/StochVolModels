@@ -31,6 +31,7 @@ from stochvolmodels.fitters.dupire import (
 )
 from stochvolmodels.fitters.lsv_parametric import ImpliedVolCalibrationTarget
 from stochvolmodels.models.local_vol import _readonly_array
+from stochvolmodels.models.lsv import FixedLogForwardJump
 
 FloatArray = NDArray[np.float64]
 
@@ -69,13 +70,21 @@ class LSVCalibrationInput:
     ask_ivs: FloatArray
     target: ImpliedVolCalibrationTarget
 
-    def recover_dupire(self, *, repair_policy: DupireRepairPolicy | None = None) -> DupireResult:
+    def recover_dupire(
+        self,
+        *,
+        repair_policy: DupireRepairPolicy | None = None,
+        jump: FixedLogForwardJump | None = None,
+    ) -> DupireResult:
         """Recover local variance at fixed K/F, retaining raw calls, variances and repair masks.
 
         The target calls are PV / (D F) with unit forward and discount. At least three
         maturities and three distinct grid points are required for Dupire differentiation.
+        Supply a fixed log-forward jump to recover only the continuous diffusion variance.
         """
         calls = CallSurface(self.target.times, self.target.strikes, self.target.target_calls)
+        if jump is not None:
+            return DupireRecoverer().jump_adjusted(calls, jump, repair_policy=repair_policy)
         return DupireRecoverer().continuous(calls, repair_policy=repair_policy)
 
 

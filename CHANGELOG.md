@@ -4,6 +4,16 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.18.0] - 2026-11-15
+
+### Added
+
+- `DupireRecoverer.jump_adjusted` recovers diffusion variance for a specified
+  `FixedLogForwardJump` and records the jump contribution and extrapolated strikes.
+  The normalized market adapter accepts the same jump in `recover_dupire`.
+- The repository includes offline baseline and adverse-start BTC calibration replays
+  and a seven-scenario LSV propagation stress matrix.
+
 ## [2.17.0] - 2026-11-15
 
 ### Added

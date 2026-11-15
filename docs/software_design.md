@@ -164,6 +164,19 @@ instantaneous estimates as bucket values through their respective maturities,
 so repricing can differ from the input calls. The fitter's module docstring
 contains an executable Black-surface recovery and put-pricing example.
 
+### Fixed-jump Dupire inversion
+
+Pass a `FixedLogForwardJump` to `DupireRecoverer().jump_adjusted(surface, jump)`
+or to the normalized market input's `recover_dupire(jump=jump)`. For a fixed log
+jump $j$ with annual intensity $\lambda$, the discounted call contribution at each
+maturity is $\lambda [e^j(C(K e^{-j})-C(K))+(e^j-1)K C_K]$. Subtracting it from
+the continuous numerator recovers the diffusion component of local variance.
+
+`result.jump_adjustment` retains the jump law, the contribution and a mask of shifted
+strikes outside the quoted grid. Those strikes use the slope of the nearest end
+segment. The usual validity and repair masks still apply. To reprice the original
+calls, include the same compensated jumps alongside the recovered diffusion.
+
 ### Conditional variance and leverage
 
 `LSVModel.from_params(params, leverage_surface)` snapshots the Markovian
@@ -300,6 +313,11 @@ common-grid IV inversion fails the affected RMSE check. Inspect `checks` and
 `failed_checks`, or call `result.require_accepted()` to enforce the decision.
 An unusable calibration trial stops in the fitter at its configured density limit.
 The replay also retains every PDE step for inspection of transient negative mass.
+
+The [frozen BTC replay](../examples/calibration/frozen_btc_lsv.py) runs the
+baseline and adverse starts on the packaged 21 October 2021 quotes. The
+[stress matrix](../examples/pricing/lsv_production_stress.py) exercises the
+independent PDE and Monte Carlo pricers at fixed parameters.
 
 ### LSV Monte Carlo
 

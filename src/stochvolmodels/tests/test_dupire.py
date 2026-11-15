@@ -6,11 +6,15 @@ import numpy as np
 import pytest
 from numba.typed import List
 from scipy.special import ndtr
+from scipy.stats import poisson
 
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.fitters.dupire import CallSurface, DupireRecoverer, DupireRepairPolicy
-from stochvolmodels.pde_solvers import Grid1D
+from stochvolmodels.models.lsv import FixedLogForwardJump, LSVModel, LeverageSurface
+from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
 from stochvolmodels.pricers.local_vol_pde_pricer import LocalVolPdePricer
+from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
+from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdePricer
 
 
 def _black_fixture():
@@ -114,6 +118,109 @@ def test_raw_invalid_nodes_explicit_repair_and_input_ownership():
                 result.to_local_vol_surface()
         else:
             assert np.isfinite(result.to_local_vol_surface().values).all()
+
+
+def _jump_quotes(jump):
+    """Discounted Poisson mixture of Black calls with nonconstant forward and discount."""
+    t = np.linspace(0.04, 0.9, 87)
+    k = np.linspace(55.0, 175.0, 241)
+    f, d = 100 * np.exp(0.02 * t), np.exp(-0.04 * t)
+    sd = 0.20 * np.sqrt(t[:, None])
+    calls = np.zeros((len(t), len(k)))
+    for n in range(20):
+        forward = (f * np.exp(t * jump.compensator + n * jump.jump_size))[:, None]
+        d1 = np.log(forward / k) / sd + sd / 2
+        calls += poisson.pmf(n, jump.intensity * t)[:, None] * (
+            forward * ndtr(d1) - k * ndtr(d1 - sd)
+        )
+    return CallSurface(t, k, d[:, None] * calls, f, d)
+
+
+@pytest.mark.parametrize("size", [-0.16, 0.16])
+def test_jump_adjusted_diffusion_recovery_and_vanilla_roundtrip(size, record_property):
+    jump = FixedLogForwardJump(0.7, size)
+    quotes = _jump_quotes(jump)
+    fit = DupireRecoverer().jump_adjusted(quotes, jump, repair_policy=DupireRepairPolicy(0.01, 1))
+    a = fit.jump_adjustment
+    shifted = quotes.strikes * np.exp(-size)
+    outside = (shifted < quotes.strikes[0]) | (shifted > quotes.strikes[-1])
+    np.testing.assert_array_equal(a.extrapolated_mask, np.tile(outside, (len(quotes.times), 1)))
+    assert not a.values.flags.writeable and not a.extrapolated_mask.flags.writeable
+    inner = np.ix_(
+        (quotes.times >= 0.12) & (quotes.times <= 0.82),
+        (quotes.strikes >= 78) & (quotes.strikes <= 130),
+    )
+    assert np.all(fit.valid_mask[inner]) and not np.any(a.extrapolated_mask[inner])
+    error = np.max(abs(fit.raw_local_variance[inner] - 0.04))
+    assert error < 0.0015
+    assert error < 0.2 * np.max(
+        abs(DupireRecoverer().continuous(quotes).raw_local_variance[inner] - 0.04)
+    )
+    local = fit.to_local_vol_surface(Grid1D.uniform(-0.22, 0.22, 31))
+    model = LSVModel.from_params(
+        LogSvParams(sigma0=0.2, theta=0.2, kappa1=0, kappa2=0, beta=0, volvol=0),
+        LeverageSurface(local.times, local.grid, local.values / 0.2, leverage_cap=5),
+        jump=jump,
+    )
+    rows, cols = [28, 58], [70, 90, 110]
+    chain = OptionChain(
+        ttms=quotes.times[rows],
+        forwards=quotes.forwards[rows],
+        discfactors=quotes.discount_factors[rows],
+        ids=np.array(["short", "long"]),
+        strikes_ttms=(quotes.strikes[cols],) * 2,
+        optiontypes_ttms=(np.full(3, "C"),) * 2,
+    )
+    grid = TensorGrid2D(
+        Grid1D.concentrated(-1.5, 1.5, 201, 0.0, 0.15), Grid1D([0.10, 0.15, 0.20, 0.25, 0.30])
+    )
+    prices = LogSvPdePricer(grid=grid, steps_per_interval=4).price_chain(chain, model)
+    gap = np.max(
+        abs(np.vstack(prices) - quotes.calls[np.ix_(rows, cols)])
+        / (chain.discfactors * chain.forwards)[:, None]
+    )
+    assert gap < 4e-4
+    record_property("max_diffusion_variance_error", float(error))
+    record_property("max_price_error_per_discounted_forward", float(gap))
+
+
+def test_inactive_jump_matches_continuous_inversion():
+    surface = _black_fixture()
+    plain = DupireRecoverer().continuous(surface)
+    assert plain.jump_adjustment is None
+    for jump in (FixedLogForwardJump(0, -1000), FixedLogForwardJump(5, 0)):
+        fit = DupireRecoverer().jump_adjusted(surface, jump)
+        assert not fit.jump_adjustment.extrapolated_mask.any()
+        assert not fit.jump_adjustment.values.any()
+        np.testing.assert_array_equal(fit.raw_local_variance, plain.raw_local_variance)
+
+
+@pytest.mark.repository_only
+def test_btc_market_jump_adjustment_matches_archive():
+    _require_archive()
+    from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
+    from stochvolmodels.fitters.lsv_market import LSVOptionChainAdapter
+    from stochvolmodels.pde_solvers import dupire as archive
+
+    market = LSVOptionChainAdapter(get_btc_test_chain_data()).build_calibration_input(grid_size=11)
+    policy = DupireRepairPolicy(0.04, 4.0)
+    for size in (-0.18, 0.16):
+        fit = market.recover_dupire(jump=FixedLogForwardJump(2, size), repair_policy=policy)
+        surface = archive.CallSurface(
+            market.target.times, market.target.strikes, market.target.target_calls
+        )
+        term = archive.deterministic_log_jump_term(surface, 2, size)
+        old = archive.DupireRecoverer().jump_adjusted(
+            surface, term, repair_policy=archive.DupireRepairPolicy(0.04, 4.0)
+        )
+        np.testing.assert_allclose(fit.jump_adjustment.values, term.values, atol=1e-13, rtol=0)
+        np.testing.assert_array_equal(fit.jump_adjustment.extrapolated_mask, term.extrapolated_mask)
+        for field in ("raw_local_variance", "local_variance", "local_volatility"):
+            np.testing.assert_allclose(
+                getattr(fit, field), getattr(old, field), atol=1e-12, rtol=1e-12
+            )
+        for field in ("valid_mask", "repaired_mask", "interior_mask"):
+            np.testing.assert_array_equal(getattr(fit, field), getattr(old, field))
 
 
 def _require_archive():

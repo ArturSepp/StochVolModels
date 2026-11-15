@@ -2,16 +2,14 @@
 
 from dataclasses import fields, replace
 from importlib.util import find_spec
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.fitters.dupire import DupireRepairPolicy
-from stochvolmodels.fitters.lsv_market_pipeline import LSVMarketPipeline
-from stochvolmodels.models.lsv_simulation import LSVMonteCarloConfig
-from stochvolmodels.pricers.lsv_mc_pricer import LSVMonteCarloPricer
+from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
 from stochvolmodels.fitters.lsv_parametric import (
     CalibrationWeighting,
     ImpliedVolCalibrationTarget,
@@ -142,10 +140,63 @@ def test_fit_rejects_invalid_starts_and_failed_optimizers():
         fitter.calibrate(p, t, local, [2, 0])
 
 
+@pytest.fixture(scope="module", params=[False, True], ids=["baseline", "adverse"])
+def btc_replay(request):
+    """Run the tracked market replay once per start, including in a clean checkout."""
+    root = Path(__file__).resolve().parents[3]
+    if not (root / "examples/calibration").is_dir():
+        pytest.skip("the frozen market replay is repository-only")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.syspath_prepend(str(root))
+        from examples.calibration.frozen_btc_lsv import replay_btc
+
+        adverse = request.param
+        yield adverse, replay_btc(adverse=adverse), replay_btc
+
+
 @pytest.mark.slow
 @pytest.mark.repository_only
-@pytest.mark.parametrize("adverse", [False, True], ids=["baseline", "adverse"])
-def test_frozen_btc_parameters_surface_and_vanillas(adverse, record_property):
+def test_btc_market_replay_matches_frozen_prices_and_decisions(btc_replay):
+    adverse, result, replay = btc_replay
+    expected = (
+        ("pde_target_iv", "pde_mc_iv", "pde_negative_mass", "market_spread") if adverse else ()
+    )
+    assert result.acceptance.failed_checks == expected
+    assert result.acceptance.market_spread_coverage == (12 if adverse else 35) / 44
+    assert sum(r.strikes.size for r in result.market.source_slices) == 49
+    # Archive PVs of the nearest-to-forward original contract at each of the four expiries.
+    prices = []
+    for row, quote in zip(result.original, result.market.source_slices, strict=True):
+        i = np.argmin(abs(quote.strikes - quote.forward))
+        prices.append(
+            np.array([row.pde_prices[i], row.mc_prices[i]])
+            / (quote.discount_factor * quote.forward)
+        )
+    reference = (
+        [
+            [0.064348140889, 0.064539607411],
+            [0.091141506573, 0.096560975329],
+            [0.153435721892, 0.156106899007],
+            [0.212433379975, 0.226311897749],
+        ]
+        if adverse
+        else [
+            [0.064348561098, 0.064540030038],
+            [0.101714744921, 0.101201578350],
+            [0.155083774151, 0.154103152815],
+            [0.207226778182, 0.206519587955],
+        ]
+    )
+    np.testing.assert_allclose(prices, reference, rtol=0, atol=1e-6)
+    chain = get_btc_test_chain_data()
+    with pytest.raises(LSVCalibrationError, match=f"T={chain.ttms[2]:g}.*negative mass"):
+        replay(adverse=adverse, candidate_negative_mass_limit=2e-5)
+
+
+@pytest.mark.slow
+@pytest.mark.repository_only
+def test_frozen_btc_parameters_surface_and_vanillas(btc_replay, record_property):
+    adverse, result, _ = btc_replay
     if find_spec("stochvolmodels.pde_solvers.market_pipeline") is None:
         pytest.skip("requires the archived BTC market pipeline in a source checkout")
     from stochvolmodels.pde_solvers.density import DensityPricer
@@ -165,43 +216,7 @@ def test_frozen_btc_parameters_surface_and_vanillas(adverse, record_property):
         )
     ref = ArchivedPipeline(c).run(load_frozen_btc_20211021_snapshot())
     chain = ref.snapshot.to_option_chain()
-    old = c.calibration_config
-    settings = {f.name: getattr(old, f.name) for f in fields(LSVParametricCalibrationConfig)}
-    settings.update(
-        family=LocalVolFamily(old.family.value), weighting=CalibrationWeighting(old.weighting.value)
-    )
-    cfg = LSVParametricCalibrationConfig(**settings)
-    fitter = LSVParametricCalibrator(c.calibration_grid, cfg, c.adi_config)
-    mc = c.monte_carlo_config
-    pipeline = LSVMarketPipeline(
-        fitter,
-        LogSvPdePricer(
-            grid=c.repricing_grid,
-            steps_per_interval=c.repricing_steps_per_interval,
-            adi=c.adi_config,
-        ),
-        LSVMonteCarloPricer(
-            config=LSVMonteCarloConfig(mc.paths, mc.steps_per_year, mc.seed, mc.antithetic),
-            confidence_level=mc.confidence_level,
-        ),
-    )
-    settings = dict(
-        grid_size=c.calibration_grid_size,
-        repair_policy=DupireRepairPolicy(
-            c.dupire_repair_policy.variance_floor, c.dupire_repair_policy.variance_cap
-        ),
-        calibration_steps_per_interval=c.calibration_steps_per_interval,
-        initial_parameters=c.calibration_initial_parameters,
-    )
-    # Keep the strict candidate-density rejection visible before replaying the historical fit.
-    with pytest.raises(LSVCalibrationError, match=f"T={chain.ttms[2]:g}.*negative mass"):
-        pipeline.run(chain, c.params, **settings)
     trial_limit = 1.5e-4 if adverse else 3e-5
-    pipeline = replace(
-        pipeline,
-        calibrator=replace(fitter, config=replace(cfg, negative_mass_tolerance=trial_limit)),
-    )
-    result = pipeline.run(chain, c.params, **settings)
     fit, market = result.calibration, result.market
     np.testing.assert_array_equal(result.dupire.repaired_mask, ref.dupire_result.repaired_mask)
     np.testing.assert_allclose(
