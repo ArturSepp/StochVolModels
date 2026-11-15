@@ -466,7 +466,7 @@ package in your research, please cite the software and the relevant papers:
   title={StochVolModels: Python Implementation of Stochastic Volatility Models},
   author={Sepp, Artur},
   year={2026},
-  version={2.11.0},
+  version={2.12.0},
   url={https://github.com/ArturSepp/StochVolModels},
   note={Python package for pricing analytics and Monte Carlo simulations}
 }

@@ -8,6 +8,7 @@
       "/pde_solvers/",
       "/models/logsv_pde.py",
       "/fitters/dupire.py",
+      "/fitters/lsv_fixed_point.py",
       "/models/local_vol.py",
       "/models/lsv.py",
       "/pricers/lsv_projection.py",

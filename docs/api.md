@@ -242,6 +242,9 @@ The provisional `stochvolmodels.models.lsv.LSVModel` binds LogSV dynamics to a
 `project_conditional_variance`, `recover_leverage_slice` and `SequentialLSVProjector`.
 The returned model can be priced by `LogSvPdePricer`.
 See [conditional variance and leverage](software_design.md#conditional-variance-and-leverage).
+The provisional `stochvolmodels.fitters.lsv_fixed_point.LSVFixedPointCalibrator` fits
+the leverage and exposes the convergence history for every maturity.
+See [fixed-point calibration](software_design.md#fixed-point-leverage-calibration).
 
 The [software design](software_design.md#models-without-an-article) page says which of these
 surfaces have no article yet, and why.

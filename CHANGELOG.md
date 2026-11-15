@@ -4,6 +4,14 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.12.0] - 2026-11-15
+
+### Added
+
+- The provisional `LSVFixedPointCalibrator` fits a leverage row at each maturity
+  to a deterministic local-volatility surface. It returns the fitted LSV model
+  with its trial densities, convergence residuals and leverage updates.
+
 ## [2.11.0] - 2026-11-15
 
 ### Added

@@ -194,6 +194,28 @@ propagation with the recovered rows. It splits at leverage and backbone knots
 as well as quoted maturities and discounts each vanilla in its quote currency.
 The projection module docstring includes an executable recovery and pricing example.
 
+### Fixed-point leverage calibration
+
+`LSVFixedPointCalibrator(grid, config).calibrate(params, target_local_vol)` holds
+LogSV dynamics fixed and fits one leverage row per positive target maturity.
+It begins at the point mass $(0,\sigma_0)$. Every trial in an interval starts from
+the same last accepted density. The solver propagates the candidate row $c$, checks
+the terminal density against the projection mass limits and computes a bounded
+proposal $b$ from its conditional variance. A trial converges when every log-forward
+node satisfies $|b-c|\leq a+r\max(|b|,|c|)$, with absolute tolerance $a$ and
+relative tolerance $r$. A retry uses $(1-d)c+d b$ for damping weight $d$.
+Nodes affected by the density floor or leverage bounds participate in the test.
+
+The converged candidate and its own terminal law carry into the next interval.
+`result.model` can be repriced from time zero with `LogSvPdePricer`.
+`result.slices[i].iterations` retains each trial's residuals, leverage update,
+conditional moments, endpoint density and substep diagnostics.
+`LSVConvergenceError` reports the failed interval and its trial history at the
+iteration limit. An unusable density raises a validation error at that trial.
+Convergence measures the leverage equation on the chosen grid. Vanilla repricing
+against the local-volatility target measures a separate price error.
+The fitter module docstring includes an executable two-maturity example.
+
 ### Model, pricer, product and data ownership
 
 The directory names reflect two stages of development. The original `pricers/` modules bundle

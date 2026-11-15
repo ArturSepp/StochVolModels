@@ -351,6 +351,78 @@ def _advance_lsv(
     return state, tuple(diagnostics)
 
 
+class _LSVProjectionRun:
+    """Shared state, propagation and density acceptance for one local-volatility target."""
+
+    def __init__(
+        self,
+        grid: TensorGrid2D,
+        config: LSVProjectionConfig,
+        adi: ADIConfig,
+        params: LogSvParams,
+        target_local_vol: LocalVolSurface,
+        steps_per_interval: int | ArrayLike,
+    ) -> None:
+        """Bind the numerical settings and construct the initial point mass and leverage."""
+        if (
+            not isinstance(target_local_vol, LocalVolSurface)
+            or target_local_vol.coordinate is not CoordinateSystem.LOG_FORWARD
+        ):
+            raise ValueError("a log-forward LocalVolSurface is required")
+        times = target_local_vol.times
+        if times[0] <= 0:
+            raise ValueError("the first target maturity must be positive")
+        self.counts = _step_counts(steps_per_interval, len(times))
+        self.model = LSVModel.from_params(params)
+        sigma0 = self.model.dynamics.params.sigma0
+        if not (
+            grid.x.nodes[0] < 0 < grid.x.nodes[-1]
+            and 0 <= grid.y.nodes[0] < sigma0 < grid.y.nodes[-1]
+        ):
+            raise ValueError("initial (0, sigma0) must be interior, with nonnegative volatility")
+        self.initial_density = PDEState2D(0.0, grid.project_delta(0.0, sigma0))
+        self.bounds = (config.leverage_floor, config.leverage_cap)
+        first_target = target_local_vol.evaluate(times[0], grid.x.nodes)
+        self.initial_leverage = np.clip(
+            first_target / (self.model.volatility_scale(times[0]) * sigma0), *self.bounds
+        )
+        self.solver = PDE2DADISolver(
+            adi,
+            DensityPolicy(
+                negativity_tolerance=config.negative_mass_tolerance,
+                mass_error_tolerance=config.mass_tolerance,
+            ),
+        )
+        self.grid = grid
+        self.config = config
+        self.target = target_local_vol
+
+    def evaluate(
+        self, start: PDEState2D, maturity: float, steps: int, candidate: FloatArray
+    ) -> LSVProjectionSlice:
+        """Project one propagated candidate from the supplied interval-start density."""
+        surface = LeverageSurface([maturity], self.grid.x, candidate[None, :], *self.bounds)
+        applied = replace(self.model, leverage_surface=surface)
+        state, diagnostics = _advance_lsv(applied, self.grid, self.solver, start, maturity, steps)
+        try:
+            moments = project_conditional_variance(self.grid, state.values, self.config)
+        except ValueError as exc:
+            raise ValueError(f"LSV projection at T={maturity:g}: {exc}") from exc
+        update = recover_leverage_slice(
+            self.target.evaluate(maturity, self.grid.x.nodes),
+            moments,
+            candidate,
+            self.config,
+            volatility_scale=self.model.volatility_scale(maturity),
+        )
+        return LSVProjectionSlice(surface.values[0], state, moments, update, diagnostics)
+
+    def fitted_model(self, rows: list[FloatArray]) -> LSVModel:
+        """Bind the chosen positive leverage rows to the snapshotted LogSV dynamics."""
+        surface = LeverageSurface(self.target.times, self.grid.x, np.vstack(rows), *self.bounds)
+        return replace(self.model, leverage_surface=surface)
+
+
 @dataclass(frozen=True, slots=True)
 class SequentialLSVProjector:
     """Project one leverage row per target maturity using the historical lagged update."""
@@ -371,61 +443,17 @@ class SequentialLSVProjector:
         that target interval. The returned model uses the newly recovered rows when
         repriced. Per-step diagnostics include dates between projection observations.
         """
-        if (
-            not isinstance(target_local_vol, LocalVolSurface)
-            or target_local_vol.coordinate is not CoordinateSystem.LOG_FORWARD
-        ):
-            raise ValueError("a log-forward LocalVolSurface is required")
-        times = target_local_vol.times
-        if times[0] <= 0:
-            raise ValueError("the first target maturity must be positive")
-        counts = _step_counts(steps_per_interval, len(times))
-        model = LSVModel.from_params(params)
-        sigma0 = model.dynamics.params.sigma0
-        grid = self.grid
-        if not (
-            grid.x.nodes[0] < 0 < grid.x.nodes[-1]
-            and 0 <= grid.y.nodes[0] < sigma0 < grid.y.nodes[-1]
-        ):
-            raise ValueError("initial (0, sigma0) must be interior, with nonnegative volatility")
-        state = PDEState2D(0.0, grid.project_delta(0.0, sigma0))
-        config = self.config
-        bounds = (config.leverage_floor, config.leverage_cap)
-        first_target = target_local_vol.evaluate(times[0], grid.x.nodes)
-        previous = np.clip(first_target / (model.volatility_scale(times[0]) * sigma0), *bounds)
-        solver = PDE2DADISolver(
-            self.adi,
-            DensityPolicy(
-                negativity_tolerance=config.negative_mass_tolerance,
-                mass_error_tolerance=config.mass_tolerance,
-            ),
+        run = _LSVProjectionRun(
+            self.grid, self.config, self.adi, params, target_local_vol, steps_per_interval
         )
+        state, previous = run.initial_density, run.initial_leverage
         slices = []
-        for maturity, steps in zip(times, counts):
-            surface = LeverageSurface([maturity], grid.x, previous[None, :], *bounds)
-            applied = replace(model, leverage_surface=surface)
-            state, diagnostics = _advance_lsv(applied, grid, solver, state, maturity, steps)
-            try:
-                moments = project_conditional_variance(grid, state.values, config)
-            except ValueError as exc:
-                raise ValueError(f"LSV projection at T={maturity:g}: {exc}") from exc
-            update = recover_leverage_slice(
-                target_local_vol.evaluate(maturity, grid.x.nodes),
-                moments,
-                previous,
-                config,
-                volatility_scale=model.volatility_scale(maturity),
-            )
-            slices.append(
-                LSVProjectionSlice(surface.values[0], state, moments, update, diagnostics)
-            )
-            previous = update.accepted_leverage
-        surface = LeverageSurface(
-            times, grid.x, np.vstack([s.leverage_update.accepted_leverage for s in slices]), *bounds
-        )
-        return SequentialLSVProjectionResult(
-            replace(model, leverage_surface=surface), tuple(slices)
-        )
+        for maturity, steps in zip(target_local_vol.times, run.counts):
+            row = run.evaluate(state, maturity, steps, previous)
+            slices.append(row)
+            state, previous = row.terminal_density, row.leverage_update.accepted_leverage
+        model = run.fitted_model([row.leverage_update.accepted_leverage for row in slices])
+        return SequentialLSVProjectionResult(model, tuple(slices))
 
 
 def _step_counts(values: int | ArrayLike, size: int) -> NDArray[np.int64]:
