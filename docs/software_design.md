@@ -139,6 +139,31 @@ discounted market parity error, and the peak negative mass across all steps.
 Refine the grid, boundaries and steps for the time horizon and strikes of interest.
 The pricer's module docstring includes an executable two-bucket pricing example.
 
+### Continuous Dupire inversion
+
+`stochvolmodels.fitters.dupire.CallSurface` takes discounted European call premiums
+on a common grid of absolute strikes, maturities in years, and one forward and
+discount factor per maturity. Both curves default to one for normalized calls.
+`DupireRecoverer().continuous(surface)` differentiates the quotes at fixed strike.
+With forward growth $b=\partial_T \log F$, short rate $r=-\partial_T \log D$ and
+$q=r-b$, the recovered annualized variance is $(C_T+qC+bK C_K)/(K^2 C_{KK}/2)$.
+
+Inspect `raw_local_variance`, the two terms of the ratio, and `valid_mask`.
+Both terms must exceed their tolerances. The outer time rows and strike columns
+use one-sided stencils and are flagged by the complement of `interior_mask`.
+An explicit `DupireRepairPolicy` replaces invalid estimates by its variance floor
+and clips valid estimates to its bounds. The result retains every raw estimate
+and marks each adjustment in `repaired_mask`. These bounds act on local variance. The original quoted premiums stay available on the result.
+
+`result.to_local_vol_surface()` requires positive finite volatility at every node
+and explicit repair of any invalid estimates. For each row it transforms the
+strikes to $\log(K/F_T)$ and linearly interpolates volatility, with flat wings.
+The default output grid uses the first maturity's log-forward nodes. A supplied
+`Grid1D` can specify a different common grid. The PDE pricer uses these
+instantaneous estimates as bucket values through their respective maturities,
+so repricing can differ from the input calls. The fitter's module docstring
+contains an executable Black-surface recovery and put-pricing example.
+
 ### Model, pricer, product and data ownership
 
 The directory names reflect two stages of development. The original `pricers/` modules bundle

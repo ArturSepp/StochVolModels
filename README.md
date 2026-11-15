@@ -80,8 +80,9 @@ own payoffs and discounting.
 
 Use `stochvolmodels` for European vanilla pricing and implied-volatility analytics under stochastic volatility, for model calibration to option chains (a calibration example to Bitcoin options data is included), and for replicating the papers listed under [Statement of need](#statement-of-need).
 
-It is not a general derivatives platform: there is no American-option, local-volatility, or
-term-structure framework. Black-Scholes-Merton and absolute-normal Bachelier analytics are
+For deterministic local volatility, the provisional fitting and pricing APIs support
+[Dupire inversion and European vanilla PDE prices](docs/software_design.md#continuous-dupire-inversion).
+American options and general term-structure modelling are outside the package scope. Black-Scholes-Merton and absolute-normal Bachelier analytics are
 provided by the required
 [`vanilla-option-pricers`](https://github.com/ArturSepp/VanillaOptionPricers) package and
 re-exported from `stochvolmodels`; for strategy backtesting and reporting, use
@@ -465,7 +466,7 @@ package in your research, please cite the software and the relevant papers:
   title={StochVolModels: Python Implementation of Stochastic Volatility Models},
   author={Sepp, Artur},
   year={2026},
-  version={2.9.0},
+  version={2.10.0},
   url={https://github.com/ArturSepp/StochVolModels},
   note={Python package for pricing analytics and Monte Carlo simulations}
 }

@@ -7,6 +7,7 @@
     "exclude_path_fragments": [
       "/pde_solvers/",
       "/models/logsv_pde.py",
+      "/fitters/dupire.py",
       "/models/local_vol.py",
       "/pricers/local_vol_pde_pricer.py",
       "/pricers/logsv_pde_pricer.py",

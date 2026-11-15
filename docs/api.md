@@ -234,7 +234,9 @@ The provisional `stochvolmodels.pricers.logsv_pde_pricer.LogSvPdePricer` uses th
 The provisional `stochvolmodels.models.local_vol.LocalVolSurface` supplies deterministic
 volatility to `stochvolmodels.pricers.local_vol_pde_pricer.LocalVolPdePricer`.
 See [local-volatility pricing](software_design.md#deterministic-local-volatility) for units
-and bucket conventions.
+and bucket conventions. The provisional `stochvolmodels.fitters.dupire` module exposes
+`CallSurface`, `DupireRecoverer`, `DupireResult` and `DupireRepairPolicy` for
+[continuous Dupire inversion](software_design.md#continuous-dupire-inversion).
 
 The [software design](software_design.md#models-without-an-article) page says which of these
 surfaces have no article yet, and why.

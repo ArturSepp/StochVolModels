@@ -4,6 +4,14 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.10.0] - 2026-11-14
+
+### Added
+
+- The provisional `stochvolmodels.fitters.dupire` module recovers continuous local
+  variance from discounted calls, exposes derivative and repair diagnostics, and
+  converts the result into a deterministic surface for vanilla PDE pricing.
+
 ## [2.9.0] - 2026-11-14
 
 ### Added
