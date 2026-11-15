@@ -249,6 +249,32 @@ the stress replay allows up to `1.5e-4` trial negative mass. It reaches optimize
 convergence with 12 of 44 IVs inside bid–ask and fails the fine-grid negative-mass,
 target-IV and independent Monte Carlo IV checks.
 
+### LSV Monte Carlo
+
+`LSVMonteCarloEngine(model, config).simulate_paths(observation_times=times)` returns
+`ModelPaths` under the money-market measure. Supply a NumPy array of years beginning
+at zero. Asset levels are `spot0 * exp(X)`, where leverage is evaluated at normalized
+log-forward X. The engine stores volatility, log return, integrated diffusion variance
+and the cumulative jump count at each observation. The simulation grid includes every
+interior leverage and backbone knot. Each interval of length Δt takes
+`ceil(steps_per_year * Δt)` log-Euler steps.
+
+`LSVMonteCarloConfig` selects path count, steps per year, seed and antithetic sampling.
+A local NumPy generator draws the return shock, then the independent volatility shock
+at each step. When enabled, each first-half path has its Gaussian antithetic partner
+in the second half. Jump counts are independent Poisson draws for each path.
+`FixedLogForwardJump(intensity, jump_size)` specifies an optional model law in
+events per year and log-forward units. Its forward drift correction is
+`-intensity * expm1(jump_size)`. Jump simulation needs no spatial grid. The vanilla
+PDE pricer currently supports diffusions.
+
+`LSVMonteCarloPricer.price_chain_detailed(chain, model)` simulates the expiries jointly,
+evaluates each call or put at its quoted forward and discounts its payoff once.
+It returns raw premiums, Black IVs, failed-inversion masks, price confidence intervals,
+forward diagnostics and the underlying paths. Standard errors use independent pair
+means under antithetic sampling. To use the generic `value_paths` on these paired
+paths, pass `independent_group_ids=np.tile(np.arange(n_paths // 2), 2)`.
+
 ### Model, pricer, product and data ownership
 
 The directory names reflect two stages of development. The original `pricers/` modules bundle

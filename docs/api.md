@@ -251,6 +251,11 @@ a bounded leverage formula to Black implied volatilities at each maturity. The r
 contains a priceable model, the parameter matrix and per-expiry fit diagnostics.
 See [parametric calibration](software_design.md#parametric-leverage-calibration).
 
+The provisional `stochvolmodels.models.lsv_simulation.LSVMonteCarloEngine` generates
+`ModelPaths` from a fitted `LSVModel`. The corresponding
+`stochvolmodels.pricers.lsv_mc_pricer.LSVMonteCarloPricer` prices ragged European
+chains and reports sampling uncertainty. See [LSV Monte Carlo](software_design.md#lsv-monte-carlo).
+
 The [software design](software_design.md#models-without-an-article) page says which of these
 surfaces have no article yet, and why.
 

@@ -12,6 +12,8 @@
       "/fitters/lsv_parametric.py",
       "/models/local_vol.py",
       "/models/lsv.py",
+      "/models/lsv_simulation.py",
+      "/pricers/lsv_mc_pricer.py",
       "/pricers/lsv_projection.py",
       "/pricers/local_vol_pde_pricer.py",
       "/pricers/logsv_pde_pricer.py",

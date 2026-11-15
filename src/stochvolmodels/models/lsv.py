@@ -9,7 +9,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from stochvolmodels.models.local_vol import _readonly_array
-from stochvolmodels.models.logsv import LogSvModel
+from stochvolmodels.models.logsv import LogSvModel, _finite_float, _nonnegative_float
 from stochvolmodels.models.logsv_pde import _mma_coefficients
 from stochvolmodels.pde_solvers import Grid1D, PDE2DCoefficients, TensorGrid2D
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
@@ -87,6 +87,27 @@ class LeverageSurface:
 
 
 @dataclass(frozen=True, slots=True)
+class FixedLogForwardJump:
+    """Poisson jump intensity per year and fixed additive jump in log(S/F)."""
+
+    intensity: float
+    jump_size: float
+
+    def __post_init__(self) -> None:
+        """Require finite jump parameters and a representable compensated drift."""
+        object.__setattr__(self, "intensity", _nonnegative_float(self.intensity, "intensity"))
+        object.__setattr__(self, "jump_size", _finite_float(self.jump_size, "jump_size"))
+        with np.errstate(over="ignore", invalid="ignore"):
+            if not np.isfinite(self.compensator):
+                raise ValueError("log-forward jump compensator must be finite")
+
+    @property
+    def compensator(self) -> float:
+        """Drift offset preserving the expected forward under the money-market measure."""
+        return float(-self.intensity * np.expm1(self.jump_size)) if self.intensity else 0.0
+
+
+@dataclass(frozen=True, slots=True)
 class LSVModel:
     """LogSV with return diffusion eta(t) L(t,x) sigma and ordinary MMA settlement.
 
@@ -99,11 +120,14 @@ class LSVModel:
     leverage_surface: LeverageSurface | None = None
     backbone_times: tuple[float, ...] = ()
     backbone_scales: tuple[float, ...] = ()
+    jump: FixedLogForwardJump | None = None
 
     def __post_init__(self) -> None:
         """Validate the detached dynamics, surface and optional deterministic backbone."""
         if not isinstance(self.dynamics, LogSvModel):
             raise TypeError("dynamics must be a LogSvModel")
+        if self.jump is not None and not isinstance(self.jump, FixedLogForwardJump):
+            raise TypeError("jump must be a FixedLogForwardJump")
         if self.leverage_surface is not None and not isinstance(
             self.leverage_surface, LeverageSurface
         ):
@@ -127,7 +151,11 @@ class LSVModel:
 
     @classmethod
     def from_params(
-        cls, params: LogSvParams, leverage_surface: LeverageSurface | None = None
+        cls,
+        params: LogSvParams,
+        leverage_surface: LeverageSurface | None = None,
+        *,
+        jump: FixedLogForwardJump | None = None,
     ) -> LSVModel:
         """Take a detached snapshot of Markovian parameters and the quoted return loading."""
         if not isinstance(params, LogSvParams):
@@ -135,10 +163,10 @@ class LSVModel:
         dynamics = LogSvModel(replace(params, vol_backbone=None))
         backbone = params.vol_backbone
         if backbone is None:
-            return cls(dynamics, leverage_surface)
+            return cls(dynamics, leverage_surface, jump=jump)
         if len(backbone) == 0:
             raise ValueError("volatility backbone must contain at least one knot")
-        return cls(dynamics, leverage_surface, tuple(backbone.index), tuple(backbone))
+        return cls(dynamics, leverage_surface, tuple(backbone.index), tuple(backbone), jump)
 
     @property
     def time_knots(self) -> FloatArray:
@@ -171,14 +199,24 @@ class LSVModel:
         i = min(np.searchsorted(surface.times, time), len(surface.times) - 1)
         return float(eta * np.max(surface.values[i]))
 
-    def evaluate(self, time: float, grid: TensorGrid2D) -> PDE2DCoefficients:
-        """Apply eta and leverage to return diffusion and its covariance with volatility."""
-        eta = self.volatility_scale(time)
+    def validate_mma(self, time: float) -> None:
+        """Check the sufficient martingale bound across the active leverage row."""
         params = self.dynamics.params
-        surface = self.leverage_surface
-        if surface is None:
-            return _mma_coefficients(params, grid, eta)
-        # Include the complete interpolation row when checking the sufficient MMA bound.
         if params.beta > 0 and params.kappa2 < params.beta * self.max_return_loading(time):
             raise ValueError("LSV pricing requires kappa2 >= beta * eta * L over the leverage row")
-        return _mma_coefficients(params, grid, eta * surface.evaluate(time, grid.x.nodes)[:, None])
+
+    def return_loading(self, time: float, x: ArrayLike) -> float | FloatArray:
+        """Evaluate the dimensionless return loading eta(t) L(t,x) at arbitrary locations."""
+        eta = self.volatility_scale(time)
+        surface = self.leverage_surface
+        return eta if surface is None else eta * surface.evaluate(time, x)
+
+    def evaluate(self, time: float, grid: TensorGrid2D) -> PDE2DCoefficients:
+        """Build the diffusion-only PDE generator for this leverage and backbone bucket."""
+        if self.jump is not None and self.jump.intensity > 0 and self.jump.jump_size != 0:
+            raise ValueError("the LSV PDE pricer requires a diffusion-only model")
+        self.validate_mma(time)
+        loading = self.return_loading(time, grid.x.nodes)
+        if isinstance(loading, np.ndarray):
+            loading = loading[:, None]
+        return _mma_coefficients(self.dynamics.params, grid, loading)

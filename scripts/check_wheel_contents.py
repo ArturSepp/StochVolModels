@@ -47,6 +47,8 @@ REQUIRED_RUNTIME_FILES = PDE_FILES | {
     "stochvolmodels/fitters/lsv_parametric.py",
     "stochvolmodels/models/local_vol.py",
     "stochvolmodels/models/lsv.py",
+    "stochvolmodels/models/lsv_simulation.py",
+    "stochvolmodels/pricers/lsv_mc_pricer.py",
     "stochvolmodels/pricers/lsv_projection.py",
     "stochvolmodels/pricers/local_vol_pde_pricer.py",
     "stochvolmodels/pricers/logsv_pde_pricer.py",

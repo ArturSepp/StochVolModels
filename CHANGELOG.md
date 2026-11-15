@@ -4,6 +4,14 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.14.0] - 2026-11-15
+
+### Added
+
+- A provisional LSV Monte Carlo path engine and European vanilla chain pricer.
+  They support maturity-bucketed leverage and volatility backbones, optional
+  compensated fixed log-forward jumps, and antithetic sampling errors.
+
 ## [2.13.0] - 2026-11-15
 
 ### Added
