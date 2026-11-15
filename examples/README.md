@@ -73,6 +73,7 @@ enum case and includes Numba compilation on first use.
 | `options_time_series_data/plot_vix_1m_atm_vol.py` | continuous VIX ATM-volatility history | `research` extra and partitioned OCA VIX EOD cache | private/local-data only |
 | `pricing/plot_bsm_zero_dte_theta.py` | offline vanilla visualization | core only | manual plotting |
 | `pricing/run_heston.py` | offline stable Heston demonstration | core only | manual plotting |
+| `pricing/lsv_production_stress.py` | seven fixed-parameter LSV propagation stresses | core only, generated normalized calls | slow regression against the archived scenarios |
 | `pricing/run_heston_sv_pricer.py` | extended Heston research cases | core only, legacy/advanced exports | manual advanced |
 | `pricing/run_bsm_mgf_pricer.py` | transform contributor illustration | core only, internal transform API | manual advanced |
 | `pricing/run_hawkes_pricer.py` | Hawkes research illustration | core only, advanced root exports | manual advanced |
@@ -84,6 +85,20 @@ OCA 5 with its CBOE/Parquet support and supports the credential-free
 `calibration/run_oca_logsv_calibration.py` bridge. The CBOE time-series lane also needs local
 normalized SPX/VIX caches; its directory README gives the setup. Paper-replication code under
 `papers/` also uses `research`.
+
+## LSV propagation stresses
+
+Run `python -m examples.pricing.lsv_production_stress` from the checkout. Each scenario
+prices five normalized calls at two expiries using a forward Douglas PDE and 80,000 seeded
+antithetic Monte Carlo paths. The table gives the largest price, forward and mass errors,
+negative mass at the quoted expiries, and peak negative mass across all completed steps.
+
+The archived checks accept high vol-of-vol, steep leverage wings, compensated down-jumps
+and sparse maturity buckets. They reject both near-singular correlations on expiry negative
+mass and the narrow grid on call prices. The command exits unsuccessfully if any scenario
+differs from its expected set of failed checks. The slow regression checks every call and
+expiry against the [frozen reference](pricing/lsv_production_stress_reference.json).
+It also compares density moments at every step when the original engines are present.
 
 ## Native quote and research diagnostics
 
