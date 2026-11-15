@@ -4,6 +4,14 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.16.0] - 2026-11-15
+
+### Added
+
+- The provisional `LSVOptionChainAdapter` prepares normalized calibration targets
+  from ragged European bid/ask Black IVs. It retains the original quotes, selected
+  indices and spreads, and exposes the raw Dupire variance and any explicit repairs.
+
 ## [2.15.0] - 2026-11-15
 
 ### Added

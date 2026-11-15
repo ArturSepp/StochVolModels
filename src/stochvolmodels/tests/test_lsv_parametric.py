@@ -8,7 +8,8 @@ import pandas as pd
 import pytest
 
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.fitters.dupire import CallSurface, DupireRecoverer, DupireRepairPolicy
+from stochvolmodels.fitters.dupire import DupireRepairPolicy
+from stochvolmodels.fitters.lsv_market import LSVOptionChainAdapter
 from stochvolmodels.fitters.lsv_parametric import (
     CalibrationWeighting,
     ImpliedVolCalibrationTarget,
@@ -164,18 +165,15 @@ def test_frozen_btc_parameters_surface_and_vanillas(adverse, record_property):
             calibration_config=replace(c.calibration_config, maximum_evaluations=24),
         )
     ref = LSVMarketPipeline(c).run(load_frozen_btc_20211021_snapshot())
-    inp = ref.calibration_input
-    t = inp.target
-    target = ImpliedVolCalibrationTarget(
-        t.times, t.strikes, t.implied_volatilities, t.forward, t.discount_factor
-    )
-    dupire = DupireRecoverer().continuous(
-        CallSurface(t.times, t.strikes, target.target_calls),
+    chain = ref.snapshot.to_option_chain()
+    market = LSVOptionChainAdapter(chain).build_calibration_input(grid_size=c.calibration_grid_size)
+    target = market.target
+    dupire = market.recover_dupire(
         repair_policy=DupireRepairPolicy(
             c.dupire_repair_policy.variance_floor, c.dupire_repair_policy.variance_cap
         ),
     )
-    local = LocalVolSurface(t.times, Grid1D(inp.log_moneyness), dupire.local_volatility)
+    local = LocalVolSurface(target.times, Grid1D(market.log_moneyness), dupire.local_volatility)
     np.testing.assert_allclose(local.values, ref.prefit_local_volatility.values, atol=1e-13, rtol=0)
     old = c.calibration_config
     settings = {f.name: getattr(old, f.name) for f in fields(LSVParametricCalibrationConfig)}
@@ -188,7 +186,7 @@ def test_frozen_btc_parameters_surface_and_vanillas(adverse, record_property):
     starts = dict(initial_parameters=c.calibration_initial_parameters)
     # The archived fit disabled candidate-density checks. Its third expiry breaches
     # 2e-5 even for the normal start. Keep that strict failure reproducible.
-    with pytest.raises(LSVCalibrationError, match=f"T={t.times[2]:g}.*negative mass"):
+    with pytest.raises(LSVCalibrationError, match=f"T={target.times[2]:g}.*negative mass"):
         fitter.calibrate(*args, **starts)
     trial_limit = 1.5e-4 if adverse else 3e-5
     fit = replace(fitter, config=replace(cfg, negative_mass_tolerance=trial_limit)).calibrate(
@@ -219,14 +217,44 @@ def test_frozen_btc_parameters_surface_and_vanillas(adverse, record_property):
     assert np.isfinite(iv).all()
     fine_call_error = np.max(abs(np.vstack(fine.prices) - ref.pde_repricing.model_calls), axis=1)
     fine_iv_error = np.max(abs(iv - ref.pde_repricing.model_implied_volatilities), axis=1)
-    chain = ref.snapshot.to_option_chain()
-    ragged = pricer.price_chain(chain, fit.model)
+    original = pricer.price_chain_detailed(chain, fit.model)
+    ragged = original.prices
     quote_errors = []
+    quotes = []
     for i, sl in enumerate(ref.pde_repricing.slices):
         f, d = chain.forwards[i], chain.discfactors[i]
         oracle = DensityPricer(sl.density.marginal_x_state(), forward=f, discount_factor=d)
         pvs = oracle.price_vanillas(chain.strikes_ttms[i], chain.optiontypes_ttms[i])
         quote_errors.append(float(np.max(abs(ragged[i] - pvs)) / (f * d)))
+        simulated = ref.option_chain_pricing.slices[i]
+        mc_se = simulated.standard_errors
+        assert not original.invalid_iv[i].any() and not simulated.model_price_clipped_mask.any()
+        assert np.all(mc_se > 0)
+        gap = np.abs(ragged[i] - simulated.model_prices)
+        if not adverse:
+            # Same fine PDE grid and pointwise MC check as the frozen-engine replay.
+            assert np.all(gap < 5 * mc_se)
+        quotes.append(
+            dict(
+                expiry=market.source_slices[i].slice_id,
+                forward=float(f),
+                discount=float(d),
+                strike=chain.strikes_ttms[i].tolist(),
+                option_type=chain.optiontypes_ttms[i].tolist(),
+                public_pv=ragged[i].tolist(),
+                archived_pv=pvs.tolist(),
+                archived_mc_pv=simulated.model_prices.tolist(),
+                archived_mc_se=mc_se.tolist(),
+                max_mc_se=float(np.max(gap / mc_se)),
+                inside_mc_95=int(np.sum(gap <= 1.95996398454 * mc_se)),
+                inside_market_spread=int(
+                    np.sum(
+                        (chain.bid_ivs[i] <= original.implied_vols[i])
+                        & (original.implied_vols[i] <= chain.ask_ivs[i])
+                    )
+                ),
+            )
+        )
     assert sum(map(len, ragged)) == 49 and iv.shape == (4, 11)
     # Run the independent historical simulator on the newly fitted leverage rows.
     mc = LSVOptionChainPricer(
@@ -240,15 +268,9 @@ def test_frozen_btc_parameters_surface_and_vanillas(adverse, record_property):
     ).price(normalized_chain)
     mc_iv = np.vstack([row.model_implied_volatilities for row in mc.slices])
 
-    def interpolate(rows):
-        return np.vstack(
-            [np.interp(inp.log_moneyness, x, v) for x, v in zip(inp.source_log_moneyness, rows)]
-        )
-
-    bids = interpolate(inp.source_bid_implied_volatilities)
-    asks = interpolate(inp.source_ask_implied_volatilities)
+    bids, asks = market.bid_ivs, market.ask_ivs
     inside = int(np.count_nonzero((bids <= iv) & (iv <= asks)))
-    target_rmse = np.sqrt(np.mean((iv - t.implied_volatilities) ** 2, axis=1))
+    target_rmse = np.sqrt(np.mean((iv - target.implied_volatilities) ** 2, axis=1))
     mc_rmse = np.sqrt(np.mean((iv - mc_iv) ** 2, axis=1))
     acceptance = replace(
         ref.acceptance,
@@ -261,7 +283,8 @@ def test_frozen_btc_parameters_surface_and_vanillas(adverse, record_property):
     )
     for name, value in dict(
         snapshot=ref.snapshot.fingerprint,
-        expiries=list(inp.slice_ids),
+        expiries=[s.slice_id for s in market.source_slices],
+        original_quotes=quotes,
         parameters=fit.parameter_values.tolist(),
         archive_parameters=expected.parameter_values.tolist(),
         parameter_error=param_error.tolist(),

@@ -46,6 +46,7 @@ REQUIRED_RUNTIME_FILES = PDE_FILES | {
     "stochvolmodels/fitters/dupire.py",
     "stochvolmodels/fitters/lsv_fixed_point.py",
     "stochvolmodels/fitters/lsv_parametric.py",
+    "stochvolmodels/fitters/lsv_market.py",
     "stochvolmodels/models/local_vol.py",
     "stochvolmodels/models/lsv.py",
     "stochvolmodels/models/lsv_simulation.py",

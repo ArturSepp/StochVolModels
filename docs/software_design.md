@@ -216,6 +216,30 @@ Convergence measures the leverage equation on the chosen grid. Vanilla repricing
 against the local-volatility target measures a separate price error.
 The fitter module docstring includes an executable two-maturity example.
 
+### OptionChain market adapter
+
+`stochvolmodels.fitters.lsv_market.LSVOptionChainAdapter` takes an ordinary European
+`OptionChain` with bid and ask decimal annualized Black IVs. It snapshots the original
+strikes, C/P codes, spreads, forwards, discount factors and expiry labels. By default
+it selects puts below the forward and calls at or above it. Pass `quote_selection="all"`
+to retain all quotes. Duplicate selected strikes in one expiry require an explicit
+choice by the caller.
+
+`build_calibration_input(grid_size=11)` interpolates bid, ask and mid IVs in
+$\log(K/F_T)$ over the overlap of the selected slices. A supplied log-moneyness
+grid must stay within every observed slice. Each source slice retains the indices
+that map the sorted quotes back to their original order. The calibration target uses
+$K/F_T$ as strike and $C/(D_T F_T)$ as call price.
+
+`market.target` can be passed directly to the parametric calibrator. Calling
+`result = market.recover_dupire(repair_policy=policy)` requires at least three
+expiries and three strike nodes. `result.raw_local_variance`,
+`result.local_variance` and `result.repaired_mask` retain the estimate, the variance
+after the chosen floor and cap, and the location of each repair. The default recovery
+returns the raw estimate. Use the original chain to price the fitted model in quote
+currency with its own forwards, discounts and payoff codes. The adapter module
+docstring includes an executable example using the bundled BTC chain.
+
 ### Parametric leverage calibration
 
 `stochvolmodels.fitters.lsv_parametric.LSVParametricCalibrator` holds LogSV dynamics

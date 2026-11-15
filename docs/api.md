@@ -257,6 +257,9 @@ The provisional `stochvolmodels.models.lsv_simulation.LSVMonteCarloEngine` gener
 chains and reports sampling uncertainty. See [LSV Monte Carlo](software_design.md#lsv-monte-carlo).
 The same `LSVModel` with `FixedLogForwardJump` can be priced by `LogSvPdePricer`.
 See [jump-aware LSV PDE pricing](software_design.md#jump-aware-lsv-pde-pricing).
+The provisional `stochvolmodels.fitters.lsv_market.LSVOptionChainAdapter` converts an
+ordinary bid/ask chain into an `LSVCalibrationInput` for fitting and Dupire recovery.
+See the [OptionChain market adapter](software_design.md#optionchain-market-adapter).
 
 The [software design](software_design.md#models-without-an-article) page says which of these
 surfaces have no article yet, and why.
