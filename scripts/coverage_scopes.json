@@ -9,6 +9,8 @@
       "/models/logsv_pde.py",
       "/fitters/dupire.py",
       "/models/local_vol.py",
+      "/models/lsv.py",
+      "/pricers/lsv_projection.py",
       "/pricers/local_vol_pde_pricer.py",
       "/pricers/logsv_pde_pricer.py",
       "/pricers/factor_hjm/",

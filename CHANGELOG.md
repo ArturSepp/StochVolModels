@@ -4,6 +4,14 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.11.0] - 2026-11-15
+
+### Added
+
+- A provisional LSV leverage model and one-pass conditional variance projection on
+  joint log-forward and volatility grids. The LogSV vanilla PDE pricer accepts the
+  recovered model, including deterministic backbone and leverage bucket dates.
+
 ## [2.10.0] - 2026-11-14
 
 ### Added

@@ -10,11 +10,13 @@ from stochvolmodels.pde_solvers import PDE2DCoefficients, TensorGrid2D
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 
 
-def _mma_coefficients(params: LogSvParams, grid: TensorGrid2D, eta: float) -> PDE2DCoefficients:
+def _mma_coefficients(
+    params: LogSvParams, grid: TensorGrid2D, eta: float | np.ndarray
+) -> PDE2DCoefficients:
     """Generator on one interval with return diffusion eta * sigma and unscaled vol dynamics."""
-    if not np.isfinite(eta) or eta <= 0:
+    if not np.all(np.isfinite(eta)) or np.any(eta <= 0):
         raise ValueError("the return volatility loading must be finite and positive")
-    if params.kappa2 < eta * params.beta:
+    if np.any(params.kappa2 < eta * params.beta):
         raise ValueError("Q_MMA requires kappa2 >= eta * beta on every interval")
     if grid.y.nodes[0] < 0:
         raise ValueError("volatility nodes must be nonnegative")

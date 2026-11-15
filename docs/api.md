@@ -237,6 +237,11 @@ See [local-volatility pricing](software_design.md#deterministic-local-volatility
 and bucket conventions. The provisional `stochvolmodels.fitters.dupire` module exposes
 `CallSurface`, `DupireRecoverer`, `DupireResult` and `DupireRepairPolicy` for
 [continuous Dupire inversion](software_design.md#continuous-dupire-inversion).
+The provisional `stochvolmodels.models.lsv.LSVModel` binds LogSV dynamics to a
+`LeverageSurface`. The `stochvolmodels.pricers.lsv_projection` module provides
+`project_conditional_variance`, `recover_leverage_slice` and `SequentialLSVProjector`.
+The returned model can be priced by `LogSvPdePricer`.
+See [conditional variance and leverage](software_design.md#conditional-variance-and-leverage).
 
 The [software design](software_design.md#models-without-an-article) page says which of these
 surfaces have no article yet, and why.

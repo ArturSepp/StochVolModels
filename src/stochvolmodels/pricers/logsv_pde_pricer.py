@@ -1,6 +1,6 @@
 """Opt-in forward-density pricing for European LogSV calls and puts."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from numbers import Integral
 
 import numpy as np
@@ -8,6 +8,7 @@ from numba.typed import List
 
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.models.logsv import LogSvMeasure, LogSvModel
+from stochvolmodels.models.lsv import LSVModel
 from stochvolmodels.models.logsv_pde import LogSvPdeCoefficients
 from stochvolmodels.pde_solvers import (
     ADIConfig,
@@ -17,9 +18,11 @@ from stochvolmodels.pde_solvers import (
     PDE2DADISolver,
     PDEDiagnostics2D,
     PDEDirection,
+    PDEState2D,
     TensorGrid2D,
 )
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
+from stochvolmodels.pricers.lsv_projection import _advance_lsv
 from stochvolmodels.pricers.model_pricer import ModelPricer
 from stochvolmodels.products.payoffs import _vanilla_payoff
 from stochvolmodels.utils.config import OptionType, VariableType
@@ -61,10 +64,12 @@ class LogSvPdeResult:
         return max(step.negative_mass for step in self.steps)
 
 
-def _default_grid(params: LogSvParams, chain: OptionChain) -> TensorGrid2D:
+def _default_grid(
+    params: LogSvParams, chain: OptionChain, return_loading: float = 1.0
+) -> TensorGrid2D:
     """Construct an initial mesh containing the initial state and every quoted strike."""
     scale = max(params.theta, params.sigma0)
-    stdev = scale * np.sqrt(chain.ttms[-1])
+    stdev = return_loading * scale * np.sqrt(chain.ttms[-1])
     wing = max(
         np.max(np.abs(np.log(k) - np.log(f))) for k, f in zip(chain.strikes_ttms, chain.forwards)
     )
@@ -92,7 +97,9 @@ class LogSvPdePricer(ModelPricer):
     Supply a tensor grid on (normalized log-forward, volatility) to control the
     domain and spatial resolution. steps_per_interval partitions each consecutive
     expiry interval. The starting mesh is a numerical choice and should be refined
-    for the maturity, wings and accuracy required.
+    for the maturity, wings and accuracy required. Pass an LSVModel to use a
+    leverage surface with optional backbone. Each leverage or backbone knot also
+    splits the integration interval and receives steps_per_interval steps.
     """
 
     grid: TensorGrid2D | None = None
@@ -124,10 +131,19 @@ class LogSvPdePricer(ModelPricer):
         ):
             raise ValueError("steps_per_interval must be a positive integer")
 
-        model = LogSvModel(params)
-        provider = LogSvPdeCoefficients(model)
+        lsv = isinstance(params, LSVModel)
+        model = params.dynamics if lsv else LogSvModel(params)
         snapshot = model.params
-        grid = self.grid if self.grid is not None else _default_grid(snapshot, option_chain)
+        grid = self.grid
+        if grid is None:
+            loading = 1.0
+            if lsv:
+                ends = params.time_knots
+                ends = np.r_[
+                    ends[(ends > 0) & (ends < option_chain.ttms[-1])], option_chain.ttms[-1]
+                ]
+                loading = max(params.max_return_loading(t) for t in ends)
+            grid = _default_grid(snapshot, option_chain, loading)
         if not isinstance(grid, TensorGrid2D):
             raise TypeError("grid must be a TensorGrid2D")
         if not (
@@ -136,31 +152,45 @@ class LogSvPdePricer(ModelPricer):
         ):
             raise ValueError("initial (0, sigma0) must be interior, with nonnegative volatility")
         maturities = option_chain.ttms
-        starts = np.r_[0.0, maturities[:-1]]
-        times = np.concatenate(
-            (
-                [0.0],
-                *[
-                    np.linspace(a, b, self.steps_per_interval + 1)[1:]
-                    for a, b in zip(starts, maturities)
-                ],
+        solver = PDE2DADISolver(self.adi)
+        start_values = grid.project_delta(0.0, snapshot.sigma0)
+        if lsv:
+            state = PDEState2D(0.0, start_values)
+            states, diagnostics = [], []
+            for end in maturities:
+                state, steps = _advance_lsv(
+                    params, grid, solver, state, end, self.steps_per_interval
+                )
+                states.append(state)
+                diagnostics.extend(steps)
+            steps = tuple(replace(d, step_index=i) for i, d in enumerate(diagnostics))
+        else:
+            starts = np.r_[0.0, maturities[:-1]]
+            times = np.concatenate(
+                (
+                    [0.0],
+                    *[
+                        np.linspace(a, b, self.steps_per_interval + 1)[1:]
+                        for a, b in zip(starts, maturities)
+                    ],
+                )
             )
-        )
-        # Subintervals shorter than a float ULP can produce repeated partition points.
-        times = np.unique(times)
-        boundary = BoundaryPair1D.natural()
-        law = PDE2DADISolver(self.adi).solve(
-            grid,
-            provider,
-            BoundarySet2D(boundary, boundary),
-            PDEDirection.FORWARD,
-            times,
-            grid.project_delta(0.0, snapshot.sigma0),
-            save_times=tuple(maturities),
-        )
+            # Subintervals shorter than a float ULP can produce repeated partition points.
+            times = np.unique(times)
+            boundary = BoundaryPair1D.natural()
+            law = solver.solve(
+                grid,
+                LogSvPdeCoefficients(model),
+                BoundarySet2D(boundary, boundary),
+                PDEDirection.FORWARD,
+                times,
+                start_values,
+                save_times=tuple(maturities),
+            )
+            states, steps = law.saved_states, law.diagnostics
         relative_spot = np.exp(grid.x.nodes)
         prices, expiries = List(), []
-        for i, state in enumerate(law.saved_states):
+        for i, state in enumerate(states):
             weights = grid.marginalize_y(state.values) * grid.x.quadrature_weights
             forward, discount = option_chain.forwards[i], option_chain.discfactors[i]
             strikes, kinds = option_chain.strikes_ttms[i], option_chain.optiontypes_ttms[i]
@@ -183,15 +213,17 @@ class LogSvPdePricer(ModelPricer):
                     float(np.max(np.abs(parity))),
                 )
             )
-        return prices, tuple(expiries), law.diagnostics
+        return prices, tuple(expiries), steps
 
-    def price_chain(self, option_chain: OptionChain, params: LogSvParams, **kwargs) -> List:
+    def price_chain(
+        self, option_chain: OptionChain, params: LogSvParams | LSVModel, **kwargs
+    ) -> List:
         """Return discounted raw prices in the ragged input order."""
         prices, _, _ = self._project_chain(option_chain, params, **kwargs)
         return prices
 
     def price_chain_detailed(
-        self, option_chain: OptionChain, params: LogSvParams, **kwargs
+        self, option_chain: OptionChain, params: LogSvParams | LSVModel, **kwargs
     ) -> LogSvPdeResult:
         """Also invert raw prices and expose inversion failures and numerical diagnostics."""
         prices, expiries, steps = self._project_chain(option_chain, params, **kwargs)

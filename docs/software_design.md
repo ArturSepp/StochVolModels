@@ -164,6 +164,36 @@ instantaneous estimates as bucket values through their respective maturities,
 so repricing can differ from the input calls. The fitter's module docstring
 contains an executable Black-surface recovery and put-pricing example.
 
+### Conditional variance and leverage
+
+`LSVModel.from_params(params, leverage_surface)` snapshots the Markovian
+LogSV parameters and optional return backbone. Under the money-market measure
+the return diffusion is $\eta(t)L(t,x)\sigma$, with $x=\log(S/F)$ and volatility
+level $\sigma$. The mixed derivative carries one factor of leverage, and the
+log-forward variance and drift carry its square. Volatility dynamics retain their
+original coefficients. Pricing applies the sufficient bound
+$\kappa_2\geq\beta\eta L$ on each active leverage row for positive $\beta$.
+Rows are constant through their inclusive maturity and interpolate linearly
+in log-forward space with either flat wings or an explicit extrapolation error.
+
+`SequentialLSVProjector(grid).project(params, local_vol)` starts from a point
+mass at $(0,\sigma_0)$. It advances each interval with the previous leverage row
+and computes $m(x)=E[\sigma^2\mid X=x]$ from the terminal joint density using
+the volatility-axis quadrature weights. The new row targets
+$L=\sigma_{LV}/(\eta\sqrt{m})$. Low-marginal and invalid-moment masks identify
+unreliable nodes. The historical fill policy linearly fills interior gaps by node
+index and extends the nearest valid endpoint into each wing. Alternatively
+`LowDensityPolicy.RAISE` rejects a missing moment. Variance estimates, raw
+leverage, extrapolation and cap masks, and the damped updates are inspectable.
+
+Every density used to update leverage must satisfy the configured unit-mass
+and integrated-negative-mass tolerances. Slice diagnostics retain each ADI
+substep, including transient negative mass between projections. Repricing
+with `LogSvPdePricer().price_chain(chain, result.model)` starts a fresh
+propagation with the recovered rows. It splits at leverage and backbone knots
+as well as quoted maturities and discounts each vanilla in its quote currency.
+The projection module docstring includes an executable recovery and pricing example.
+
 ### Model, pricer, product and data ownership
 
 The directory names reflect two stages of development. The original `pricers/` modules bundle
