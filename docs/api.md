@@ -260,6 +260,9 @@ See [jump-aware LSV PDE pricing](software_design.md#jump-aware-lsv-pde-pricing).
 The provisional `stochvolmodels.fitters.lsv_market.LSVOptionChainAdapter` converts an
 ordinary bid/ask chain into an `LSVCalibrationInput` for fitting and Dupire recovery.
 See the [OptionChain market adapter](software_design.md#optionchain-market-adapter).
+The provisional `stochvolmodels.fitters.lsv_market_pipeline.LSVMarketPipeline` fits
+and validates a complete chain under fixed LogSV dynamics. The measured limits and
+outcomes are described in [LSV market calibration](software_design.md#lsv-market-calibration).
 
 The [software design](software_design.md#models-without-an-article) page says which of these
 surfaces have no article yet, and why.

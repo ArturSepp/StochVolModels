@@ -273,6 +273,34 @@ the stress replay allows up to `1.5e-4` trial negative mass. It reaches optimize
 convergence with 12 of 44 IVs inside bid–ask and fails the fine-grid negative-mass,
 target-IV and independent Monte Carlo IV checks.
 
+### LSV market calibration
+
+`stochvolmodels.fitters.lsv_market_pipeline.LSVMarketPipeline` composes an
+`LSVParametricCalibrator`, a `LogSvPdePricer` for independent repricing, and an
+`LSVMonteCarloPricer`. Choose separate fit and replay grids and their time steps.
+Call `pipeline.run(chain, params, repair_policy=policy)` with ordinary bid/ask Black
+IVs. The optional `initial_parameters` supplies one leverage start per expiry.
+The six LogSV dynamics parameters stay fixed. The module docstring gives an
+executable three-expiry example.
+
+The result retains the quote snapshot, raw and repaired Dupire surfaces, fitted
+leverage and candidate-density diagnostics. One fresh PDE propagation and one
+simulation reprice both sets of contracts. `result.original` follows the input
+expiry, strike and C/P order in quote currency. `result.normalized` contains calls
+on the common $K/F_T$ grid with premiums and Monte Carlo standard errors divided by
+$D_T F_T$. Black IVs are decimal annualized values on both grids.
+
+`result.acceptance` records seven checks. The repair fraction counts **interior**
+Dupire nodes. The two IV limits apply to each expiry's root-mean-square discrepancy
+between fine PDE and market mid, and between fine PDE and MC. PDE mass error and
+negative mass are evaluated at each expiry. The forward check compares the simulated
+forward to its input in MC standard errors. Spread coverage counts common-grid PDE
+IVs within interpolated bid and ask, inclusive, across all expiries. A failed
+common-grid IV inversion fails the affected RMSE check. Inspect `checks` and
+`failed_checks`, or call `result.require_accepted()` to enforce the decision.
+An unusable calibration trial stops in the fitter at its configured density limit.
+The replay also retains every PDE step for inspection of transient negative mass.
+
 ### LSV Monte Carlo
 
 `LSVMonteCarloEngine(model, config).simulate_paths(observation_times=times)` returns

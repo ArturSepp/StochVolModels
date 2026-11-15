@@ -9,7 +9,9 @@ import pytest
 
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.fitters.dupire import DupireRepairPolicy
-from stochvolmodels.fitters.lsv_market import LSVOptionChainAdapter
+from stochvolmodels.fitters.lsv_market_pipeline import LSVMarketPipeline
+from stochvolmodels.models.lsv_simulation import LSVMonteCarloConfig
+from stochvolmodels.pricers.lsv_mc_pricer import LSVMonteCarloPricer
 from stochvolmodels.fitters.lsv_parametric import (
     CalibrationWeighting,
     ImpliedVolCalibrationTarget,
@@ -147,11 +149,8 @@ def test_frozen_btc_parameters_surface_and_vanillas(adverse, record_property):
     if find_spec("stochvolmodels.pde_solvers.market_pipeline") is None:
         pytest.skip("requires the archived BTC market pipeline in a source checkout")
     from stochvolmodels.pde_solvers.density import DensityPricer
-    from stochvolmodels.pde_solvers.integration import LSVOptionChainPricer
-    from stochvolmodels.pde_solvers.lsv import LeverageSurface as ArchivedLeverage
-    from stochvolmodels.pde_solvers.lsv_mc import LSVMonteCarloPricer
     from stochvolmodels.pde_solvers.market_pipeline import (
-        LSVMarketPipeline,
+        LSVMarketPipeline as ArchivedPipeline,
         btc_20211021_reference_config,
         load_frozen_btc_20211021_snapshot,
     )
@@ -164,17 +163,8 @@ def test_frozen_btc_parameters_surface_and_vanillas(adverse, record_property):
             calibration_initial_parameters=difficult_btc_initial_parameters(),
             calibration_config=replace(c.calibration_config, maximum_evaluations=24),
         )
-    ref = LSVMarketPipeline(c).run(load_frozen_btc_20211021_snapshot())
+    ref = ArchivedPipeline(c).run(load_frozen_btc_20211021_snapshot())
     chain = ref.snapshot.to_option_chain()
-    market = LSVOptionChainAdapter(chain).build_calibration_input(grid_size=c.calibration_grid_size)
-    target = market.target
-    dupire = market.recover_dupire(
-        repair_policy=DupireRepairPolicy(
-            c.dupire_repair_policy.variance_floor, c.dupire_repair_policy.variance_cap
-        ),
-    )
-    local = LocalVolSurface(target.times, Grid1D(market.log_moneyness), dupire.local_volatility)
-    np.testing.assert_allclose(local.values, ref.prefit_local_volatility.values, atol=1e-13, rtol=0)
     old = c.calibration_config
     settings = {f.name: getattr(old, f.name) for f in fields(LSVParametricCalibrationConfig)}
     settings.update(
@@ -182,15 +172,43 @@ def test_frozen_btc_parameters_surface_and_vanillas(adverse, record_property):
     )
     cfg = LSVParametricCalibrationConfig(**settings)
     fitter = LSVParametricCalibrator(c.calibration_grid, cfg, c.adi_config)
-    args = (c.params, target, local, c.calibration_steps_per_interval)
-    starts = dict(initial_parameters=c.calibration_initial_parameters)
-    # The archived fit disabled candidate-density checks. Its third expiry breaches
-    # 2e-5 even for the normal start. Keep that strict failure reproducible.
-    with pytest.raises(LSVCalibrationError, match=f"T={target.times[2]:g}.*negative mass"):
-        fitter.calibrate(*args, **starts)
+    mc = c.monte_carlo_config
+    pipeline = LSVMarketPipeline(
+        fitter,
+        LogSvPdePricer(
+            grid=c.repricing_grid,
+            steps_per_interval=c.repricing_steps_per_interval,
+            adi=c.adi_config,
+        ),
+        LSVMonteCarloPricer(
+            config=LSVMonteCarloConfig(mc.paths, mc.steps_per_year, mc.seed, mc.antithetic),
+            confidence_level=mc.confidence_level,
+        ),
+    )
+    settings = dict(
+        grid_size=c.calibration_grid_size,
+        repair_policy=DupireRepairPolicy(
+            c.dupire_repair_policy.variance_floor, c.dupire_repair_policy.variance_cap
+        ),
+        calibration_steps_per_interval=c.calibration_steps_per_interval,
+        initial_parameters=c.calibration_initial_parameters,
+    )
+    # Keep the strict candidate-density rejection visible before replaying the historical fit.
+    with pytest.raises(LSVCalibrationError, match=f"T={chain.ttms[2]:g}.*negative mass"):
+        pipeline.run(chain, c.params, **settings)
     trial_limit = 1.5e-4 if adverse else 3e-5
-    fit = replace(fitter, config=replace(cfg, negative_mass_tolerance=trial_limit)).calibrate(
-        *args, **starts
+    pipeline = replace(
+        pipeline,
+        calibrator=replace(fitter, config=replace(cfg, negative_mass_tolerance=trial_limit)),
+    )
+    result = pipeline.run(chain, c.params, **settings)
+    fit, market = result.calibration, result.market
+    np.testing.assert_array_equal(result.dupire.repaired_mask, ref.dupire_result.repaired_mask)
+    np.testing.assert_allclose(
+        result.prefit_local_volatility.values,
+        ref.prefit_local_volatility.values,
+        atol=1e-13,
+        rtol=0,
     )
     expected = ref.calibration_result
     surface = fit.model.leverage_surface
@@ -208,17 +226,33 @@ def test_frozen_btc_parameters_surface_and_vanillas(adverse, record_property):
             for row, r in zip(fit.slices, expected.slices)
         ]
     )
-    pricer = LogSvPdePricer(
-        grid=c.repricing_grid, steps_per_interval=c.repricing_steps_per_interval, adi=c.adi_config
+    iv = np.vstack([s.pde_implied_vols for s in result.normalized])
+    fine_call_error = np.max(
+        abs(np.vstack([s.pde_prices for s in result.normalized]) - ref.pde_repricing.model_calls),
+        axis=1,
     )
-    normalized_chain = _calls(target)
-    fine = pricer.price_chain_detailed(normalized_chain, fit.model)
-    iv = np.vstack(fine.implied_vols)
-    assert np.isfinite(iv).all()
-    fine_call_error = np.max(abs(np.vstack(fine.prices) - ref.pde_repricing.model_calls), axis=1)
     fine_iv_error = np.max(abs(iv - ref.pde_repricing.model_implied_volatilities), axis=1)
-    original = pricer.price_chain_detailed(chain, fit.model)
-    ragged = original.prices
+    ragged = [s.pde_prices for s in result.original]
+    mc_price_errors = []
+    mc_se_errors = []
+    for rows, oracle, scales in (
+        (
+            result.normalized,
+            ref.monte_carlo_validation.normalized_pricing,
+            np.ones(len(chain.ttms)),
+        ),
+        (result.original, ref.option_chain_pricing, chain.forwards * chain.discfactors),
+    ):
+        for row, old_row, scale in zip(rows, oracle.slices, scales, strict=True):
+            assert not old_row.model_price_clipped_mask.any()
+            mc_price_errors.append(float(np.max(abs(row.mc_prices - old_row.model_prices)) / scale))
+            mc_se_errors.append(
+                float(np.max(abs(row.mc_standard_errors - old_row.standard_errors)) / scale)
+            )
+            np.testing.assert_allclose(
+                row.mc_implied_vols, old_row.model_implied_volatilities, atol=5e-9, rtol=0
+            )
+    assert max(mc_price_errors) < 2e-10 and max(mc_se_errors) < 2e-10
     quote_errors = []
     quotes = []
     for i, sl in enumerate(ref.pde_repricing.slices):
@@ -228,7 +262,10 @@ def test_frozen_btc_parameters_surface_and_vanillas(adverse, record_property):
         quote_errors.append(float(np.max(abs(ragged[i] - pvs)) / (f * d)))
         simulated = ref.option_chain_pricing.slices[i]
         mc_se = simulated.standard_errors
-        assert not original.invalid_iv[i].any() and not simulated.model_price_clipped_mask.any()
+        assert (
+            np.isfinite(result.original[i].pde_implied_vols).all()
+            and not simulated.model_price_clipped_mask.any()
+        )
         assert np.all(mc_se > 0)
         gap = np.abs(ragged[i] - simulated.model_prices)
         if not adverse:
@@ -244,47 +281,68 @@ def test_frozen_btc_parameters_surface_and_vanillas(adverse, record_property):
                 public_pv=ragged[i].tolist(),
                 archived_pv=pvs.tolist(),
                 archived_mc_pv=simulated.model_prices.tolist(),
+                public_mc_pv=result.original[i].mc_prices.tolist(),
+                public_mc_se=result.original[i].mc_standard_errors.tolist(),
                 archived_mc_se=mc_se.tolist(),
                 max_mc_se=float(np.max(gap / mc_se)),
                 inside_mc_95=int(np.sum(gap <= 1.95996398454 * mc_se)),
                 inside_market_spread=int(
                     np.sum(
-                        (chain.bid_ivs[i] <= original.implied_vols[i])
-                        & (original.implied_vols[i] <= chain.ask_ivs[i])
+                        (chain.bid_ivs[i] <= result.original[i].pde_implied_vols)
+                        & (result.original[i].pde_implied_vols <= chain.ask_ivs[i])
                     )
                 ),
             )
         )
     assert sum(map(len, ragged)) == 49 and iv.shape == (4, 11)
-    # Run the independent historical simulator on the newly fitted leverage rows.
-    mc = LSVOptionChainPricer(
-        LSVMonteCarloPricer(
-            c.params,
-            ArchivedLeverage(
-                surface.times, surface.grid, surface.values, cfg.leverage_floor, cfg.leverage_cap
-            ),
-            c.monte_carlo_config,
-        )
-    ).price(normalized_chain)
-    mc_iv = np.vstack([row.model_implied_volatilities for row in mc.slices])
-
-    bids, asks = market.bid_ivs, market.ask_ivs
-    inside = int(np.count_nonzero((bids <= iv) & (iv <= asks)))
-    target_rmse = np.sqrt(np.mean((iv - target.implied_volatilities) ** 2, axis=1))
-    mc_rmse = np.sqrt(np.mean((iv - mc_iv) ** 2, axis=1))
-    acceptance = replace(
-        ref.acceptance,
-        pde_target_iv_rmse=target_rmse,
-        pde_mc_iv_rmse=mc_rmse,
-        pde_mass_errors=[abs(row.mass - 1) for row in fine.expiries],
-        pde_negative_masses=[row.negative_mass for row in fine.expiries],
-        mc_forward_z_scores=[row.forward_martingale_z_score for row in mc.slices],
-        market_spread_coverage=inside / iv.size,
+    inside = int(np.sum((market.bid_ivs <= iv) & (iv <= market.ask_ivs)))
+    acceptance = result.acceptance
+    assert acceptance.checks == ref.acceptance.checks
+    expected_failures = (
+        ("pde_target_iv", "pde_mc_iv", "pde_negative_mass", "market_spread") if adverse else ()
     )
+    assert acceptance.failed_checks == expected_failures
+    if adverse:
+        with pytest.raises(RuntimeError, match=", ".join(expected_failures)):
+            result.require_accepted()
+    else:
+        result.require_accepted()
+    metric_names = (
+        "dupire_repaired_fraction",
+        "pde_target_iv_rmse",
+        "pde_mc_iv_rmse",
+        "pde_mass_errors",
+        "pde_negative_masses",
+        "mc_forward_z_scores",
+        "market_spread_coverage",
+    )
+    for key in metric_names:
+        np.testing.assert_allclose(
+            getattr(acceptance, key), getattr(ref.acceptance, key), rtol=0, atol=5e-9, err_msg=key
+        )
+    for key in [f.name for f in fields(acceptance.criteria)]:
+        assert getattr(acceptance.criteria, key) == getattr(ref.acceptance.criteria, key)
     for name, value in dict(
         snapshot=ref.snapshot.fingerprint,
         expiries=[s.slice_id for s in market.source_slices],
         original_quotes=quotes,
+        normalized_pde_calls=[sl.pde_prices.tolist() for sl in result.normalized],
+        normalized_mc_calls=[sl.mc_prices.tolist() for sl in result.normalized],
+        archived_normalized_mc_calls=[
+            s.model_prices.tolist() for s in ref.monte_carlo_validation.normalized_pricing.slices
+        ],
+        normalized_mc_standard_errors=[sl.mc_standard_errors.tolist() for sl in result.normalized],
+        archived_normalized_pde_calls=ref.pde_repricing.model_calls.tolist(),
+        mc_price_errors_over_discounted_forward=mc_price_errors,
+        mc_standard_error_differences_over_discounted_forward=mc_se_errors,
+        metrics={key: np.asarray(getattr(acceptance, key)).tolist() for key in metric_names},
+        archived_metrics={
+            key: np.asarray(getattr(ref.acceptance, key)).tolist() for key in metric_names
+        },
+        criteria={
+            f.name: getattr(acceptance.criteria, f.name) for f in fields(acceptance.criteria)
+        },
+        checks=dict(acceptance.checks),
         parameters=fit.parameter_values.tolist(),
         archive_parameters=expected.parameter_values.tolist(),
         parameter_error=param_error.tolist(),
@@ -298,10 +356,10 @@ def test_frozen_btc_parameters_surface_and_vanillas(adverse, record_property):
         pde_replays=[r.pde_replays for r in fit.slices],
         trial_negative_mass_limit=trial_limit,
         peak_candidate_negative_mass=max(r.peak_candidate_negative_mass for r in fit.slices),
-        fine_negative_mass=max(row.negative_mass for row in fine.expiries),
+        fine_negative_mass=max(row.negative_mass for row in result.pde_expiries),
         inside_spread=inside,
-        target_iv_rmse=target_rmse.tolist(),
-        mc_iv_rmse=mc_rmse.tolist(),
+        target_iv_rmse=list(acceptance.pde_target_iv_rmse),
+        mc_iv_rmse=list(acceptance.pde_mc_iv_rmse),
         failed_checks=list(acceptance.failed_checks),
     ).items():
         record_property(name, value)

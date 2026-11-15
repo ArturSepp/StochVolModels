@@ -4,6 +4,14 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.17.0] - 2026-11-15
+
+### Added
+
+- The provisional `LSVMarketPipeline` fits leverage to an `OptionChain`, replays the
+  fitted model with independent PDE and Monte Carlo engines, and reports seven
+  acceptance checks together with normalized and original-strike vanilla prices.
+
 ## [2.16.0] - 2026-11-15
 
 ### Added
