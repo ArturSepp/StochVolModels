@@ -5,6 +5,7 @@ from numbers import Integral
 
 import numpy as np
 from numba.typed import List
+from numpy.typing import ArrayLike
 
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.models.logsv import LogSvMeasure, LogSvModel
@@ -22,7 +23,7 @@ from stochvolmodels.pde_solvers import (
     TensorGrid2D,
 )
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
-from stochvolmodels.pricers.lsv_projection import _advance_lsv
+from stochvolmodels.pricers.lsv_projection import _advance_lsv, _step_counts
 from stochvolmodels.pricers.model_pricer import ModelPricer
 from stochvolmodels.products.payoffs import _vanilla_payoff
 from stochvolmodels.utils.config import OptionType, VariableType
@@ -96,14 +97,14 @@ class LogSvPdePricer(ModelPricer):
 
     Supply a tensor grid on (normalized log-forward, volatility) to control the
     domain and spatial resolution. steps_per_interval partitions each consecutive
-    expiry interval. The starting mesh is a numerical choice and should be refined
+    expiry interval, with either one count or a count per expiry. Refine the mesh
     for the maturity, wings and accuracy required. Pass an LSVModel to use a
     leverage surface with optional backbone. Each leverage or backbone knot also
     splits the integration interval and receives steps_per_interval steps.
     """
 
     grid: TensorGrid2D | None = None
-    steps_per_interval: int = 128
+    steps_per_interval: int | ArrayLike = 128
     adi: ADIConfig = field(default_factory=lambda: ADIConfig(theta=1.0))
 
     def _project_chain(
@@ -124,12 +125,12 @@ class LogSvPdePricer(ModelPricer):
             raise TypeError("option_chain must be an OptionChain")
         if any(not np.all(np.isin(kinds, ["C", "P"])) for kinds in option_chain.optiontypes_ttms):
             raise ValueError("LogSvPdePricer supports only ordinary C and P contracts")
-        if (
+        if np.ndim(self.steps_per_interval) == 0 and (
             isinstance(self.steps_per_interval, bool)
             or not isinstance(self.steps_per_interval, Integral)
-            or self.steps_per_interval < 1
         ):
             raise ValueError("steps_per_interval must be a positive integer")
+        counts = _step_counts(self.steps_per_interval, len(option_chain.ttms))
 
         lsv = isinstance(params, LSVModel)
         model = params.dynamics if lsv else LogSvModel(params)
@@ -157,10 +158,8 @@ class LogSvPdePricer(ModelPricer):
         if lsv:
             state = PDEState2D(0.0, start_values)
             states, diagnostics = [], []
-            for end in maturities:
-                state, steps = _advance_lsv(
-                    params, grid, solver, state, end, self.steps_per_interval
-                )
+            for end, count in zip(maturities, counts):
+                state, steps = _advance_lsv(params, grid, solver, state, end, count)
                 states.append(state)
                 diagnostics.extend(steps)
             steps = tuple(replace(d, step_index=i) for i, d in enumerate(diagnostics))
@@ -170,8 +169,8 @@ class LogSvPdePricer(ModelPricer):
                 (
                     [0.0],
                     *[
-                        np.linspace(a, b, self.steps_per_interval + 1)[1:]
-                        for a, b in zip(starts, maturities)
+                        np.linspace(a, b, count + 1)[1:]
+                        for a, b, count in zip(starts, maturities, counts)
                     ],
                 )
             )

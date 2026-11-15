@@ -216,6 +216,39 @@ Convergence measures the leverage equation on the chosen grid. Vanilla repricing
 against the local-volatility target measures a separate price error.
 The fitter module docstring includes an executable two-maturity example.
 
+### Parametric leverage calibration
+
+`stochvolmodels.fitters.lsv_parametric.LSVParametricCalibrator` holds LogSV dynamics
+fixed and fits a leverage formula per expiry. Supply an `ImpliedVolCalibrationTarget`
+on common strikes and a log-forward `LocalVolSurface` at the same dates. For a
+market with different forwards or discounts, express strikes as K/F and use a unit
+forward and discount on the common grid. Reprice the fitted model on the original
+`OptionChain` to obtain premiums in quote currency.
+
+The fitter prefits the local-volatility rows, scales the starts by the backbone and
+initial volatility, then minimizes squared Black IV errors with unit-sum weights.
+`LSVParametricCalibrationConfig` selects a flat, skew, smile, product or wing formula
+and uniform, Black vega or historical ATM weights. `initial_parameters` can supply
+a bounded start for each expiry. Every trial starts from the preceding accepted law.
+The final replay at the optimizer's parameters supplies the next starting density.
+The fitter checks total and negative mass at each density used to compute a price.
+
+`result.parameter_names` names the columns of `result.parameter_values`. Each slice
+records its prefit, optimizer start, solver work, weighted IV residuals and accepted
+terminal law. `LogSvPdePricer` interpolates the model's bounded leverage rows when
+repricing on a finer grid. Its `steps_per_interval` accepts one positive integer or
+one count per expiry. Each internal backbone or leverage knot receives that interval's
+count. Assess market spread coverage and independent prices when interpreting a fit.
+
+In the frozen BTC replay of 21 October 2021, the product-family fit puts 35 of 44
+common-grid IVs inside bid–ask. One trial at the third expiry has negative mass
+of `2.59e-5`. Reproducing the fit requires a trial limit of at least that size.
+The baseline replay uses `3e-5` during fitting and retains the historical `2e-5`
+fine-grid acceptance limit. To reproduce the adverse fit through all four dates,
+the stress replay allows up to `1.5e-4` trial negative mass. It reaches optimizer
+convergence with 12 of 44 IVs inside bid–ask and fails the fine-grid negative-mass,
+target-IV and independent Monte Carlo IV checks.
+
 ### Model, pricer, product and data ownership
 
 The directory names reflect two stages of development. The original `pricers/` modules bundle

@@ -9,6 +9,7 @@
       "/models/logsv_pde.py",
       "/fitters/dupire.py",
       "/fitters/lsv_fixed_point.py",
+      "/fitters/lsv_parametric.py",
       "/models/local_vol.py",
       "/models/lsv.py",
       "/pricers/lsv_projection.py",

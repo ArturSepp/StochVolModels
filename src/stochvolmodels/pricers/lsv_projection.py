@@ -148,12 +148,16 @@ class ConditionalMomentResult:
         object.__setattr__(self, "density_floor", density_floor)
 
 
-def _check_density_mass(mass: float, negative_mass: float, config: LSVProjectionConfig) -> None:
+def _check_density_mass(
+    mass: float, negative_mass: float, mass_tolerance: float, negative_mass_tolerance: float
+) -> None:
     """Check absolute unit mass and integrated negativity at the point of consumption."""
-    if not np.isfinite(mass) or abs(mass - 1.0) > config.mass_tolerance:
-        raise ValueError(f"projection density mass {mass:g} exceeds tolerance about one")
-    if not np.isfinite(negative_mass) or negative_mass > config.negative_mass_tolerance:
-        raise ValueError(f"projection density negative mass {negative_mass:g} exceeds tolerance")
+    if not np.isfinite(mass) or abs(mass - 1.0) > mass_tolerance:
+        raise ValueError(f"density mass {mass:g} exceeds tolerance about one ({mass_tolerance:g})")
+    if not np.isfinite(negative_mass) or negative_mass > negative_mass_tolerance:
+        raise ValueError(
+            f"density negative mass {negative_mass:g} exceeds tolerance {negative_mass_tolerance:g}"
+        )
 
 
 def project_conditional_variance(
@@ -173,7 +177,7 @@ def project_conditional_variance(
         raise ValueError("density must be finite")
     mass = grid.integrate(values)
     negative_mass = -grid.integrate(np.minimum(values, 0.0))
-    _check_density_mass(mass, negative_mass, config)
+    _check_density_mass(mass, negative_mass, config.mass_tolerance, config.negative_mass_tolerance)
     weighted_values = values * grid.y.quadrature_weights[None, :]
     marginal = np.sum(weighted_values, axis=1)
     numerator = np.sum(weighted_values * grid.y.nodes[None, :] ** 2, axis=1)
@@ -253,7 +257,10 @@ def recover_leverage_slice(
     if not isinstance(config, LSVProjectionConfig):
         raise TypeError("config must be an LSVProjectionConfig")
     _check_density_mass(
-        conditional_moments.total_mass, conditional_moments.negative_density_mass, config
+        conditional_moments.total_mass,
+        conditional_moments.negative_density_mass,
+        config.mass_tolerance,
+        config.negative_mass_tolerance,
     )
     if conditional_moments.density_floor != config.density_floor:
         raise ValueError("use the same density floor for projection and leverage recovery")

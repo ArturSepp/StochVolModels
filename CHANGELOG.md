@@ -4,6 +4,14 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.13.0] - 2026-11-15
+
+### Added
+
+- The provisional `LSVParametricCalibrator` fits bounded leverage parameters to
+  Black implied volatilities with fixed LogSV dynamics. The vanilla PDE pricer
+  also accepts a separate time-step count for each expiry interval.
+
 ## [2.12.0] - 2026-11-15
 
 ### Added

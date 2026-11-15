@@ -246,6 +246,11 @@ The provisional `stochvolmodels.fitters.lsv_fixed_point.LSVFixedPointCalibrator`
 the leverage and exposes the convergence history for every maturity.
 See [fixed-point calibration](software_design.md#fixed-point-leverage-calibration).
 
+The provisional `stochvolmodels.fitters.lsv_parametric.LSVParametricCalibrator` fits
+a bounded leverage formula to Black implied volatilities at each maturity. The result
+contains a priceable model, the parameter matrix and per-expiry fit diagnostics.
+See [parametric calibration](software_design.md#parametric-leverage-calibration).
+
 The [software design](software_design.md#models-without-an-article) page says which of these
 surfaces have no article yet, and why.
 
