@@ -12,6 +12,13 @@ The stable workflows cover European vanilla and related variance analytics under
 Karasinski-Sepp log-normal stochastic-volatility model; experimental research modules are labelled
 separately rather than presented as stable derivatives infrastructure.
 
+For finite-difference pricing, the provisional `stochvolmodels.pde_solvers` module provides
+`PDE1DSolver` and `PDE2DADISolver`. The opt-in `LogSvPdePricer` prices chains of European
+calls and puts under the money-market measure.
+[Solver guide](https://stochvolmodels.readthedocs.io/en/latest/software_design.html#generic-finite-difference-solvers) ·
+[LogSV PDE pricing](https://stochvolmodels.readthedocs.io/en/latest/software_design.html#logsv-vanilla-pde-valuation) ·
+[API reference](https://stochvolmodels.readthedocs.io/en/latest/api.html#provisional-and-experimental-surfaces)
+
 **Install:** `pip install stochvolmodels` · **Import:** `stochvolmodels` · **Status:** Stable
 
 [![PyPI](https://img.shields.io/pypi/v/stochvolmodels?style=flat-square)](https://pypi.org/project/stochvolmodels/)

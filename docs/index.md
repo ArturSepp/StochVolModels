@@ -23,6 +23,12 @@ chains. It is the reference implementation of the log-normal stochastic volatili
 quadratic drift, with the Heston model as benchmark. Its core depends on no sibling package other
 than [vanilla-option-pricers](https://github.com/ArturSepp/VanillaOptionPricers).
 
+The provisional `stochvolmodels.pde_solvers` module provides `PDE1DSolver` and `PDE2DADISolver`
+for evolving option values backward or densities forward. To price a chain of European calls
+and puts under the money-market measure, use the opt-in `LogSvPdePricer`.
+[Solver guide](software_design.md#generic-finite-difference-solvers) ·
+[LogSV PDE pricing](software_design.md#logsv-vanilla-pde-valuation) ·
+[API reference](api.md#provisional-and-experimental-surfaces)
 
 ## Start here
 
