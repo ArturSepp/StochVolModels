@@ -4,6 +4,12 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+### Added
+
+- Repository-only PDE qualification runner using frozen BTC and stress cases,
+  independent domain/space/time refinement, density and price checks, and warmed
+  accuracy-versus-runtime reports. See `validation/README.md`.
+
 ## [2.18.8] - 2026-11-17
 
 ### Fixed

@@ -89,6 +89,14 @@ OCA 5 with its CBOE/Parquet support and supports the credential-free
 normalized SPX/VIX caches; its directory README gives the setup. Paper-replication code under
 `papers/` also uses `research`.
 
+## PDE qualification
+
+The repository [qualification runner](../validation/README.md) holds the frozen BTC
+and stress models fixed while refining domain, space and time independently. It reports
+price convergence, Monte Carlo comparisons, density diagnostics and warmed runtimes.
+Run `python -m validation.pde_qualification --cases high_vol_of_vol` for one case,
+or omit `--cases` for the complete matrix. Generated evidence stays under ignored `agents/`.
+
 ## Frozen BTC calibration
 
 This slow, offline example uses provisional LSV calibration and pricing APIs.
