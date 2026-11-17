@@ -167,6 +167,14 @@ def test_btc_market_replay_matches_frozen_prices_and_decisions(btc_replay):
         ("pde_target_iv", "pde_mc_iv", "pde_negative_mass", "market_spread") if adverse else ()
     )
     assert result.acceptance.failed_checks == expected
+    boundary_check = replace(
+        result.acceptance, criteria=replace(result.acceptance.criteria, max_pde_boundary_mass=0.01)
+    )
+    assert boundary_check.checks[:-1] == result.acceptance.checks
+    assert boundary_check.checks[-1] == ("pde_boundary_mass", not adverse)
+    assert max(boundary_check.pde_boundary_masses) == pytest.approx(
+        0.132872 if adverse else 0.002341, abs=1e-5
+    )
     assert result.acceptance.market_spread_coverage == (12 if adverse else 35) / 44
     assert sum(r.strikes.size for r in result.market.source_slices) == 49
     # Archive PVs of the nearest-to-forward original contract at each of the four expiries.
@@ -340,8 +348,11 @@ def test_frozen_btc_parameters_surface_and_vanillas(btc_replay, record_property)
         np.testing.assert_allclose(
             getattr(acceptance, key), getattr(ref.acceptance, key), rtol=0, atol=5e-9, err_msg=key
         )
-    for key in [f.name for f in fields(acceptance.criteria)]:
+    for key in [f.name for f in fields(ref.acceptance.criteria)]:
         assert getattr(acceptance.criteria, key) == getattr(ref.acceptance.criteria, key)
+    boundary_check = replace(
+        acceptance, criteria=replace(acceptance.criteria, max_pde_boundary_mass=0.01)
+    )
     for name, value in dict(
         snapshot=ref.snapshot.fingerprint,
         expiries=[s.slice_id for s in market.source_slices],
@@ -363,6 +374,8 @@ def test_frozen_btc_parameters_surface_and_vanillas(btc_replay, record_property)
             f.name: getattr(acceptance.criteria, f.name) for f in fields(acceptance.criteria)
         },
         checks=dict(acceptance.checks),
+        boundary_masses=list(acceptance.pde_boundary_masses),
+        boundary_check_at_one_percent=dict(boundary_check.checks)["pde_boundary_mass"],
         parameters=fit.parameter_values.tolist(),
         archive_parameters=expected.parameter_values.tolist(),
         parameter_error=param_error.tolist(),

@@ -38,7 +38,7 @@ from .coefficients import (
     StaticCoefficientProvider2D,
 )
 from .diagnostics import PDEDiagnostics
-from .grids import Grid1D, TensorGrid2D
+from .grids import BoundaryMass1D, BoundaryMass2D, Grid1D, TensorGrid2D
 from .operators_1d import DriftDiscretization, PDEDirection
 from .solver_1d import (
     CoefficientEvaluation,
@@ -56,6 +56,8 @@ __all__ = (
     "ADIScheme",
     "BoundaryCondition1D",
     "BoundaryKind",
+    "BoundaryMass1D",
+    "BoundaryMass2D",
     "BoundaryPair1D",
     "BoundarySet2D",
     "BoundarySide",

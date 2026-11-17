@@ -28,6 +28,21 @@ from stochvolmodels.pde_solvers.grids import Grid1D, TensorGrid2D
 from stochvolmodels.pde_solvers.tridiagonal import TridiagonalOperator
 
 
+def test_boundary_mass_weights_signed_nodes_and_counts_each_corner_once():
+    x = Grid1D([0., 1., 3., 5.])
+    y = Grid1D([-2., -1., 1.])
+    ends = x.boundary_mass([-4., 7., 9., 3.])
+    assert (ends.x_lower, ends.x_upper, ends.signed_total, ends.absolute_total) == (-2, 3, 1, 5)
+
+    grid = TensorGrid2D(x, y)
+    mass = np.array([[1, -3, 2], [4, 100, -5], [-1, 200, 2], [3, -4, 1]])
+    density = mass / grid.quadrature_weights
+    edges = grid.boundary_mass(density)
+    assert (edges.x_lower, edges.x_upper, edges.y_lower, edges.y_upper) == (0, 0, 7, 0)
+    assert edges.signed_total == 0
+    assert edges.absolute_total == 26
+
+
 def test_uniform_grid_geometry_and_quadrature() -> None:
     grid = Grid1D.uniform(lower=-2.0, upper=3.0, size=6)
 

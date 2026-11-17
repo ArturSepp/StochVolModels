@@ -14,6 +14,7 @@ from stochvolmodels.models.lsv import FixedLogForwardJump, LSVModel
 from stochvolmodels.models.logsv_pde import LogSvPdeCoefficients
 from stochvolmodels.pde_solvers import (
     ADIConfig,
+    BoundaryMass2D,
     BoundaryPair1D,
     BoundarySet2D,
     Grid1D,
@@ -44,6 +45,7 @@ class LogSvPdeExpiry:
     normalized_forward: float
     negative_mass: float
     max_parity_error: float
+    boundary_mass: BoundaryMass2D | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -244,6 +246,7 @@ class LogSvPdePricer(ModelPricer):
                     moment,
                     -grid.integrate(np.minimum(state.values, 0.0)),
                     float(np.max(np.abs(parity))),
+                    grid.boundary_mass(state.values),
                 )
             )
         return prices, tuple(expiries), steps

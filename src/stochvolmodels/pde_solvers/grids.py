@@ -28,6 +28,40 @@ def _readonly_float_array(values: ArrayLike, *, name: str, ndim: int) -> FloatAr
 
 
 @dataclass(frozen=True, slots=True)
+class BoundaryMass1D:
+    """Signed quadrature mass at each endpoint of a one-dimensional density."""
+
+    x_lower: float
+    x_upper: float
+
+    @property
+    def signed_total(self) -> float:
+        """Net probability on the two endpoint nodes."""
+        return self.x_lower + self.x_upper
+
+    @property
+    def absolute_total(self) -> float:
+        """Sum of absolute nodal masses at the two endpoints."""
+        return abs(self.x_lower) + abs(self.x_upper)
+
+
+@dataclass(frozen=True, slots=True)
+class BoundaryMass2D:
+    """Signed mass on each full edge, including both corners.
+
+    signed_total and absolute_total sum the perimeter nodes once. absolute_total
+    takes the absolute value at each node before summing.
+    """
+
+    x_lower: float
+    x_upper: float
+    y_lower: float
+    y_upper: float
+    signed_total: float
+    absolute_total: float
+
+
+@dataclass(frozen=True, slots=True)
 class Grid1D:
     """Validated nonuniform nodal grid with trapezoidal quadrature weights."""
 
@@ -126,6 +160,12 @@ class Grid1D:
         array = self.validate_shape(values)
         return float(np.dot(self.quadrature_weights, array))
 
+    def boundary_mass(self, density: ArrayLike) -> BoundaryMass1D:
+        """Measure the endpoint occupancy of a nodal density in the grid quadrature."""
+        values = self.validate_shape(density)
+        weights = self.quadrature_weights
+        return BoundaryMass1D(float(weights[0] * values[0]), float(weights[-1] * values[-1]))
+
     def locate(self, point: float) -> tuple[int, int, float, float]:
         """Return bracketing nodes and linear interpolation weights."""
         value = float(point)
@@ -192,6 +232,20 @@ class TensorGrid2D:
         """Integrate values over both axes."""
         array = self.validate_shape(values)
         return float(np.sum(self.quadrature_weights * array))
+
+    def boundary_mass(self, density: ArrayLike) -> BoundaryMass2D:
+        """Measure the four signed edge masses and their corner-deduplicated totals."""
+        values = self.validate_shape(density)
+        weights = self.quadrature_weights
+        left = values[0, :] * weights[0, :]
+        right = values[-1, :] * weights[-1, :]
+        lower = values[:, 0] * weights[:, 0]
+        upper = values[:, -1] * weights[:, -1]
+        perimeter = np.concatenate((left, right, lower[1:-1], upper[1:-1]))
+        return BoundaryMass2D(
+            float(left.sum()), float(right.sum()), float(lower.sum()), float(upper.sum()),
+            float(perimeter.sum()), float(np.abs(perimeter).sum()),
+        )
 
     def marginalize_x(self, values: ArrayLike) -> FloatArray:
         """Integrate over x and return values on the y grid."""

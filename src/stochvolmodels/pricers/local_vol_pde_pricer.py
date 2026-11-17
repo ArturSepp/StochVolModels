@@ -27,6 +27,7 @@ from stochvolmodels.models.local_vol import (
     LocalVolSurface,
 )
 from stochvolmodels.pde_solvers import (
+    BoundaryMass1D,
     BoundaryPair1D,
     Grid1D,
     PDE1DSolver,
@@ -48,6 +49,7 @@ class LocalVolPdeExpiry:
     normalized_forward: float
     negative_mass: float
     max_parity_error: float
+    boundary_mass: BoundaryMass1D | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -172,6 +174,7 @@ class LocalVolPdePricer(ModelPricer):
                         float(moment / forward),
                         law.diagnostics[-1].negative_mass,
                         float(np.max(np.abs(parity_gap))),
+                        grid.boundary_mass(state),
                     )
                 )
                 i += 1

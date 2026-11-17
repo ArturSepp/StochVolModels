@@ -62,11 +62,15 @@ class LSVMarketAcceptanceCriteria:
     max_pde_negative_mass: float = 2.0e-5
     max_abs_mc_forward_z: float = 4.0
     min_market_spread_coverage: float = 0.60
+    max_pde_boundary_mass: float | None = None
 
     def __post_init__(self) -> None:
         """Require nonnegative finite thresholds and fractions in the unit interval."""
         for spec in fields(self):
-            value = float(getattr(self, spec.name))
+            value = getattr(self, spec.name)
+            if spec.name == "max_pde_boundary_mass" and value is None:
+                continue
+            value = float(value)
             if not np.isfinite(value) or value < 0:
                 raise ValueError(f"{spec.name} must be finite and nonnegative")
             object.__setattr__(self, spec.name, value)
@@ -86,12 +90,13 @@ class LSVMarketAcceptance:
     pde_negative_masses: tuple[float, ...]
     mc_forward_z_scores: tuple[float, ...]
     market_spread_coverage: float
+    pde_boundary_masses: tuple[float, ...] = ()
 
     @property
     def checks(self) -> tuple[tuple[str, bool], ...]:
         """Evaluate each limit across all its observations, including failed IV inversions."""
         c = self.criteria
-        return (
+        checks = (
             ("dupire_repair", self.dupire_repaired_fraction <= c.max_dupire_repaired_fraction),
             (
                 "pde_target_iv",
@@ -109,6 +114,15 @@ class LSVMarketAcceptance:
             ),
             ("market_spread", self.market_spread_coverage >= c.min_market_spread_coverage),
         )
+        if c.max_pde_boundary_mass is None:
+            return checks
+        masses = np.asarray(self.pde_boundary_masses)
+        passed = (
+            masses.size > 0
+            and masses.shape == (len(self.pde_mass_errors),)
+            and np.all((masses >= 0) & (masses <= c.max_pde_boundary_mass))
+        )
+        return (*checks, ("pde_boundary_mass", bool(passed)))
 
     @property
     def failed_checks(self) -> tuple[str, ...]:
@@ -117,7 +131,7 @@ class LSVMarketAcceptance:
 
     @property
     def passed(self) -> bool:
-        """Whether all seven final checks passed."""
+        """Whether all configured checks passed."""
         return not self.failed_checks
 
 
@@ -263,6 +277,10 @@ class LSVMarketPipeline:
             pde_mc_iv_rmse=tuple(np.sqrt(np.mean((pde_iv - mc_iv) ** 2, axis=1))),
             pde_mass_errors=tuple(abs(s.mass - 1.0) for s in pde.expiries),
             pde_negative_masses=tuple(s.negative_mass for s in pde.expiries),
+            pde_boundary_masses=tuple(
+                s.boundary_mass.absolute_total if s.boundary_mass is not None else np.nan
+                for s in pde.expiries
+            ),
             mc_forward_z_scores=tuple(forward_z),
             market_spread_coverage=float(
                 np.mean((market.bid_ivs <= pde_iv) & (pde_iv <= market.ask_ivs))

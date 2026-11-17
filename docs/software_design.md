@@ -109,6 +109,14 @@ mass, normalized forward (target one), negative mass and the largest discounted
 put–call parity error relative to the market forward. `steps` and
 `peak_negative_mass` also capture signed densities between expiries.
 
+Each expiry's `boundary_mass` measures occupancy of the outermost grid nodes under the
+undiscounted law. `x_lower` and `x_upper` refer to log-forward, and `y_lower` and
+`y_upper` to volatility. Each side sums signed nodal density times the same tensor
+quadrature weights used for payoff pricing. Each corner belongs to both adjoining sides.
+Use `signed_total` for the net mass on the perimeter and `absolute_total` for the sum
+of absolute nodal masses there. Both totals count each corner once. Substantial
+occupancy can coexist with unit total mass and a forward moment close to one.
+
 The default mesh concentrates log-forward nodes around zero on the volatility scale of
 its shortest expiry. With an LSV backbone or leverage surface, the central spacing uses the
 largest return loading through that first expiry. The largest loading over the full chain,
@@ -148,6 +156,10 @@ the undiscounted density between them, and uses the package's ordinary C/P payof
 `price_chain_detailed` adds Black IVs and inversion failure masks, expiry mass and
 negative mass, the forward moment divided by the market forward, the largest absolute
 discounted market parity error, and the peak negative mass across all steps.
+The expiry's `boundary_mass.x_lower` and `x_upper` give the signed, quadrature-weighted
+mass at the two price endpoints in the chosen coordinate. `signed_total` adds them and
+`absolute_total` adds their magnitudes. Barrier survival uses the barrier contract's
+own monitoring and payoff rules.
 Refine the grid, boundaries and steps for the time horizon and strikes of interest.
 The pricer's module docstring includes an executable two-bucket pricing example.
 
@@ -336,7 +348,7 @@ expiry, strike and C/P order in quote currency. `result.normalized` contains cal
 on the common $K/F_T$ grid with premiums and Monte Carlo standard errors divided by
 $D_T F_T$. Black IVs are decimal annualized values on both grids.
 
-`result.acceptance` records seven checks. The repair fraction counts **interior**
+`result.acceptance` records seven checks by default. The repair fraction counts **interior**
 Dupire nodes. The two IV limits apply to each expiry's root-mean-square discrepancy
 between fine PDE and market mid, and between fine PDE and MC. PDE mass error and
 negative mass are evaluated at each expiry. The forward check compares the simulated
@@ -346,6 +358,13 @@ common-grid IV inversion fails the affected RMSE check. Inspect `checks` and
 `failed_checks`, or call `result.require_accepted()` to enforce the decision.
 An unusable calibration trial stops in the fitter at its configured density limit.
 The replay also retains every PDE step for inspection of transient negative mass.
+
+Set `LSVMarketAcceptanceCriteria(max_pde_boundary_mass=0.01)` to require at most 1%
+absolute mass on the perimeter at every expiry. This adds the `pde_boundary_mass`
+check. The default is `None`. The per-expiry observations are always available in
+`result.acceptance.pde_boundary_masses`. Choose a limit for the domain, mesh spacing
+and price accuracy required. At zero volatility the lower endpoint is fixed, so check
+the first volatility spacing as well as the extent of the other three edges.
 
 The [frozen BTC replay](../examples/calibration/frozen_btc_lsv.py) runs the
 baseline and adverse starts on the packaged 21 October 2021 quotes. The

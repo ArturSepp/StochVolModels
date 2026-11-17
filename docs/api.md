@@ -231,6 +231,9 @@ The provisional [finite-difference solvers](software_design.md#generic-finite-di
 are available as `stochvolmodels.pde_solvers.PDE1DSolver` and `PDE2DADISolver`.
 The provisional `stochvolmodels.pricers.logsv_pde_pricer.LogSvPdePricer` uses the
 2D solver for ordinary European LogSV chains under the money-market measure.
+The detailed 1D and 2D pricer results expose `expiry.boundary_mass` for each maturity.
+`Grid1D.boundary_mass(density)` and `TensorGrid2D.boundary_mass(density)` return the
+same `BoundaryMass1D` and `BoundaryMass2D` diagnostics from supplied densities.
 The provisional `stochvolmodels.models.local_vol.LocalVolSurface` supplies deterministic
 volatility to `stochvolmodels.pricers.local_vol_pde_pricer.LocalVolPdePricer`.
 See [local-volatility pricing](software_design.md#deterministic-local-volatility) for units

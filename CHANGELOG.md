@@ -4,6 +4,15 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.18.3] - 2026-11-17
+
+### Added
+
+- `LocalVolPdeExpiry.boundary_mass` and `LogSvPdeExpiry.boundary_mass` report signed
+  quadrature mass on each grid edge and signed and absolute totals across distinct
+  boundary nodes. `LSVMarketAcceptanceCriteria.max_pde_boundary_mass` optionally
+  limits the absolute total at every market replay expiry.
+
 ## [2.18.2] - 2026-11-17
 
 ### Changed

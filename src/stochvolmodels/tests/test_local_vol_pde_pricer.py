@@ -33,6 +33,21 @@ def _chain(relative=True):
     )
 
 
+def test_boundary_mass_detects_truncation_on_each_price_endpoint(record_property):
+    chain = _chain()
+    surface = LocalVolSurface([1.0], Grid1D.uniform(-1, 1, 3), [[0.2, 0.2, 0.2]])
+    for width, expected in ((1.0, False), (0.16, True)):
+        grid = Grid1D.uniform(-width, width, round(200 * width) + 1)
+        result = LocalVolPdePricer(grid=grid).price_chain_detailed(chain, surface)
+        edges = [e.boundary_mass for e in result.expiries]
+        assert all(abs(e.mass - 1) < 1e-12 for e in result.expiries)
+        for side in ("x_lower", "x_upper"):
+            values = [getattr(edge, side) for edge in edges]
+            assert np.all(np.diff(values) > 0)
+            assert (values[-1] > 0.01) is expected
+        record_property(f"endpoint_masses_width_{width}", [(e.x_lower, e.x_upper) for e in edges])
+
+
 def test_surface_interpolation_detachment_and_generator():
     axis = Grid1D.uniform(-0.2, 0.2, 3)
     times = np.array([0.07, 0.2])

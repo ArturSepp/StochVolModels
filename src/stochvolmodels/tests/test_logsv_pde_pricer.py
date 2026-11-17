@@ -47,6 +47,47 @@ def test_generator_matches_mma_dynamics_and_snapshots_params(beta):
     np.testing.assert_array_equal(c.discount, 0.0)
 
 
+@pytest.mark.parametrize("quadratic", [False, True], ids=["uniform", "quadratic"])
+def test_two_year_boundary_mass_with_unit_mass_and_forward(quadratic):
+    data = OptionChain.get_uniform_chain(np.array([2.]), np.array(["2y"]), strikes=np.ones(1))
+    params = LogSvParams(sigma0=.2, theta=.2, kappa1=.5, kappa2=.5, beta=-1., volvol=1.5)
+    pricer = LogSvPdePricer(quadratic_start=quadratic)
+    expiry = pricer.price_chain_detailed(data, params).expiries[0]
+    assert abs(expiry.mass - 1) < 1e-12
+    assert abs(expiry.normalized_forward - 1) < 1e-5
+    edge = expiry.boundary_mass
+    # Independent tensor quadrature of the review's two-year density.
+    np.testing.assert_allclose(
+        [edge.x_lower, edge.x_upper, edge.y_lower, edge.y_upper, edge.absolute_total],
+        [0.04878, 0.00179, 0.13778, 0.08858, 0.22646], atol=0.00015, rtol=0,
+    )
+
+
+def test_two_year_boundary_mass_under_domain_and_lower_volatility_refinement():
+    from stochvolmodels.pricers.logsv_pde_pricer import _default_grid
+
+    data = OptionChain.get_uniform_chain(np.array([2.]), np.array(["2y"]), strikes=np.ones(1))
+    params = LogSvParams(sigma0=.2, theta=.2, kappa1=.5, kappa2=.5, beta=-1., volvol=1.5)
+    base = _default_grid(params, data)
+    x, y = base.x.nodes, base.y.nodes
+    # Append tail nodes, preserving every original node and the first spacing at zero.
+    wide_x = Grid1D(np.r_[
+        x[0] - np.arange(30, 0, -1) * (x[1] - x[0]), x,
+        x[-1] + np.arange(1, 31) * (x[-1] - x[-2]),
+    ])
+    wide_y = np.r_[y, y[-1] + np.arange(1, 17) * (y[-1] - y[-2])]
+    lower_midpoints = 0.5 * (y[1:] + y[:-1])[y[1:] <= params.sigma0]
+    refined_y = np.sort(np.r_[wide_y, lower_midpoints])
+    for nodes, lower, absolute in ((wide_y, 0.13920, 0.16375), (refined_y, 0.00624, 0.03083)):
+        grid = TensorGrid2D(wide_x, Grid1D(nodes))
+        expiry = LogSvPdePricer(grid=grid).price_chain_detailed(data, params).expiries[0]
+        assert abs(expiry.mass - 1) < 1e-12
+        assert abs(expiry.normalized_forward - 1) < 3e-5
+        edge = expiry.boundary_mass
+        np.testing.assert_allclose([edge.y_lower, edge.absolute_total], [lower, absolute],
+                                   atol=1e-5, rtol=0)
+
+
 def test_ragged_black_prices_market_parity_and_chain_ivols():
     data = chain()
     params = LogSvParams(sigma0=0.25, theta=0.25, beta=0.0, volvol=0.0)
@@ -100,7 +141,9 @@ def test_mixed_expiry_grid_preserves_long_domain_wings_and_jump_tails(jump_size)
     assert domain[0] < -8 * 1.5 * params.sigma0 and domain[1] > 8 * 1.5 * params.sigma0
     wing = mixed.forwards[0] * np.exp(3.0)
     strikes = (np.array([wing, mixed.forwards[0], mixed.forwards[0]]), mixed.strikes_ttms[-1])
-    wide = _default_grid(params, replace(mixed, strikes_ttms=strikes), return_loading=1.5, jump=jump)
+    wide = _default_grid(
+        params, replace(mixed, strikes_ttms=strikes), return_loading=1.5, jump=jump
+    )
     assert wide.x.nodes[0] < -3.75 and wide.x.nodes[-1] > 3.75
 
 
