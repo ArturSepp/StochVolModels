@@ -49,6 +49,9 @@ from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 FloatArray = NDArray[np.float64]
 BoolArray = NDArray[np.bool_]
 
+_DEFAULT_LSV_STEPS = 64
+_DEFAULT_NEGATIVE_MASS_TOLERANCE = 1e-4
+
 
 class LowDensityPolicy(str, Enum):
     """NEAREST_VALID interpolates interior gaps by node index and extends endpoint values."""
@@ -67,7 +70,7 @@ class LSVProjectionConfig:
     damping: float = 1.0
     low_density_policy: LowDensityPolicy = LowDensityPolicy.NEAREST_VALID
     mass_tolerance: float = 1.0e-10
-    negative_mass_tolerance: float = 1.0e-10
+    negative_mass_tolerance: float = _DEFAULT_NEGATIVE_MASS_TOLERANCE
     quadratic_start: bool = field(default=True, kw_only=True)
 
     def __post_init__(self) -> None:
@@ -463,7 +466,7 @@ class SequentialLSVProjector:
         self,
         params: LogSvParams,
         target_local_vol: LocalVolSurface,
-        steps_per_interval: int | ArrayLike = 20,
+        steps_per_interval: int | ArrayLike = _DEFAULT_LSV_STEPS,
     ) -> SequentialLSVProjectionResult:
         """Carry the previous row's density forward, then recover leverage at this maturity.
 

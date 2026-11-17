@@ -4,6 +4,18 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.18.4] - 2026-11-17
+
+### Fixed
+
+- `SequentialLSVProjector`, `LSVFixedPointCalibrator` and `LSVParametricCalibrator`
+  default to 64 steps per coefficient bucket and a terminal negative-mass limit of
+  `1e-4`. Fixed-point fitting allows 20 iterations per expiry. `LSVMarketPipeline`
+  uses the same default calibration step count.
+- `LSVParametricCalibrator` gives recoverably invalid trials finite penalty residuals,
+  records their parameters and causes, and requires a fresh admissible final replay.
+  Each slice distinguishes peak terminal candidate negativity from peak substep negativity.
+
 ## [2.18.3] - 2026-11-17
 
 ### Added

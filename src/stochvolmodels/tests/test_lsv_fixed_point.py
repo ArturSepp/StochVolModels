@@ -30,6 +30,38 @@ def _deterministic():
     return grid, params, target
 
 
+@pytest.mark.parametrize("beta", [-0.5, 0.5])
+def test_correlated_default_fits_and_strict_density_limits(beta):
+    from stochvolmodels.pricers.logsv_pde_pricer import _default_grid
+    from stochvolmodels.pricers.lsv_projection import SequentialLSVProjector
+
+    params = LogSvParams(sigma0=0.2, theta=0.2, kappa1=2.0, kappa2=2.0, beta=beta, volvol=0.8)
+    chain = _quotes(np.array([0.1, 0.25, 0.5]))
+    grid = _default_grid(params, chain)
+    target = LocalVolSurface(chain.ttms, grid.x, np.full((3, grid.x.size), 0.25))
+    projector = SequentialLSVProjector(grid)
+    fitter = LSVFixedPointCalibrator(grid)
+    reference = LocalVolPdePricer().price_chain(chain, target)
+    for engine, method in ((projector, "project"), (fitter, "calibrate")):
+        run = getattr(engine, method)(params, target)
+        assert run.peak_negative_mass > engine.config.negative_mass_tolerance
+        replay = LogSvPdePricer(grid=grid, steps_per_interval=64).price_chain_detailed(
+            chain, run.model
+        )
+        for price, ref, disc, forward, expiry in zip(
+            replay.prices, reference, chain.discfactors, chain.forwards, replay.expiries,
+            strict=True,
+        ):
+            np.testing.assert_allclose(price, ref, atol=0.0015 * disc * forward, rtol=0)
+            assert expiry.negative_mass < engine.config.negative_mass_tolerance
+            assert abs(expiry.mass - 1) < engine.config.mass_tolerance
+        if method == "calibrate":
+            assert all(row.iterations[-1].converged for row in run.slices)
+        strict = replace(engine, config=replace(engine.config, negative_mass_tolerance=1e-10))
+        with pytest.raises(ValueError, match="T=0.1.*negative mass"):
+            getattr(strict, method)(params, target, 64)
+
+
 def test_converged_candidate_density_and_black_repricing():
     grid, params, target = _deterministic()
     # The second row's bounded proposal is 1.3. The 1.15 retry is within the

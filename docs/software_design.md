@@ -242,8 +242,13 @@ use the same `quadratic_start` convention as the vanilla pricer. A trial replay 
 zero uses the same graded grid on every evaluation. A continuation from a positive time
 uses uniform steps. The frozen BTC calibration and stress replays select uniform steps.
 
-Every density used to update leverage must satisfy the configured unit-mass
-and integrated-negative-mass tolerances. Slice diagnostics retain each ADI
+Projection and both fitters use 64 time steps per uninterrupted coefficient bucket
+by default. Each density used for a conditional moment or option price must satisfy
+`mass_tolerance` (default `1e-10` about one) and `negative_mass_tolerance` (default
+`1e-4` of undiscounted mass). Pass either tolerance or a step count explicitly to
+change it. In the flat 25% target case with volatility beta ±0.5, 20 steps left
+about 8% negative mass at the first 0.10-year expiry. At 64 steps the accepted
+fixed-point densities there had less than 1.3e-7 negative mass. Slice diagnostics retain each ADI
 substep, including transient negative mass between projections. Repricing
 with `LogSvPdePricer().price_chain(chain, result.model)` starts a fresh
 propagation with the recovered rows. It splits at leverage and backbone knots
@@ -267,7 +272,7 @@ The converged candidate and its own terminal law carry into the next interval.
 `result.slices[i].iterations` retains each trial's residuals, leverage update,
 conditional moments, endpoint density and substep diagnostics.
 `LSVConvergenceError` reports the failed interval and its trial history at the
-iteration limit. An unusable density raises a validation error at that trial.
+iteration limit, which defaults to 20 per expiry. An unusable density raises a validation error at that trial.
 Convergence measures the leverage equation on the chosen grid. Vanilla repricing
 against the local-volatility target measures a separate price error.
 The fitter module docstring includes an executable two-maturity example.
@@ -312,6 +317,16 @@ and uniform, Black vega or historical ATM weights. `initial_parameters` can supp
 a bounded start for each expiry. Every trial starts from the preceding accepted law.
 The final replay at the optimizer's parameters supplies the next starting density.
 The fitter checks total and negative mass at each density used to compute a price.
+A trial with inadmissible leverage, a failed density check or an unavailable Black IV
+returns a finite penalty vector with one entry per strike. Each `rejected_trials`
+entry records the parameter vector and the cause. If a start yields no admissible
+evaluation, the fitter can try the scaled prefit and a near-unit leverage start within
+the same per-expiry optimizer budget. A failed optimizer, no admissible trial, or an
+inadmissible final replay raises `LSVCalibrationError` with the expiry and trial history.
+
+`peak_candidate_negative_mass` is the largest terminal negative mass across candidates,
+including rejected ones. `peak_step_negative_mass` also includes intermediate propagation
+steps. The final replay's `negative_mass` is the value carried into the next interval.
 
 `result.parameter_names` names the columns of `result.parameter_values`. Each slice
 records its prefit, optimizer start, solver work, weighted IV residuals and accepted
@@ -322,7 +337,7 @@ count. Assess market spread coverage and independent prices when interpreting a 
 
 In the frozen BTC replay of 21 October 2021, the product-family fit puts 35 of 44
 common-grid IVs inside bid–ask. One trial at the third expiry has negative mass
-of `2.59e-5`. Reproducing the fit requires a trial limit of at least that size.
+of `2.59e-5`. A trial limit of `2e-5` rejects that candidate and still allows an admissible baseline fit.
 The baseline replay uses `3e-5` during fitting and retains the historical `2e-5`
 fine-grid acceptance limit. To reproduce the adverse fit through all four dates,
 the stress replay allows up to `1.5e-4` trial negative mass. It reaches optimizer
@@ -356,7 +371,7 @@ forward to its input in MC standard errors. Spread coverage counts common-grid P
 IVs within interpolated bid and ask, inclusive, across all expiries. A failed
 common-grid IV inversion fails the affected RMSE check. Inspect `checks` and
 `failed_checks`, or call `result.require_accepted()` to enforce the decision.
-An unusable calibration trial stops in the fitter at its configured density limit.
+The market checks evaluate an independent replay of the fitted model after all expiry fits succeed.
 The replay also retains every PDE step for inspection of transient negative mass.
 
 Set `LSVMarketAcceptanceCriteria(max_pde_boundary_mass=0.01)` to require at most 1%

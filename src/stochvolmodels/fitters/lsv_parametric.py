@@ -21,6 +21,7 @@ True
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from numbers import Integral
@@ -47,6 +48,8 @@ from stochvolmodels.models.lsv import LSVModel, LeverageSurface
 from stochvolmodels.pde_solvers import ADIConfig, PDE2DADISolver, PDEState2D, TensorGrid2D
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 from stochvolmodels.pricers.lsv_projection import (
+    _DEFAULT_LSV_STEPS,
+    _DEFAULT_NEGATIVE_MASS_TOLERANCE,
     _advance_lsv,
     _check_density_mass,
     _readonly_vector,
@@ -188,7 +191,7 @@ class LSVParametricCalibrationConfig:
     leverage_floor: float = 0.01
     leverage_cap: float = 3.0
     mass_tolerance: float = 1e-10
-    negative_mass_tolerance: float = 1e-10
+    negative_mass_tolerance: float = _DEFAULT_NEGATIVE_MASS_TOLERANCE
     quadratic_start: bool = field(default=True, kw_only=True)
 
     def __post_init__(self) -> None:
@@ -221,8 +224,25 @@ class LSVParametricCalibrationConfig:
         return _PARAMETER_NAMES[self.family]
 
 
+@dataclass(frozen=True, slots=True)
+class LSVRejectedTrial:
+    """Parameters and numerical cause of an inadmissible leverage evaluation."""
+
+    parameters: tuple[float, ...]
+    reason: str
+
+
 class LSVCalibrationError(RuntimeError):
     """An expiry could not produce a usable fit or density."""
+
+    def __init__(self, message: str, *, rejected_trials: tuple[LSVRejectedTrial, ...] = ()) -> None:
+        """Retain rejected trial details when calibration cannot advance the density."""
+        super().__init__(message)
+        self.rejected_trials = rejected_trials
+
+
+class _InvalidTrial(ValueError):
+    """A candidate-specific failure for which the optimizer can try another point."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -240,7 +260,11 @@ class LSVCalibrationEvaluation:
 
 @dataclass(frozen=True, slots=True)
 class LSVParametricSlice:
-    """Prefit, optimizer start, work counts and the replay of the accepted parameters."""
+    """Fit diagnostics and final replay. Candidate mass is measured at trial expiry.
+
+    peak_step_negative_mass also includes intermediate steps. Both peaks include
+    rejected candidates for which the solver returned a terminal density.
+    """
 
     start_density: PDEState2D
     prefit_parameters: FloatArray
@@ -251,6 +275,8 @@ class LSVParametricSlice:
     optimizer_message: str
     peak_candidate_negative_mass: float
     final_evaluation: LSVCalibrationEvaluation
+    rejected_trials: tuple[LSVRejectedTrial, ...] = ()
+    peak_step_negative_mass: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -315,15 +341,16 @@ class LSVParametricCalibrator:
         params: LogSvParams,
         target: ImpliedVolCalibrationTarget,
         prefit_local_volatility: LocalVolSurface,
-        steps_per_interval: int | ArrayLike = 20,
+        steps_per_interval: int | ArrayLike = _DEFAULT_LSV_STEPS,
         *,
         initial_parameters: ArrayLike | None = None,
     ) -> LSVParametricCalibrationResult:
         """Prefit local volatility, minimize weighted Black IV errors and replay each fit.
 
         Optional initial_parameters overrides the leverage start for each expiry.
-        Each row must lie within the selected family's bounds. A failed optimizer,
-        non-invertible price or unacceptable terminal law aborts the fit at its expiry.
+        Each row must lie within the selected family's bounds. Inadmissible trials receive
+        penalty residuals. Only a successful optimizer and an admissible final replay can
+        advance the density to the next expiry.
         """
         if not isinstance(target, ImpliedVolCalibrationTarget):
             raise TypeError("target must be an ImpliedVolCalibrationTarget")
@@ -380,6 +407,10 @@ class LSVParametricCalibrator:
                     bounds,
                     None if initial_parameters is None else initial_parameters[i],
                 )
+            except LSVCalibrationError as exc:
+                raise LSVCalibrationError(
+                    f"LSV calibration at T={end:g}: {exc}", rejected_trials=exc.rejected_trials
+                ) from exc
             except (ValueError, RuntimeError, FloatingPointError) as exc:
                 raise LSVCalibrationError(f"LSV calibration at T={end:g}: {exc}") from exc
             slices.append(row)
@@ -415,6 +446,7 @@ class LSVParametricCalibrator:
         market_iv = target.implied_volatilities[index]
         weights = calibration_weights(cfg.weighting, end, target.forward, target.strikes, market_iv)
         sqrt_weights = np.sqrt(weights)
+        iv_upper = 5.0  # Upper bracket of the package Black inversion, in decimal volatility.
         prefit_weights = np.sqrt(weights / weights.sum())
 
         def formula(parameters: FloatArray) -> ParametricLocalVolFormula:
@@ -433,35 +465,47 @@ class LSVParametricCalibrator:
         if not prefit.success:
             raise LSVCalibrationError(f"local-volatility prefit failed: {prefit.message}")
         formula(prefit.x).evaluate(x)  # Require a positive prefit at the observed strikes.
-        if supplied_start is None:
-            initial = prefit.x.copy()
-            scaled = slice(None) if cfg.family is LocalVolFamily.WING else 0
-            initial[scaled] /= model.volatility_scale(end) * model.dynamics.params.sigma0
-            initial = np.clip(initial, *bounds)
-        else:
-            initial = supplied_start
+        prefit_start = prefit.x.copy()
+        scaled = slice(None) if cfg.family is LocalVolFamily.WING else 0
+        prefit_start[scaled] /= model.volatility_scale(end) * model.dynamics.params.sigma0
+        prefit_start = np.clip(prefit_start, *bounds)
+        initial = prefit_start if supplied_start is None else supplied_start
+        rejected: list[LSVRejectedTrial] = []
+        peak_step_negative_mass = 0.0
         replay_count = 0
         peak_negative_mass = 0.0
 
+        @np.errstate(over="raise", invalid="raise", divide="raise")
         def evaluate(parameters: FloatArray) -> LSVCalibrationEvaluation:
             """Price one trial after checking its undiscounted terminal law."""
-            nonlocal replay_count, peak_negative_mass
+            nonlocal replay_count, peak_negative_mass, peak_step_negative_mass
             g = self.grid
-            leverage = np.clip(
-                formula(parameters).evaluate(g.x.nodes), cfg.leverage_floor, cfg.leverage_cap
-            )
+            candidate = formula(parameters)
+            try:
+                raw_leverage = candidate.evaluate(g.x.nodes)
+            except ValueError as exc:
+                raise _InvalidTrial(str(exc)) from exc
+            leverage = np.clip(raw_leverage, cfg.leverage_floor, cfg.leverage_cap)
             surface = LeverageSurface(
                 [end], g.x, leverage[None, :], cfg.leverage_floor, cfg.leverage_cap
             )
-            terminal, _ = _advance_lsv(
+            replay_count += 1
+            terminal, diagnostics = _advance_lsv(
                 replace(model, leverage_surface=surface), g, solver, state, end, steps,
                 quadratic_start=cfg.quadratic_start,
             )
             mass = g.integrate(terminal.values)
             negative_mass = -g.integrate(np.minimum(terminal.values, 0.0))
-            _check_density_mass(
-                mass, negative_mass, cfg.mass_tolerance, cfg.negative_mass_tolerance
+            peak_negative_mass = max(peak_negative_mass, negative_mass)
+            peak_step_negative_mass = max(
+                peak_step_negative_mass, max(step.negative_mass for step in diagnostics)
             )
+            try:
+                _check_density_mass(
+                    mass, negative_mass, cfg.mass_tolerance, cfg.negative_mass_tolerance
+                )
+            except ValueError as exc:
+                raise _InvalidTrial(str(exc)) from exc
             marginal = g.x.quadrature_weights * g.marginalize_y(terminal.values)
             calls = target.discount_factor * (payoffs @ marginal)
             ivs = np.array(
@@ -473,16 +517,15 @@ class LSVParametricCalibrator:
                         given_price=pv,
                         discfactor=target.discount_factor,
                         optiontype="C",
+                        vol_upper=iv_upper,
                     )
                     for k, pv in zip(target.strikes, calls)
                 ]
             )
             if not np.isfinite(ivs).all():
-                raise LSVCalibrationError(
+                raise _InvalidTrial(
                     f"Black IV inversion failed at strikes {target.strikes[~np.isfinite(ivs)]}"
                 )
-            replay_count += 1
-            peak_negative_mass = max(peak_negative_mass, negative_mass)
             return LSVCalibrationEvaluation(
                 _readonly_vector(parameters, "parameters"),
                 surface.values[0],
@@ -493,25 +536,66 @@ class LSVParametricCalibrator:
                 negative_mass,
             )
 
-        opt = least_squares(
-            lambda p: evaluate(p).weighted_residuals,
-            initial,
-            max_nfev=cfg.maximum_evaluations,
-            **options,
-        )
+        admissible = False
+        # Every valid weighted IV residual lies inside this bound, for every trial.
+        penalty = max(iv_upper, float(np.max(market_iv)))
+        numerical_errors = (_InvalidTrial, FloatingPointError, np.linalg.LinAlgError)
+
+        def residuals(parameters: FloatArray) -> FloatArray:
+            """Give each rejected trial a finite cost worse than the current valid fit."""
+            nonlocal admissible
+            try:
+                values = evaluate(parameters).weighted_residuals
+            except numerical_errors as exc:
+                rejected.append(LSVRejectedTrial(tuple(map(float, parameters)), str(exc)))
+                return np.full(market_iv.shape, penalty)
+            admissible = True
+            return values
+
+        def starts() -> Iterator[FloatArray]:
+            """Try the requested start first, then distinct fallback seeds if all trials fail."""
+            yield initial
+            if not np.array_equal(initial, prefit_start):
+                yield prefit_start
+            neutral = np.clip(_prefit_start(cfg, x, np.ones_like(x)), *bounds)
+            if not np.array_equal(neutral, initial) and not np.array_equal(neutral, prefit_start):
+                yield neutral
+
+        evaluations = 0
+        for start in starts():
+            opt = least_squares(
+                residuals, start, max_nfev=cfg.maximum_evaluations - evaluations, **options
+            )
+            evaluations += opt.nfev
+            if admissible or evaluations >= cfg.maximum_evaluations:
+                break
+        if not admissible:
+            raise LSVCalibrationError(
+                f"no admissible leverage trial: {rejected[-1].reason}",
+                rejected_trials=tuple(rejected),
+            )
         if not opt.success:
             raise LSVCalibrationError(
-                f"leverage optimizer failed after {opt.nfev} evaluations: {opt.message}"
+                f"leverage optimizer failed after {evaluations} evaluations: {opt.message}",
+                rejected_trials=tuple(rejected),
             )
-        final = evaluate(opt.x)
+        try:
+            final = evaluate(opt.x)
+        except numerical_errors as exc:
+            rejected.append(LSVRejectedTrial(tuple(map(float, opt.x)), str(exc)))
+            raise LSVCalibrationError(
+                f"inadmissible final replay: {exc}", rejected_trials=tuple(rejected)
+            ) from exc
         return LSVParametricSlice(
             state,
             _readonly_vector(prefit.x, "prefit_parameters"),
             _readonly_vector(initial, "initial_parameters"),
             weights,
-            opt.nfev,
+            evaluations,
             replay_count,
             opt.message,
             peak_negative_mass,
             final,
+            tuple(rejected),
+            peak_step_negative_mass,
         )

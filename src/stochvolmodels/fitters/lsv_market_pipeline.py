@@ -47,6 +47,7 @@ from stochvolmodels.pde_solvers import Grid1D, PDEDiagnostics2D
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdeExpiry, LogSvPdePricer, LogSvPdeResult
 from stochvolmodels.pricers.lsv_mc_pricer import LSVMonteCarloPricer, LSVMonteCarloResult
+from stochvolmodels.pricers.lsv_projection import _DEFAULT_LSV_STEPS
 
 FloatArray = NDArray[np.float64]
 
@@ -202,7 +203,7 @@ class LSVMarketPipeline:
         quote_selection: LSVQuoteSelection = LSVQuoteSelection.OTM,
         repair_policy: DupireRepairPolicy | None = None,
         historical_dupire_endpoints: bool = False,
-        calibration_steps_per_interval: int | ArrayLike = 20,
+        calibration_steps_per_interval: int | ArrayLike = _DEFAULT_LSV_STEPS,
         initial_parameters: ArrayLike | None = None,
     ) -> LSVMarketPipelineResult:
         """Snapshot quotes, recover Dupire variance, fit leverage and evaluate all final checks.
@@ -210,7 +211,7 @@ class LSVMarketPipeline:
         Original PVs and standard errors are in quote currency. Common-grid calls and
         errors are divided by the expiry's discounted forward. Failed Black inversions
         retain NaN IVs. historical_dupire_endpoints selects the 2.18.0 prefit for replication.
-        A failed calibration trial raises before final validation.
+        Each fitted expiry must have an admissible final replay before market validation.
         """
         market = LSVOptionChainAdapter(option_chain, quote_selection).build_calibration_input(
             grid_size=grid_size

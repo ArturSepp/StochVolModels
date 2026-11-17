@@ -111,6 +111,84 @@ def test_family_replay_through_backbone_knot(family, coefficients):
     )
 
 
+@pytest.mark.parametrize("invalid_final", [False, True])
+def test_optimizer_rejects_invalid_wing_trial_and_replays_final(monkeypatch, invalid_final):
+    from stochvolmodels.fitters import lsv_parametric as module
+
+    grid, params, _, _ = _flat_case()
+    target = ImpliedVolCalibrationTarget([0.2], np.linspace(0.94, 1.06, 7), [[0.2] * 7])
+    local = LocalVolSurface([0.2], grid.x, np.full((1, grid.x.size), 0.2))
+    cfg = LSVParametricCalibrationConfig(family=LocalVolFamily.WING)
+    fitter = LSVParametricCalibrator(grid, cfg)
+    scipy_fit = module.least_squares
+    # In bounds for WING, but its polynomial is negative at the left price edge.
+    bad = np.array([0.8, 4.0, 0.1, 0.0, 0.0])
+
+    def with_invalid_trial(fun, start, **kwargs):
+        if kwargs["max_nfev"] == cfg.maximum_evaluations:
+            penalty = fun(bad)
+            assert penalty.shape == target.strikes.shape and np.isfinite(penalty).all()
+            assert np.linalg.norm(penalty) > np.linalg.norm(fun(start))
+            np.testing.assert_array_equal(fun(bad), penalty)
+        opt = scipy_fit(fun, start, **kwargs)
+        if invalid_final and kwargs["max_nfev"] == cfg.maximum_evaluations:
+            opt.x = bad.copy()
+        return opt
+
+    monkeypatch.setattr(module, "least_squares", with_invalid_trial)
+    initial = [[1.0, 0.0, 0.1, 0.0, 0.0]]
+    if invalid_final:
+        with pytest.raises(LSVCalibrationError, match="final replay.*positive") as exc:
+            fitter.calibrate(params, target, local, 32, initial_parameters=initial)
+        assert exc.value.rejected_trials[-1].parameters == tuple(bad)
+    else:
+        fit = fitter.calibrate(params, target, local, 32, initial_parameters=initial)
+        row = fit.slices[0]
+        assert row.rejected_trials[0].parameters == tuple(bad)
+        assert "positive" in row.rejected_trials[0].reason
+        pricer = LogSvPdePricer(grid=grid, steps_per_interval=32)
+        prices = pricer.price_chain(_calls(target), fit.model)
+        np.testing.assert_allclose(prices[0], row.final_evaluation.model_calls, atol=2e-13, rtol=0)
+        np.testing.assert_allclose(prices[0], target.target_calls[0], atol=1e-4, rtol=0)
+
+
+@pytest.mark.parametrize("beta", [-0.5, 0.5])
+def test_correlated_parametric_fit_recovers_from_invalid_density(beta, record_property):
+    from stochvolmodels.pricers.logsv_pde_pricer import _default_grid
+
+    params = LogSvParams(sigma0=0.2, theta=0.2, kappa1=2.0, kappa2=2.0, beta=beta, volvol=0.8)
+    target = ImpliedVolCalibrationTarget([0.1], np.linspace(0.90, 1.10, 7), [[0.25] * 7])
+    chain = _calls(target)
+    grid = _default_grid(params, chain)
+    law = ParametricLocalVolFormula(LocalVolFamily.PRODUCT, (1.9, 0.8, 1.2))
+    leverage = LeverageSurface(target.times, grid.x, law.evaluate(grid.x.nodes)[None, :])
+    local = LocalVolSurface(target.times, grid.x, params.sigma0 * leverage.values)
+    pricer = LogSvPdePricer(grid=grid, steps_per_interval=64)
+    planted = pricer.price_chain_detailed(chain, LSVModel.from_params(params, leverage))
+    target = replace(target, implied_volatilities=np.vstack(planted.implied_vols))
+    fitter = LSVParametricCalibrator(grid)
+    fit = fitter.calibrate(params, target, local, initial_parameters=[[0.01, 1.0, 0.01]])
+    row = fit.slices[0]
+    assert row.rejected_trials and "density negative mass" in row.rejected_trials[0].reason
+    assert row.final_evaluation.negative_mass < fitter.config.negative_mass_tolerance
+    assert row.peak_candidate_negative_mass > fitter.config.negative_mass_tolerance
+    assert row.peak_step_negative_mass >= row.peak_candidate_negative_mass
+    assert row.optimizer_evaluations_count <= fitter.config.maximum_evaluations
+    prices = pricer.price_chain(chain, fit.model)[0]
+    np.testing.assert_allclose(prices, row.final_evaluation.model_calls, atol=2e-13, rtol=0)
+    np.testing.assert_allclose(prices, planted.prices[0], atol=2e-6, rtol=0)
+    record_property("rejected_reasons", [t.reason for t in row.rejected_trials])
+    record_property("terminal_negative_mass", row.final_evaluation.negative_mass)
+    record_property("peak_terminal_negative_mass", row.peak_candidate_negative_mass)
+    record_property("peak_step_negative_mass", row.peak_step_negative_mass)
+    record_property("max_planted_price_gap", max(abs(prices - planted.prices[0])))
+    record_property("parameters", row.final_evaluation.parameters.tolist())
+    strict = replace(fitter, config=replace(fitter.config, negative_mass_tolerance=1e-10))
+    with pytest.raises(LSVCalibrationError, match="no admissible.*negative mass") as exc:
+        strict.calibrate(params, target, local)
+    assert all("negative mass" in trial.reason for trial in exc.value.rejected_trials)
+
+
 def test_invalid_black_inversion_identifies_expiry_and_strike():
     grid, params, _, _ = _flat_case()
     target = ImpliedVolCalibrationTarget([0.2], [1.0, 4.0], [[0.2, 0.2]])
@@ -118,8 +196,10 @@ def test_invalid_black_inversion_identifies_expiry_and_strike():
     cfg = LSVParametricCalibrationConfig(
         family=LocalVolFamily.FLAT, weighting=CalibrationWeighting.UNIFORM
     )
-    with pytest.raises(LSVCalibrationError, match=r"T=0.2.*IV inversion failed at strikes .*4"):
+    with pytest.raises(LSVCalibrationError, match=r"T=0.2.*no admissible.*IV inversion.*4") as exc:
         LSVParametricCalibrator(grid, cfg).calibrate(params, target, local)
+    assert exc.value.rejected_trials
+    assert all("IV inversion" in trial.reason for trial in exc.value.rejected_trials)
 
 
 @pytest.mark.parametrize("weighting", list(CalibrationWeighting))
@@ -202,8 +282,19 @@ def test_btc_market_replay_matches_frozen_prices_and_decisions(btc_replay):
     )
     np.testing.assert_allclose(prices, reference, rtol=0, atol=1e-6)
     chain = get_btc_test_chain_data()
-    with pytest.raises(LSVCalibrationError, match=f"T={chain.ttms[2]:g}.*negative mass"):
-        replay(adverse=adverse, candidate_negative_mass_limit=2e-5)
+    if adverse:
+        with pytest.raises(LSVCalibrationError, match=f"T={chain.ttms[2]:g}.*no admissible") as exc:
+            replay(adverse=True, candidate_negative_mass_limit=2e-5)
+        assert all("negative mass" in trial.reason for trial in exc.value.rejected_trials)
+    else:
+        tight = replay(candidate_negative_mass_limit=2e-5)
+        third = tight.calibration.slices[2]
+        assert third.rejected_trials and "negative mass" in third.rejected_trials[0].reason
+        assert third.peak_candidate_negative_mass > 2e-5
+        assert max(row.final_evaluation.negative_mass for row in tight.calibration.slices) <= 2e-5
+        assert tight.acceptance.checks == result.acceptance.checks
+        for actual, historical in zip(tight.original, result.original, strict=True):
+            np.testing.assert_allclose(actual.pde_prices, historical.pde_prices, rtol=0, atol=1e-7)
 
 
 @pytest.mark.slow
@@ -389,6 +480,9 @@ def test_frozen_btc_parameters_surface_and_vanillas(btc_replay, record_property)
         pde_replays=[r.pde_replays for r in fit.slices],
         trial_negative_mass_limit=trial_limit,
         peak_candidate_negative_mass=max(r.peak_candidate_negative_mass for r in fit.slices),
+        rejected_trial_counts=[len(row.rejected_trials) for row in fit.slices],
+        accepted_negative_masses=[row.final_evaluation.negative_mass for row in fit.slices],
+        peak_step_negative_masses=[row.peak_step_negative_mass for row in fit.slices],
         fine_negative_mass=max(row.negative_mass for row in result.pde_expiries),
         inside_spread=inside,
         target_iv_rmse=list(acceptance.pde_target_iv_rmse),

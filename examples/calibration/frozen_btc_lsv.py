@@ -32,7 +32,8 @@ def replay_btc(
     """Price the archived starts with explicit fit and independent repricing policies.
 
     The original fitter observed candidate density violations without enforcing them.
-    The public fitter enforces the supplied limit at every candidate. The replay limits
+    The public fitter penalizes violating trials and enforces the limit on the final replay.
+    The historical replay limits
     are 3e-5 (baseline) and 1.5e-4 (adverse). Final expiry acceptance uses 2e-5 for both.
     """
     trial_limit = 1.5e-4 if adverse else 3e-5

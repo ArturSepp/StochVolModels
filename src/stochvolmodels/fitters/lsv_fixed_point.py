@@ -37,6 +37,7 @@ from stochvolmodels.models.lsv import LSVModel
 from stochvolmodels.pde_solvers import ADIConfig, PDEState2D, TensorGrid2D
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 from stochvolmodels.pricers.lsv_projection import (
+    _DEFAULT_LSV_STEPS,
     LSVProjectionConfig,
     LSVProjectionSlice,
     _LSVProjectionRun,
@@ -47,7 +48,7 @@ from stochvolmodels.pricers.lsv_projection import (
 class LSVFixedPointConfig(LSVProjectionConfig):
     """Projection and density policies plus the per-node stopping rule for each expiry."""
 
-    maximum_iterations: int = 8
+    maximum_iterations: int = 20
     relative_tolerance: float = 1.0e-4
     absolute_tolerance: float = 1.0e-6
 
@@ -150,7 +151,7 @@ class LSVFixedPointCalibrator:
         self,
         params: LogSvParams,
         target_local_vol: LocalVolSurface,
-        steps_per_interval: int | ArrayLike = 20,
+        steps_per_interval: int | ArrayLike = _DEFAULT_LSV_STEPS,
     ) -> LSVFixedPointResult:
         """Fit each bucket from the last accepted law, starting at (0, sigma0).
 
