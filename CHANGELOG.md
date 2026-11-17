@@ -14,6 +14,8 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Changed
 
+- The minimum Python version is 3.11.5 so the docs and Jupyter extras can resolve
+  the patched Soup Sieve dependency on every supported Python version.
 - Setuptools discovers the solver package normally. Historical LSV calibration and
   pricing comparisons now run in public CI from a clean checkout.
 

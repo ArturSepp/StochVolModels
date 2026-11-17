@@ -43,8 +43,9 @@ results and conventions below remain the canonical example's contract.
 
 ## Installation
 
-Version 2.6.0 and newer require **Python 3.11 or newer**; Python 3.12 is the development
-and primary CI interpreter. Published version 2.5.0 retains its original Python 3.10 requirement.
+Version 2.18.8 requires Python 3.11.5 or newer. Versions 2.6.0 through 2.18.7 required
+Python 3.11 or newer. Python 3.12 is the development and primary CI interpreter.
+Published version 2.5.0 retains its original Python 3.10 requirement.
 
 Install the released core package:
 

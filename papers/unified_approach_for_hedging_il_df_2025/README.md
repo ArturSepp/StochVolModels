@@ -84,7 +84,7 @@ propagation.
 
 ## Run
 
-Use Python 3.11 or later with this checkout installed and its existing core
+Use Python 3.11.5 or later with this checkout installed and its existing core
 dependencies. No new dependency or optional research extra is required. The newly
 added runner is repository code, not an installed-wheel API. On the maintainer's
 Windows host, use the external interpreter specified in the root `AGENTS.md`.
