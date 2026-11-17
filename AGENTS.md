@@ -40,6 +40,11 @@ comparable.
 
 This is the reference implementation maintained by one of the model's originators.
 `papers/` reproduces the computations and figures of the published papers.
+The provisional PDE stack separates generic numerical solvers (`pde_solvers/`), model
+coefficients and leverage (`models/`), payoffs (`products/`), vanilla valuation (`pricers/`),
+and Dupire/leverage/market calibration (`fitters/`). It supports deterministic local volatility
+and LogSV-based local stochastic volatility (LSV), with independent Monte Carlo comparisons.
+
 Distribution and import name `stochvolmodels`. Licensed MIT (`LICENSE.txt`).
 
 ## Ecosystem position
@@ -81,20 +86,31 @@ src/stochvolmodels/
                      Student-t; subpackages logsv/, factor_hjm/, rough_logsv/;
                      source-adjacent run_local/ packages hold development runners
   data/              option-chain containers; run_local/ holds development diagnostics
-  fitters/           approximate LogSV smile fitter; run_local/ holds development diagnostics
+  fitters/           smile, Dupire, leverage and LSV market calibration; development diagnostics
+  models/            path dynamics, local volatility, LSV leverage and coefficient adapters
+  products/          payoff and monitoring conventions; valuation.py values ModelPaths
+  pde_solvers/       public generic grids, theta/ADI solvers, jump operators and diagnostics
   utils/             numerical utilities (Fourier transforms, quadrature, plotting)
   tests/             test modules (test_*.py) — inside the package
 examples/            repository-only runnable examples, grouped by task
   docs/              canonical scripts excerpted by the documentation pages
-papers/              replication code, 9 directories
+papers/              maintained paper replication code and historical study adapters
   <paper>/paper/     article PDF and LaTeX source, where available
 docs/                Sphinx/Furo user guide, API reference, and adoption documentation
   images/            reviewed documentation exhibits and their provenance manifest
-validation/pde_reference/  public historical LSV calibration and pricing comparisons
+validation/pde_reference/  public, repository-only historical LSV implementations
+                     and fixtures; independent comparison namespace, excluded from PyPI
 scripts/             repository checks; check_docs.py, docs_inventory.json and
                      docs_analytics/ own the documentation standard and exhibits
 CHANGELOG.md         every public change is recorded here
 ```
+
+The entire generic PDE engine is public under `src/stochvolmodels/pde_solvers/`.
+Keep historical comparison implementations under `validation/pde_reference/`, outside the
+installed namespace. They are tracked and required by the `pde_reference` source-test lane;
+do not restore an ignored engine or a private-runner dependency. Preserve the independent
+wheel/sdist inventory checks when adding public modules. Agent evidence stays under ignored
+`agents/`; private provider data and machine-local settings do not enter distributions.
 
 There is no top-level `tests/` directory. Automated tests live in
 `src/stochvolmodels/tests/`. Component development runners live beside their implementation in

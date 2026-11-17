@@ -6,8 +6,14 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [2.18.8] - 2026-11-17
 
+### Fixed
+
+- `LogSvPdePricer` now directs callers with a bare volatility-backbone parameter
+  object to `LSVModel.from_params(params)`. The supported adapter preserves all knots.
+
 ### Documentation
 
+- Corrected PDE release history, module ownership, RNG guidance, glossary and example indexes.
 - Added standalone PDE and local-volatility/LSV guides, measured refinement examples,
   and rendered provisional solver, model, pricer and fitter APIs.
 - Fixed missing imports in parametric-fit, Monte Carlo and market-pipeline docstrings.
@@ -109,6 +115,10 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [2.18.0] - 2026-11-15
 
+This is the first published PDE integration release. The 2.7.0–2.17.0 entries below
+record development milestones included in this release; they were not separate
+Git tags or PyPI releases. Their original dates and change descriptions are retained.
+
 ### Added
 
 - `DupireRecoverer.jump_adjusted` recovers diffusion variance for a specified
@@ -117,7 +127,7 @@ Entries start at 1.2.0. For earlier releases see the git log.
 - The repository includes offline baseline and adverse-start BTC calibration replays
   and a seven-scenario LSV propagation stress matrix.
 
-## [2.17.0] - 2026-11-15
+## [2.17.0] - 2026-11-15 (development milestone; released in 2.18.0)
 
 ### Added
 
@@ -125,7 +135,7 @@ Entries start at 1.2.0. For earlier releases see the git log.
   fitted model with independent PDE and Monte Carlo engines, and reports seven
   acceptance checks together with normalized and original-strike vanilla prices.
 
-## [2.16.0] - 2026-11-15
+## [2.16.0] - 2026-11-15 (development milestone; released in 2.18.0)
 
 ### Added
 
@@ -133,7 +143,7 @@ Entries start at 1.2.0. For earlier releases see the git log.
   from ragged European bid/ask Black IVs. It retains the original quotes, selected
   indices and spreads, and exposes the raw Dupire variance and any explicit repairs.
 
-## [2.15.0] - 2026-11-15
+## [2.15.0] - 2026-11-15 (development milestone; released in 2.18.0)
 
 ### Added
 
@@ -141,7 +151,7 @@ Entries start at 1.2.0. For earlier releases see the git log.
   with compensated fixed log-forward jumps. Step diagnostics include mass
   translated beyond the price grid.
 
-## [2.14.0] - 2026-11-15
+## [2.14.0] - 2026-11-15 (development milestone; released in 2.18.0)
 
 ### Added
 
@@ -149,7 +159,7 @@ Entries start at 1.2.0. For earlier releases see the git log.
   They support maturity-bucketed leverage and volatility backbones, optional
   compensated fixed log-forward jumps, and antithetic sampling errors.
 
-## [2.13.0] - 2026-11-15
+## [2.13.0] - 2026-11-15 (development milestone; released in 2.18.0)
 
 ### Added
 
@@ -157,7 +167,7 @@ Entries start at 1.2.0. For earlier releases see the git log.
   Black implied volatilities with fixed LogSV dynamics. The vanilla PDE pricer
   also accepts a separate time-step count for each expiry interval.
 
-## [2.12.0] - 2026-11-15
+## [2.12.0] - 2026-11-15 (development milestone; released in 2.18.0)
 
 ### Added
 
@@ -165,7 +175,7 @@ Entries start at 1.2.0. For earlier releases see the git log.
   to a deterministic local-volatility surface. It returns the fitted LSV model
   with its trial densities, convergence residuals and leverage updates.
 
-## [2.11.0] - 2026-11-15
+## [2.11.0] - 2026-11-15 (development milestone; released in 2.18.0)
 
 ### Added
 
@@ -173,7 +183,7 @@ Entries start at 1.2.0. For earlier releases see the git log.
   joint log-forward and volatility grids. The LogSV vanilla PDE pricer accepts the
   recovered model, including deterministic backbone and leverage bucket dates.
 
-## [2.10.0] - 2026-11-14
+## [2.10.0] - 2026-11-14 (development milestone; released in 2.18.0)
 
 ### Added
 
@@ -181,7 +191,7 @@ Entries start at 1.2.0. For earlier releases see the git log.
   variance from discounted calls, exposes derivative and repair diagnostics, and
   converts the result into a deterministic surface for vanilla PDE pricing.
 
-## [2.9.0] - 2026-11-14
+## [2.9.0] - 2026-11-14 (development milestone; released in 2.18.0)
 
 ### Added
 
@@ -189,7 +199,7 @@ Entries start at 1.2.0. For earlier releases see the git log.
   on log-forward or absolute-level nodes. `LocalVolPdePricer` prices European calls and
   puts on the original chain and reports mass, forward and discounted parity diagnostics.
 
-## [2.8.0] - 2026-11-14
+## [2.8.0] - 2026-11-14 (development milestone; released in 2.18.0)
 
 ### Added
 
@@ -205,7 +215,7 @@ Entries start at 1.2.0. For earlier releases see the git log.
   and NaN for unbracketed prices. Exact neighboring observation times remain
   distinguishable in the PDE solvers.
 
-## [2.7.0] - 2026-11-14
+## [2.7.0] - 2026-11-14 (development milestone; released in 2.18.0)
 
 ### Added
 

@@ -8,7 +8,7 @@ myst:
 
 # Finite-difference PDE solvers
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-11-17](https://github.com/ArturSepp/StochVolModels/commit/45ca508c2d0d0439292df3591f37e905ee4d625c)*
 
 Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).

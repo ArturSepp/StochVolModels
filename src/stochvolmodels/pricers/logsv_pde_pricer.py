@@ -165,6 +165,11 @@ class LogSvPdePricer(ModelPricer):
         counts = _step_counts(self.steps_per_interval, len(option_chain.ttms))
 
         lsv = isinstance(params, LSVModel)
+        if isinstance(params, LogSvParams) and params.vol_backbone is not None:
+            raise ValueError(
+                "For vol_backbone term structures, import LSVModel from "
+                "stochvolmodels.models.lsv and pass LSVModel.from_params(params)"
+            )
         model = params.dynamics if lsv else LogSvModel(params)
         snapshot = model.params
         grid = self.grid

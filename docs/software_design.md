@@ -24,51 +24,65 @@ stability tiers; the [API reference](api.md) lists the names by the page that ex
 
 ```mermaid
 flowchart TB
-    V["vanilla-option-pricers: Black and Bachelier analytics"]
-    U["utils: enums, transform grids, slice pricers, Monte Carlo payoffs, rate conventions"]
-    D["data: OptionChain, OptionSlice, SwOptionChain, FutOptionChain, ModelPaths, bundled chains"]
-    P["pricers: ModelPricer and the model pricers, with their calibration"]
-    F["fitters: approximate smile, Student-t analytics, fit and surface diagnostics"]
-    M["models, products, valuation: provisional path-model stack"]
-    E["estimation: OHLC estimators and volatility forecasting"]
-    D --> U
-    D --> V
-    P --> D
-    P --> U
-    P --> V
-    P --> F
+    N["pde_solvers: grids, coefficients, boundaries, evolution and diagnostics"]
+    M["models: dynamics, local volatility, leverage and jumps"]
+    R["products: payoffs and contract conventions"]
+    P["pricers: transform, PDE and Monte Carlo valuation"]
+    F["fitters: Dupire, projection, leverage and market calibration"]
+    D["data: option chains and simulated paths"]
+    U["utils and vanilla-option-pricers: numerical and Black analytics"]
+    F --> P
+    F --> M
     F --> D
-    F --> V
-    M --> D
-    M -. lazy import .-> P
+    P --> M
+    P --> N
+    P --> R
+    P --> D
+    M --> N
+    M -->|legacy parameter type| P
+    D --> U
+    P --> U
+    F --> U
 ```
 
-In words: arrows point from a layer to the layers it imports. The utilities import nothing else
-from the package. The data containers use the utilities and delegate Black-Scholes and Bachelier
-analytics to `vanilla-option-pricers`. The pricers build on both, and each pricer carries its own
-calibration method; there is no separate calibration package. The provisional path-model stack
-shares only the containers with the pricers and imports the LogSV and Heston kernels lazily, so
-importing it compiles no numba code. The estimation suite stands alone.
+Arrows show imports between responsibilities in the PDE/LSV stack, rather than a strict
+acyclic dependency order. Solvers evolve arrays without knowing market quotes or payoffs.
+Models supply dynamics and coefficient adapters; products define payoffs; pricers evolve
+the law or simulate paths and apply forward and discount conventions. Fitters recover local
+volatility, project conditional variance or optimize leverage, and call pricers for validation.
+The market pipeline composes these operations and reports acceptance separately from convergence.
+
+Most imports in these implementation modules are eager. In particular, the model adapters
+reuse `LogSvParams` from `pricers.logsv.logsv_params`; that historical ownership is retained.
+The two repricing imports inside `lsv_projection` are deferred until their functions run.
+The separate path adapters defer some simulation kernels, and protocol annotations use
+`TYPE_CHECKING`; neither pattern describes all model imports. Package-root names resolve lazily
+through `__getattr__`, independently of imports within an accessed implementation module.
+Utilities mostly depend on one another; `utils.plots` also imports the package path helper.
 
 | Layer | Modules | Role |
 |---|---|---|
-| Utilities | `utils/config.py`, `funcs.py`, `mgf_pricer.py`, `mc_payoffs.py`, `var_swap_pricer.py`, `rate_core.py`, `plots.py` | `OptionType` and `VariableType`; time grids and seeding; transform grids and Fourier slice pricers; Monte Carlo payoffs; the model-free variance-swap strike; rate conventions; plotting helpers |
-| Data | `data/option_chain.py`, `model_paths.py`, `sample_option_chains.py`, `fetch_option_chain.py` | Option-chain containers per maturity, the validated path payload, the bundled chains, optional loaders from data providers |
-| Pricers | `pricers/model_pricer.py`, `logsv_pricer.py`, `logsv/`, `heston_pricer.py`, `hawkes_jd_pricer.py`, `gmm_pricer.py`, `tdist_pricer.py`, `regime_switch_logsv_pricer.py`, `rough_logsv/`, `factor_hjm/` | The pricer interface and the models; the affine expansion and moment equations of the log-normal SV model |
-| Fitters | `fitters/logsv_smile.py`, `tdist.py`, `diagnostics.py`, `surface_checks.py`, `adapters/` | The [approximate smile fitter](logsv_smile_fitter.md), Student-t analytics, fit/surface checks, native quote scales and optional OCA handoff |
-| Path models | `models/`, `products/`, `valuation.py` | Protocols for path, transform and terminal models; payoffs; path valuation with explicit measure and weights |
-| Estimation | `estimation/` | OHLC variance estimators, realized-volatility targets, forecasting models and walk-forward evaluation |
+| Numerical solvers | `pde_solvers/` | Grids, theta and ADI evolution, jump operators, boundary conditions and raw density diagnostics |
+| Models | `models/local_vol.py`, `lsv.py`, `logsv_pde.py`, `lsv_simulation.py` and path adapters | Validated model snapshots, deterministic local volatility, leverage, coefficients and path dynamics |
+| Products and valuation | `products/`, `valuation.py` | Payoffs, monitoring conventions and valuation of `ModelPaths` with explicit measures and weights |
+| Pricers | `pricers/model_pricer.py`, transform pricers, `local_vol_pde_pricer.py`, `logsv_pde_pricer.py`, `lsv_projection.py`, `lsv_mc_pricer.py` | Quote-currency vanilla prices, conditional-variance propagation, simulations and pricing diagnostics |
+| Fitters | `fitters/dupire.py`, `lsv_fixed_point.py`, `lsv_parametric.py`, `lsv_market.py`, `lsv_market_pipeline.py`, smile fitters and adapters | Surface inversion and repair, leverage fitting, quote conversion, independent repricing and market acceptance |
+| Data | `data/option_chain.py`, `model_paths.py`, sample chains and optional loaders | Market and path containers; Black/Bachelier analytics delegated to `vanilla-option-pricers` |
+| Utilities | `utils/` | Enums, transform integration, time grids, array validation, random seeding, payoff aggregation and plotting |
+| Estimation | `estimation/` | OHLC variance estimators, volatility forecasting and walk-forward evaluation |
 
-Two couplings cross this picture: the log-normal SV parameters import the rough-kernel module to
-approximate kernels when $H < 1/2$, and the regime-switching pricer imports the regime models of
-the provisional stack.
+Legacy transform pricers retain their calibration methods. The Student-t pricer imports its
+fitter, while the reviewed PDE pricers do not eagerly import fitters. LogSV parameters also
+import the rough-kernel module, and the regime-switching pricer imports regime model state.
+These compatibility edges explain why the diagram is an ownership map rather than an import ban.
 
 ### Generic finite-difference solvers
 
 For executable examples, coefficient conventions and refinement measurements, see the
 [PDE solver guide](pde_solvers.md) and [local-volatility and LSV guide](local_volatility_and_lsv.md).
 
-The provisional `stochvolmodels.pde_solvers` module in the 2.7.0 source and distribution
+The provisional `stochvolmodels.pde_solvers` module, first published in
+[2.18.0](https://pypi.org/project/stochvolmodels/2.18.0/),
 provides `PDE1DSolver` for theta stepping and `PDE2DADISolver` for Douglas, Craig–Sneyd
 and Hundsdorfer–Verwer ADI. Import them directly from this module. The caller supplies the
 model coefficients, grid and terminal value or initial density. A pricer owns payoff units and
@@ -102,6 +116,11 @@ Import `LogSvPdePricer` from `stochvolmodels.pricers.logsv_pde_pricer`. Calling
 prices per expiry, in the input strike order. The model adapter takes a detached
 `LogSvModel` parameter snapshot. It supports the money-market measure, $H=1/2$,
 a unit price backbone and the martingale condition $\kappa_2 \geq \beta$.
+For a nonempty `params.vol_backbone`, import `LSVModel` from `stochvolmodels.models.lsv`
+and pass `LSVModel.from_params(params)` to the same pricer. This adapter preserves the
+term structure and splits propagation at every loading knot. `LogSVPricer` is the existing
+transform pricer; `LogSvPdePricer` is the opt-in density pricer. Their distinct capitalization
+is part of the existing import API.
 
 The pricer evolves the undiscounted law of normalized log-forward and volatility
 once through the exact chain expiries. At each expiry it evaluates the product
@@ -485,6 +504,10 @@ interior leverage and backbone knot. Each interval of length Δt takes
 `ceil(steps_per_year * Δt)` log-Euler steps.
 
 `LSVMonteCarloConfig` selects path count, steps per year, seed and antithetic sampling.
+The "frozen BTC log-Euler scheme" means explicit Euler updates in normalized log-forward
+and log volatility, evaluating diffusion coefficients at the start of each step and
+exponentiating log volatility afterwards. The label identifies the historical comparison
+implementation; it does not require BTC data or restrict the engine to cryptocurrencies.
 A local NumPy generator draws the return shock, then the independent volatility shock
 at each step. When enabled, each first-half path has its Gaussian antithetic partner
 in the second half. Jump counts are independent Poisson draws for each path.
@@ -535,8 +558,9 @@ Use the following ownership rules for new implementations:
 |---|---|---|
 | `models` | Parameters bound to a stochastic law, measure conventions, state evolution, and available transforms or terminal laws | A simulation request returns `ModelPaths`; a transform request returns a numerical transform grid. A model need not provide capabilities its mathematics does not support. |
 | `products` | Contract terms, required assets or states, expiry, payoff and settlement units | Paths become one undiscounted payoff per path. Products do not choose simulation schemes or fit quotes. |
-| `pricers` and `valuation` | Numerical integration or Monte Carlo estimation, deterministic discounting, pricing conventions and implied-volatility conversion | Model outputs and contracts become prices and standard errors. The legacy pricers retain their calibration entry points. |
-| `fitters` | Approximate smile fitting and fit/surface diagnostics | Observed quotes and model evaluations become fit results or diagnostic reports; provider adapters remain optional. |
+| `pde_solvers` | Model-independent finite-difference evolution and raw diagnostics | Grids, coefficient arrays and boundary rules become solution arrays; no quote fitting or payoff conventions. |
+| `pricers` and `valuation` | Transform integration, PDE payoff projection or Monte Carlo estimation, deterministic discounting, pricing conventions and implied-volatility conversion | Model outputs and contracts become prices and standard errors. The legacy pricers retain their calibration entry points. |
+| `fitters` | Smile and leverage calibration, Dupire inversion, quote repair and market acceptance | Observed quotes and model evaluations become fit results or diagnostic reports; provider adapters remain optional. |
 | `data` | Market observations, quote conventions, maturity and strike axes, and shared numerical payloads | `OptionChain` holds quotes; `ModelPaths` holds simulated state. Data containers do not define stochastic dynamics. |
 | `estimation` | Historical volatility estimates, forecasts and point-in-time validation | Time series become estimates and forecasts; risk-neutral calibration remains a separate task. |
 
@@ -599,13 +623,18 @@ params)`, which returns option prices slice by slice. Everything else is built o
 `model_mc_price_chain`, `simulate_terminal_values`, `simulate_vol_paths` and
 `calibrate_model_params_to_chain` raise `NotImplementedError` unless a pricer implements them;
 `compute_mc_chain_implied_vols` turns Monte Carlo prices and standard errors into implied
-volatilities with 95% bounds. Parameters are dataclasses deriving from `ModelParams`.
+volatilities with 95% bounds. Legacy parameter dataclasses derive from `ModelParams`.
+The provisional PDE and LSV pricers also accept their documented surfaces or bound models;
+they delegate fitting to the separate fitters rather than implementing that calibration method.
 `validate_optimization_result` raises `CalibrationError` when an optimizer fails or returns values
 outside its bounds.
 
-| Pricer | Analytic prices | Monte Carlo | Calibration |
+| Pricer | Pricing method | Monte Carlo | Calibration |
 |---|---|---|---|
 | `LogSVPricer` | Affine expansion of the MGF, Fourier inversion | Numba simulation; fixed random numbers; rough extension | Analytic, Monte Carlo and rough engines, validated |
+| `LogSvPdePricer` | 2D forward-density PDE for LogSV or LSV vanillas | Compare LSV models through `LSVMonteCarloPricer` | Separate projection, leverage fitters and market pipeline |
+| `LocalVolPdePricer` | 1D forward-density PDE for `LocalVolSurface` | None on this pricer | Separate Dupire inversion and surface fitting |
+| `LSVMonteCarloPricer` | Seeded path simulation and payoff expectation | `LSVMonteCarloEngine`, including optional jumps | Separate LSV fitters; independent pipeline validation |
 | `HestonPricer` | Closed-form MGF, Fourier inversion | Numba simulation | Five parameters with the Feller constraint, validated |
 | `HawkesJDPricer` | Riccati equations of the MGF, Fourier inversion | NumPy simulation | Eight parameters; the optimizer result is not validated |
 | `GmmPricer`, `TdistPricer` | Closed-form mixtures and Student-t prices | None | Per maturity, validated |
@@ -661,6 +690,7 @@ Simulators draw from different generators, and a seed must reach the right one:
 | Numba's internal generator | `LogSVPricer.model_mc_price_chain` and `simulate_terminal_values`; `HestonPricer` Monte Carlo | `stochvolmodels.utils.funcs.set_seed` |
 | NumPy's global generator | `LogSVPricer.simulate_vol_paths`; `HawkesJDPricer` Monte Carlo; factor HJM simulators, which reseed it themselves | `numpy.random.seed` |
 | A local generator from a seed argument | Fixed-random chain valuation and calibration; the rough extension; `LogSvModel.simulate_paths`; the regime-switching and TGARCH simulators | the function's `seed` |
+| Local NumPy `default_rng` | `LSVMonteCarloEngine` and `LSVMonteCarloPricer` | `LSVMonteCarloConfig(seed=...)`; global NumPy and numba seeds do not control it |
 
 Importing the package changes no generator state; a test enforces it.
 
@@ -691,11 +721,14 @@ guards.
 
 ## Models without an article
 
-These surfaces are in the package and tested, but no public paper maps to them yet, so they have
-no article; the [API reference](api.md#provisional-and-experimental-surfaces) lists them.
+These tested surfaces have no dedicated public paper mapping. Some now have implementation
+guides; that documentation does not imply a published research validation or a stable API.
+The [API reference](api.md#provisional-and-experimental-surfaces) lists their entry points.
 
 | Surface | Tier | Modules | Entry points |
 |---|---|---|---|
+| Generic finite-difference engine | Provisional | `pde_solvers/` | `PDE1DSolver`, `PDE2DADISolver`; [solver guide](pde_solvers.md) |
+| Deterministic local volatility and local stochastic volatility (LSV) | Provisional | Local-volatility/LSV modules in `models/`, `pricers/`, `fitters/` | `LocalVolSurface`, `LSVModel`, `LSVMarketPipeline`; [local-volatility and LSV guide](local_volatility_and_lsv.md) |
 | Regime-switching log-normal SV: two regimes with equilibrium risk premia and transition jumps | Provisional | `models/regime_logsv.py`, `models/regime_logsv_simulation.py`, `pricers/regime_switch_logsv_pricer.py` | `RegimeSwitchLogSvParams`, `solve_regime_switch_equilibrium`, `RegimeSwitchLogSVPricer` |
 | Rough log-normal SV: Hurst exponent below 1/2 by a multi-exponential kernel, Monte Carlo only | Experimental | `pricers/rough_logsv/` | `LogSvParams(H=...)`, `approximate_kernel`, `LogSVPricer.model_mc_price_chain(use_rough_mc=True)`; see [Monte Carlo simulation](monte_carlo_simulation.md#the-rough-extension) |
 | TGARCH: a discrete threshold-volatility recursion, not a discretisation of the log-normal SV model | Provisional | `models/tgarch.py` | `TgarchParams`, `TgarchModel.simulate_paths` |

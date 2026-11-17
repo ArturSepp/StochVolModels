@@ -304,3 +304,25 @@ def test_ijtaf_fixed_parameter_density_comparison(monkeypatch):
     assert spy["case"] == "published_spy_12d"
     assert sum(len(q["strikes"]) for q in btc["quotes"]) == 49
     assert all("difference_in_full_price_spreads" in q for q in btc["quotes"])
+
+
+def test_backbone_error_directs_to_lsv_adapter_and_reprices_black():
+    from stochvolmodels.models.lsv import LSVModel
+
+    params = LogSvParams(sigma0=0.2, theta=0.2, kappa1=2.0, kappa2=2.0,
+                         beta=0.0, volvol=0.0,
+                         vol_backbone=pd.Series([0.8, 1.3], index=[0.1, 0.5]))
+    data = OptionChain.slice_to_chain(
+        0.5, 100.0, np.array([90.0, 100.0, 110.0]), np.array(["C", "C", "C"]), 0.97
+    )
+    pricer = LogSvPdePricer(steps_per_interval=256)
+    with pytest.raises(ValueError, match=r"LSVModel\.from_params\(params\)"):
+        pricer.price_chain(data, params)
+    prices = pricer.price_chain(data, LSVModel.from_params(params))[0]
+    # Independent Black law with integrated variance across the unquoted backbone knot.
+    variance = 0.2**2 * (0.8**2 * 0.1 + 1.3**2 * 0.4)
+    deviation = np.sqrt(variance)
+    strikes = data.strikes_ttms[0]
+    d1 = np.log(100.0 / strikes) / deviation + 0.5 * deviation
+    reference = 0.97 * (100.0 * ndtr(d1) - strikes * ndtr(d1 - deviation))
+    np.testing.assert_allclose(prices, reference, rtol=0, atol=0.02)

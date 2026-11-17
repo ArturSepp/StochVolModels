@@ -91,6 +91,9 @@ normalized SPX/VIX caches; its directory README gives the setup. Paper-replicati
 
 ## Frozen BTC calibration
 
+This slow, offline example uses provisional LSV calibration and pricing APIs.
+Convergence does not imply that the independent market acceptance checks pass.
+
 Run `python -m examples.calibration.frozen_btc_lsv` to fit the packaged 21 October
 2021 BTC chain from the reference and adverse starts. The replay uses an independent
 101 × 61 PDE grid and 100,000 antithetic Monte Carlo paths. The baseline passes all
@@ -99,6 +102,9 @@ start covers 12 of 44 and fails the target-IV, PDE–MC IV, negative-mass and sp
 checks. The runner also reports the price gap at each expiry on the 49 original quotes.
 
 ## LSV propagation stresses
+
+These provisional fixed-parameter checks measure the stated scenarios; the filename does
+not certify production readiness or replace market- and grid-specific validation.
 
 Run `python -m examples.pricing.lsv_production_stress` from the checkout. Each scenario
 prices five normalized calls at two expiries using a forward Douglas PDE and 80,000 seeded
@@ -110,7 +116,8 @@ and sparse maturity buckets. They reject both near-singular correlations on expi
 mass and the narrow grid on call prices. The command exits unsuccessfully if any scenario
 differs from its expected set of failed checks. The slow regression checks every call and
 expiry against the [frozen reference](pricing/lsv_production_stress_reference.json).
-It also compares density moments at every step when the original engines are present.
+The `pde_reference` test lane also compares density moments at every step with the
+public historical engines in `validation/pde_reference/`. Those sources stay outside the wheel.
 
 ## Native quote and research diagnostics
 

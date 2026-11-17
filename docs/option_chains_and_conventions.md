@@ -255,6 +255,12 @@ analytic price. Other simulators follow different rules:
   draw their random numbers once from a local generator and reuse them, which leaves global random
   states untouched.
 
+`LSVMonteCarloEngine` uses a local `numpy.random.default_rng` initialized by
+`LSVMonteCarloConfig(seed=...)`. The same configuration and observation grid reproduce its
+paths; `set_seed` and NumPy's global seed do not control this engine. With antithetic sampling,
+its pricer estimates uncertainty from independent pair means. Refine time steps separately
+from increasing paths, since sampling errors do not measure discretization bias.
+
 ## Equation numbering and citations
 
 Docstrings and pages cite equation numbers of the **published PDF** of each paper. The PDF of the
@@ -283,6 +289,18 @@ The [API reference](api.md) groups the stable and advanced names by the page tha
   from a system of ordinary differential equations.
 - **Admissibility.** The parameter region in which the discounted price, or its inverse, is a true
   martingale, so that valuation under a measure is consistent.
+- **Local volatility.** A deterministic annualized diffusion loading that depends on time
+  and the current price or normalized log-forward. `LocalVolSurface` stores volatility,
+  rather than variance.
+- **Local stochastic volatility (LSV).** A stochastic volatility process whose return
+  exposure is multiplied by a deterministic leverage surface, optionally with a time backbone.
+- **Leverage surface.** The dimensionless multiplier $L(t,x)$ in the return diffusion
+  $\eta(t)L(t,x)\sigma_t$, distinct from financial borrowing or balance-sheet leverage.
+- **Half-variance coefficient.** The coefficient of a pure second derivative in the backward
+  generator: $b_x^2/2$ for diffusion loading $b_x$. The generic PDE coefficient containers
+  expect this value, not $b_x^2$.
+- **Full covariance coefficient.** The coefficient of the mixed derivative is the full
+  instantaneous covariance $\rho b_x b_y$, without an additional factor of one half.
 - **Inverse option.** An option whose payoff is paid in units of the underlying.
 - **Quadratic variance (QV).** The integrated variance $I_\tau$ of the log price.
 - **Variance swap.** A forward contract on realised variance; its fair strike is the expected QV

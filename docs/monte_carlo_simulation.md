@@ -234,6 +234,16 @@ Check time-step convergence in the wings and for [options on QV](quadratic_varia
 simulators are seeded by `stochvolmodels.utils.funcs.set_seed`. Run the example from a checkout with
 `python examples/docs/monte_carlo_simulation.py`.
 
+### Local stochastic volatility simulation
+
+The provisional `LSVMonteCarloEngine` in `stochvolmodels.models.lsv_simulation` uses
+its own `numpy.random.default_rng`, seeded through `LSVMonteCarloConfig(seed=...)`.
+Global NumPy seeding and `set_seed` do not control it. The engine supports leverage,
+backbone knots and compensated fixed jumps; its `steps_per_year` sets interval resolution.
+The corresponding `LSVMonteCarloPricer` reports errors from independent pair means when
+antithetic sampling is enabled. See the [LSV workflow](local_volatility_and_lsv.md) for
+an executable correlated PDE/MC comparison and refinement qualifications.
+
 ### Terminal log-return KDE weights
 
 `ModelPricer.get_log_return_mc_pdf(ttm, params, x_grid, nb_path=...)`, inherited by the concrete

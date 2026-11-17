@@ -60,6 +60,24 @@ statistical inputs and saved-evidence checks. Neither case needs OCA or historic
 | [`docs/app_robust_volatility_models.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/app_robust_volatility_models.py) | [What makes a stochastic volatility model robust](app_robust_volatility_models.md) | Core, recorded parameters, no data |
 | [`getting_started/quickstart.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/getting_started/quickstart.py) | [Installation and first result](getting_started.md) | Core; run on Linux, Windows and macOS in CI |
 
+## PDE and LSV workflows
+
+These repository-only examples use provisional APIs and run offline on core dependencies.
+The name "production stress" identifies a verification scenario set, not a production
+certification. Calibration convergence and market acceptance are separate reported outcomes.
+
+| Script | What it checks | Data and execution |
+|---|---|---|
+| [`docs/pde_solvers.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/pde_solvers.py) | Generic solvers and short-expiry LogSV refinement | Synthetic; [solver guide](pde_solvers.md) |
+| [`docs/local_volatility_and_lsv.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/local_volatility_and_lsv.py) | Sloped Dupire buckets, fitted leverage, correlated PDE/MC and acceptance | Synthetic; [LSV guide](local_volatility_and_lsv.md) |
+| [`calibration/frozen_btc_lsv.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/frozen_btc_lsv.py) | Baseline and adverse-start fits, original quotes and independent PDE/MC replay | Bundled BTC snapshot of 21 October 2021; slow calibration |
+| [`pricing/lsv_production_stress.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricing/lsv_production_stress.py) | Seven fixed-parameter scenarios, prices, density diagnostics and expected rejection decisions | Synthetic scenarios and a tracked frozen reference; slow simulation |
+
+Run the two larger replays with `python -m examples.calibration.frozen_btc_lsv` and
+`python -m examples.pricing.lsv_production_stress`. The independent historical source in
+`validation/pde_reference/` is public and repository-only; `python -m pytest -m pde_reference`
+executes comparisons with it. For the guide scripts, run the corresponding file directly.
+
 ## Pricing
 
 | Script | What it shows | Data | Related page |

@@ -8,7 +8,7 @@ myst:
 
 # Local volatility and local stochastic volatility
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-11-17](https://github.com/ArturSepp/StochVolModels/commit/45ca508c2d0d0439292df3591f37e905ee4d625c)*
 
 Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
@@ -240,8 +240,15 @@ occupancy. Review fit convergence, rejected trials, terminal and peak negative m
 and independent original-strike repricing. Refining leverage dates, space and time
 can improve different errors, and each setting should be reported.
 
-`CalibrationWeighting.LEGACY_ATM` retains the historical calibration weighting
-for comparisons with the frozen implementation. `historical_endpoints=True`
+`CalibrationWeighting.LEGACY_ATM` prioritizes near-forward quotes: it starts with
+weights $\exp(-(K/F-1)^2/T)$, multiplies the weight at the strike nearest the forward
+by 100, and normalizes the weights to sum to one. The least-squares residual uses
+their square roots. This reproduces the older fit objective; it is not a recommended
+universal quote weighting. The default is `VEGA_NORMALIZED`.
+
+Historical agreement means that identical inputs and explicit compatibility settings
+reproduce saved prices, fitted parameters and diagnostics within recorded tolerances.
+It does not establish that the older numerical convention is more accurate. `historical_endpoints=True`
 on Dupire conversion, or `historical_dupire_endpoints=True` on the pipeline,
 selects the older endpoint buckets. Use these switches to reproduce archived results
 and identify the numerical convention in reports. The public comparison sources live
@@ -249,7 +256,20 @@ in `validation/pde_reference/`; the ordinary model and pricer APIs are installed
 with the package.
 
 The synthetic cases establish behavior on the stated inputs. Frozen BTC and stress
-examples exercise additional acceptance and failure cases.
+examples exercise additional acceptance and failure cases through provisional APIs.
+The seven stress scenarios check fixed model parameters and expected pass/fail decisions;
+they do not certify production suitability. In the stress runner, `matches_archive`
+means that the **set of failed acceptance checks** equals the recorded expectation. It can
+be true for an intentionally rejected scenario; numerical price and density comparisons
+are separate tests.
+
+The sequential projector's "historical lagged update" is its default end collocation:
+propagate a bucket with the previous leverage row, estimate conditional variance at its
+end, and use the updated row for the next propagation. Independently repricing the returned
+surface applies each recovered row to its own bucket and can therefore differ from that
+calibration law. Midpoint collocation estimates the moments halfway through the bucket and
+repropagates the accepted row from the original bucket start. Report collocation, row dates,
+grid, time, density and independent-price checks when comparing either mode.
 [BTC calibration and production stress examples](examples.md)
 
 ## See also
