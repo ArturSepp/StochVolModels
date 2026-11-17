@@ -18,7 +18,7 @@ from stochvolmodels.pricers.local_vol_pde_pricer import LocalVolPdePricer
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdePricer
 from stochvolmodels.pricers.lsv_projection import LowDensityPolicy
-from stochvolmodels.tests.test_lsv_projection import _archive_prices, _quotes, _require_archive
+from stochvolmodels.tests.test_lsv_projection import _archive_prices, _quotes
 
 
 def _deterministic():
@@ -339,10 +339,10 @@ def _record(record_property, fit, ref, residual_error, archive_errors, target_er
 @pytest.mark.repository_only
 @pytest.mark.slow
 @pytest.mark.parametrize("stress", [False, True], ids=["time_refinement", "correlated_skew"])
+@pytest.mark.pde_reference
 def test_archived_convergence_surface_and_repricing(stress, record_property):
-    _require_archive()
-    from stochvolmodels.pde_solvers import lsv as old
-    from stochvolmodels.pde_solvers.tests.test_pde_lsv_projection import (
+    from validation.pde_reference import lsv as old
+    from validation.pde_reference.cases import (
         _on_the_fly_case,
         _on_the_fly_config,
     )
@@ -399,10 +399,10 @@ def test_archived_convergence_surface_and_repricing(stress, record_property):
 
 
 @pytest.mark.repository_only
+@pytest.mark.pde_reference
 def test_high_correlation_rejects_unusable_trial_density():
-    _require_archive()
-    from stochvolmodels.pde_solvers import lsv as old
-    from stochvolmodels.pde_solvers.tests.test_pde_lsv_projection import (
+    from validation.pde_reference import lsv as old
+    from validation.pde_reference.cases import (
         _on_the_fly_case,
         _on_the_fly_config,
     )
@@ -426,11 +426,11 @@ def test_high_correlation_rejects_unusable_trial_density():
 
 @pytest.mark.repository_only
 @pytest.mark.slow
+@pytest.mark.pde_reference
 def test_frozen_btc_fixed_point_history_and_49_vanillas(record_property):
-    _require_archive()
-    from stochvolmodels.pde_solvers import dupire as old_dupire, local_vol as old_local, lsv as old
-    from stochvolmodels.pde_solvers.integration import LSVOptionChainAdapter
-    from stochvolmodels.pde_solvers.market_pipeline import (
+    from validation.pde_reference import dupire as old_dupire, local_vol as old_local, lsv as old
+    from validation.pde_reference.integration import LSVOptionChainAdapter
+    from validation.pde_reference.market_pipeline import (
         btc_20211021_reference_config,
         load_frozen_btc_20211021_snapshot,
     )

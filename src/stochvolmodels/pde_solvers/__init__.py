@@ -39,6 +39,17 @@ from .coefficients import (
 )
 from .diagnostics import PDEDiagnostics
 from .grids import BoundaryMass1D, BoundaryMass2D, Grid1D, TensorGrid2D
+from .jumps import (
+    JumpCoordinate,
+    JumpOperator1D,
+    JumpOperator2D,
+    JumpStepDiagnostics,
+    JumpStepKind,
+    JumpStepResult,
+    TranslationJump,
+    log_forward_jump_compensator,
+    strang_split_step,
+)
 from .operators_1d import DriftDiscretization, PDEDirection
 from .solver_1d import (
     CoefficientEvaluation,
@@ -68,6 +79,15 @@ __all__ = (
     "DensityPolicy",
     "DriftDiscretization",
     "Grid1D",
+    "JumpCoordinate",
+    "JumpOperator1D",
+    "JumpOperator2D",
+    "JumpStepDiagnostics",
+    "JumpStepKind",
+    "JumpStepResult",
+    "TranslationJump",
+    "log_forward_jump_compensator",
+    "strang_split_step",
     "PDE1DCoefficients",
     "PDE1DSolver",
     "PDE2DADISolver",

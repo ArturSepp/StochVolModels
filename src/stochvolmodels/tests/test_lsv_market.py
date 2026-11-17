@@ -1,6 +1,5 @@
 """Quote selection, normalized price units, Dupire repairs and the frozen BTC surface."""
 
-from importlib.util import find_spec
 
 import numpy as np
 import pytest
@@ -143,14 +142,13 @@ def test_targets_allow_a_single_expiry_and_snap_endpoint_roundoff():
 
 @pytest.mark.repository_only
 @pytest.mark.parametrize("binding", [False, True], ids=["frozen_policy", "binding_policy"])
+@pytest.mark.pde_reference
 def test_frozen_btc_market_quotes_and_dupire_surfaces(binding, record_property):
-    if find_spec("stochvolmodels.pde_solvers.market_pipeline") is None:
-        pytest.skip("requires the archived BTC surface implementation")
-    from stochvolmodels.pde_solvers import dupire as old
+    from validation.pde_reference import dupire as old
     from stochvolmodels.pde_solvers import Grid1D
     from stochvolmodels.tests.test_dupire import _compare_archive_prices
-    from stochvolmodels.pde_solvers.integration import LSVOptionChainAdapter as ArchivedAdapter
-    from stochvolmodels.pde_solvers.market_pipeline import (
+    from validation.pde_reference.integration import LSVOptionChainAdapter as ArchivedAdapter
+    from validation.pde_reference.market_pipeline import (
         btc_20211021_reference_config,
         load_frozen_btc_20211021_snapshot,
     )

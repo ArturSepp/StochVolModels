@@ -27,19 +27,7 @@ recursive-exclude papers *
 recursive-exclude volatility_book *
 recursive-exclude docs *
 recursive-exclude resources *
-prune src/stochvolmodels/pde_solvers
-include src/stochvolmodels/pde_solvers/__init__.py
-include src/stochvolmodels/pde_solvers/adi.py
-include src/stochvolmodels/pde_solvers/boundaries.py
-include src/stochvolmodels/pde_solvers/coefficients.py
-include src/stochvolmodels/pde_solvers/diagnostics.py
-include src/stochvolmodels/pde_solvers/grids.py
-include src/stochvolmodels/pde_solvers/operators_1d.py
-include src/stochvolmodels/pde_solvers/operators_2d.py
-include src/stochvolmodels/pde_solvers/poisson.py
-include src/stochvolmodels/pde_solvers/solver_1d.py
-include src/stochvolmodels/pde_solvers/solver_2d.py
-include src/stochvolmodels/pde_solvers/tridiagonal.py
+prune validation
 
 global-exclude *.png
 global-exclude *.jpg

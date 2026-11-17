@@ -137,20 +137,6 @@ dmypy.json
 /outputs/
 /agents/
 /papers/sv_for_factor_hjm/empirics/xml/
-# Expose only the reviewed finite-difference engine from local PDE research.
-/src/stochvolmodels/pde_solvers/*
-!/src/stochvolmodels/pde_solvers/__init__.py
-!/src/stochvolmodels/pde_solvers/adi.py
-!/src/stochvolmodels/pde_solvers/boundaries.py
-!/src/stochvolmodels/pde_solvers/coefficients.py
-!/src/stochvolmodels/pde_solvers/diagnostics.py
-!/src/stochvolmodels/pde_solvers/grids.py
-!/src/stochvolmodels/pde_solvers/operators_1d.py
-!/src/stochvolmodels/pde_solvers/operators_2d.py
-!/src/stochvolmodels/pde_solvers/poisson.py
-!/src/stochvolmodels/pde_solvers/solver_1d.py
-!/src/stochvolmodels/pde_solvers/solver_2d.py
-!/src/stochvolmodels/pde_solvers/tridiagonal.py
 /papers/sv_for_factor_hjm/.private
 /papers/rough_volterra_lognormal_sv_model_2026
 /papers/il_hedging/agents

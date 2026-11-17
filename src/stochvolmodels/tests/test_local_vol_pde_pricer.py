@@ -1,7 +1,6 @@
 """Deterministic local-volatility pricing, independent Black checks and archived solver replay."""
 
 from dataclasses import replace
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -239,13 +238,12 @@ def test_local_vol_pricer_input_contract():
 
 @pytest.mark.repository_only
 @pytest.mark.parametrize("relative", [True, False])
+@pytest.mark.pde_reference
 def test_private_local_vol_price_replay(relative):
     # The historical modules remain a local-only verification oracle.
-    if not (Path(__file__).resolve().parents[1] / "pde_solvers" / "local_vol.py").is_file():
-        pytest.skip("requires the private historical local-volatility implementation")
     from stochvolmodels.pde_solvers import BoundaryPair1D, PDE1DSolver, PDEDirection, TimeStepConfig
-    from stochvolmodels.pde_solvers import local_vol as old
-    from stochvolmodels.pde_solvers.density import DensityPricer, DensityState1D
+    from validation.pde_reference import local_vol as old
+    from stochvolmodels.pricers.density_pricer import DensityPricer, DensityState1D
 
     chain = _chain(relative)
     x = Grid1D.concentrated(-1.2, 1.2, 301, 0.0, 0.21)

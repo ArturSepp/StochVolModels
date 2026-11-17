@@ -1,6 +1,5 @@
 """Continuous Dupire inversion, conversion to log-forward coordinates and vanilla repricing."""
 
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -275,11 +274,11 @@ def test_inactive_jump_matches_continuous_inversion():
 
 
 @pytest.mark.repository_only
+@pytest.mark.pde_reference
 def test_btc_market_jump_adjustment_matches_archive():
-    _require_archive()
     from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
     from stochvolmodels.fitters.lsv_market import LSVOptionChainAdapter
-    from stochvolmodels.pde_solvers import dupire as archive
+    from validation.pde_reference import dupire as archive
 
     market = LSVOptionChainAdapter(get_btc_test_chain_data()).build_calibration_input(grid_size=11)
     policy = DupireRepairPolicy(0.04, 4.0)
@@ -302,13 +301,8 @@ def test_btc_market_jump_adjustment_matches_archive():
             np.testing.assert_array_equal(getattr(fit, field), getattr(old, field))
 
 
-def _require_archive():
-    if not (Path(__file__).resolve().parents[1] / "pde_solvers" / "dupire.py").is_file():
-        pytest.skip("requires the archived Dupire and density implementations")
-
-
 def _compare_inversions(source, policy):
-    from stochvolmodels.pde_solvers import dupire as archive
+    from validation.pde_reference import dupire as archive
 
     quotes = CallSurface(
         source.times, source.strikes, source.calls, source.forwards, source.discount_factors
@@ -339,8 +333,8 @@ def _compare_inversions(source, policy):
 
 def _compare_archive_prices(fit, old_vols, old_axis, grid, steps):
     from stochvolmodels.pde_solvers import BoundaryPair1D, PDE1DSolver, PDEDirection, TimeStepConfig
-    from stochvolmodels.pde_solvers import local_vol as old
-    from stochvolmodels.pde_solvers.density import DensityPricer, DensityState1D
+    from validation.pde_reference import local_vol as old
+    from stochvolmodels.pricers.density_pricer import DensityPricer, DensityState1D
 
     source = fit.call_surface
     chain = _chain(source)
@@ -383,9 +377,9 @@ def _compare_archive_prices(fit, old_vols, old_axis, grid, steps):
 
 
 @pytest.mark.repository_only
+@pytest.mark.pde_reference
 def test_archived_skew_recovery_refinement_and_repricing(record_property):
-    _require_archive()
-    from stochvolmodels.pde_solvers.tests.test_pde_dupire import _pde_call_surface
+    from validation.pde_reference.cases import _pde_call_surface
 
     var_errors = []
     for space, steps in ((201, 200), (601, 1200)):
@@ -424,11 +418,11 @@ def test_archived_skew_recovery_refinement_and_repricing(record_property):
 
 
 @pytest.mark.repository_only
+@pytest.mark.pde_reference
 def test_frozen_btc_dupire_and_vanilla_prices(record_property):
-    _require_archive()
-    from stochvolmodels.pde_solvers import dupire as old
-    from stochvolmodels.pde_solvers.integration import LSVOptionChainAdapter
-    from stochvolmodels.pde_solvers.market_pipeline import (
+    from validation.pde_reference import dupire as old
+    from validation.pde_reference.integration import LSVOptionChainAdapter
+    from validation.pde_reference.market_pipeline import (
         btc_20211021_reference_config,
         load_frozen_btc_20211021_snapshot,
     )
@@ -462,3 +456,17 @@ def test_frozen_btc_dupire_and_vanilla_prices(record_property):
     record_property("btc_repaired_nodes", int(fit.repaired_mask.sum()))
     record_property("btc_archive_price_error", price_error)
     record_property("btc_max_call_roundtrip", float(residual.max()))
+
+
+def test_immutable_arrays_preserve_dupire_missing_values():
+    from stochvolmodels.utils._arrays import readonly_float_array
+
+    source = np.array([[1, np.nan], [2, 3]], dtype=np.float32).T
+    result = readonly_float_array(source, ndim=2, name="quotes", require_finite=False)
+    source[0, 0] = 9
+    assert result[0, 0] == 1 and np.isnan(result[1, 0])
+    assert result.dtype == np.float64 and result.flags.c_contiguous and not result.flags.writeable
+    with pytest.raises(ValueError, match="quotes must be a finite 2-dimensional array"):
+        readonly_float_array(source, ndim=2, name="quotes")
+    with pytest.raises(ValueError, match="quotes must be a 1-dimensional array"):
+        readonly_float_array(source, ndim=1, name="quotes", require_finite=False)

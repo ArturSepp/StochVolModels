@@ -4,6 +4,19 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.18.8] - 2026-11-17
+
+### Added
+
+- `TranslationJump` and `strang_split_step` expose the generically applicable jump
+  operators. `DensityPricer` prices vanilla claims from a supplied terminal density.
+  `LogSvCoefficientProvider` supplies spot- and inverse-measure LogSV coefficients.
+
+### Changed
+
+- Setuptools discovers the solver package normally. Historical LSV calibration and
+  pricing comparisons now run in public CI from a clean checkout.
+
 ## [2.18.7] - 2026-11-17
 
 ### Changed

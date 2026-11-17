@@ -1,7 +1,6 @@
 """Forward Poisson splitting, vanilla pricing and independent archived LSV comparisons."""
 
 from dataclasses import replace
-from importlib.util import find_spec
 
 import numpy as np
 import pandas as pd
@@ -212,13 +211,12 @@ def test_jump_propagation_partitions_interior_backbone_and_leverage_dates():
 @pytest.mark.repository_only
 @pytest.mark.slow
 @pytest.mark.parametrize("size", [-0.18, 0.18], ids=["archived_down", "mirrored_up"])
+@pytest.mark.pde_reference
 def test_archived_lsv_jump_solver_and_independent_mc(size, record_property):
-    if find_spec("stochvolmodels.pde_solvers.stress") is None:
-        pytest.skip("requires the archived LSV jump implementation")
-    from stochvolmodels.pde_solvers import stress
-    from stochvolmodels.pde_solvers.density import CoordinateSystem, DensityPricer, DensityState2D
+    from validation.pde_reference import stress
+    from stochvolmodels.pricers.density_pricer import CoordinateSystem, DensityPricer, DensityState2D
     from stochvolmodels.pde_solvers.jumps import TranslationJump, log_forward_jump_compensator
-    from stochvolmodels.pde_solvers.lsv import LSVCoefficientProvider
+    from validation.pde_reference.lsv import LSVCoefficientProvider
 
     s = next(
         item

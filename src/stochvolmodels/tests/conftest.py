@@ -11,6 +11,7 @@ import pytest
 def pytest_configure(config) -> None:
     """Register package-local markers outside the source checkout."""
     markers = (
+        "pde_reference: compare with the repository's historical LSV implementation",
         "slow: numerical regression or simulation tests excluded from the fast CI lane",
         "optional_integration: provider or optional-extra contract that skips on a core install",
         "repository_only: documentation, example, or paper contract absent from the wheel",
@@ -18,6 +19,16 @@ def pytest_configure(config) -> None:
     )
     for marker in markers:
         config.addinivalue_line("markers", marker)
+
+
+def pytest_collection_modifyitems(items) -> None:
+    """The independent LSV comparison lives alongside the source checkout."""
+    root = Path(__file__).resolve().parents[3]
+    if not (root / "scripts/check_wheel_contents.py").is_file():
+        missing = pytest.mark.skip(reason="historical LSV comparisons require the source checkout")
+        for item in items:
+            if item.get_closest_marker("pde_reference"):
+                item.add_marker(missing)
 
 
 @pytest.fixture

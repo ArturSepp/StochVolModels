@@ -55,3 +55,15 @@ def test_missing_source_test_is_rejected_even_at_the_old_count(tmp_path, checker
 def test_unexpected_test_module_is_rejected(tmp_path, checker):
     with pytest.raises(AssertionError, match="test module inventory"):
         checker.check_wheel(make_wheel(tmp_path, checker, extra=True))
+
+
+@pytest.mark.parametrize("name, message", [
+    ("validation/pde_reference/fixture.json", "unexpected wheel roots"),
+    ("stochvolmodels/pde_solvers/research.py", "PDE file inventory differs"),
+])
+def test_repository_only_files_are_rejected(tmp_path, checker, name, message):
+    wheel = make_wheel(tmp_path, checker)
+    with ZipFile(wheel, "a") as archive:
+        archive.writestr(name, b"")
+    with pytest.raises(AssertionError, match=message):
+        checker.check_wheel(wheel)

@@ -226,7 +226,7 @@ def first_slice() -> tuple:
     return params, strikes, optiontypes, prices, ivols
 ```
 
-The implied volatilities fall from 0.295 at strike 0.8 through 0.219 at the money to 0.174 at
+The implied volatilities fall from 0.295 at strike 0.8 through 0.219 at the money to 0.173 at
 strike 1.2, the downward-sloping smile of a negative volatility beta. A Monte Carlo valuation with
 50,000 paths and daily steps agrees with every price within three standard errors.
 

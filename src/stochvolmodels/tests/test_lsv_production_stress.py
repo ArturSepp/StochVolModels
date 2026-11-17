@@ -3,7 +3,6 @@
 import json
 from dataclasses import asdict, replace
 from importlib import import_module
-from importlib.util import find_spec
 from pathlib import Path
 
 import numpy as np
@@ -153,11 +152,10 @@ def _completed_jump_moments(archive, ref):
 
 
 @pytest.mark.slow
+@pytest.mark.pde_reference
 def test_all_quotes_steps_and_gates_against_archived_engines(example, replay, record_property):
     """Compare every raw call, sampling error, density moment and decision with the old runner."""
-    if find_spec("stochvolmodels.pde_solvers.stress") is None:
-        pytest.skip("live archived stress engines are absent from this checkout")
-    from stochvolmodels.pde_solvers import stress as archive
+    from validation.pde_reference import stress as archive
 
     case = replay.scenario
     old = next(s for s in archive.production_lsv_stress_scenarios() if s.name == case.name)

@@ -229,6 +229,12 @@ names are reached by deep imports from the experimental `stochvolmodels.pricers.
 
 The provisional [finite-difference solvers](software_design.md#generic-finite-difference-solvers)
 are available as `stochvolmodels.pde_solvers.PDE1DSolver` and `PDE2DADISolver`.
+The same solver package exposes `TranslationJump` for additive or level-multiplicative
+jumps, including forward and backward translations, compound-Poisson steps and Strang splitting.
+`stochvolmodels.pricers.density_pricer.DensityPricer` prices calls and puts from a
+`DensityState1D`. Use `DensityState2D.marginal_x_state()` for a joint density.
+`stochvolmodels.models.logsv_pde.LogSvCoefficientProvider` supplies the LogSV generator
+in either the money-market or inverse measure and accepts a volatility backbone.
 The provisional `stochvolmodels.pricers.logsv_pde_pricer.LogSvPdePricer` uses the
 2D solver for ordinary European LogSV chains under the money-market measure.
 The detailed 1D and 2D pricer results expose `expiry.boundary_mass` for each maturity.

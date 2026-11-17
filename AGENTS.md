@@ -90,6 +90,7 @@ papers/              replication code, 9 directories
   <paper>/paper/     article PDF and LaTeX source, where available
 docs/                Sphinx/Furo user guide, API reference, and adoption documentation
   images/            reviewed documentation exhibits and their provenance manifest
+validation/pde_reference/  public historical LSV calibration and pricing comparisons
 scripts/             repository checks; check_docs.py, docs_inventory.json and
                      docs_analytics/ own the documentation standard and exhibits
 CHANGELOG.md         every public change is recorded here

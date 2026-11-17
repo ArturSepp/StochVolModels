@@ -34,6 +34,7 @@ def check_sdist(sdist_path: Path) -> None:
         "outputs/",
         "papers/",
         "resources/",
+        "validation/",
         "volatility_book/",
     )
     forbidden = [member for member in payload if member.startswith(forbidden_prefixes)]

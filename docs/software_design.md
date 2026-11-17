@@ -580,8 +580,8 @@ The [repository research utilities](examples.md#research-diagnostics) combine re
 saved evidence, generate paired synthetic challenges and verify frozen studies. They live
 under `examples/calibration`, with tests in source CI, and are excluded from the installed
 wheel. Their noise scenarios and caller-supplied statistical limits do not become production
-warning policies. Historical session archives and the private LSV calibration experiments are outside
-these maintained public interfaces.
+warning policies. Public LSV fitters and pricers own the maintained implementation. The independent historical
+calibration algorithms used by the regression tests live under `validation/pde_reference/`.
 
 ## The pricer interface
 

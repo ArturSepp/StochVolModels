@@ -1,7 +1,6 @@
 """Conditional variance, lagged leverage and vanilla pricing against analytic and archived laws."""
 
 from dataclasses import replace
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -168,11 +167,6 @@ def test_interior_backbone_and_leverage_knots_against_independent_1d_law():
     assert len(fit.slices[0].diagnostics) == 64
 
 
-def _require_archive():
-    if not (Path(__file__).resolve().parents[1] / "pde_solvers" / "lsv.py").is_file():
-        pytest.skip("requires the archived LSV projection and density pricer")
-
-
 def _archive_prices(chain, params, surface, grid, steps, adi):
     from stochvolmodels.pde_solvers import (
         BoundaryPair1D,
@@ -180,8 +174,8 @@ def _archive_prices(chain, params, surface, grid, steps, adi):
         PDE2DADISolver,
         PDEDirection,
     )
-    from stochvolmodels.pde_solvers import lsv as old
-    from stochvolmodels.pde_solvers.density import DensityPricer, DensityState2D, CoordinateSystem
+    from validation.pde_reference import lsv as old
+    from stochvolmodels.pricers.density_pricer import DensityPricer, DensityState2D, CoordinateSystem
 
     times = chain.ttms
     edges = np.r_[
@@ -215,11 +209,11 @@ def _archive_prices(chain, params, surface, grid, steps, adi):
 
 @pytest.mark.repository_only
 @pytest.mark.parametrize("stochastic", [False, True], ids=["deterministic", "stochastic"])
+@pytest.mark.pde_reference
 def test_archived_sequential_leverage_and_vanilla_replay(stochastic, record_property):
-    _require_archive()
-    from stochvolmodels.pde_solvers import local_vol as old_local
-    from stochvolmodels.pde_solvers import lsv as old
-    from stochvolmodels.pde_solvers.density import CoordinateSystem
+    from validation.pde_reference import local_vol as old_local
+    from validation.pde_reference import lsv as old
+    from stochvolmodels.pricers.density_pricer import CoordinateSystem
 
     x = Grid1D.concentrated(-0.75, 0.75, 101, 0.0, 0.08)
     if stochastic:
@@ -315,14 +309,14 @@ def test_archived_sequential_leverage_and_vanilla_replay(stochastic, record_prop
 
 
 @pytest.mark.repository_only
+@pytest.mark.pde_reference
 def test_frozen_btc_projection_dates_and_ragged_vanillas(record_property):
-    _require_archive()
     from stochvolmodels.fitters.dupire import CallSurface, DupireRecoverer, DupireRepairPolicy
-    from stochvolmodels.pde_solvers import dupire as old_dupire
-    from stochvolmodels.pde_solvers import local_vol as old_local
-    from stochvolmodels.pde_solvers import lsv as old
-    from stochvolmodels.pde_solvers.integration import LSVOptionChainAdapter
-    from stochvolmodels.pde_solvers.market_pipeline import (
+    from validation.pde_reference import dupire as old_dupire
+    from validation.pde_reference import local_vol as old_local
+    from validation.pde_reference import lsv as old
+    from validation.pde_reference.integration import LSVOptionChainAdapter
+    from validation.pde_reference.market_pipeline import (
         btc_20211021_reference_config,
         load_frozen_btc_20211021_snapshot,
     )

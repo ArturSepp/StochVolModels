@@ -35,13 +35,13 @@ from vanilla_option_pricers import (
     infer_bsm_implied_vol,
 )
 
+from stochvolmodels.utils._arrays import readonly_float_array as _readonly_array
 from stochvolmodels.models.local_vol import (
     CoordinateSystem,
     LocalVolFamily,
     LocalVolSurface,
     ParametricLocalVolFormula,
     _PARAMETER_NAMES,
-    _readonly_array,
     _validated_weight,
 )
 from stochvolmodels.models.lsv import LSVModel, LeverageSurface

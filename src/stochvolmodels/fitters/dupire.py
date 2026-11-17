@@ -32,6 +32,7 @@ from scipy.sparse.linalg import splu
 from scipy.special import ndtr
 from scipy.stats import poisson
 
+from stochvolmodels.utils._arrays import readonly_float_array as _readonly_array
 from stochvolmodels.models.local_vol import LocalVolSurface
 from stochvolmodels.models.lsv import FixedLogForwardJump
 from stochvolmodels.pde_solvers import BoundaryPair1D, Grid1D, PDE1DCoefficients, PDEDirection
@@ -551,22 +552,6 @@ def _positive_curve(values: ArrayLike, size: int, name: str) -> FloatArray:
         array = np.array(array, dtype=np.float64, copy=True, order="C")
     if array.shape != (size,) or not np.all(np.isfinite(array)) or np.any(array <= 0.0):
         raise ValueError(f"{name} must be positive with shape {(size,)}")
-    array.setflags(write=False)
-    return array
-
-
-def _readonly_array(
-    values: ArrayLike,
-    *,
-    name: str,
-    ndim: int,
-    require_finite: bool = True,
-) -> FloatArray:
-    """Validate array and return an immutable NumPy value."""
-    array = np.array(values, dtype=np.float64, copy=True, order="C")
-    if array.ndim != ndim or (require_finite and not np.all(np.isfinite(array))):
-        qualifier = "finite " if require_finite else ""
-        raise ValueError(f"{name} must be a {qualifier}{ndim}-dimensional array")
     array.setflags(write=False)
     return array
 

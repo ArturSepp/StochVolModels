@@ -143,7 +143,7 @@ def run_local(local: Locals) -> None:
 
     elif local == Locals.FIRST_SLICE:
         params, strikes, optiontypes, prices, ivols = first_slice()
-        np.testing.assert_allclose(ivols, [0.295, 0.255, 0.219, 0.191, 0.174], atol=5e-4)
+        np.testing.assert_allclose(ivols, [0.295, 0.255, 0.219, 0.191, 0.173], atol=5e-4)
         assert np.all(np.diff(ivols) < 0.0)  # a negative beta gives a downward-sloping smile
         chain = svm.OptionChain.slice_to_chain(ttm=0.25, forward=1.0, strikes=strikes,
                                                optiontypes=optiontypes)

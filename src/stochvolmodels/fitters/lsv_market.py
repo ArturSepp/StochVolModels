@@ -22,6 +22,7 @@ from numbers import Integral
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from stochvolmodels.utils._arrays import readonly_float_array as _readonly_array
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.fitters.dupire import (
     CallSurface,
@@ -30,7 +31,6 @@ from stochvolmodels.fitters.dupire import (
     DupireResult,
 )
 from stochvolmodels.fitters.lsv_parametric import ImpliedVolCalibrationTarget
-from stochvolmodels.models.local_vol import _readonly_array
 from stochvolmodels.models.lsv import FixedLogForwardJump
 
 FloatArray = NDArray[np.float64]

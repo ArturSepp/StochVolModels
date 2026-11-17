@@ -1,7 +1,6 @@
 """Parametric leverage calibration, density acceptance and the frozen BTC replay."""
 
 from dataclasses import fields, replace
-from importlib.util import find_spec
 from pathlib import Path
 
 import numpy as np
@@ -299,17 +298,16 @@ def test_btc_market_replay_matches_frozen_prices_and_decisions(btc_replay):
 
 @pytest.mark.slow
 @pytest.mark.repository_only
+@pytest.mark.pde_reference
 def test_frozen_btc_parameters_surface_and_vanillas(btc_replay, record_property):
     adverse, result, _ = btc_replay
-    if find_spec("stochvolmodels.pde_solvers.market_pipeline") is None:
-        pytest.skip("requires the archived BTC market pipeline in a source checkout")
-    from stochvolmodels.pde_solvers.density import DensityPricer
-    from stochvolmodels.pde_solvers.market_pipeline import (
+    from stochvolmodels.pricers.density_pricer import DensityPricer
+    from validation.pde_reference.market_pipeline import (
         LSVMarketPipeline as ArchivedPipeline,
         btc_20211021_reference_config,
         load_frozen_btc_20211021_snapshot,
     )
-    from stochvolmodels.pde_solvers.stress import difficult_btc_initial_parameters
+    from validation.pde_reference.stress import difficult_btc_initial_parameters
 
     c = btc_20211021_reference_config()
     if adverse:

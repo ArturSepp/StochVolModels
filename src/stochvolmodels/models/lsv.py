@@ -8,7 +8,7 @@ from enum import Enum
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from stochvolmodels.models.local_vol import _readonly_array
+from stochvolmodels.utils._arrays import readonly_float_array as _readonly_array
 from stochvolmodels.models.logsv import LogSvModel, _finite_float, _nonnegative_float
 from stochvolmodels.models.logsv_pde import _mma_coefficients
 from stochvolmodels.pde_solvers import Grid1D, PDE2DCoefficients, TensorGrid2D

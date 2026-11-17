@@ -9,6 +9,7 @@ from typing import Protocol, runtime_checkable
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from stochvolmodels.utils._arrays import readonly_float_array as _readonly_array
 from stochvolmodels.pde_solvers.coefficients import PDE1DCoefficients
 from stochvolmodels.pde_solvers.grids import Grid1D
 
@@ -242,12 +243,3 @@ def _validated_weight(weight: float) -> float:
     if not np.isfinite(value) or not 0.0 < value < 1.0:
         raise ValueError("weight must be finite and in (0, 1)")
     return value
-
-
-def _readonly_array(values: ArrayLike, *, name: str, ndim: int) -> FloatArray:
-    """Validate array and return an immutable NumPy value."""
-    array = np.array(values, dtype=np.float64, copy=True, order="C")
-    if array.ndim != ndim or not np.all(np.isfinite(array)):
-        raise ValueError(f"{name} must be a finite {ndim}-dimensional array")
-    array.setflags(write=False)
-    return array

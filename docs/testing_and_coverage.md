@@ -90,7 +90,8 @@ contracts are the reason for the ratchet—the percentage is a summary, not a su
 The provisional generic PDE modules participate in the package-wide coverage and docstring
 checks. Their tests cover nonuniform boundaries, covariance admissibility, Black and Gaussian
 limits, and discrete forward/backward duality. The stable coverage scope excludes these
-provisional solvers. The private LSV experiments remain outside both distribution artifacts.
+provisional solvers. From the source checkout, `python -m pytest -m pde_reference` runs the public LSV
+comparison implementation against the package, including frozen BTC and production stress cases.
 
 The `paper_replication` lane is intentionally narrow and offline. It verifies the published LogSV
 MGF normalization, moment-stability conditions, constant-volatility limit, and analytic-versus-

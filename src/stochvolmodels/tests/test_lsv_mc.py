@@ -1,7 +1,6 @@
 """LSV path, sampling-error and vanilla repricing contracts."""
 
 from dataclasses import replace
-from importlib.util import find_spec
 
 import numpy as np
 import pandas as pd
@@ -158,10 +157,9 @@ def test_measure_martingale_and_sample_size_contracts():
 
 @pytest.mark.repository_only
 @pytest.mark.slow
+@pytest.mark.pde_reference
 def test_frozen_btc_vanilla_mc_archive_and_pde(record_property):
-    if find_spec("stochvolmodels.pde_solvers.market_pipeline") is None:
-        pytest.skip("requires the archived BTC pipeline in the source checkout")
-    from stochvolmodels.pde_solvers.market_pipeline import (
+    from validation.pde_reference.market_pipeline import (
         LSVMarketPipeline,
         btc_20211021_reference_config,
         load_frozen_btc_20211021_snapshot,

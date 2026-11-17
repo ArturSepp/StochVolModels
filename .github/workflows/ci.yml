@@ -71,6 +71,17 @@ jobs:
           uv run --no-sync pytest -m "not slow"
           --cov=stochvolmodels --cov-report=term-missing --cov-report=json:coverage.json
 
+      - name: Verify portable PDE fixtures and Black prices
+        if: matrix.python-version == '3.12'
+        run: >-
+          uv run --no-sync pytest
+          src/stochvolmodels/tests/test_lsv_production_stress.py::test_frozen_calls_expiry_diagnostics_and_decisions
+          src/stochvolmodels/tests/test_local_vol_pde_pricer.py::test_bucketed_black_prices_and_refinement
+
+      - name: Compare the public engine with the historical LSV implementation
+        if: matrix.python-version == '3.12'
+        run: uv run --no-sync pytest -m pde_reference
+
       - name: Enforce stable coverage scope
         if: matrix.python-version == '3.12'
         run: uv run --no-sync python scripts/check_coverage_scopes.py coverage.json
