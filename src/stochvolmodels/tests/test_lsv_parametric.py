@@ -52,18 +52,23 @@ def _calls(target):
     )
 
 
-def test_flat_term_structure_and_discounted_repricing():
+@pytest.mark.parametrize("quadratic_start", [False, True])
+def test_flat_term_structure_and_discounted_repricing(quadratic_start):
     grid, p, t, local = _flat_case()
-    cfg = LSVParametricCalibrationConfig(family=LocalVolFamily.FLAT)
+    # Match the maximum first-bucket step for the analytic pricing tolerance.
+    steps = [80 if quadratic_start else 40, 60]
+    cfg = LSVParametricCalibrationConfig(
+        family=LocalVolFamily.FLAT, quadratic_start=quadratic_start
+    )
     fit = LSVParametricCalibrator(grid, cfg).calibrate(
-        p, t, local, [40, 60], initial_parameters=[[0.8], [0.9]]
+        p, t, local, steps, initial_parameters=[[0.8], [0.9]]
     )
     assert fit.parameter_names == ("atm",)
     np.testing.assert_allclose(fit.parameter_values[:, 0], [1.0, 1.3], atol=0.009)
     assert fit.slices[1].start_density is fit.slices[0].final_evaluation.terminal_density
-    prices = LogSvPdePricer(grid=grid, steps_per_interval=[40, 60]).price_chain(
-        _calls(t), fit.model
-    )
+    prices = LogSvPdePricer(
+        grid=grid, steps_per_interval=steps, quadratic_start=quadratic_start
+    ).price_chain(_calls(t), fit.model)
     for i, row in enumerate(fit.slices):
         ev = row.final_evaluation
         assert row.pde_replays > row.optimizer_evaluations_count

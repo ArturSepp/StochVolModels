@@ -116,8 +116,14 @@ the longest expiry, all quoted strikes and any jump tails determine
 the domain width. A single expiry uses 121 log-forward nodes. For mixed expiries the number
 of nodes grows with the width in sinh coordinates to preserve the central resolution. The
 1w/1m/3m/1y flat 20% chain uses 207 log-forward nodes. The default time partition uses
-128 Douglas steps per expiry interval. Supply `grid`, `steps_per_interval` and `adi` to vary domain, spacing and
-time resolution independently. Check the wings against quote spreads and check the
+128 Douglas steps per uninterrupted bucket. From the initial point mass to the first
+expiry, backbone or leverage knot (whichever comes first), step $j$ of $N$ ends at
+$T_1(j/N)^2$. Subsequent buckets use equal time steps. This reduces the early signed
+density produced by the mixed derivative. At a fixed step count the longer steps near
+the end of the first bucket can increase vanilla time-discretization error. Refine the
+step count when comparing prices. Supply `quadratic_start=False` for uniform stepping.
+Supply `grid`, `steps_per_interval` and `adi` to vary domain, spacing and time resolution
+independently. Check the wings against quote spreads and check the
 forward moment under refinement. The IJTAF replication includes a runnable
 fixed-parameter [comparison](https://github.com/ArturSepp/StochVolModels/tree/main/papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/verification).
 
@@ -218,6 +224,11 @@ unreliable nodes. The historical fill policy linearly fills interior gaps by nod
 index and extends the nearest valid endpoint into each wing. Alternatively
 `LowDensityPolicy.RAISE` rejects a missing moment. Variance estimates, raw
 leverage, extrapolation and cap masks, and the damped updates are inspectable.
+
+`LSVProjectionConfig`, its fixed-point subclass and `LSVParametricCalibrationConfig`
+use the same `quadratic_start` convention as the vanilla pricer. A trial replay from time
+zero uses the same graded grid on every evaluation. A continuation from a positive time
+uses uniform steps. The frozen BTC calibration and stress replays select uniform steps.
 
 Every density used to update leverage must satisfy the configured unit-mass
 and integrated-negative-mass tolerances. Slice diagnostics retain each ADI

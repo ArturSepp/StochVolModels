@@ -68,9 +68,12 @@ class LSVProjectionConfig:
     low_density_policy: LowDensityPolicy = LowDensityPolicy.NEAREST_VALID
     mass_tolerance: float = 1.0e-10
     negative_mass_tolerance: float = 1.0e-10
+    quadratic_start: bool = field(default=True, kw_only=True)
 
     def __post_init__(self) -> None:
         """Validate and normalize a newly constructed ``LSVProjectionConfig`` instance."""
+        if not isinstance(self.quadratic_start, (bool, np.bool_)):
+            raise TypeError("quadratic_start must be boolean")
         nonnegative_names = (
             "density_floor",
             "mass_tolerance",
@@ -328,6 +331,18 @@ class SequentialLSVProjectionResult:
         return max(d.negative_mass for row in self.slices for d in row.diagnostics)
 
 
+def _interval_time_grid(start: float, end: float, steps: int, quadratic_start: bool) -> FloatArray:
+    """Grade only the interval starting from the initial delta, retaining both endpoints."""
+    if not isinstance(quadratic_start, (bool, np.bool_)):
+        raise TypeError("quadratic_start must be boolean")
+    if quadratic_start and start == 0.0:
+        times = end * np.linspace(0.0, 1.0, steps + 1)**2
+    else:
+        times = np.linspace(start, end, steps + 1)
+    # Adjacent floating-point dates may have fewer representable interior points than requested.
+    return np.unique(times)
+
+
 def _advance_lsv(
     model: LSVModel,
     grid: TensorGrid2D,
@@ -335,6 +350,8 @@ def _advance_lsv(
     state: PDEState2D,
     end: float,
     steps: int,
+    *,
+    quadratic_start: bool = True,
 ) -> tuple[PDEState2D, tuple[PDEDiagnostics2D, ...]]:
     """Advance a log-forward density to one observation, freezing each right-ended bucket."""
     boundaries = BoundaryPair1D.natural()
@@ -342,7 +359,7 @@ def _advance_lsv(
     ends = np.r_[knots[(state.time < knots) & (knots < end)], end]
     diagnostics = []
     for stop in ends:
-        times = np.unique(np.linspace(state.time, stop, steps + 1))
+        times = _interval_time_grid(state.time, stop, steps, quadratic_start)
         fixed = StaticCoefficientProvider2D(model.continuous_coefficients(stop, grid))
         law = solver.solve(
             grid,
@@ -411,7 +428,10 @@ class _LSVProjectionRun:
         """Project one propagated candidate from the supplied interval-start density."""
         surface = LeverageSurface([maturity], self.grid.x, candidate[None, :], *self.bounds)
         applied = replace(self.model, leverage_surface=surface)
-        state, diagnostics = _advance_lsv(applied, self.grid, self.solver, start, maturity, steps)
+        state, diagnostics = _advance_lsv(
+            applied, self.grid, self.solver, start, maturity, steps,
+            quadratic_start=self.config.quadratic_start,
+        )
         try:
             moments = project_conditional_variance(self.grid, state.values, self.config)
         except ValueError as exc:

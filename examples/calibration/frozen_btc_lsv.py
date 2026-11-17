@@ -60,12 +60,15 @@ def replay_btc(
         leverage_cap=3.0,
         mass_tolerance=1e-6,
         negative_mass_tolerance=trial_limit,
+        quadratic_start=False,  # Match the archived candidate densities.
     )
     start = [[0.35, -2.5, 8], [3.2, 4.5, 12], [0.40, -1.5, 15], [3.5, 5.5, 18]] if adverse else None
     adi = ADIConfig(theta=1.0, scheme=ADIScheme.DOUGLAS)
     pipeline = LSVMarketPipeline(
         LSVParametricCalibrator(grid, config, adi),
-        LogSvPdePricer(grid=fine, steps_per_interval=(80, 80, 100, 160), adi=adi),
+        LogSvPdePricer(
+            grid=fine, steps_per_interval=(80, 80, 100, 160), adi=adi, quadratic_start=False
+        ),
         LSVMonteCarloPricer(
             config=LSVMonteCarloConfig(paths=100_000, steps_per_year=720, seed=20260817)
         ),

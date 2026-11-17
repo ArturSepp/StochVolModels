@@ -114,14 +114,20 @@ def test_bounded_fixed_point_and_interior_backbone_knot():
         np.repeat([[0.10], [0.20], [0.2 * 0.8 * 1.4]], grid.x.size, axis=1),
     )
     expected = LocalVolPdePricer(grid=grid.x, steps_per_interval=32).price_chain(chain, local)
-    actual = LogSvPdePricer(grid=grid, steps_per_interval=32).price_chain(chain, fit.model)
+    # The independent 1D price above uses equal time steps in every bucket.
+    actual = LogSvPdePricer(grid=grid, steps_per_interval=32, quadratic_start=False).price_chain(
+        chain, fit.model
+    )
     np.testing.assert_allclose(list(actual), list(expected), rtol=0.0, atol=2e-11)
 
 
 def _config(archived):
-    settings = {f.name: getattr(archived, f.name) for f in fields(LSVFixedPointConfig)}
+    settings = {
+        f.name: getattr(archived, f.name) for f in fields(LSVFixedPointConfig)
+        if f.name != "quadratic_start"
+    }
     settings["low_density_policy"] = LowDensityPolicy(archived.low_density_policy.value)
-    return LSVFixedPointConfig(**settings)
+    return LSVFixedPointConfig(**settings, quadratic_start=False)
 
 
 def _compare_history(fit, ref):
@@ -236,7 +242,7 @@ def test_archived_convergence_surface_and_repricing(stress, record_property):
         record_property("time_refinement_max_leverage_change", float(change))
     chain = _quotes(times)
     steps = 40
-    pricer = LogSvPdePricer(grid=grid, steps_per_interval=steps, adi=adi)
+    pricer = LogSvPdePricer(grid=grid, steps_per_interval=steps, adi=adi, quadratic_start=False)
     prices = pricer.price_chain(chain, fit.model)
     errors = _price_errors(
         prices, _archive_prices(chain, params, ref.leverage_surface, grid, steps, adi), chain
@@ -332,9 +338,9 @@ def test_frozen_btc_fixed_point_history_and_49_vanillas(record_property):
     residual = _compare_history(fit, ref)
     g = c.repricing_grid
     expected = _archive_prices(chain, c.params, ref.leverage_surface, g, 96, c.adi_config)
-    actual = LogSvPdePricer(grid=g, steps_per_interval=96, adi=c.adi_config).price_chain(
-        chain, fit.model
-    )
+    actual = LogSvPdePricer(
+        grid=g, steps_per_interval=96, adi=c.adi_config, quadratic_start=False
+    ).price_chain(chain, fit.model)
     errors = _price_errors(actual, expected, chain)
     assert sum(map(len, actual)) == 49 and max(errors) < 2e-12
     target_prices = LocalVolPdePricer(grid=g.x, steps_per_interval=96).price_chain(chain, target)

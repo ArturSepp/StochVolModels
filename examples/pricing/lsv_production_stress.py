@@ -217,6 +217,7 @@ def run_lsv_propagation_stress(scenario: StressScenario) -> StressResult:
     pde = LogSvPdePricer(
         grid=scenario.grid,
         steps_per_interval=scenario.steps,
+        quadratic_start=False,  # Archived stress decisions use uniform steps.
         adi=ADIConfig(theta=1.0, scheme=ADIScheme.DOUGLAS),
     ).price_chain_detailed(chain, scenario.model)
     mc = LSVMonteCarloPricer(config=MC_CONFIG).price_chain_detailed(chain, scenario.model)

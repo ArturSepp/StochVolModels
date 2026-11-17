@@ -72,7 +72,10 @@ def replay(pilot_path=None):
         Grid1D.concentrated(0.0, 9.0, 121, params.sigma0, 0.3),
     )
     steps = 96
-    valuation = LogSvPdePricer(grid=grid, steps_per_interval=steps, adi=ADIConfig(theta=1.0))
+    # The recorded final-fit objective was computed on uniform density time steps.
+    valuation = LogSvPdePricer(
+        grid=grid, steps_per_interval=steps, adi=ADIConfig(theta=1.0), quadratic_start=False
+    )
     density = valuation.price_chain_detailed(chain, params)
     weights, mids = pilot.weights_and_market(chain)
     objective = np.dot(weights, (np.concatenate(density.implied_vols) - mids) ** 2)

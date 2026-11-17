@@ -196,6 +196,22 @@ def test_out_of_scope_measure_or_variable(request_kwargs):
         LogSvPdePricer().price_chain(chain(), LogSvParams(), **request_kwargs)
 
 
+@pytest.mark.slow
+def test_quadratic_start_reduces_peak_negative_mass_and_preserves_the_forward():
+    params = LogSvParams(sigma0=0.2, theta=0.2, kappa1=2.0, kappa2=2.0, beta=-0.5, volvol=0.8)
+    strikes = 110.0 * np.exp(0.2 * np.array([-2.0, 0.0, 2.0]))
+    data = OptionChain.slice_to_chain(1.0, 110.0, strikes, np.array(["P", "C", "C"]), 0.958)
+    pricer = LogSvPdePricer(steps_per_interval=128)
+    graded = pricer.price_chain_detailed(data, params)
+    uniform = replace(pricer, quadratic_start=False).price_chain_detailed(data, params)
+    assert uniform.steps[0].negative_mass > 0.65
+    assert graded.steps[0].negative_mass < 0.015 and graded.peak_negative_mass < 0.03
+    for result in (graded, uniform):
+        assert abs(result.expiries[0].mass - 1.0) < 1e-11
+        assert abs(result.expiries[0].normalized_forward - 1.0) < 2e-6
+    np.testing.assert_allclose(graded.prices[0], uniform.prices[0], rtol=0, atol=110 * 0.958 * 1e-4)
+
+
 def test_integer_strikes_keep_fractional_vols_and_failed_inversion_mask():
     grid = TensorGrid2D(Grid1D.uniform(-0.5, 0.5, 15), Grid1D.uniform(0.0, 0.5, 5))
     pricer = LogSvPdePricer(grid=grid, steps_per_interval=4)

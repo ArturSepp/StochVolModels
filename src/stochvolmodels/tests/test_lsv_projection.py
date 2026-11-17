@@ -39,6 +39,31 @@ def _quotes(times):
     )
 
 
+def test_quadratic_start_at_zero_only_in_pricing_and_projection():
+    times = np.array([0.125, 0.25])
+    chain = _quotes(times)
+    grid = TensorGrid2D(Grid1D.uniform(-0.8, 0.8, 45), Grid1D.uniform(0.0, 0.4, 9))
+    params = LogSvParams(sigma0=0.2, theta=0.2, beta=0.0, volvol=0.0)
+    pricer = LogSvPdePricer(grid=grid, steps_per_interval=[4, 2])
+    plain = pricer.price_chain_detailed(chain, params)
+    target = LocalVolSurface(times, grid.x, np.full((2, grid.x.size), 0.2))
+    fit = SequentialLSVProjector(grid).project(params, target, [4, 2])
+    expected = [1 / 128, 4 / 128, 9 / 128, 0.125, 0.1875, 0.25]
+    np.testing.assert_array_equal([d.time_end for d in plain.steps], expected)
+    np.testing.assert_array_equal(
+        [d.time_end for row in fit.slices for d in row.diagnostics], expected
+    )
+    # With a backbone knot before the first expiry, grade up to the first actual bucket end.
+    params.vol_backbone = pd.Series([1.0, 1.25], index=[0.0625, 0.25])
+    with_knot = SequentialLSVProjector(grid).project(params, target, [4, 2])
+    replay = pricer.price_chain_detailed(chain, with_knot.model)
+    ends = [1 / 256, 4 / 256, 9 / 256, 0.0625, 5 / 64, 6 / 64, 7 / 64, 0.125, 0.1875, 0.25]
+    np.testing.assert_array_equal([d.time_end for d in replay.steps], ends)
+    np.testing.assert_array_equal(
+        [d.time_end for row in with_knot.slices for d in row.diagnostics], ends
+    )
+
+
 def test_projection_quadrature_repair_damping_and_density_gates():
     grid = TensorGrid2D(Grid1D([-1, -0.8, -0.6, 0.3, 1]), Grid1D([0.10, 0.23, 0.62]))
     # Unit row masses at indices 1 and 3, carried by distinct volatility nodes.
@@ -128,9 +153,10 @@ def test_interior_backbone_and_leverage_knots_against_independent_1d_law():
     chain = _quotes(np.array([0.1, 0.31]))
     ref = LocalVolPdePricer(grid=x, steps_per_interval=32).price_chain(chain, law)
     adi = ADIConfig(theta=1.0, coefficient_evaluation=CoefficientEvaluation.STEP_START)
-    result = LogSvPdePricer(grid=grid, steps_per_interval=32, adi=adi).price_chain_detailed(
-        chain, model
-    )
+    # Match the uniform time grid of the independent 1D discretization.
+    result = LogSvPdePricer(
+        grid=grid, steps_per_interval=32, adi=adi, quadratic_start=False
+    ).price_chain_detailed(chain, model)
     np.testing.assert_allclose(list(result.prices), list(ref), rtol=0.0, atol=2e-11)
     assert len(result.steps) == 32 * 6
     assert [s.step_index for s in result.steps] == list(range(len(result.steps)))
@@ -224,9 +250,8 @@ def test_archived_sequential_leverage_and_vanilla_replay(stochastic, record_prop
     ref = old.SequentialLSVProjector(
         params, grid, old_target, old.LSVProjectionConfig(**settings), adi
     ).project(steps)
-    new = SequentialLSVProjector(grid, LSVProjectionConfig(**settings), adi).project(
-        params, target, steps
-    )
+    config = LSVProjectionConfig(**settings, quadratic_start=False)
+    new = SequentialLSVProjector(grid, config, adi).project(params, target, steps)
     surf = new.model.leverage_surface
     err_leverage = np.max(np.abs(surf.values - ref.leverage_surface.values))
     assert err_leverage < 2e-11
@@ -259,13 +284,8 @@ def test_archived_sequential_leverage_and_vanilla_replay(stochastic, record_prop
                 getattr(row.leverage_update, name), getattr(original.leverage_update, name)
             )
     chain = _quotes(times)
-    prices = np.array(
-        list(
-            LogSvPdePricer(grid=grid, steps_per_interval=steps, adi=adi).price_chain(
-                chain, new.model
-            )
-        )
-    )
+    replay = LogSvPdePricer(grid=grid, steps_per_interval=steps, adi=adi, quadratic_start=False)
+    prices = np.array(list(replay.price_chain(chain, new.model)))
     expected = _archive_prices(chain, params, ref.leverage_surface, grid, steps, adi)
     numeraire = (chain.forwards * chain.discfactors)[:, None]
     price_error = np.max(np.abs(prices - expected) / numeraire)
@@ -346,7 +366,7 @@ def test_frozen_btc_projection_dates_and_ragged_vanillas(record_property):
     orig = old.SequentialLSVProjector(
         params, grid, old_target, old.LSVProjectionConfig(**settings), adi
     ).project(counts)
-    proj = SequentialLSVProjector(grid, LSVProjectionConfig(**settings), adi)
+    proj = SequentialLSVProjector(grid, LSVProjectionConfig(**settings, quadratic_start=False), adi)
     fit = proj.project(params, target, counts)
     np.testing.assert_allclose(
         fit.model.leverage_surface.values, orig.leverage_surface.values, rtol=0, atol=2e-11
@@ -370,7 +390,8 @@ def test_frozen_btc_projection_dates_and_ragged_vanillas(record_property):
         strict.project(params, target, counts)
     g = reference.repricing_grid
     expected = _archive_prices(chain, params, orig.leverage_surface, g, 96, adi)
-    actual = LogSvPdePricer(grid=g, steps_per_interval=96, adi=adi).price_chain(chain, fit.model)
+    replay = LogSvPdePricer(grid=g, steps_per_interval=96, adi=adi, quadratic_start=False)
+    actual = replay.price_chain(chain, fit.model)
     error = max(
         np.max(abs(p - q)) / (f * d)
         for p, q, f, d in zip(actual, expected, chain.forwards, chain.discfactors)

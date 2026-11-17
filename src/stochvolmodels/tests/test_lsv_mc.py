@@ -185,6 +185,7 @@ def test_frozen_btc_vanilla_mc_archive_and_pde(record_property):
         grid=reference.repricing_grid,
         steps_per_interval=reference.repricing_steps_per_interval,
         adi=reference.adi_config,
+        quadratic_start=False,  # Compare to the archived PDE/MC acceptance metrics.
     )
     t = frozen.calibration_input.target
     normalized = OptionChain(

@@ -24,7 +24,7 @@ from stochvolmodels.pde_solvers import (
     TensorGrid2D,
 )
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
-from stochvolmodels.pricers.lsv_projection import _advance_lsv, _step_counts
+from stochvolmodels.pricers.lsv_projection import _advance_lsv, _interval_time_grid, _step_counts
 from stochvolmodels.pricers.model_pricer import ModelPricer
 from stochvolmodels.products.payoffs import _vanilla_payoff
 from stochvolmodels.utils.config import OptionType, VariableType
@@ -125,7 +125,9 @@ class LogSvPdePricer(ModelPricer):
     expiry interval, with either one count or a count per expiry. Refine the mesh
     for the maturity, wings and accuracy required. Pass an LSVModel to use a
     leverage surface with optional backbone. Each leverage or backbone knot also
-    splits the integration interval and receives steps_per_interval steps.
+    splits the integration interval and receives steps_per_interval steps. The first
+    bucket uses quadratic time spacing from the initial point mass. Later buckets use
+    uniform spacing. Set quadratic_start=False for uniform spacing throughout.
     Fixed log-forward jumps use compensated drift and symmetric compound-Poisson
     splitting. Each step reports positive mass translated outside the x grid.
     """
@@ -133,6 +135,7 @@ class LogSvPdePricer(ModelPricer):
     grid: TensorGrid2D | None = None
     steps_per_interval: int | ArrayLike = 128
     adi: ADIConfig = field(default_factory=lambda: ADIConfig(theta=1.0))
+    quadratic_start: bool = True
 
     def _project_chain(
         self,
@@ -190,7 +193,9 @@ class LogSvPdePricer(ModelPricer):
             state = PDEState2D(0.0, start_values)
             states, diagnostics = [], []
             for end, count in zip(maturities, counts):
-                state, steps = _advance_lsv(params, grid, solver, state, end, count)
+                state, steps = _advance_lsv(
+                    params, grid, solver, state, end, count, quadratic_start=self.quadratic_start
+                )
                 states.append(state)
                 diagnostics.extend(steps)
             steps = tuple(replace(d, step_index=i) for i, d in enumerate(diagnostics))
@@ -200,13 +205,11 @@ class LogSvPdePricer(ModelPricer):
                 (
                     [0.0],
                     *[
-                        np.linspace(a, b, count + 1)[1:]
+                        _interval_time_grid(a, b, count, self.quadratic_start)[1:]
                         for a, b, count in zip(starts, maturities, counts)
                     ],
                 )
             )
-            # Subintervals shorter than a float ULP can produce repeated partition points.
-            times = np.unique(times)
             boundary = BoundaryPair1D.natural()
             law = solver.solve(
                 grid,

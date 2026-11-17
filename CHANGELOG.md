@@ -4,6 +4,15 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.18.2] - 2026-11-17
+
+### Changed
+
+- `LogSvPdePricer`, `LSVProjectionConfig` (including fixed-point calibration) and
+  `LSVParametricCalibrationConfig` default to quadratic time spacing in the first
+  coefficient bucket from the initial point mass. Use `quadratic_start=False` to replay
+  uniform stepping. Each subsequent bucket retains its original step count and dates.
+
 ## [2.18.1] - 2026-11-17
 
 ### Fixed

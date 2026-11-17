@@ -189,9 +189,12 @@ class LSVParametricCalibrationConfig:
     leverage_cap: float = 3.0
     mass_tolerance: float = 1e-10
     negative_mass_tolerance: float = 1e-10
+    quadratic_start: bool = field(default=True, kw_only=True)
 
     def __post_init__(self) -> None:
         """Validate budgets, bounds, weights and density tolerances before optimization."""
+        if not isinstance(self.quadratic_start, (bool, np.bool_)):
+            raise TypeError("quadratic_start must be boolean")
         if not isinstance(self.family, LocalVolFamily):
             raise TypeError("family must be a LocalVolFamily")
         if not isinstance(self.weighting, CalibrationWeighting):
@@ -451,7 +454,8 @@ class LSVParametricCalibrator:
                 [end], g.x, leverage[None, :], cfg.leverage_floor, cfg.leverage_cap
             )
             terminal, _ = _advance_lsv(
-                replace(model, leverage_surface=surface), g, solver, state, end, steps
+                replace(model, leverage_surface=surface), g, solver, state, end, steps,
+                quadratic_start=cfg.quadratic_start,
             )
             mass = g.integrate(terminal.values)
             negative_mass = -g.integrate(np.minimum(terminal.values, 0.0))

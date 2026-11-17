@@ -132,8 +132,9 @@ def _mixture(chain, model):
     return out
 
 
+@pytest.mark.parametrize("quadratic_start", [False, True])
 @pytest.mark.parametrize("size", [-0.18, 0.18])
-def test_refinement_to_poisson_black_vanillas_and_mc(size, record_property):
+def test_refinement_to_poisson_black_vanillas_and_mc(size, quadratic_start, record_property):
     chain = _chain(
         [0.15, 0.4],
         [[104.0, 92.0, 98.0], [100.0, 112.0, 96.0, 106.0]],
@@ -146,9 +147,11 @@ def test_refinement_to_poisson_black_vanillas_and_mc(size, record_property):
     ).price_chain_detailed(chain, model)
     results = []
     for nx, steps in [(81, 24), (321, 128)]:
-        run = LogSvPdePricer(grid=_grid(nx), steps_per_interval=steps).price_chain_detailed(
-            chain, model
-        )
+        # Bound the largest first-bucket step by the original uniform step size.
+        counts = [2 * steps if quadratic_start else steps, steps]
+        run = LogSvPdePricer(
+            grid=_grid(nx), steps_per_interval=counts, quadratic_start=quadratic_start
+        ).price_chain_detailed(chain, model)
         gap = max(
             np.max(abs(p - v)) / (f * d)
             for p, v, f, d in zip(run.prices, analytic, chain.forwards, chain.discfactors)
@@ -198,6 +201,11 @@ def test_jump_propagation_partitions_interior_backbone_and_leverage_dates():
     result = pricer.price_chain_detailed(chain, model)
     np.testing.assert_array_equal(result.prices[0], pricer.price_chain(split, model)[-1])
     assert len(result.steps) == 72 and [d.step_index for d in result.steps] == list(range(72))
+    for start, end, offset in [(0.0, 0.07, 0), (0.07, 0.13, 24), (0.13, 0.30, 48)]:
+        expected = np.linspace(start, end, 25) if start else end * np.linspace(0, 1, 25)**2
+        np.testing.assert_array_equal(
+            [d.time_end for d in result.steps[offset:offset + 24]], expected[1:]
+        )
     assert all(d.jump_clamped_mass is not None for d in result.steps)
 
 
@@ -241,7 +249,7 @@ def test_archived_lsv_jump_solver_and_independent_mc(size, record_property):
     )
     adi = ADIConfig(theta=1.0)
     pde = LogSvPdePricer(
-        grid=g, steps_per_interval=s.pde_steps_per_interval, adi=adi
+        grid=g, steps_per_interval=s.pde_steps_per_interval, adi=adi, quadratic_start=False
     ).price_chain_detailed(chain, model)
     c = s.monte_carlo_config
     mc = LSVMonteCarloPricer(
