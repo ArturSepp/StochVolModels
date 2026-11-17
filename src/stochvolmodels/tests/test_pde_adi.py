@@ -307,6 +307,41 @@ def test_2d_solver_uses_exact_times_and_saves_immutable_states() -> None:
     assert solution.config.scheme is ADIScheme.DOUGLAS
 
 
+@pytest.mark.parametrize("direction", list(PDEDirection))
+def test_graded_time_dependent_directional_solve_matches_dense_steps(direction):
+    grid = TensorGrid2D(Grid1D.concentrated(-1., 1., 13, 0., .2), Grid1D.uniform(-1., 1., 7))
+    times = np.array([0., .01, .03, .05, .08, .11])
+    state = np.random.default_rng(31).normal(size=grid.shape)
+    theta = .6
+
+    class Provider:
+        def evaluate(self, t, grid):
+            return PDE2DCoefficients(
+                .2 + (1. + grid.y_mesh**2) * t, .03 * grid.x_mesh,
+                np.zeros(grid.shape), np.zeros(grid.shape), np.zeros(grid.shape),
+                np.zeros(grid.shape),
+            )
+
+    provider = Provider()
+    actual = PDE2DADISolver(ADIConfig(theta=theta)).solve(
+        grid, provider, _boundaries(), direction, times, state,
+    )
+    # With only x dynamics, each Douglas step is the ordinary 1D theta update.
+    # Reassemble at each midpoint and solve densely, including repeated step lengths.
+    pairs = list(zip(times[:-1], times[1:]))
+    if direction is PDEDirection.BACKWARD:
+        pairs.reverse()
+    for left, right in pairs:
+        coeff = provider.evaluate((left + right) / 2., grid)
+        op = SplitOperator2D.build(grid, coeff, _boundaries())
+        h = right - left
+        for j, line in enumerate(op.x_lines):
+            generator = line.generator(direction).to_dense()
+            rhs = state[:, j] + (1. - theta) * h * (generator @ state[:, j])
+            state[:, j] = np.linalg.solve(np.eye(grid.x.size) - theta * h * generator, rhs)
+    np.testing.assert_allclose(actual.values, state, atol=2e-14, rtol=0)
+
+
 def test_adi_config_and_forward_boundary_contract_are_validated() -> None:
     with pytest.raises(ValueError, match="theta"):
         ADIConfig(theta=0.0)

@@ -378,19 +378,13 @@ def _solve_backward_system(
     reduced_upper = np.array(matrix.upper[first : stop - 1], copy=True)
 
     if left_prescribed:
-        constant, near, next_near = _boundary_relation(boundaries.left)
-        coupling = matrix.lower[0]
-        reduced_diagonal[0] += coupling * near
-        if next_near != 0.0:
-            reduced_upper[0] += coupling * next_near
-        reduced_rhs[0] -= coupling * constant
+        reduced_rhs[0] -= _eliminate_endpoint(
+            reduced_diagonal, reduced_upper, matrix.lower[0], boundaries.left
+        )
     if right_prescribed:
-        constant, near, next_near = _boundary_relation(boundaries.right)
-        coupling = matrix.upper[-1]
-        reduced_diagonal[-1] += coupling * near
-        if next_near != 0.0:
-            reduced_lower[-1] += coupling * next_near
-        reduced_rhs[-1] -= coupling * constant
+        reduced_rhs[-1] -= _eliminate_endpoint(
+            reduced_diagonal[::-1], reduced_lower[::-1], matrix.upper[-1], boundaries.right
+        )
 
     if reduced_diagonal.size == 1:
         if reduced_diagonal[0] == 0.0:
@@ -404,6 +398,15 @@ def _solve_backward_system(
     result = np.empty(matrix.size, dtype=np.float64)
     result[first:stop] = reduced_solution
     return _enforce_prescribed_boundaries(result, boundaries)
+
+
+def _eliminate_endpoint(diagonal, off_diagonal, coupling, condition):
+    """Eliminate an affine endpoint from one or more lines, ordered from that endpoint."""
+    constant, near, next_near = _boundary_relation(condition)
+    diagonal[0] += coupling * near
+    if next_near != 0.0:
+        off_diagonal[0] += coupling * next_near
+    return coupling * constant
 
 
 def _boundary_relation(condition: BoundaryCondition1D) -> tuple[float, float, float]:
@@ -426,7 +429,7 @@ def _enforce_prescribed_boundaries(
     if any(
         condition.kind is BoundaryKind.LINEAR_EXTRAPOLATION
         for condition in (boundaries.left, boundaries.right)
-    ) and result.size < 4:
+    ) and result.shape[0] < 4:
         raise ValueError("linear-extrapolation boundaries require at least four grid nodes")
     if boundaries.left.kind is not BoundaryKind.NATURAL:
         constant, near, next_near = _boundary_relation(boundaries.left)

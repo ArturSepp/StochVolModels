@@ -8,9 +8,13 @@ monotonicity switches.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import numpy as np
 import pytest
-from stochvolmodels.pde_solvers.boundaries import BoundaryPair1D, BoundarySet2D
+from stochvolmodels.pde_solvers.boundaries import (
+    BoundaryCondition1D, BoundaryPair1D, BoundarySet2D, BoundarySide,
+)
 from stochvolmodels.pde_solvers.coefficients import PDE2DCoefficients
 from stochvolmodels.pde_solvers.grids import Grid1D, TensorGrid2D
 from stochvolmodels.pde_solvers.operators_1d import DriftDiscretization, PDEDirection
@@ -148,6 +152,89 @@ def test_directional_implicit_line_solves_match_dense_references() -> None:
         np.testing.assert_allclose(
             solved_y[x_index, :], np.linalg.solve(matrix, rhs[x_index, :]), atol=3.0e-14
         )
+
+
+@pytest.mark.parametrize("direction", list(PDEDirection))
+def test_factor_reuse_tracks_exact_scale_and_operator(monkeypatch, direction):
+    from stochvolmodels.pde_solvers.operators_2d import _LineBatch
+
+    calls = []
+    factor = _LineBatch._factor
+
+    def count(batch, scale):
+        calls.append(scale)
+        return factor(batch, scale)
+
+    monkeypatch.setattr(_LineBatch, "_factor", count)
+    grid = TensorGrid2D(Grid1D.uniform(-1., 1., 8), Grid1D.uniform(-1., 1., 6))
+    coeff = _smooth_coefficients(grid)
+    op = SplitOperator2D.build(grid, coeff, _boundaries())
+    rhs = np.random.default_rng(17).normal(size=grid.shape)
+    h = 1 / 32
+    close = np.nextafter(h, 1.)
+    for step, theta in [(h, 1.), (2 * h, .5), (close, 1.), (h, 1.)]:
+        for solve, lines, axis in [(op.solve_a1, op.x_lines, 0), (op.solve_a2, op.y_lines, 1)]:
+            result = solve(rhs, direction, step, theta)
+            expected = [
+                np.linalg.solve(line.implicit_matrix(direction, step, theta).to_dense(), values)
+                for line, values in zip(lines, np.moveaxis(rhs, axis, -1), strict=True)
+            ]
+            np.testing.assert_allclose(np.moveaxis(result, axis, -1), expected, atol=3e-14, rtol=0)
+    assert calls == [h, h, close, close]
+
+    # A change of direction or a new coefficient bucket must create new factors.
+    opposite = PDEDirection.FORWARD if direction is PDEDirection.BACKWARD else PDEDirection.BACKWARD
+    op.solve_a1(rhs, opposite, h, 1.)
+    changed = SplitOperator2D.build(grid, replace(coeff, variance_x=2. * coeff.variance_x),
+                                    _boundaries())
+    changed_values = changed.solve_a1(rhs, direction, h, 1.)
+    assert not np.allclose(changed_values, op.solve_a1(rhs, direction, h, 1.))
+    assert calls[4:] == [h, h]
+
+
+@pytest.mark.parametrize("n", [3, 8])
+def test_prescribed_line_factors_match_full_boundary_equations(n):
+    grid = TensorGrid2D(Grid1D.uniform(-1., 1., n), Grid1D.uniform(-0.5, 1.5, 5))
+    if n == 3:
+        left, right = (0.7, 0., 0.), (-0.2, 0., 0.)
+        bounds = BoundaryPair1D.dirichlet(left[0], right[0])
+    else:
+        left, right = (0.3, 1.4, -0.4), (-0.2, 1.6, -0.6)
+        bounds = BoundaryPair1D(
+            BoundaryCondition1D.linear_relation(BoundarySide.LEFT, *left),
+            BoundaryCondition1D.linear_relation(BoundarySide.RIGHT, *right),
+        )
+    op = SplitOperator2D.build(grid, _smooth_coefficients(grid),
+                               BoundarySet2D(bounds, BoundaryPair1D.natural()))
+    rng = np.random.default_rng(18)
+    for _ in range(2):
+        rhs = rng.normal(size=grid.shape)
+        result = op.solve_a1(rhs, PDEDirection.BACKWARD, .031, .7)
+        for j, line in enumerate(op.x_lines):
+            matrix = line.implicit_matrix(PDEDirection.BACKWARD, .031, .7).to_dense()
+            matrix[[0, -1]] = 0.
+            matrix[0, :3] = [1., -left[1], -left[2]]
+            matrix[-1, -3:] = [-right[2], -right[1], 1.]
+            column = rhs[:, j].copy()
+            column[[0, -1]] = [left[0], right[0]]
+            np.testing.assert_allclose(result[:, j], np.linalg.solve(matrix, column),
+                                       atol=1e-14, rtol=0)
+    with pytest.raises(ValueError, match="natural boundaries"):
+        op.solve_a1(rhs, PDEDirection.FORWARD, .031, .7)
+
+
+def test_one_singular_line_rejects_batch_and_other_scales_still_solve():
+    grid = TensorGrid2D(Grid1D.uniform(-1., 1., 7), Grid1D.uniform(-1., 1., 5))
+    coeff = PDE2DCoefficients.constant(grid.shape, 0., 0., 0., 0., 0., 0.)
+    discount = np.zeros(grid.shape)
+    discount[:, 1] = -2.
+    op = SplitOperator2D.build(grid, replace(coeff, discount=discount), _boundaries())
+    rhs = np.ones(grid.shape)
+    for _ in range(2):
+        with pytest.raises(np.linalg.LinAlgError, match="pivot"):
+            op.solve_a1(rhs, PDEDirection.FORWARD, 1., 1.)
+        np.testing.assert_array_equal(op.solve_a1(rhs, PDEDirection.FORWARD, .5, 1.),
+                                      rhs / (1. + .25 * discount))
 
 
 def test_axis_monotonicity_switches_are_observable() -> None:

@@ -12,6 +12,9 @@ Entries start at 1.2.0. For earlier releases see the git log.
   and continues with Crank–Nicolson. Set `theta=1.0` for historical Euler prices
   or `theta=0.5` for undamped Crank–Nicolson. `LocalVolPdeResult.steps` reports
   the raw density diagnostics for every accepted step.
+- The 2D ADI solver batches the independent directional line solves and explicit
+  applications. Repeated implicit stages reuse their tridiagonal factors for the
+  same operator, axis, direction and exact product of step length and theta.
 
 ## [2.18.6] - 2026-11-17
 

@@ -8,12 +8,12 @@ weighted-adjoint relations between backward and forward propagation.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from stochvolmodels.pde_solvers.boundaries import BoundaryKind, BoundarySet2D
+from stochvolmodels.pde_solvers.boundaries import BoundaryKind, BoundaryPair1D, BoundarySet2D
 from stochvolmodels.pde_solvers.coefficients import PDE1DCoefficients, PDE2DCoefficients
 from stochvolmodels.pde_solvers.grids import Grid1D, TensorGrid2D
 from stochvolmodels.pde_solvers.operators_1d import (
@@ -21,9 +21,117 @@ from stochvolmodels.pde_solvers.operators_1d import (
     Operator1D,
     PDEDirection,
 )
-from stochvolmodels.pde_solvers.solver_1d import _solve_backward_system
+from stochvolmodels.pde_solvers.solver_1d import _eliminate_endpoint, _enforce_prescribed_boundaries
 
 FloatArray = NDArray[np.float64]
+
+
+@dataclass(frozen=True, slots=True)
+class _LineFactors:
+    """Thomas factors for independent columns, with each endpoint's RHS correction."""
+
+    multipliers: FloatArray
+    pivots: FloatArray
+    upper: FloatArray
+    left_shift: FloatArray | None
+    right_shift: FloatArray | None
+
+
+class _LineBatch:
+    """Bands for one operator, axis and direction, stacked as (node, line)."""
+
+    def __init__(
+        self, lines: tuple[Operator1D, ...], direction: PDEDirection, boundaries: BoundaryPair1D
+    ) -> None:
+        """Pack the scalar generators once. All lines on this axis share endpoint rules."""
+        matrices = [line.generator(direction) for line in lines]
+        self.lower = np.column_stack([matrix.lower for matrix in matrices])
+        self.diagonal = np.column_stack([matrix.diagonal for matrix in matrices])
+        self.upper = np.column_stack([matrix.upper for matrix in matrices])
+        self.boundaries = boundaries
+        self.first = int(boundaries.left.kind is not BoundaryKind.NATURAL)
+        self.stop = self.diagonal.shape[0] - int(boundaries.right.kind is not BoundaryKind.NATURAL)
+        self.factors: dict[float, _LineFactors] = {}
+
+    def apply(self, values: FloatArray) -> FloatArray:
+        """Apply the three bands in the same summation order as each scalar generator."""
+        result = self.diagonal * values
+        result[:-1] += self.upper * values[1:]
+        result[1:] += self.lower * values[:-1]
+        return result
+
+    def _factor(self, scale: float) -> _LineFactors:
+        """Factor every line at exactly theta*h, applying the scalar per-line pivot test."""
+        first, stop = self.first, self.stop
+        if len(self.diagonal) < 4 and any(
+            c.kind is BoundaryKind.LINEAR_EXTRAPOLATION
+            for c in (self.boundaries.left, self.boundaries.right)
+        ):
+            raise ValueError("linear-extrapolation boundaries require at least four grid nodes")
+        pivots = 1.0 - scale * self.diagonal[first:stop]
+        lower = -scale * self.lower[first:stop - 1]
+        upper = -scale * self.upper[first:stop - 1]
+        left_shift = right_shift = None
+        if first:
+            left_shift = _eliminate_endpoint(
+                pivots, upper, -scale * self.lower[0], self.boundaries.left
+            )
+        if stop < self.diagonal.shape[0]:
+            right_shift = _eliminate_endpoint(
+                pivots[::-1], lower[::-1], -scale * self.upper[-1], self.boundaries.right
+            )
+        if not all(np.isfinite(band).all() for band in (lower, pivots, upper)):
+            raise ValueError("implicit matrix must contain only finite values")
+        if len(pivots) == 1:
+            if np.any(pivots[0] == 0.0):
+                raise np.linalg.LinAlgError("backward boundary system has a zero scalar pivot")
+        else:
+            magnitude = np.maximum(1.0, np.max(np.abs(pivots), axis=0))
+            magnitude = np.maximum(magnitude, np.max(np.abs(lower), axis=0))
+            magnitude = np.maximum(magnitude, np.max(np.abs(upper), axis=0))
+            tolerance = 64.0 * np.finfo(np.float64).eps * magnitude * len(pivots)
+            for i in range(len(pivots)):
+                if np.any(np.abs(pivots[i]) <= tolerance):
+                    raise np.linalg.LinAlgError(f"near-zero pivot in tridiagonal batch at row {i}")
+                if i < len(lower):
+                    lower[i] /= pivots[i]
+                    pivots[i + 1] -= lower[i] * upper[i]
+            if not np.isfinite(pivots).all() or not np.isfinite(lower).all():
+                raise ValueError("tridiagonal factors must contain only finite values")
+        return _LineFactors(lower, pivots, upper, left_shift, right_shift)
+
+    def solve(self, rhs: FloatArray, step_size: float, theta: float) -> FloatArray:
+        """Use cached factors and substitute across independent right-hand sides."""
+        step, theta = float(step_size), float(theta)
+        if not np.isfinite(step) or step <= 0.0:
+            raise ValueError("step_size must be finite and positive")
+        if not np.isfinite(theta) or not 0.0 <= theta <= 1.0:
+            raise ValueError("theta must be finite and in [0, 1]")
+        scale = theta * step
+        lu = self.factors.get(scale)
+        if lu is None:
+            lu = self._factor(scale)
+            # Keep exact recurring scales from a uniform mesh without growing with a graded mesh.
+            if len(self.factors) >= 8:
+                self.factors.clear()
+            self.factors[scale] = lu
+        values = np.array(rhs[self.first:self.stop], order="C", copy=True)
+        if lu.left_shift is not None:
+            values[0] -= lu.left_shift
+        if lu.right_shift is not None:
+            values[-1] -= lu.right_shift
+        if not np.isfinite(values).all():
+            raise ValueError("rhs must contain only finite values")
+        for i in range(1, len(values)):
+            values[i] -= lu.multipliers[i - 1] * values[i - 1]
+        values[-1] /= lu.pivots[-1]
+        for i in range(len(values) - 2, -1, -1):
+            values[i] = (values[i] - lu.upper[i] * values[i + 1]) / lu.pivots[i]
+        if len(values) == len(rhs):
+            return values
+        result = np.zeros_like(rhs)
+        result[self.first:self.stop] = values
+        return _enforce_prescribed_boundaries(result, self.boundaries)
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +152,9 @@ class SplitOperator2D:
     derivative_x: FloatArray
     derivative_y: FloatArray
     drift_discretization: DriftDiscretization
+    _batches: dict[tuple[int, PDEDirection], _LineBatch] = field(
+        default_factory=dict, init=False, repr=False, compare=False
+    )
 
     @classmethod
     def build(
@@ -112,6 +223,17 @@ class SplitOperator2D:
             drift_discretization=drift_discretization,
         )
 
+    def _batch(self, axis: int, direction: PDEDirection) -> _LineBatch:
+        """Lazily pack each axis/direction for this frozen operator and its bound grid."""
+        key = (axis, direction)
+        batch = self._batches.get(key)
+        if batch is None:
+            lines = self.x_lines if axis == 0 else self.y_lines
+            bounds = self.boundaries.x if axis == 0 else self.boundaries.y
+            batch = _LineBatch(lines, direction, bounds)
+            self._batches[key] = batch
+        return batch
+
     @property
     def one_sided_x_nodes(self) -> int:
         """Number of x-direction nodes using monotonicity fallback."""
@@ -151,10 +273,7 @@ class SplitOperator2D:
         """Apply independent x-direction line generators."""
         array = self.grid.validate_shape(values)
         _validate_direction(direction)
-        result = np.empty(self.grid.shape, dtype=np.float64)
-        for y_index, line in enumerate(self.x_lines):
-            result[:, y_index] = line.apply(array[:, y_index], direction)
-        return result
+        return self._batch(0, direction).apply(array)
 
     def apply_a2(
         self, values: ArrayLike, direction: PDEDirection
@@ -162,10 +281,7 @@ class SplitOperator2D:
         """Apply independent y-direction line generators."""
         array = self.grid.validate_shape(values)
         _validate_direction(direction)
-        result = np.empty(self.grid.shape, dtype=np.float64)
-        for x_index, line in enumerate(self.y_lines):
-            result[x_index, :] = line.apply(array[x_index, :], direction)
-        return result
+        return np.ascontiguousarray(self._batch(1, direction).apply(array.T).T)
 
     def apply_full(
         self, values: ArrayLike, direction: PDEDirection
@@ -189,16 +305,7 @@ class SplitOperator2D:
         array = self.grid.validate_shape(rhs)
         _validate_direction(direction)
         self._validate_forward_boundaries(direction)
-        result = np.empty(self.grid.shape, dtype=np.float64)
-        for y_index, line in enumerate(self.x_lines):
-            matrix = line.implicit_matrix(direction, step_size, theta)
-            if direction is PDEDirection.BACKWARD:
-                result[:, y_index] = _solve_backward_system(
-                    matrix, array[:, y_index], self.boundaries.x
-                )
-            else:
-                result[:, y_index] = matrix.solve(array[:, y_index])
-        return result
+        return self._batch(0, direction).solve(array, step_size, theta)
 
     def solve_a2(
         self,
@@ -211,16 +318,7 @@ class SplitOperator2D:
         array = self.grid.validate_shape(rhs)
         _validate_direction(direction)
         self._validate_forward_boundaries(direction)
-        result = np.empty(self.grid.shape, dtype=np.float64)
-        for x_index, line in enumerate(self.y_lines):
-            matrix = line.implicit_matrix(direction, step_size, theta)
-            if direction is PDEDirection.BACKWARD:
-                result[x_index, :] = _solve_backward_system(
-                    matrix, array[x_index, :], self.boundaries.y
-                )
-            else:
-                result[x_index, :] = matrix.solve(array[x_index, :])
-        return result
+        return np.ascontiguousarray(self._batch(1, direction).solve(array.T, step_size, theta).T)
 
     def weighted_adjoint_residual(
         self, backward_values: ArrayLike, forward_values: ArrayLike
