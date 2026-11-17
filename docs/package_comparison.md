@@ -34,7 +34,7 @@ curve, calendar, or pricing-engine ecosystem. Its official Python documentation 
 [Heston processes](https://quantlib-python-docs.readthedocs.io/en/latest/stochastic_processes.html)
 and [analytic/Monte Carlo Heston engines](https://quantlib-python-docs.readthedocs.io/en/latest/pricing_engines.html).
 
-Choose [FinancePy](https://github.com/domokane/FinancePy) when a readable, product-oriented Python
+Choose [FinancePy](https://github.com/FinancePy-Org/FinancePy) when a readable, product-oriented Python
 library spanning fixed income, FX, equity, and credit is a closer match. Its official repository
 documents NumPy/Numba implementation, a `value()` product interface, and reference Monte Carlo for
 many products. Review its GPL-3.0 license against your distribution needs.
