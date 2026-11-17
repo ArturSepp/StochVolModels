@@ -71,14 +71,19 @@ def _default_grid(
     chain: OptionChain,
     return_loading: float = 1.0,
     jump: FixedLogForwardJump | None = None,
+    *,
+    first_return_loading: float | None = None,
 ) -> TensorGrid2D:
     """Construct an initial mesh containing the initial state and every quoted strike."""
     scale = max(params.theta, params.sigma0)
-    stdev = return_loading * scale * np.sqrt(chain.ttms[-1])
+    if first_return_loading is None:
+        first_return_loading = return_loading
+    first_stdev = first_return_loading * scale * np.sqrt(chain.ttms[0])
+    last_stdev = return_loading * scale * np.sqrt(chain.ttms[-1])
     wing = max(
         np.max(np.abs(np.log(k) - np.log(f))) for k, f in zip(chain.strikes_ttms, chain.forwards)
     )
-    width = max(8.0 * stdev, 1.25 * wing)
+    width = max(8.0 * last_stdev, 1.25 * wing)
     lower_x, upper_x = -width, width
     if jump is not None and jump.intensity > 0 and jump.jump_size != 0:
         maturity = chain.ttms[-1]
@@ -89,7 +94,13 @@ def _default_grid(
         displacement = count * jump.jump_size
         lower_x += min(0.0, drift) + min(0.0, displacement)
         upper_x += max(0.0, drift) + max(0.0, displacement)
-    x = Grid1D.concentrated(lower_x, upper_x, 121, 0.0, stdev)
+    # Keep the one-expiry spacing in sinh coordinates as the front-expiry law narrows.
+    # An odd number of nodes keeps zero on the mesh for a symmetric log-forward domain.
+    bounds = np.array([-lower_x, upper_x])
+    first_span = np.arcsinh(bounds / first_stdev).sum()
+    last_span = np.arcsinh(bounds / last_stdev).sum()
+    half_intervals = int(np.ceil(60 * (first_span / last_span)))
+    x = Grid1D.concentrated(lower_x, upper_x, 2 * half_intervals + 1, 0.0, first_stdev)
     # Split a single sinh map at sigma0. Both sides then have comparable spacing
     # at the initial delta, even with an asymmetric volatility domain.
     upper = 8.0 * scale
@@ -153,14 +164,18 @@ class LogSvPdePricer(ModelPricer):
         snapshot = model.params
         grid = self.grid
         if grid is None:
-            loading = 1.0
+            first_loading = loading = 1.0
             if lsv:
-                ends = params.time_knots
-                ends = np.r_[
-                    ends[(ends > 0) & (ends < option_chain.ttms[-1])], option_chain.ttms[-1]
-                ]
-                loading = max(params.max_return_loading(t) for t in ends)
-            grid = _default_grid(snapshot, option_chain, loading, params.jump if lsv else None)
+                first, last = option_chain.ttms[0], option_chain.ttms[-1]
+                knots = params.time_knots
+                ends = np.union1d(knots[(knots > 0) & (knots < last)], [first, last])
+                loadings = np.array([params.max_return_loading(t) for t in ends])
+                first_loading = loadings[ends <= first].max()
+                loading = loadings.max()
+            grid = _default_grid(
+                snapshot, option_chain, loading, params.jump if lsv else None,
+                first_return_loading=first_loading,
+            )
         if not isinstance(grid, TensorGrid2D):
             raise TypeError("grid must be a TensorGrid2D")
         if not (

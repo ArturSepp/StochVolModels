@@ -8,6 +8,9 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Fixed
 
+- `LogSvPdePricer` uses the shortest quoted expiry to concentrate its default log-forward
+  grid near the forward and adds nodes to resolve that expiry on a mixed chain. The domain
+  still covers the longest expiry, quoted strikes and jump tails.
 - `DupireResult.to_local_vol_surface` converts instantaneous estimates to interval-effective
   variance. Diffusion-only flat smiles use increments of implied total variance. Skewed or
   jump-adjusted surfaces fit one near-forward price per expiry within the repair bounds.

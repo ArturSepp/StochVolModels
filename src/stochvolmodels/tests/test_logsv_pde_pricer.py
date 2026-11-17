@@ -81,6 +81,89 @@ def test_ragged_black_prices_market_parity_and_chain_ivols():
         np.testing.assert_array_equal(iv[i], result.implied_vols[i])
 
 
+@pytest.mark.parametrize("jump_size", [-0.16, 0.16])
+def test_mixed_expiry_grid_preserves_long_domain_wings_and_jump_tails(jump_size):
+    from stochvolmodels.models.lsv import FixedLogForwardJump
+    from stochvolmodels.pricers.logsv_pde_pricer import _default_grid
+
+    data = chain()
+    params = LogSvParams(sigma0=0.2, theta=0.2, beta=0.0, volvol=0.0)
+    jump = FixedLogForwardJump(intensity=0.8, jump_size=jump_size)
+    year = OptionChain.slice_to_chain(1.0, 82.0, data.strikes_ttms[-1], data.optiontypes_ttms[-1])
+    mixed = replace(data, ttms=np.array([1 / 52, 1.0]))
+    mixed_x = _default_grid(params, mixed, return_loading=1.5, jump=jump).x
+    year_x = _default_grid(params, year, return_loading=1.5, jump=jump).x
+    domain = mixed_x.nodes[[0, -1]]
+    np.testing.assert_array_equal(domain, year_x.nodes[[0, -1]])
+    assert mixed_x.size > year_x.size == 121
+    # The long horizon sets the diffusion width. Compensated jumps extend both sides.
+    assert domain[0] < -8 * 1.5 * params.sigma0 and domain[1] > 8 * 1.5 * params.sigma0
+    wing = mixed.forwards[0] * np.exp(3.0)
+    strikes = (np.array([wing, mixed.forwards[0], mixed.forwards[0]]), mixed.strikes_ttms[-1])
+    wide = _default_grid(params, replace(mixed, strikes_ttms=strikes), return_loading=1.5, jump=jump)
+    assert wide.x.nodes[0] < -3.75 and wide.x.nodes[-1] > 3.75
+
+
+def test_later_backbone_loading_preserves_the_weekly_smile():
+    from stochvolmodels.models.lsv import LSVModel
+
+    week = 1 / 52
+    z = np.array([-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0])
+    strikes = 96.0 * np.exp(0.2 * np.sqrt(week) * z)
+    data = OptionChain(
+        ttms=np.array([week, 1.0]), forwards=np.array([96.0, 110.0]),
+        discfactors=np.array([0.999, 0.958]), ids=None, strikes_ttms=(strikes, np.array([110.0])),
+        optiontypes_ttms=(np.where(z < 0, "P", "C"), np.array(["C"])),
+    )
+    params = LogSvParams(sigma0=0.2, theta=0.2, beta=0.0, volvol=0.0,
+                         vol_backbone=pd.Series([1.0, 4.0], index=[week, 1.0]))
+    result = LogSvPdePricer(steps_per_interval=[128, 8]).price_chain_detailed(
+        data, LSVModel.from_params(params)
+    )
+    np.testing.assert_allclose(result.implied_vols[0], 0.2, rtol=0, atol=0.001)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("beta,volvol", [(0.0, 0.0), (-0.5, 0.8)])
+def test_default_grid_resolves_week_in_mixed_expiry_chain(beta, volvol):
+    times = np.array([1 / 52, 1 / 12, 0.25, 1.0])
+    forwards = np.array([96.0, 100.5, 102.0, 110.0])
+    discounts = np.array([0.999, 0.997, 0.989, 0.958])
+    z = np.array([-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0])
+    kinds = np.where(z < 0.0, "P", "C")
+    data = OptionChain(
+        ttms=times, forwards=forwards, discfactors=discounts, ids=None,
+        strikes_ttms=tuple(f * np.exp(0.2 * np.sqrt(t) * z) for t, f in zip(times, forwards)),
+        optiontypes_ttms=(kinds,) * len(times),
+    )
+    week = OptionChain.slice_to_chain(
+        times[0], forwards[0], data.strikes_ttms[0], kinds, discounts[0]
+    )
+    params = LogSvParams(sigma0=0.2, theta=0.2, kappa1=2.0, kappa2=2.0, beta=beta, volvol=volvol)
+    pricer = LogSvPdePricer()
+    single = pricer.price_chain_detailed(week, params)
+    mixed = pricer.price_chain_detailed(data, params)
+
+    np.testing.assert_allclose(
+        mixed.implied_vols[0], single.implied_vols[0], rtol=0, atol=0.0002, equal_nan=False
+    )
+    if volvol == 0.0:
+        for iv in (single.implied_vols[0], mixed.implied_vols[0], mixed.implied_vols[-1]):
+            np.testing.assert_allclose(iv, 0.2, rtol=0, atol=0.001)
+
+    # Price the same one-year contracts on a wider independent mesh and a single time partition.
+    year = OptionChain.slice_to_chain(
+        times[-1], forwards[-1], data.strikes_ttms[-1], kinds, discounts[-1]
+    )
+    grid = TensorGrid2D(
+        Grid1D.concentrated(-2.4, 2.4, 241, 0.0, 0.1), Grid1D.uniform(0.0, 2.0, 121)
+    )
+    refined = LogSvPdePricer(grid=grid, steps_per_interval=512).price_chain_detailed(year, params)
+    np.testing.assert_allclose(
+        mixed.prices[-1], refined.prices[0], rtol=0, atol=0.0002 * discounts[-1] * forwards[-1]
+    )
+
+
 @pytest.mark.parametrize(
     "updates",
     [

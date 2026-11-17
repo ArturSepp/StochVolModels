@@ -109,8 +109,14 @@ mass, normalized forward (target one), negative mass and the largest discounted
 put–call parity error relative to the market forward. `steps` and
 `peak_negative_mass` also capture signed densities between expiries.
 
-The default spatial mesh and 128 Douglas steps per expiry interval are starting
-values. Supply `grid`, `steps_per_interval` and `adi` to vary domain, spacing and
+The default mesh concentrates log-forward nodes around zero on the volatility scale of
+its shortest expiry. With an LSV backbone or leverage surface, the central spacing uses the
+largest return loading through that first expiry. The largest loading over the full chain,
+the longest expiry, all quoted strikes and any jump tails determine
+the domain width. A single expiry uses 121 log-forward nodes. For mixed expiries the number
+of nodes grows with the width in sinh coordinates to preserve the central resolution. The
+1w/1m/3m/1y flat 20% chain uses 207 log-forward nodes. The default time partition uses
+128 Douglas steps per expiry interval. Supply `grid`, `steps_per_interval` and `adi` to vary domain, spacing and
 time resolution independently. Check the wings against quote spreads and check the
 forward moment under refinement. The IJTAF replication includes a runnable
 fixed-parameter [comparison](https://github.com/ArturSepp/StochVolModels/tree/main/papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/verification).
