@@ -305,7 +305,7 @@ def test_review_density_projection_and_objective(monkeypatch):
 
 @pytest.mark.parametrize("case", ["SPXW", "GLD", "TLT", "TLT+"])
 def test_local_review_fixed_parameters(monkeypatch, case):
-    review_root = ROOT / "papers" / "robust_volatility_models" / "replication"
+    review_root = ROOT / "papers" / "robust_volatility_models_2026" / "replication"
     if not review_root.is_dir():
         pytest.skip("requires the local review's frozen surfaces")
     monkeypatch.syspath_prepend(str(ROOT))

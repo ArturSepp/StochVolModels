@@ -507,7 +507,7 @@ reject two long gold maturities and report revised fit metrics; the preview has 
 | | |
 |---|---|
 | Question | What persistence and stationary distribution do the recorded parameters imply for four volatility indices? |
-| Class | Synthetic teaching exhibit: parameters recorded in `papers/volatility_models/article_figures.py`, no market data |
+| Class | Synthetic teaching exhibit: parameters recorded in [the original SSRN figure script](https://github.com/ArturSepp/StochVolModels/blob/588193611f4fbf5595d60b198e34cb5c24826f8a/papers/volatility_models/article_figures.py), no market data |
 | Parameters | VIX, MOVE, OVX and Bitcoin; 50,000 paths from stationary starts, seed 7 |
 | Result | Half-lives of 108, 380, 50 and 48 business days; right-skewed laws with similar dispersion of log-volatility |
 | Script | [`examples/docs/app_robust_volatility_models.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/app_robust_volatility_models.py) |

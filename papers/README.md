@@ -27,7 +27,7 @@ extra; install it for the directories that need it. Install OCA provider extras 
 provider workflow requires them:
 
 ```python
-pip install yfinance                              # volatility_models, jump-risk-premia code
+pip install yfinance                              # Yahoo inputs for the SSRN and jump-risk-premia scripts
 pip install "option-chain-analytics[cboe]>=5.2.0" # local CBOE provider workflows
 ```
 
@@ -46,7 +46,7 @@ assets and independent theoretical replication; its correction notes use the aut
 |---|---|---|
 | `logsv_model_with_quadratic_drift_ijtaf_2023` | `replication/figures/article_figures.py` | Log-normal Stochastic Volatility Model with Quadratic Drift, *IJTAF* 26(8), 2450003 — [`paper/`](logsv_model_with_quadratic_drift_ijtaf_2023/paper) · [publisher](https://doi.org/10.1142/S0219024924500031) · [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2522425) |
 | `sv_for_factor_hjm_rdr_2025` | `calibration_fig_5_6_7.py`, `calibration_fig_8_9.py` | Stochastic volatility for factor Heath-Jarrow-Morton framework, *Review of Derivatives Research* 28:12 — [`paper/`](sv_for_factor_hjm_rdr_2025/paper) · [publisher](https://doi.org/10.1007/s11147-025-09217-4) · [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4646925) |
-| `volatility_models` | `article_figures.py` | What Is a Robust Stochastic Volatility Model — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027) |
+| `robust_volatility_models_2026/replication/ssrn_2023` (local) | `article_figures.py` · [public source snapshot](https://github.com/ArturSepp/StochVolModels/tree/588193611f4fbf5595d60b198e34cb5c24826f8a/papers/volatility_models) | What Is a Robust Stochastic Volatility Model — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027) |
 | `unified_approach_for_hedging_il_df_2025` | `run_logsv_for_il_payoff.py` | Unified Approach for Hedging Impermanent Loss of Liquidity Provision — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4887298) |
 | `inverse_options` | `compare_net_delta.py` | Valuation and Hedging of Cryptocurrency Inverse Options — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4606748) |
 | `jump_risk_premia_clustered_jumps` | `hawkes_estimator.py`, `risk_premia_calibration.py` | **Development code (not exact replication):** Jump risk premia in the presence of clustered jumps — [SSRN](https://ssrn.com/abstract=4735365) · [arXiv](https://arxiv.org/abs/2510.21297) |
@@ -64,7 +64,11 @@ Run from the repository root. Most original paper directories are implicit names
 so their intra-directory imports resolve only when the root is on `sys.path`:
 
 ```python
-python -m papers.volatility_models.article_figures
+# Local paper checkout, original SSRN parameter table
+python -m papers.robust_volatility_models_2026.replication.ssrn_2023.article_figures
+
+# Public checkout, offline case study using the same recorded parameters
+python examples/docs/app_robust_volatility_models.py
 ```
 
 The original replication modules use a `UnitTests` enum with a `run_unit_test(unit_test)` dispatcher under
@@ -184,6 +188,5 @@ strings with a trailing separator, matching `qis`; compose provider folders dire
 - The maintained entry points are the guarded scripts named in the table above. The archival
   exploratory modules `risk_premia_gmm/{check_kernel,q_kernel,run_gmm_fit}.py` and
   `t_distribution/mc_pricer_with_kernel.py` execute at module level and are not import-safe library
-  modules or JOSS reviewer workflows. `risk_premia_gmm/plot_gmm.py` and
-  `volatility_models/load_data.py` only define functions. These files remain research history,
+  modules or JOSS reviewer workflows. `risk_premia_gmm/plot_gmm.py` only defines functions. These files remain research history,
   outside the distributed package and outside the maintained workflow claim.

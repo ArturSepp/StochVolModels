@@ -31,7 +31,7 @@ papers are cited as such.
 | Lucic and Sepp (2024), Valuation and hedging of cryptocurrency inverse options, *Quantitative Finance* 24(7), 851-869, [DOI 10.1080/14697688.2024.2364804](https://doi.org/10.1080/14697688.2024.2364804) | Published | Code in `papers/inverse_options/` | [Inverse options](inverse_options.md) |
 | Lipton, Lucic and Sepp (2025), Unified approach for hedging impermanent loss of liquidity provision, *Digital Finance* 7(3), 429-477, [DOI 10.1007/s42521-025-00144-5](https://doi.org/10.1007/s42521-025-00144-5) | Published | Code in `papers/unified_approach_for_hedging_il_df_2025/` | [Impermanent loss hedging](app_impermanent_loss_hedging.md) |
 | Liu, Packham and Sepp (2025), Jump risk premia in the presence of clustered jumps, arXiv 2510.21297, first posted on SSRN (4735365) in 2024, [DOI 10.48550/arXiv.2510.21297](https://doi.org/10.48550/arXiv.2510.21297) | Working paper | Development code in `papers/jump_risk_premia_clustered_jumps/` | [Clustered jumps](hawkes_jump_diffusion.md) |
-| Sepp and Rakhmonov (2023), What is a robust stochastic volatility model, SSRN 4647027, [DOI 10.2139/ssrn.4647027](https://doi.org/10.2139/ssrn.4647027) | Working paper; text not in the repository | Code and recorded parameters in `papers/volatility_models/` | [Robust SV models](app_robust_volatility_models.md) |
+| Sepp and Rakhmonov (2023), What is a robust stochastic volatility model, SSRN 4647027, [DOI 10.2139/ssrn.4647027](https://doi.org/10.2139/ssrn.4647027) | Working paper; text not in the repository | [Original SSRN code and recorded parameters](https://github.com/ArturSepp/StochVolModels/tree/588193611f4fbf5595d60b198e34cb5c24826f8a/papers/volatility_models) | [Robust SV models](app_robust_volatility_models.md) |
 
 Articles cite the two published papers by section and by the equation numbers of their PDF; the
 LaTeX sources number some equations differently, as each `paper/README.md` explains.
@@ -98,7 +98,7 @@ new dataset; validate market conventions and residuals separately.
 | `logsv_model_with_quadratic_drift_ijtaf_2023` | principal published-paper implementation with article source and PDF | generated model grids, bundled option chains, and documented local option data for the time-series calibrations |
 | `sv_for_factor_hjm_rdr_2025` | published-paper implementation of an experimental package surface | hard-coded swaption and SOFR option data; online US Treasury data for Fig. 4 |
 | `inverse_options`, `unified_approach_for_hedging_il_df_2025` | code of published papers | generated inputs |
-| `volatility_models` | code of a working paper, with recorded parameters | public volatility indices and private Bitcoin data, downloaded or local |
+| `robust_volatility_models_2026/replication/ssrn_2023` (local) | code of a working paper, with recorded parameters | public volatility indices and private Bitcoin data, downloaded or local |
 | `jump_risk_premia_clustered_jumps` | development code related to a working paper, not an exact replication | local cryptocurrency data and optional research dependencies |
 | `risk_premia_gmm`, `t_distribution`, `forward_var`, `barriers` | exploratory, no publication mapping asserted; not cited on this site | generated and local research inputs, depending on the script |
 
@@ -125,10 +125,10 @@ the pages that use the code describe their verification and workarounds.
   [case study](app_swaptions_and_sofr_options.md) sets both out. `plot_mkt_model_joint_smile_MF`
   calls `np.in1d`, which NumPy has removed, and `plot_mkt_model_joint_fut_smile_MF` fails with
   `add_up_down=False`.
-- **`volatility_models`.** Every module imports `qis`. `autocorr_fit.py` calls
+- **Original SSRN scripts.** The [archived revision](https://github.com/ArturSepp/StochVolModels/tree/588193611f4fbf5595d60b198e34cb5c24826f8a/papers/volatility_models) uses `qis`. Its `autocorr_fit.py` calls
   `LogSVPricer.simulate_vol_paths` with a total step count, which the package reads as steps per
   year, so its simulated autocorrelation cannot be reproduced as written; two empirical plots use a
-  pandas frequency that pandas 3 rejects.
+  pandas frequency that pandas 3 rejects. The local `ssrn_2023` folder corrects the simulation grid and annual plot frequency.
 - **`inverse_options`.** `compare_net_delta.py` imports `qis`, and its output could not be matched
   to a numbered figure of the article.
 - **`unified_approach_for_hedging_il_df_2025`.** The corrected author manuscript and theoretical

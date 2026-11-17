@@ -27,7 +27,7 @@ without market data.
 ```{note}
 The paper is a working paper whose text is not in the repository. Its claims are quoted here from
 its public abstract and from the published article that cites it; the numbers are computed from
-the parameters recorded in `papers/volatility_models/article_figures.py`.
+the parameters recorded in the [original SSRN figure script](https://github.com/ArturSepp/StochVolModels/blob/588193611f4fbf5595d60b198e34cb5c24826f8a/papers/volatility_models/article_figures.py).
 ```
 
 ## Overview
@@ -156,8 +156,8 @@ Run the companion script from a checkout:
 python examples/docs/app_robust_volatility_models.py
 ```
 
-All cases take seconds. The recorded parameters are those of `MODEL_PARAMS_TABLE` in
-`papers/volatility_models/article_figures.py`.
+All cases take seconds. The recorded parameters are those of `MODEL_PARAMS_TABLE` in the original SSRN script.
+The local paper checkout keeps it under `papers/robust_volatility_models_2026/replication/ssrn_2023/`.
 
 ## See also
 
