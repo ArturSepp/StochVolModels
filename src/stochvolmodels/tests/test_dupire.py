@@ -68,7 +68,35 @@ def test_nonuniform_black_recovery_and_discounted_repricing(record_property):
     record_property("black_max_discounted_forward_price_error", float(err.max()))
 
 
-def test_forward_specific_regridding_and_flat_wings():
+@pytest.mark.parametrize("n", [5, 21])
+@pytest.mark.parametrize("initial,slope", [(0.2, 0.4), (0.6, -0.4)])
+def test_bucket_variance_reprices_sloped_term_structures(n, initial, slope):
+    times = np.linspace(0.25, 0.75, n)
+    strikes = np.linspace(60.0, 160.0, 81)
+    total = initial**2 * times + initial * slope * times**2 + slope**2 * times**3 / 3
+    sd = np.sqrt(total[:, None])
+    d1 = np.log(100.0 / strikes) / sd + 0.5 * sd
+    calls = 100.0 * ndtr(d1) - strikes * ndtr(d1 - sd)
+    result = DupireRecoverer().continuous(CallSurface(times, strikes, calls, forwards=100.0))
+    surface = result.to_local_vol_surface()
+    quoted = [0, n // 2, n - 1]
+    chain = OptionChain(
+        ttms=times[quoted], forwards=np.full(3, 100.0), ids=None,
+        strikes_ttms=(np.array([95.0, 100.0, 105.0]),) * 3,
+        optiontypes_ttms=(np.array(["P", "C", "C"]),) * 3,
+    )
+    grid = Grid1D.concentrated(-3.0, 3.0, 501, 0.0, 0.22)
+    prices = LocalVolPdePricer(grid=grid, steps_per_interval=128).price_chain(chain, surface)
+    ivs = np.vstack(chain.compute_model_ivols_from_chain_data(prices))
+    expected = np.sqrt(total[quoted] / times[quoted])
+    assert np.max(np.abs(ivs - expected[:, None])) < 0.001
+    bucket_variance = np.diff(np.r_[0.0, total]) / np.diff(np.r_[0.0, times])
+    np.testing.assert_allclose(surface.values**2, np.broadcast_to(bucket_variance[:, None],
+                                                                  surface.values.shape),
+                               atol=1e-12, rtol=0)
+
+
+def test_historical_forward_specific_regridding_and_flat_wings():
     quotes = _black_fixture()
     # Multiply all calls by a time-dependent factor to generate a spatially varying local law.
     calls = quotes.calls * np.exp(0.015 * quotes.times[:, None])
@@ -76,7 +104,7 @@ def test_forward_specific_regridding_and_flat_wings():
         CallSurface(quotes.times, quotes.strikes, calls, quotes.forwards, quotes.discount_factors)
     )
     axis = Grid1D(np.array([-0.40, -0.06, 0.09, 0.35]))
-    surface = result.to_local_vol_surface(axis)
+    surface = result.to_local_vol_surface(axis, historical_endpoints=True)
     assert np.ptp(result.local_volatility[-1]) > 0.005
     for i, forward in enumerate(quotes.forwards):
         expected = np.interp(
@@ -117,7 +145,9 @@ def test_raw_invalid_nodes_explicit_repair_and_input_ownership():
             with pytest.raises(ValueError, match="strictly positive"):
                 result.to_local_vol_surface()
         else:
-            assert np.isfinite(result.to_local_vol_surface().values).all()
+            effective = result.to_local_vol_surface().values**2
+            assert np.all(effective >= floor - 1e-14) and np.all(effective <= 0.05 + 1e-14)
+            np.testing.assert_equal(result.raw_local_variance, raw.raw_local_variance)
 
 
 def _jump_quotes(jump):
@@ -162,19 +192,19 @@ def test_jump_adjusted_diffusion_recovery_and_vanilla_roundtrip(size, record_pro
         LeverageSurface(local.times, local.grid, local.values / 0.2, leverage_cap=5),
         jump=jump,
     )
-    rows, cols = [28, 58], [70, 90, 110]
+    rows, cols = [0, 28, 58], [70, 90, 110]
     chain = OptionChain(
         ttms=quotes.times[rows],
         forwards=quotes.forwards[rows],
         discfactors=quotes.discount_factors[rows],
-        ids=np.array(["short", "long"]),
-        strikes_ttms=(quotes.strikes[cols],) * 2,
-        optiontypes_ttms=(np.full(3, "C"),) * 2,
+        ids=np.array(["first", "short", "long"]),
+        strikes_ttms=(quotes.strikes[cols],) * 3,
+        optiontypes_ttms=(np.full(3, "C"),) * 3,
     )
     grid = TensorGrid2D(
         Grid1D.concentrated(-1.5, 1.5, 201, 0.0, 0.15), Grid1D([0.10, 0.15, 0.20, 0.25, 0.30])
     )
-    prices = LogSvPdePricer(grid=grid, steps_per_interval=4).price_chain(chain, model)
+    prices = LogSvPdePricer(grid=grid, steps_per_interval=16).price_chain(chain, model)
     gap = np.max(
         abs(np.vstack(prices) - quotes.calls[np.ix_(rows, cols)])
         / (chain.discfactors * chain.forwards)[:, None]
@@ -182,6 +212,52 @@ def test_jump_adjusted_diffusion_recovery_and_vanilla_roundtrip(size, record_pro
     assert gap < 4e-4
     record_property("max_diffusion_variance_error", float(error))
     record_property("max_price_error_per_discounted_forward", float(gap))
+
+
+def test_both_lsv_calibrators_receive_the_effective_bucket_variance():
+    from stochvolmodels.fitters.lsv_fixed_point import LSVFixedPointCalibrator
+    from stochvolmodels.pricers.lsv_projection import SequentialLSVProjector
+
+    times = np.linspace(0.25, 0.75, 5)
+    forwards, discounts = 100 * np.exp(0.06 * times), np.exp(-0.04 * times)
+    strikes = np.linspace(80.0, 130.0, 51)
+    total = 0.04 * times + 0.08 * times**2 + 0.16 * times**3 / 3
+    sd = np.sqrt(total[:, None])
+    d1 = np.log(forwards[:, None] / strikes) / sd + sd / 2
+    calls = discounts[:, None] * (forwards[:, None] * ndtr(d1) - strikes * ndtr(d1 - sd))
+    fit = DupireRecoverer().continuous(CallSurface(times, strikes, calls, forwards, discounts))
+    grid = TensorGrid2D(Grid1D.uniform(-1.2, 1.2, 81), Grid1D.uniform(0.1, 0.3, 5))
+    target = fit.to_local_vol_surface(grid.x)
+    params = LogSvParams(sigma0=0.2, theta=0.2, kappa1=0.0, kappa2=0.0, beta=0.0, volvol=0.0)
+    expected = np.sqrt(np.diff(np.r_[0.0, total]) / np.diff(np.r_[0.0, times]))
+    for fitted in (SequentialLSVProjector(grid).project(params, target, 12),
+                   LSVFixedPointCalibrator(grid).calibrate(params, target, 12)):
+        leverage = fitted.model.leverage_surface
+        np.testing.assert_array_equal(leverage.times, times)
+        np.testing.assert_allclose(leverage.values * params.sigma0,
+                                   np.broadcast_to(expected[:, None], leverage.values.shape),
+                                   atol=1e-12, rtol=0)
+
+
+def test_packaged_btc_bucket_prefit_reprices_all_common_calls():
+    from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
+    from stochvolmodels.fitters.lsv_market import LSVOptionChainAdapter
+
+    market = LSVOptionChainAdapter(get_btc_test_chain_data()).build_calibration_input(grid_size=11)
+    fit = market.recover_dupire(repair_policy=DupireRepairPolicy(0.04, 4.0))
+    source = fit.call_surface
+    chain = _chain(source)
+    pricer = LocalVolPdePricer(grid=Grid1D.concentrated(-3.0, 3.0, 501, 0.0, 0.22),
+                               steps_per_interval=128)
+    rms = []
+    for historical in (True, False):
+        local = fit.to_local_vol_surface(historical_endpoints=historical)
+        calls = np.vstack(pricer.price_chain(chain, local))[:, :source.strikes.size]
+        gap = 1e4 * (calls - source.calls) / (source.discount_factors * source.forwards)[:, None]
+        assert gap.shape == (4, 11)
+        rms.append(np.sqrt(np.mean(gap**2)))
+    assert rms[0] == pytest.approx(58.288, abs=0.02)
+    assert rms[1] < 35.0 and np.max(abs(gap)) < 140.0
 
 
 def test_inactive_jump_matches_continuous_inversion():
@@ -193,6 +269,8 @@ def test_inactive_jump_matches_continuous_inversion():
         assert not fit.jump_adjustment.extrapolated_mask.any()
         assert not fit.jump_adjustment.values.any()
         np.testing.assert_array_equal(fit.raw_local_variance, plain.raw_local_variance)
+        np.testing.assert_array_equal(fit.to_local_vol_surface().values,
+                                      plain.to_local_vol_surface().values)
 
 
 @pytest.mark.repository_only
@@ -294,7 +372,7 @@ def _compare_archive_prices(fit, old_vols, old_axis, grid, steps):
         )
         expected.append(np.r_[prices.calls, prices.puts])
     calculated = LocalVolPdePricer(grid=grid, steps_per_interval=steps).price_chain(
-        chain, fit.to_local_vol_surface()
+        chain, fit.to_local_vol_surface(historical_endpoints=True)
     )
     actual = np.array(list(calculated))
     np.testing.assert_allclose(actual, expected, rtol=0.0, atol=2e-12)
@@ -368,7 +446,8 @@ def test_frozen_btc_dupire_and_vanilla_prices(record_property):
         source, DupireRepairPolicy(policy.variance_floor, policy.variance_cap)
     )
     np.testing.assert_allclose(
-        fit.to_local_vol_surface().values, reference.local_volatility, rtol=0, atol=1e-14
+        fit.to_local_vol_surface(historical_endpoints=True).values,
+        reference.local_volatility, rtol=0, atol=1e-14
     )
     assert not np.any(fit.repaired_mask & fit.interior_mask)
     price_error, residual = _compare_archive_prices(

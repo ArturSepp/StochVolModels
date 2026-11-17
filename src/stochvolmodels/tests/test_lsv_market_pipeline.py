@@ -108,6 +108,9 @@ def test_market_pipeline_preserves_ragged_quote_units_and_independent_repricing(
         repair_policy=DupireRepairPolicy(0.03, 0.038),
         calibration_steps_per_interval=[18, 24, 32],
     )
+    np.testing.assert_array_equal(
+        result.prefit_local_volatility.values, result.dupire.to_local_vol_surface().values
+    )
     assert len(result.pde_steps) == 24 + 36 + 48
     assert np.count_nonzero(result.dupire.interior_mask) == 5
     assert result.acceptance.dupire_repaired_fraction == np.mean(

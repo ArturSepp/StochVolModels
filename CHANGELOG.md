@@ -4,8 +4,14 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.18.1] - 2026-11-17
+
 ### Fixed
 
+- `DupireResult.to_local_vol_surface` converts instantaneous estimates to interval-effective
+  variance. Diffusion-only flat smiles use increments of implied total variance. Skewed or
+  jump-adjusted surfaces fit one near-forward price per expiry within the repair bounds.
+  `LSVMarketPipeline.run` uses the same prefit and supports historical endpoint sampling.
 - `LogSVPricer.model_mc_price_chain` now defaults to 360 steps per year on every classical
   expiry interval. Explicit positive integer rates retain their annual units. The BTC
   forward-variance replay pins its historical 156-step annual rate.

@@ -187,6 +187,7 @@ class LSVMarketPipeline:
         grid_size: int = 11,
         quote_selection: LSVQuoteSelection = LSVQuoteSelection.OTM,
         repair_policy: DupireRepairPolicy | None = None,
+        historical_dupire_endpoints: bool = False,
         calibration_steps_per_interval: int | ArrayLike = 20,
         initial_parameters: ArrayLike | None = None,
     ) -> LSVMarketPipelineResult:
@@ -194,7 +195,8 @@ class LSVMarketPipeline:
 
         Original PVs and standard errors are in quote currency. Common-grid calls and
         errors are divided by the expiry's discounted forward. Failed Black inversions
-        retain NaN IVs. A failed calibration trial raises before final validation.
+        retain NaN IVs. historical_dupire_endpoints selects the 2.18.0 prefit for replication.
+        A failed calibration trial raises before final validation.
         """
         market = LSVOptionChainAdapter(option_chain, quote_selection).build_calibration_input(
             grid_size=grid_size
@@ -208,14 +210,10 @@ class LSVMarketPipeline:
                     "the calibration and repricing grids must contain the common market strikes"
                 )
         dupire = market.recover_dupire(repair_policy=repair_policy)
-        if not np.all(dupire.valid_mask | dupire.repaired_mask):
-            raise ValueError(
-                "invalid Dupire nodes require an explicit repair policy before fitting"
-            )
-        # The normalized target already lies on these exact log-forward nodes.
-        local = LocalVolSurface(
-            market.target.times, Grid1D(market.log_moneyness), dupire.local_volatility
-        )
+        buckets = dupire.to_local_vol_surface(historical_endpoints=historical_dupire_endpoints)
+        # The normalized strikes are exp(log_moneyness). Restore their exact quoted
+        # coordinates without interpolating through log(exp(x)) in the optimizer start.
+        local = LocalVolSurface(buckets.times, Grid1D(market.log_moneyness), buckets.values)
         fit = self.calibrator.calibrate(
             params,
             market.target,

@@ -26,10 +26,17 @@ from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+from scipy.optimize import brentq
+from scipy.sparse import diags
+from scipy.sparse.linalg import splu
+from scipy.special import ndtr
+from scipy.stats import poisson
 
 from stochvolmodels.models.local_vol import LocalVolSurface
 from stochvolmodels.models.lsv import FixedLogForwardJump
-from stochvolmodels.pde_solvers import Grid1D
+from stochvolmodels.pde_solvers import BoundaryPair1D, Grid1D, PDE1DCoefficients, PDEDirection
+from stochvolmodels.pde_solvers.operators_1d import Operator1D
+from stochvolmodels.pde_solvers.poisson import _forward_translation
 
 FloatArray = NDArray[np.float64]
 BoolArray = NDArray[np.bool_]
@@ -126,6 +133,7 @@ class DupireResult:
     interior_mask: BoolArray
     repaired_mask: BoolArray
     jump_adjustment: DupireJumpAdjustment | None = None
+    repair_policy: DupireRepairPolicy | None = None
 
     def __post_init__(self) -> None:
         """Validate and normalize a newly constructed ``DupireResult`` instance."""
@@ -144,6 +152,8 @@ class DupireResult:
             for name in float_names
         }
         shape = self.call_surface.calls.shape
+        if self.repair_policy is not None and not isinstance(self.repair_policy, DupireRepairPolicy):
+            raise TypeError("repair_policy must be a DupireRepairPolicy or None")
         if self.jump_adjustment is not None and self.jump_adjustment.values.shape != shape:
             raise ValueError("jump adjustment must have the call surface shape")
         if any(array.shape != shape for array in arrays.values()):
@@ -156,14 +166,24 @@ class DupireResult:
         for name, array in arrays.items():
             object.__setattr__(self, name, array)
 
-    def to_local_vol_surface(self, grid: Grid1D | None = None) -> LocalVolSurface:
-        """Sample recovered volatility on common log-forward nodes for PDE pricing.
+    def to_local_vol_surface(
+        self, grid: Grid1D | None = None, *, historical_endpoints: bool = False
+    ) -> LocalVolSurface:
+        """Convert instantaneous estimates to positive variance buckets for PDE pricing.
 
-        The default nodes are log(K/F) at the first maturity. Each row uses
-        its own forward and linear interpolation of volatility with flat wings.
-        The deterministic model holds each row through its maturity. Inspect
-        valid_mask and repaired_mask before converting a repaired result.
+        A diffusion-only strip with a flat Black smile at each expiry uses exact
+        increments of implied total variance. For other surfaces the default grid
+        contains the first expiry's log(K/F) nodes. On this common
+        coordinate the first bucket uses the first recovered spatial profile. Later
+        buckets average adjacent variance profiles. Fit each profile's level to the
+        nearest-forward usable call, carrying the law across maturities with any
+        specified jumps. An explicit repair floor or cap can limit the fit.
+
+        historical_endpoints=True reproduces the 2.18.0 right-end volatility samples.
+        Inspect valid_mask and repaired_mask before using a repaired result.
         """
+        if not isinstance(historical_endpoints, (bool, np.bool_)):
+            raise TypeError("historical_endpoints must be boolean")
         if not np.all(self.valid_mask | self.repaired_mask):
             raise ValueError(
                 "invalid Dupire nodes require an explicit repair policy before pricing"
@@ -178,6 +198,8 @@ class DupireResult:
             grid = Grid1D(log_nodes[0])
         elif not isinstance(grid, Grid1D):
             raise TypeError("grid must be a Grid1D of log-forward nodes")
+        if not historical_endpoints:
+            return LocalVolSurface(source.times, grid, _bucket_volatilities(self, grid, log_nodes))
         values = np.vstack(
             [
                 np.interp(grid.nodes, nodes, row)
@@ -312,7 +334,155 @@ class DupireRecoverer:
             interior_mask=interior,
             repaired_mask=repaired,
             jump_adjustment=adjustment,
+            repair_policy=repair_policy,
         )
+
+
+def _flat_black_buckets(
+    source: CallSurface, log_strikes: FloatArray, durations: FloatArray
+) -> FloatArray | None:
+    """Return exact deterministic variances if one Black volatility prices each entire slice."""
+    total = np.empty_like(durations)
+    for i, nodes in enumerate(log_strikes):
+        strikes = source.strikes / source.forwards[i]
+        calls = source.calls[i] / source.discount_factors[i] / source.forwards[i]
+        j = np.argmin(abs(nodes))
+        intrinsic = max(1.0 - strikes[j], 0.0)
+        if not intrinsic < calls[j] < 1.0:
+            return None
+
+        def premium(sd: float) -> float:
+            if sd == 0.0:
+                return intrinsic
+            d1 = -nodes[j] / sd + 0.5 * sd
+            return float(ndtr(d1) - strikes[j] * ndtr(d1 - sd))
+
+        if premium(40.0) <= calls[j]:
+            return None
+        sd = brentq(lambda v: premium(v) - calls[j], 0.0, 40.0, xtol=1e-14)
+        d1 = -nodes / sd + 0.5 * sd
+        if not np.allclose(ndtr(d1) - strikes * ndtr(d1 - sd), calls, atol=2e-14, rtol=0.0):
+            return None
+        total[i] = sd**2
+    variance = np.diff(np.r_[0.0, total]) / durations
+    return variance if np.all(variance > 0.0) else None
+
+
+def _bucket_volatilities(
+    result: DupireResult, grid: Grid1D, log_strikes: FloatArray
+) -> FloatArray:
+    """Fit variance levels sequentially, retaining the law at each maturity."""
+    source = result.call_surface
+    durations = np.diff(np.r_[0.0, source.times])
+    policy = result.repair_policy
+    floor, cap = (policy.variance_floor, policy.variance_cap) if policy else (0.0, np.inf)
+    jump = result.jump_adjustment.jump if result.jump_adjustment else None
+    if jump is not None and (jump.intensity == 0 or jump.jump_size == 0):
+        jump = None
+    if jump is None and not result.repaired_mask.any():
+        exact = _flat_black_buckets(source, log_strikes, durations)
+        if exact is not None:
+            return np.broadcast_to(
+                np.sqrt(np.clip(exact, floor, cap))[:, None], (len(durations), grid.size)
+            )
+
+    profiles = np.stack([
+        np.interp(grid.nodes, nodes, variance)
+        for nodes, variance in zip(log_strikes, result.local_variance)
+    ])
+    # The first expiry supplies the initial spatial shape. Later profiles average
+    # variance at fixed log-forward moneyness.
+    profiles[1:] = 0.5 * (profiles[:-1] + profiles[1:])
+    short_sd = np.sqrt(durations[0] * np.median(profiles[0]))
+    width = max(8 * np.sqrt(durations @ profiles.max(axis=1)), 1.25 * abs(log_strikes).max(), 0.25)
+    if jump is not None:
+        # Cover both the probability and the share-weighted Poisson tails.
+        mean = source.times[-1] * jump.intensity * max(1.0, np.exp(jump.jump_size))
+        width += (abs(jump.compensator) * source.times[-1]
+                  + abs(jump.jump_size) * poisson.isf(1e-10, mean))
+    if not np.isfinite(width) or width >= np.log(np.finfo(float).max):
+        raise ValueError("Dupire bucket fit requires a representable log-forward domain")
+    axis = Grid1D.concentrated(-width, width, 401, 0.0, max(short_sd, 1e-5))
+    spots = np.exp(axis.nodes)
+    density = axis.project_delta(0.0)
+    values = np.empty_like(profiles)
+    for i, (duration, profile) in enumerate(zip(durations, profiles)):
+        strikes = source.strikes / source.forwards[i]
+        calls = source.calls[i] / source.discount_factors[i] / source.forwards[i]
+        quoted = np.flatnonzero((calls > np.maximum(1.0 - strikes, 0.0)) & (calls < 1.0))
+        if quoted.size == 0:
+            raise ValueError(
+                f"no call with positive time value for Dupire bucket at T={source.times[i]:g}"
+            )
+        anchor = quoted[np.argmin(abs(log_strikes[i, quoted]))]
+        strike = strikes[anchor]
+        target = calls[anchor] - max(1.0 - strike, 0.0)
+        payoff = np.maximum(strike - spots if strike < 1.0 else spots - strike, 0.0)
+        values[i], density = _fit_bucket(
+            grid, profile, axis, density, axis.quadrature_weights * payoff, target,
+            duration=duration, steps=192 if i == 0 else 48, jump=jump,
+            bounds=(floor, cap), end=source.times[i],
+        )
+    return values
+
+
+def _fit_bucket(
+    grid: Grid1D, profile: FloatArray, axis: Grid1D, initial: FloatArray,
+    weights: FloatArray, target: float, *, duration: float, steps: int,
+    jump: FixedLogForwardJump | None, bounds: tuple[float, float], end: float,
+) -> tuple[FloatArray, FloatArray]:
+    """Fit one strike to a scaled shape using the weighted forward operator and fixed jumps."""
+    floor, cap = bounds
+    dt = duration / steps
+    translation = (
+        _forward_translation(axis, jump.intensity, jump.jump_size, dt / 2).matrix
+        if jump is not None else None
+    )
+
+    def propagate(scale: float) -> FloatArray:
+        vol = np.sqrt(np.clip(scale * profile, floor, cap))
+        half_variance = 0.5 * np.interp(axis.nodes, grid.nodes, vol)**2
+        drift = (jump.compensator if jump is not None else 0.0) - half_variance
+        coefficients = PDE1DCoefficients(half_variance, drift, np.zeros_like(drift))
+        operator = Operator1D.build(axis, coefficients, BoundaryPair1D.natural())
+        implicit = operator.implicit_matrix(PDEDirection.FORWARD, dt, 1.0)
+        # Coefficients stay fixed within a trial, so factor the implicit system once.
+        matrix = diags(
+            (implicit.lower, implicit.diagonal, implicit.upper), (-1, 0, 1), format="csc"
+        )
+        solve = splu(matrix).solve
+        state = initial
+        for _ in range(steps):
+            if translation is not None:
+                state = translation @ state
+            state = solve(state)
+            if translation is not None:
+                state = translation @ state
+        return state
+
+    def residual(scale: float) -> float:
+        return float(weights @ propagate(scale) - target)
+
+    if residual(0.0) >= 0.0:
+        if floor == 0.0:
+            raise ValueError(f"no positive diffusion variance fits the call at T={end:g}")
+        scale = 0.0
+    else:
+        saturated = cap / profile.min()
+        upper = min(1.0, saturated)
+        upper_error = residual(upper)
+        while upper_error < 0.0 and upper < saturated:
+            upper = min(2.0 * upper, saturated)
+            # Once even the smallest local total variance exceeds the squared domain
+            # width, a stalled premium signals an unresolved finite-domain fit.
+            if not np.isfinite(upper):
+                raise ValueError(f"could not bracket Dupire bucket variance at T={end:g}")
+            previous_error, upper_error = upper_error, residual(upper)
+            if (not np.isfinite(saturated) and upper * profile.min() * duration > np.ptp(axis.nodes)**2
+                    and upper_error <= previous_error):
+                raise ValueError(f"could not fit the call inside the pricing domain at T={end:g}")
+        scale = upper if upper_error <= 0.0 else brentq(residual, 0.0, upper, xtol=1e-12)
+    return np.sqrt(np.clip(scale * profile, floor, cap)), propagate(scale)
 
 
 def _jump_adjustment(

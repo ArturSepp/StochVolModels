@@ -322,7 +322,7 @@ def test_frozen_btc_projection_dates_and_ragged_vanillas(record_property):
             CallSurface(*quotes),
             repair_policy=DupireRepairPolicy(policy.variance_floor, policy.variance_cap),
         )
-        .to_local_vol_surface()
+        .to_local_vol_surface(historical_endpoints=True)
     )
     archived = old_dupire.DupireRecoverer().continuous(
         old_dupire.CallSurface(*quotes), repair_policy=policy

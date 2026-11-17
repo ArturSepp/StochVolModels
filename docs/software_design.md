@@ -156,13 +156,27 @@ and clips valid estimates to its bounds. The result retains every raw estimate
 and marks each adjustment in `repaired_mask`. These bounds act on local variance. The original quoted premiums stay available on the result.
 
 `result.to_local_vol_surface()` requires positive finite volatility at every node
-and explicit repair of any invalid estimates. For each row it transforms the
-strikes to $\log(K/F_T)$ and linearly interpolates volatility, with flat wings.
-The default output grid uses the first maturity's log-forward nodes. A supplied
-`Grid1D` can specify a different common grid. The PDE pricer uses these
-instantaneous estimates as bucket values through their respective maturities,
-so repricing can differ from the input calls. The fitter's module docstring
-contains an executable Black-surface recovery and put-pricing example.
+and explicit repair of any invalid estimates. A pricing row holds from the previous expiry
+through its own expiry. On an unrepaired diffusion-only strip where one Black volatility
+prices every strike of each expiry, the annualized bucket variance is
+$(w_i-w_{i-1})/(T_i-T_{i-1})$, with $w_i=T_i\sigma_{\mathrm{imp},i}^2$ and $w_0=T_0=0$.
+This uses the variance accumulated before the first quote.
+
+For a smile, the first expiry identifies a terminal distribution. To construct a single
+local-volatility row for that interval, the converter takes its spatial shape from the first
+Dupire variance row. Later shapes average the adjacent instantaneous variances at fixed
+$\log(K/F_T)$. The converter fits one positive multiplier per bucket to the quoted call
+nearest the forward with positive time value, carrying the fitted law through earlier
+expiries. It includes the compensated jump law when supplied. Explicit variance bounds
+apply to the fitted rows and can prevent an exact fit to the anchor. Other strikes provide
+an independent repricing check. The numerical fit uses 401 log-forward nodes and implicit
+Euler with 192 steps from the initial point mass and 48 per later interval.
+
+The default output grid uses the first maturity's log-forward nodes. Supply a `Grid1D` to
+choose the common grid. The pricing model interpolates the resulting volatility in space
+with flat wings. For the 2.18.0 convention, `historical_endpoints=True` samples the
+instantaneous volatility at the right endpoint of each bucket. Both conversions retain the
+raw and repaired inversion arrays and their masks on the result.
 
 ### Fixed-jump Dupire inversion
 
@@ -292,7 +306,9 @@ target-IV and independent Monte Carlo IV checks.
 `LSVParametricCalibrator`, a `LogSvPdePricer` for independent repricing, and an
 `LSVMonteCarloPricer`. Choose separate fit and replay grids and their time steps.
 Call `pipeline.run(chain, params, repair_policy=policy)` with ordinary bid/ask Black
-IVs. The optional `initial_parameters` supplies one leverage start per expiry.
+IVs. The prefit uses the same variance buckets as `DupireResult.to_local_vol_surface()`.
+The frozen BTC replay requests `historical_dupire_endpoints=True` to reproduce its recorded
+optimizer start. The optional `initial_parameters` supplies one leverage start per expiry.
 The six LogSV dynamics parameters stay fixed. The module docstring gives an
 executable three-expiry example.
 

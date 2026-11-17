@@ -75,6 +75,7 @@ def replay_btc(
         params,
         grid_size=11,
         repair_policy=DupireRepairPolicy(0.04, 4.0),
+        historical_dupire_endpoints=True,
         calibration_steps_per_interval=(20, 20, 30, 50),
         initial_parameters=start,
     )
