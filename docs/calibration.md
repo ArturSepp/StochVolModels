@@ -98,12 +98,18 @@ rough extension.
 
 ### The variance-swap backbone
 
-`PARAMS_WITH_VARSWAP_FIT` scales $\theta$ by a factor $\eta_i$ for each maturity $T_i$, chosen so
-that the model reproduces the variance-swap strikes replicated from the chain: $\eta_i$ is the ratio
-of the market's expected quadratic variance between $T_{i-1}$ and $T_i$ to the model's. The code
-replaces a non-positive ratio by one and takes the square root of the ratio for maturities below
-0.06 years. The factors are stored in `LogSvParams.vol_backbone` and enter the transform and the
-simulation. The device is outside the paper.
+The variance-swap fit stores a return-volatility loading $\eta_i$ on each calendar interval
+$(T_{i-1},T_i]$ in `LogSvParams.vol_backbone`. Instantaneous return volatility is
+$\eta_i\sigma_t$ and the quadratic-variation rate is $\eta_i^2\sigma_t^2$. The volatility
+drift retains its model parameter $\theta$. The historical fitter takes the ratio of market
+to model expected quadratic-variance increments, replaces a non-positive ratio with one,
+and uses its square root for maturities below 0.06 years. The loading after the final knot
+stays at its last value.
+
+Analytic calibration fixes both the cutoff and the node count from the shortest market
+expiry and its ATM volatility throughout optimization. `vol_scaler` and `max_phi` allow
+explicit grids. Set `historical_backbone_order=True` to reproduce the forward-variance
+paper's analytic objective. The default values each payoff backward through calendar time.
 
 ## Worked example
 
@@ -183,8 +189,8 @@ against bid and ask implied volatilities, drawn by `LogSVPricer.plot_model_ivols
 study. The legend's "mse" is a root-mean-square error.*
 
 For the variance-swap backbone, the strikes replicated from the chain, floored at the at-the-money
-volatility, are 88.2%, 90.9%, 94.6% and 96.9% for the four maturities, and the factors that make the
-fitted model reproduce them are 0.981, 0.928, 0.938 and 0.869.
+volatility, are 88.2%, 90.9%, 94.6% and 96.9% for the four maturities, and the historical fitter returns
+loadings of 0.981, 0.928, 0.938 and 0.869.
 
 ## Implementation in stochvolmodels
 

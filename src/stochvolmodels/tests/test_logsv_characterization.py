@@ -42,6 +42,122 @@ def _paired_chain() -> OptionChain:
     )
 
 
+@pytest.mark.parametrize("sigma", [0.2, 0.8])
+def test_short_fourier_grid_resolves_black_wings_and_long_slice(monkeypatch, sigma):
+    # Insert the exact constant-vol transform to isolate quadrature from ODE error.
+    def gaussian(ttm, phi_grid, a_t0, **kwargs):
+        coeff = a_t0.copy()
+        coeff[:, 0] += 0.5 * sigma**2 * ttm * phi_grid * (phi_grid + 1.0)
+        return coeff, coeff[:, 0]
+
+    monkeypatch.setattr(afe, "compute_logsv_a_mgf_grid", gaussian)
+    times = np.array([1 / 365, 7 / 365, 1.0])
+    params = LogSvParams(sigma0=sigma, theta=sigma, beta=0.0, volvol=0.0)
+    chain = OptionChain(
+        ttms=times, forwards=np.ones(3), discfactors=np.ones(3),
+        strikes_ttms=tuple(np.exp(sigma * np.sqrt(t) * np.arange(-2, 3)) for t in times),
+        optiontypes_ttms=(np.array(list("PPCCC")),) * 3, ids=np.array(["1d", "1w", "1y"]),
+    )
+    pricer = LogSVPricer()
+    prices = pricer.price_chain(chain, params)
+    for vols in chain.compute_model_ivols_from_chain_data(prices):
+        np.testing.assert_allclose(vols, sigma, atol=5e-4, rtol=0)
+    long = OptionChain.slice_to_chain(1., 1., chain.strikes_ttms[-1], chain.optiontypes_ttms[-1])
+    np.testing.assert_allclose(pricer.price_chain(long, params)[0], prices[-1], atol=5e-7, rtol=0)
+
+
+def test_backbone_transform_starts_at_each_payoff_and_includes_hidden_knot(monkeypatch):
+    # Trace each payoff through its intervening loading changes.
+    schedule = []
+
+    def trace(ttm, vol_backbone_eta, a_t0, phi_grid, **kwargs):
+        schedule.append((ttm, vol_backbone_eta))
+        return np.zeros((len(phi_grid), 5), complex), np.zeros_like(phi_grid)
+
+    monkeypatch.setattr(afe, "compute_logsv_a_mgf_grid", trace)
+    chain = OptionChain.get_uniform_chain(np.array([0.25, 1.0]), np.array(["3m", "1y"]))
+    params = LogSvParams(vol_backbone=pd.Series([0.8, 1.2, 1.5], index=[0.25, 0.6, 1.0]))
+    pricer = LogSVPricer()
+    pricer.price_chain(chain, params)
+    np.testing.assert_allclose(schedule, [(0.25, 0.8), (0.4, 1.5), (0.35, 1.2), (0.25, 0.8)])
+    schedule.clear()
+    pricer.price_chain(chain, params, historical_backbone_order=True)
+    np.testing.assert_allclose(schedule, [(0.25, 0.8), (0.75, 1.5)])
+
+
+@pytest.mark.parametrize("paths", [1, 8])
+def test_backbone_mc_terminal_values_carry_every_interval(paths):
+    from stochvolmodels.utils.funcs import set_seed
+
+    times = np.array([0.25, 1.0])
+    etas = np.array([0.7, 1.5])
+    params = LogSvParams(sigma0=0.2, theta=0.2, beta=0.0, volvol=0.0,
+                         vol_backbone=pd.Series(etas, index=times))
+    set_seed(17)
+    x, sigma, qvar = LogSVPricer().simulate_terminal_values(params, ttm=1.0, nb_path=paths)
+    integrated_var = params.sigma0**2 * np.dot(np.diff(np.r_[0.0, times]), etas**2)
+    np.testing.assert_allclose(qvar, integrated_var)
+    np.testing.assert_allclose(sigma, params.sigma0)
+
+    # Independent increments can be added directly when the volatility state is constant.
+    set_seed(17)
+    expected_x = np.zeros(paths)
+    for dt, eta in zip(np.diff(np.r_[0.0, times]), etas):
+        increment, _, _ = simulate_logsv_x_vol_terminal(
+            ttm=dt, x0=np.zeros(paths), sigma0=sigma, qvar0=np.zeros(paths),
+            theta=params.theta, kappa1=params.kappa1, kappa2=params.kappa2,
+            beta=0.0, volvol=0.0, vol_backbone_eta=eta, nb_path=paths,
+        )
+        expected_x += increment
+    np.testing.assert_allclose(x, expected_x)
+
+
+def test_backbone_mc_hidden_knot_matches_observed_knot():
+    from stochvolmodels.utils.funcs import set_seed
+
+    params = LogSvParams(vol_backbone=pd.Series([0.7, 1.5], index=[0.25, 1.0]))
+    full = OptionChain.get_uniform_chain(np.array([0.25, 1.0]), np.array(["3m", "1y"]))
+    last = OptionChain.slice_to_chain(1., 1., full.strikes_ttms[1], full.optiontypes_ttms[1])
+    pricer = LogSVPricer()
+    for chain in (full, last):
+        set_seed(17)
+        prices, se = pricer.model_mc_price_chain(chain, params, nb_path=2048, nb_steps=64)
+        if chain is full:
+            expected = prices[-1], se[-1]
+        else:
+            np.testing.assert_array_equal(prices[0], expected[0])
+            np.testing.assert_array_equal(se[0], expected[1])
+
+
+@pytest.mark.parametrize(("loadings", "pde_prices"), [
+    ([1.0, 1.5], [0.03710848, 0.06635466, 0.10939850, 0.06728381, 0.03887398]),
+    ([1.5, 1.0], [0.02426058, 0.04981487, 0.09120411, 0.05015612, 0.02493957]),
+])
+def test_backbone_vanillas_with_unquoted_knot_match_forward_pde(loadings, pde_prices):
+    # Forward-density reference on 241 x 151 nodes and 320 steps per loading interval.
+    strikes = np.array([0.8, 0.9, 1.0, 1.1, 1.2])
+    chain = OptionChain.slice_to_chain(1.0, 1.0, strikes, np.where(strikes < 1, "P", "C"))
+    params = LogSvParams(sigma0=0.2, theta=0.2, kappa1=2, kappa2=2, beta=-0.5, volvol=0.8,
+                         vol_backbone=pd.Series(loadings, index=[0.25, 1.0]))
+    actual = LogSVPricer().price_chain(chain, params)[0]
+    np.testing.assert_allclose(actual, pde_prices, atol=1.5e-4, rtol=0)
+
+
+def test_explicit_fourier_grid_overrides(monkeypatch):
+    grids = []
+
+    def gaussian(ttm, phi_grid, a_t0, **kwargs):
+        grids.append((len(phi_grid), phi_grid[-1].imag))
+        return a_t0, 0.5 * 0.2**2 * ttm * phi_grid * (phi_grid + 1.0)
+
+    monkeypatch.setattr(afe, "compute_logsv_a_mgf_grid", gaussian)
+    chain = _paired_chain()
+    pricer = LogSVPricer()
+    for controls in ({"vol_scaler": 0.02}, {"vol_scaler": 0.02, "max_phi": 2001}):
+        pricer.price_chain(chain, LogSvParams(), **controls)
+    np.testing.assert_allclose(grids, [(1000, 280), (2001, 280)])
+
+
 def _representative_params() -> LogSvParams:
     return LogSvParams(
         sigma0=0.2,
@@ -655,6 +771,20 @@ def test_logsv_mc_chain_rejects_invalid_step_rate(monkeypatch, invalid):
     )
     with pytest.raises(ValueError, match="nb_steps"):
         LogSVPricer().model_mc_price_chain(_paired_chain(), _representative_params(), nb_steps=invalid)
+
+
+@pytest.mark.parametrize(("override", "message"), [
+    ({"forwards": np.ones(1)}, "quote arrays"),
+    ({"simulation_ttms": np.array([0.5, 1.0])}, "include every quote"),
+    ({"vol_backbone_etas": np.ones(1)}, "align with loadings"),
+])
+def test_backbone_mc_validates_quote_timeline(override, message):
+    inputs = dict(ttms=np.array([0.25, 1.0]), forwards=np.ones(2), discfactors=np.ones(2),
+                  strikes_ttms=(np.ones(1),) * 2, optiontypes_ttms=(np.array(["C"]),) * 2,
+                  v0=0.2, theta=0.2, kappa1=2.0, kappa2=2.0, beta=-0.5, volvol=0.8,
+                  vol_backbone_etas=np.ones(2), nb_path=8)
+    with pytest.raises(ValueError, match=message):
+        logsv_mc_chain_pricer.py_func(**(inputs | override))
 
 
 def test_logsv_unfixed_mc_python_dispatch_produces_valid_prices() -> None:

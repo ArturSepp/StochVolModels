@@ -8,6 +8,17 @@ from typing import Tuple
 from stochvolmodels.utils.config import VariableType
 
 
+_PHI_CUTOFF_MULTIPLIER = 5.6
+
+
+def get_phi_grid_size(vol_scaler: float) -> int:
+    """Number of uniform points needed to resolve the vanilla inversion kernel."""
+    if not np.isfinite(vol_scaler) or vol_scaler <= 0:
+        raise ValueError("vol_scaler must be finite and positive")
+    cutoff = _PHI_CUTOFF_MULTIPLIER / vol_scaler
+    return max(1000, int(np.ceil(cutoff / 0.10)) + 1)
+
+
 @njit(cache=False, fastmath=True)
 def get_phi_grid(is_spot_measure: bool = True,
                  max_phi: int = 1000,
@@ -19,7 +30,7 @@ def get_phi_grid(is_spot_measure: bool = True,
     vol_scaler = sigma_0*sqrt(ttm) will adjust the grid size: smaller val need longer period
     default vol scaler corresponds to pricing option with vol=100% and 1m ttm = 1/12
     """
-    p = np.linspace(0, 5.6/vol_scaler, max_phi)  # default max phi is 20 with 1000 points
+    p = np.linspace(0, _PHI_CUTOFF_MULTIPLIER / vol_scaler, max_phi)
     if is_spot_measure:
         if real_phi is None:
             real_p = -0.5

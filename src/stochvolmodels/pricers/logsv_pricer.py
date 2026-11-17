@@ -31,6 +31,7 @@ from numba.typed import List
 from typing import Tuple, Optional
 from scipy.optimize import minimize
 from enum import Enum
+from functools import partial
 
 # stochvolmodels
 from stochvolmodels.utils.config import VariableType
@@ -237,6 +238,8 @@ class _LogSvCalibrationObjective:
     calibration_engine: CalibrationEngine
     vol_scaler: float
     random_inputs: Optional[Tuple]
+    max_phi: int | None = None
+    historical_backbone_order: bool = False
     evaluations: int = field(default=0, init=False)
     invalid_evaluations: int = field(default=0, init=False)
     first_error: str = field(default="", init=False)
@@ -265,6 +268,8 @@ class _LogSvCalibrationObjective:
                 option_chain=self.option_chain,
                 params=params,
                 vol_scaler=self.vol_scaler,
+                max_phi=self.max_phi,
+                historical_backbone_order=self.historical_backbone_order,
             )
         elif self.calibration_engine == CalibrationEngine.MC:
             W0s, W1s, dts = self.random_inputs
@@ -433,7 +438,6 @@ class LogSVPricer(ModelPricer):
         if (isinstance(steps_per_year, bool) or not isinstance(steps_per_year, (int, np.integer))
                 or steps_per_year < 1):
             raise ValueError("nb_steps must be a positive integer in steps per year")
-        vol_backbone_etas = params.get_vol_backbone_etas(ttms=option_chain.ttms)
         if 'use_rough_mc' in kwargs and kwargs['use_rough_mc']:
             if not is_spot_measure:
                 raise NotImplementedError("rough pricing currently requires the money-market measure")
@@ -469,7 +473,9 @@ class LogSVPricer(ModelPricer):
                                                              timegrids=grid_ttms,
                                                              variable_type=variable_type)
         else:
-            return logsv_mc_chain_pricer(v0=params.sigma0,
+            simulation_ttms, vol_backbone_etas = _backbone_schedule(params, option_chain.ttms)
+            return logsv_mc_chain_pricer(simulation_ttms=simulation_ttms,
+                                         v0=params.sigma0,
                                          theta=params.theta,
                                          kappa1=params.kappa1,
                                          kappa2=params.kappa2,
@@ -511,6 +517,9 @@ class LogSVPricer(ModelPricer):
                                         nb_path: int = 100000,
                                         nb_steps: int = 360,
                                         seed: int = 10,
+                                        vol_scaler: float | None = None,
+                                        max_phi: int | None = None,
+                                        historical_backbone_order: bool = False,
                                         **kwargs
                                         ) -> LogSvParams:
         """
@@ -548,6 +557,13 @@ class LogSVPricer(ModelPricer):
         nb_path, nb_steps, seed : int
             Monte Carlo controls, used only for the MC engines. The randoms are
             drawn once and reused across iterations so the objective is smooth.
+        vol_scaler : float, optional
+            Fixed analytic cutoff scaler. Defaults to the shortest market ATM slice.
+        max_phi : int, optional
+            Fixed number of frequency nodes. The automatic grid resolves the inversion
+            kernel. An explicit scaler alone retains the historical 1,000 nodes.
+        historical_backbone_order : bool, default False
+            Carry analytic coefficients forward in quoted expiry order for paper replays.
 
         Returns
         -------
@@ -556,7 +572,10 @@ class LogSVPricer(ModelPricer):
             sigma0 = 0.41, theta = 0.38, beta = 0.50, epsilon = 3.06 for Bitcoin
             on 20 June 2023.
         """
-        vol_scaler = self.set_vol_scaler(option_chain=option_chain)
+        if vol_scaler is None:
+            vol_scaler = self.set_vol_scaler(option_chain=option_chain)
+            if max_phi is None:
+                max_phi = mgfp.get_phi_grid_size(vol_scaler)
         _, market_vols_ttms = option_chain.get_chain_data_as_xy()
         market_vols = to_flat_np_array(market_vols_ttms)
         weights = _compute_logsv_calibration_weights(
@@ -604,6 +623,8 @@ class LogSVPricer(ModelPricer):
             calibration_engine=calibration_engine,
             vol_scaler=vol_scaler,
             random_inputs=random_inputs,
+            max_phi=max_phi,
+            historical_backbone_order=historical_backbone_order,
         )
         constraints = _build_logsv_constraints(codec, constraints_type)
         options = {"disp": True, "ftol": 1e-8}
@@ -673,21 +694,21 @@ class LogSVPricer(ModelPricer):
                                  is_spot_measure: bool = True,
                                  **kwargs
                                  ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """
-        simulate terminal values
-        """
-        x0, sigma0, qvar0 = simulate_logsv_x_vol_terminal(ttm=ttm,
-                                                          x0=np.zeros(nb_path),
-                                                          sigma0=params.sigma0 * np.ones(nb_path),
-                                                          qvar0=np.zeros(nb_path),
-                                                          theta=params.theta,
-                                                          kappa1=params.kappa1,
-                                                          kappa2=params.kappa2,
-                                                          beta=params.beta,
-                                                          volvol=params.volvol,
-                                                          nb_path=nb_path,
-                                                          is_spot_measure=is_spot_measure)
-        return x0, sigma0, qvar0
+        """Simulate terminal log-return, volatility and quadratic variation across loading changes."""
+        ends, etas = _backbone_schedule(params, np.array([ttm]))
+        x = np.zeros(nb_path)
+        sigma = np.full(nb_path, params.sigma0, dtype=float)
+        qvar = np.zeros(nb_path)
+        start = 0.0
+        for end, eta in zip(ends, etas):
+            x, sigma, qvar = simulate_logsv_x_vol_terminal(
+                ttm=end - start, x0=x, sigma0=sigma, qvar0=qvar, theta=params.theta,
+                kappa1=params.kappa1, kappa2=params.kappa2, beta=params.beta,
+                volvol=params.volvol, vol_backbone_eta=eta, nb_path=nb_path,
+                is_spot_measure=is_spot_measure,
+            )
+            start = end
+        return x, sigma, qvar
 
     @timer
     def logsv_pdfs(self,
@@ -741,8 +762,33 @@ def v0_implied(atm: float, beta: float, volvol: float, theta: float, kappa1: flo
 
 
 def set_vol_scaler(sigma0: float, ttm: float) -> float:
-    """transform grid scaler from the ATM volatility and the shortest maturity."""
-    return sigma0 * np.sqrt(np.minimum(np.min(ttm), 0.5 / 12.0))  # lower bound is two weeks
+    """Set the Fourier cutoff from initial volatility, capping the horizon at half a month."""
+    return sigma0 * np.sqrt(np.minimum(np.min(ttm), 0.5 / 12.0))
+
+
+def _backbone_schedule(params: LogSvParams, observation_times: np.ndarray):
+    """Merge observations with changes in the right-endpoint return loading."""
+    curve = params.vol_backbone
+    if curve is None:
+        return observation_times, np.ones(len(observation_times))
+    knots = curve.index.to_numpy(dtype=float)
+    etas = curve.to_numpy(dtype=float)
+    if (not len(knots) or not np.isfinite(knots).all() or knots[0] < 0
+            or np.any(np.diff(knots) <= 0) or not np.isfinite(etas).all() or np.any(etas <= 0)):
+        raise ValueError("backbone requires increasing nonnegative knots and positive finite loadings")
+    changes = knots[:-1][etas[:-1] != etas[1:]]
+    times = np.union1d(observation_times, changes[(changes > 0) & (changes < observation_times[-1])])
+    return times, etas[np.minimum(np.searchsorted(knots, times), len(etas) - 1)]
+
+
+def _backward_transform(solve, maturity, ends, etas, terminal=None):
+    """March the terminal condition back to time zero, splitting at each loading change."""
+    right = maturity
+    for i in range(np.searchsorted(ends, maturity), -1, -1):
+        left = ends[i - 1] if i else 0.0
+        terminal, log_mgf = solve(ttm=right - left, a_t0=terminal, vol_backbone_eta=etas[i])
+        right = left
+    return log_mgf
 
 
 def logsv_chain_pricer(params: LogSvParams,
@@ -757,38 +803,49 @@ def logsv_chain_pricer(params: LogSvParams,
                        expansion_order: ExpansionOrder = ExpansionOrder.SECOND,
                        variable_type: VariableType = VariableType.LOG_RETURN,
                        vol_scaler: float = None,
+                       max_phi: int | None = None,
+                       historical_backbone_order: bool = False,
                        **kwargs
                        ) -> List[np.ndarray]:
     """
-    wrapper to price option chain on variable_type
-    to do: do numba implementation using numba consistent solver
+    Price each expiry under calendar-time return loadings. The historical mode carries
+    coefficients in quoted expiry order, using only the loading at each observation.
+    vol_scaler specifies the cutoff 5.6 / vol_scaler and max_phi the number of nodes.
     """
     # starting values
     if vol_scaler is None:  # for calibrations we fix one vol_scaler so the grid is not affected by v0
         vol_scaler = set_vol_scaler(sigma0=params.sigma0, ttm=np.min(ttms))
+        if max_phi is None and variable_type == VariableType.LOG_RETURN:
+            max_phi = mgfp.get_phi_grid_size(vol_scaler)
+    if not np.isfinite(vol_scaler) or vol_scaler <= 0:
+        raise ValueError("vol_scaler must be finite and positive")
+    if max_phi is None:
+        max_phi = 1000  # Preserve explicitly scaled grids used in historical calibrations.
+    if isinstance(max_phi, bool) or not isinstance(max_phi, (int, np.integer)) or max_phi < 2:
+        raise ValueError("max_phi must be an integer of at least two")
 
     phi_grid, psi_grid, theta_grid = mgfp.get_transform_var_grid(variable_type=variable_type,
                                                                  is_spot_measure=is_spot_measure,
-                                                                 vol_scaler=vol_scaler)
+                                                                 vol_scaler=vol_scaler,
+                                                                 max_phi=max_phi)
 
+    ends, etas = _backbone_schedule(params, ttms[-1:])
+    solve = partial(
+        afe.compute_logsv_a_mgf_grid, phi_grid=phi_grid, psi_grid=psi_grid, theta_grid=theta_grid,
+        expansion_order=expansion_order, is_analytic=is_analytic, is_stiff_solver=is_stiff_solver,
+        is_spot_measure=is_spot_measure, **params.to_dict(),
+    )
     a_t0 = np.zeros((phi_grid.shape[0], afe.get_expansion_n(expansion_order)), dtype=np.complex128)
     ttm0 = 0.0
 
     # outputs as numpy lists
     model_prices_ttms = List()
     for ttm, forward, strikes_ttm, optiontypes_ttm, discfactor in zip(ttms, forwards, strikes_ttms, optiontypes_ttms, discfactors):
-        vol_backbone_eta = params.get_vol_backbone_eta(tau=ttm)
-        a_t0, log_mgf_grid = afe.compute_logsv_a_mgf_grid(ttm=ttm - ttm0,
-                                                          phi_grid=phi_grid,
-                                                          psi_grid=psi_grid,
-                                                          theta_grid=theta_grid,
-                                                          a_t0=a_t0,
-                                                          is_analytic=is_analytic,
-                                                          expansion_order=expansion_order,
-                                                          is_stiff_solver=is_stiff_solver,
-                                                          is_spot_measure=is_spot_measure,
-                                                          **params.to_dict(),
-                                                          vol_backbone_eta=vol_backbone_eta)
+        if historical_backbone_order or len(ends) == 1:
+            eta = params.get_vol_backbone_eta(ttm) if historical_backbone_order else etas[0]
+            a_t0, log_mgf_grid = solve(ttm=ttm - ttm0, a_t0=a_t0, vol_backbone_eta=eta)
+        else:
+            log_mgf_grid = _backward_transform(solve, ttm, ends, etas)
 
         if variable_type == VariableType.LOG_RETURN:
             option_prices = mgfp.vanilla_slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
@@ -845,17 +902,13 @@ def logsv_pdfs(params: LogSvParams,
                                      n_terms=afe.get_expansion_n(expansion_order=expansion_order),
                                      variable_type=variable_type)
 
-    # compute mgf
-    a_t0, log_mgf_grid = afe.compute_logsv_a_mgf_grid(ttm=ttm,
-                                                      phi_grid=phi_grid,
-                                                      psi_grid=psi_grid,
-                                                      theta_grid=theta_grid,
-                                                      a_t0=a_t0,
-                                                      is_analytic=is_analytic,
-                                                      expansion_order=expansion_order,
-                                                      is_stiff_solver=is_stiff_solver,
-                                                      is_spot_measure=is_spot_measure,
-                                                      **params.to_dict())
+    solve = partial(
+        afe.compute_logsv_a_mgf_grid, phi_grid=phi_grid, psi_grid=psi_grid, theta_grid=theta_grid,
+        expansion_order=expansion_order, is_analytic=is_analytic, is_stiff_solver=is_stiff_solver,
+        is_spot_measure=is_spot_measure, **params.to_dict(),
+    )
+    ends, etas = _backbone_schedule(params, np.array([ttm]))
+    log_mgf_grid = _backward_transform(solve, ttm, ends, etas, a_t0)
 
     # outputs as numpy lists
     if variable_type == VariableType.LOG_RETURN:
@@ -898,14 +951,16 @@ def logsv_mc_chain_pricer(ttms: np.ndarray,
                           is_spot_measure: bool = True,
                           nb_path: int = 100000,
                           nb_steps_per_year: int = 360,
-                          variable_type: VariableType = VariableType.LOG_RETURN
+                          variable_type: VariableType = VariableType.LOG_RETURN,
+                          simulation_ttms: Optional[np.ndarray] = None,
                           ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     """
     price an option chain by simulating the scheme of Eq. (3.59) slice by slice.
 
     Each maturity is simulated from the terminal state of the previous one, so the
-    chain shares a single path set. Returns model prices and their Monte Carlo
-    standard errors, one array per slice.
+    chain shares a single path set. Optional simulation_ttms inserts unquoted loading
+    changes. Supply one vol_backbone_etas entry per simulation interval. Returns model
+    prices and their Monte Carlo standard errors, one array per quoted slice.
     """
     # starting values
     x0 = np.zeros(nb_path)
@@ -916,9 +971,21 @@ def logsv_mc_chain_pricer(ttms: np.ndarray,
     # outputs as numpy lists
     option_prices_ttm = List()
     option_std_ttm = List()
-    for ttm, forward, discfactor, strikes_ttm, optiontypes_ttm, vol_backbone_eta in zip(ttms, forwards, discfactors,
-                                                                                        strikes_ttms, optiontypes_ttms,
-                                                                                        vol_backbone_etas):
+    if (len(forwards) != len(ttms) or len(discfactors) != len(ttms)
+            or len(strikes_ttms) != len(ttms) or len(optiontypes_ttms) != len(ttms)):
+        raise ValueError("quote arrays must have one entry per quoted expiry")
+    timeline = ttms if simulation_ttms is None else simulation_ttms
+    if (len(timeline) != len(vol_backbone_etas) or len(ttms) == 0 or len(timeline) == 0
+            or not np.all(np.isfinite(timeline)) or timeline[0] <= 0
+            or np.any(np.diff(timeline) <= 0) or np.any(np.diff(ttms) <= 0)
+            or timeline[-1] != ttms[-1]):
+        raise ValueError("simulation dates must increase and align with loadings and the last quote")
+    for ttm in ttms:
+        idx = np.searchsorted(timeline, ttm)
+        if idx == len(timeline) or timeline[idx] != ttm:
+            raise ValueError("simulation dates must include every quote")
+    quote = 0
+    for ttm, vol_backbone_eta in zip(timeline, vol_backbone_etas):
         x0, sigma0, qvar0 = simulate_logsv_x_vol_terminal(ttm=ttm - ttm0,
                                                           x0=x0,
                                                           sigma0=sigma0,
@@ -933,6 +1000,11 @@ def logsv_mc_chain_pricer(ttms: np.ndarray,
                                                           nb_steps_per_year=nb_steps_per_year,
                                                           is_spot_measure=is_spot_measure)
         ttm0 = ttm
+        if ttm != ttms[quote]:
+            continue
+        forward, discfactor = forwards[quote], discfactors[quote]
+        strikes_ttm, optiontypes_ttm = strikes_ttms[quote], optiontypes_ttms[quote]
+        quote += 1
         option_prices, option_std = compute_mc_vars_payoff(x0=x0, sigma0=sigma0, qvar0=qvar0,
                                                            ttm=ttm,
                                                            forward=forward,
@@ -1084,12 +1156,12 @@ def simulate_logsv_x_vol_terminal(ttm: float,
         nb_path.
     """
     if x0.shape[0] == 1:  # initial value
-        x0 = x0*np.zeros(nb_path)
+        x0 = np.full(nb_path, x0[0])
     else:
         assert x0.shape[0] == nb_path
 
-    if qvar0.shape[0] == 1:  # initial value
-        qvar0 = np.zeros(nb_path)
+    if qvar0.shape[0] == 1:  # broadcast the supplied initial or continuing state
+        qvar0 = np.full(nb_path, qvar0[0])
     else:
         assert qvar0.shape[0] == nb_path
 

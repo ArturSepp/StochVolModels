@@ -105,6 +105,8 @@ to measure sensitivity to the historical ascending interval order. The original
 expansion supplies the reported replication benchmark. The fitted smile's 31-strike
 display grid has no bid–ask quotes, so price-spread comparisons use the market grids.
 
+The replication selects `historical_backbone_order=True` for the paper fit and transform prices.
+The package default integrates backward from each payoff across all intervening loading changes.
 The largest difference on the historical BTC chain is the calibrated 80,000 call
 at the final knot. Its PDE price is 14,194.74 and its expansion price is 14,377.40,
 a gap of 25.87 bp of discounted forward or 2.62 bid–ask spreads. Reversing the

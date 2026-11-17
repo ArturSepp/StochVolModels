@@ -4,6 +4,17 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.18.5] - 2026-11-17
+
+### Fixed
+
+- The LogSV vanilla transform resolves short-expiry pricing kernels by refining frequency
+  spacing while retaining its tail cutoff. Calibration holds both grid settings fixed.
+- LogSV transform pricing and density evaluation apply time-varying return-volatility
+  loadings backward from each payoff, including unquoted knots. Classical Monte Carlo
+  splits chain and terminal simulations at the same knots and carries one-path states across them. The forward-variance replay requests the historical
+  transform order explicitly.
+
 ## [2.18.4] - 2026-11-17
 
 ### Fixed

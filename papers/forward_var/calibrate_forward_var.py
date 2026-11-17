@@ -44,6 +44,7 @@ def calibrated_varswap_fit(option_chain):
         params_min=LogSvParams(sigma0=0.1, theta=0.1, kappa1=0.25, kappa2=0.25,
                                beta=0.0, volvol=1.5),
         model_calibration_type=LogsvModelCalibrationType.PARAMS_WITH_VARSWAP_FIT,
+        historical_backbone_order=True,
         constraints_type=sv.ConstraintsType.INVERSE_MARTINGALE,
     )
 
@@ -69,7 +70,7 @@ def run_unit_test(unit_test: UnitTests):
     if unit_test == UnitTests.VARSWAP_FIT:
         btc_log_params = varswap_fit(option_chain, verbose=True)
         logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain,
-                                                 params=btc_log_params)
+                                                 params=btc_log_params, historical_backbone_order=True)
 
     elif unit_test == UnitTests.CALIBRATE_4PARAM_MODEL:
         fitted_params = LogSvParams(sigma0=0.8626, theta=1.0417, kappa1=2.21, kappa2=2.18, beta=0.13, volvol=1.6286)
@@ -91,7 +92,7 @@ def run_unit_test(unit_test: UnitTests):
         print(btc_calibrated_params)
 
         fig = logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain,
-                                                       params=btc_calibrated_params)
+                                                       params=btc_calibrated_params, historical_backbone_order=True)
         qis.save_fig(fig=fig, file_name='backbone_model_fit', local_path=local_path)
 
     elif unit_test == UnitTests.COMPARE_MODEL_VOLS_TO_MC:
@@ -105,12 +106,12 @@ def run_unit_test(unit_test: UnitTests):
         # The published BTC chain used 156 steps/year under the historical wrapper.
         historical_steps_per_year = 156
         logsv_pricer.plot_model_ivols_vs_mc(option_chain=uniform_chain_data,
-                                            params=fitted_params,
+                                            params=fitted_params, historical_backbone_order=True,
                                             nb_steps=historical_steps_per_year,
                                             nb_path=100000)
 
         logsv_pricer.plot_comp_mma_inverse_options_with_mc(option_chain=uniform_chain_data,
-                                                           params=fitted_params,
+                                                           params=fitted_params, historical_backbone_order=True,
                                                            nb_steps=historical_steps_per_year,
                                                            nb_path=100000)
 

@@ -28,6 +28,29 @@ def _calibrate(chain, pricer, params):
     )
 
 
+def test_market_fourier_grid_is_fixed_across_optimizer_trials(monkeypatch):
+    grids = []
+
+    def valuation(**kwargs):
+        grids.append((kwargs['params'].sigma0, kwargs['vol_scaler'], kwargs['max_phi']))
+        return [np.full(3, .2)]
+
+    chain, pricer, params = _inputs(monkeypatch, valuation)
+
+    def minimize(fun, x0, **kwargs):
+        trial = x0.copy()
+        trial[0] *= 1.5
+        fun(trial, None)
+        return SimpleNamespace(x=x0, success=True, message='converged')
+
+    monkeypatch.setattr(module, 'minimize', minimize)
+    _calibrate(chain, pricer, params)
+    scaler = pricer.set_vol_scaler(chain)
+    nodes = max(1000, int(np.ceil(5.6 / (0.1 * scaler))) + 1)
+    np.testing.assert_allclose(grids, [(1.5 * params.sigma0, scaler, nodes),
+                                      (params.sigma0, scaler, nodes)])
+
+
 def test_invalid_intermediate_candidate_does_not_abort_and_is_reported(monkeypatch):
     calls = []
 

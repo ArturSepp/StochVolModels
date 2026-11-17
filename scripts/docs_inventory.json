@@ -309,7 +309,10 @@
         "calibration_engine",
         "nb_path",
         "nb_steps",
-        "seed"
+        "seed",
+        "vol_scaler",
+        "max_phi",
+        "historical_backbone_order"
       ]
     }
   },

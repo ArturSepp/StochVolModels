@@ -240,8 +240,8 @@ strike 1.2, the downward-sloping smile of a negative volatility beta. A Monte Ca
 
 `LogSvParams` does not check the martingale conditions: calibration imposes them through
 `ConstraintsType`, as described in [martingale conditions](martingale_conditions_and_skews.md). Its
-other fields serve other pages: `vol_backbone`, a term structure of the mean volatility, is
-described under [calibration](calibration.md); `H`, `weights` and `nodes` configure the experimental
+`vol_backbone` field scales instantaneous return volatility on calendar intervals, as described
+under [calibration](calibration.md). `H`, `weights` and `nodes` configure the experimental
 rough extension. The package works under the MMA measure and does not implement the physical
 parameterisation of Eq. (3.9); the canonical script does. Run it from a checkout with
 `python examples/docs/logsv_model.py`.

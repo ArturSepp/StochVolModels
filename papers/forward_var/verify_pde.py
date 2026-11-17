@@ -179,7 +179,7 @@ def compare_case(chain, params, *, diagnostics=True):
     """Run the original expansion and seeded simulation on exactly the same calls and puts."""
     np.testing.assert_array_equal(chain.ttms, params.vol_backbone.index.to_numpy())
     pricer = LogSVPricer()
-    expansion = pricer.price_chain(chain, params)
+    expansion = pricer.price_chain(chain, params, historical_backbone_order=True)
     # Reproduce the pre-fix wrapper's annual rate for this chain (156 for the paper BTC data).
     historical_rate = int(360 * chain.ttms[-1]) + 1
     set_seed(24)

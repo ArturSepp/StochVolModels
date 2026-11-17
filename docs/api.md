@@ -386,7 +386,7 @@ one page.
 | `kappa2` | `2.5` | Quadratic mean-reversion rate; `None` sets `kappa1 / theta` | [Log-normal stochastic volatility model with quadratic drift](logsv_model.md) |
 | `beta` | `-1.0` | Volatility beta | [Log-normal stochastic volatility model with quadratic drift](logsv_model.md) |
 | `volvol` | `1.0` | Volatility of residual volatility | [Log-normal stochastic volatility model with quadratic drift](logsv_model.md) |
-| `vol_backbone` | `None` | Term structure of multiplicative scalings of `theta` | [Calibration to implied volatilities](calibration.md) |
+| `vol_backbone` | `None` | Return-volatility loadings on right-ended calendar intervals | [Calibration to implied volatilities](calibration.md) |
 | `H` | `0.5` | Hurst exponent; values below 0.5 select the experimental rough extension | [Monte Carlo simulation schemes](monte_carlo_simulation.md) |
 | `weights` | `None` | Rough-kernel quadrature weights, set by `approximate_kernel` | [Monte Carlo simulation schemes](monte_carlo_simulation.md) |
 | `nodes` | `None` | Rough-kernel quadrature nodes, set by `approximate_kernel` | [Monte Carlo simulation schemes](monte_carlo_simulation.md) |
@@ -417,3 +417,6 @@ one page.
 | `nb_path` | `100000` | Monte Carlo paths, for the Monte Carlo engines | [Calibration to implied volatilities](calibration.md) |
 | `nb_steps` | `360` | Monte Carlo time steps per year, for the Monte Carlo engines | [Calibration to implied volatilities](calibration.md) |
 | `seed` | `10` | Seed of the fixed random numbers, for the Monte Carlo engines | [Calibration to implied volatilities](calibration.md) |
+| `vol_scaler` | `None` | Fixed analytic cutoff scaler, inferred from the first market ATM slice by default | [Calibration to implied volatilities](calibration.md) |
+| `max_phi` | `None` | Number of analytic frequency nodes, fixed throughout the fit | [Calibration to implied volatilities](calibration.md) |
+| `historical_backbone_order` | `False` | Use the forward-variance paper’s increasing-expiry transform order | [Calibration to implied volatilities](calibration.md) |

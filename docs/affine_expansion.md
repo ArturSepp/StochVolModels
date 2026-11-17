@@ -284,11 +284,17 @@ first-order density of volatility shows a small inversion artefact near 0.12.*
 | `compute_logsv_a_mgf_grid` | Solves over a transform grid and returns $\mathbf{A}(\tau)$ and $\log E^{[m]}$ |
 
 These names are in the advanced tier (see
-[stability tiers](option_chains_and_conventions.md#stability-tiers)). `LogSVPricer` prices a chain
-slice by slice, starting each maturity from the coefficients of the previous one, so the ODE is
-integrated once up to the last maturity. The default integrator is `solve_ivp` with its default
-tolerances. The argument `vol_backbone_eta` scales $\theta$ by maturity for the variance-swap
-backbone of calibration; it is not part of the article and equals one by default.
+[stability tiers](option_chains_and_conventions.md#stability-tiers)). With a constant return-volatility loading, `LogSVPricer` integrates once up to the last
+maturity. A varying loading requires a separate backward solve from each payoff to time zero,
+split at each loading change, including dates without a quote. The default integrator is
+`solve_ivp` with its default tolerances. The argument `vol_backbone_eta` multiplies
+instantaneous return volatility and defaults to one. The forward-variance paper replay uses
+`historical_backbone_order=True` to carry coefficients in increasing quoted expiry order.
+
+For vanilla returns the default cutoff is $5.6/s$, where
+$s = \sigma_0\sqrt{\min(T_1, 1/24)}$ and $T_1$ is the shortest expiry in years.
+The grid has at least 1,000 nodes and a maximum frequency spacing of 0.10. An explicit
+`vol_scaler` sets $s$ and retains 1,000 nodes unless `max_phi` is also supplied.
 
 The fixed-point path (`is_analytic=True`) can overflow at large transform values. The current
 wrapper rejects the known nonfinite quickstart case with `FloatingPointError`; it does not return
