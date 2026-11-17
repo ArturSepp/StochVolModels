@@ -41,7 +41,7 @@ standard error; the second must be checked by refining the grid, as this article
 |---|---|---|
 | $L_t$ | Log-volatility $\ln \sigma_t$ | |
 | $\zeta(L)$ | Drift of $L_t$ | `log_vol_drift` below |
-| $\Delta$ | Time step | `1 / nb_steps` years when `nb_steps` is given per year |
+| $\Delta$ | Time step | Interval length divided by its number of steps |
 | $N$ | Number of paths | `nb_path` |
 | $W^{(0)}$, $W^{(1)}$ | Independent Brownian motions of the price and of the residual volatility | `W0`, `W1` |
 | $H$ | Hurst exponent of the rough extension | `LogSvParams.H`, default 0.5 |
@@ -227,9 +227,10 @@ def rough_params(hurst: float, params: svm.LogSvParams = PARAMS, ttm: float = 0.
 
 The four fixed-random functions are advanced exports (see
 [stability tiers](option_chains_and_conventions.md#stability-tiers)); the rough simulator is
-experimental. `LogSVPricer.model_mc_price_chain` reads `nb_steps` as steps per year; without it, it
-takes $\lfloor 360 T \rfloor + 1$ for the longest maturity $T$, which is coarse for short chains
-and too coarse for options on QV (see [QV options](quadratic_variance_options.md)). The numba
+experimental. `LogSVPricer.model_mc_price_chain` defaults to 360 steps per year. For a classical
+LogSV expiry interval of length $h$ years, it takes $\lfloor h \times \text{nb_steps} \rfloor + 1$
+equal steps. A one-week interval takes seven steps whether priced alone or in a longer chain.
+Check time-step convergence in the wings and for [options on QV](quadratic_variance_options.md). The numba
 simulators are seeded by `stochvolmodels.utils.funcs.set_seed`. Run the example from a checkout with
 `python examples/docs/monte_carlo_simulation.py`.
 

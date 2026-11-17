@@ -180,8 +180,12 @@ def compare_case(chain, params, *, diagnostics=True):
     np.testing.assert_array_equal(chain.ttms, params.vol_backbone.index.to_numpy())
     pricer = LogSVPricer()
     expansion = pricer.price_chain(chain, params)
+    # Reproduce the pre-fix wrapper's annual rate for this chain (156 for the paper BTC data).
+    historical_rate = int(360 * chain.ttms[-1]) + 1
     set_seed(24)
-    mc, se = pricer.model_mc_price_chain(chain, params, nb_path=100000)
+    mc, se = pricer.model_mc_price_chain(chain, params, nb_path=100000, nb_steps=historical_rate)
+    set_seed(24)
+    default_mc, default_se = pricer.model_mc_price_chain(chain, params, nb_path=100000)
     if diagnostics:
         reverse = _backward_expansion(chain, params)
         refined = _refined_mc(pricer, chain, params)
@@ -223,6 +227,9 @@ def compare_case(chain, params, *, diagnostics=True):
             paper_prices=expansion[i].tolist(),
             mc_prices=mc[i].tolist(),
             mc_se=se[i].tolist(),
+            default_mc_prices=default_mc[i].tolist(),
+            default_mc_se=default_se[i].tolist(),
+            pde_minus_default_mc_bp=((reference - default_mc[i]) * bp).tolist(),
             pde_minus_paper_bp=((reference - expansion[i]) * bp).tolist(),
             pde_minus_mc_bp=(mc_diff * bp).tolist(),
             max_paper_gap_bp=float(np.max(np.abs(reference - expansion[i])) * bp),
@@ -257,6 +264,8 @@ def compare_case(chain, params, *, diagnostics=True):
             key: float(getattr(params, key))
             for key in ("sigma0", "theta", "kappa1", "kappa2", "beta", "volvol")
         },
+        historical_mc_steps_per_year=historical_rate,
+        default_mc_steps_per_year=360,
         slices=slices,
         meshes=meshes,
     )

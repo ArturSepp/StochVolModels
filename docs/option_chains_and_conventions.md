@@ -220,8 +220,9 @@ of decimals, or a different settlement convention; normalise these before buildi
 
 `model_mc_price_chain` returns, for each maturity, the prices and their standard errors. A 95%
 confidence interval is the price plus or minus 1.96 standard errors. Set `nb_path` and `nb_steps`
-(time steps per year) explicitly in reproducible work. When `nb_steps` is omitted, the LogSV
-wrapper uses `int(360 * max(ttms)) + 1` steps per year, which is coarser for short chains.
+(time steps per year) explicitly in reproducible work. Classical LogSV defaults to 360 steps per
+year. Each successive expiry interval of length `dt` years receives `int(dt * nb_steps) + 1`
+equal steps. To reproduce the default in version 2.18.0, pass `nb_steps=int(360 * max(ttms)) + 1`.
 
 The pricing simulators behind `model_mc_price_chain` for LogSV and Heston run inside numba and draw
 from numba's random generator, which is separate from NumPy's.

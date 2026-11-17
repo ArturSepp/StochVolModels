@@ -27,7 +27,7 @@ a number, and records how long the main operations take on one machine.
 | Transform grid | Aliasing of order $e^{-\pi / (2 \Delta y)}$; below $10^{-6}$ in price at 40% volatility, but several volatility points when $\sigma_0 \sqrt{\tau}$ is small | `vol_scaler`, partly | [Fourier pricing](european_option_pricing.md#interpretation-and-limitations) |
 | Implied-volatility inversion | Returns `NaN` outside 1% to 500%; magnifies small price errors where vega is small | Compare prices | [Fourier pricing](european_option_pricing.md#implied-volatilities) |
 | Monte Carlo sampling | Standard error falling as $1 / \sqrt{N}$ | `nb_path` | [Monte Carlo schemes](monte_carlo_simulation.md) |
-| Monte Carlo time step | Strong order about one for log-volatility and one half for the log-price; overflow for very large steps; too few default steps for short chains and options on quadratic variance | `nb_steps`, per year | [Monte Carlo schemes](monte_carlo_simulation.md), [QV options](quadratic_variance_options.md) |
+| Monte Carlo time step | Strong order about one for log-volatility and one half for the log-price; overflow for very large steps; short-dated wing and quadratic-variance prices are sensitive to step size | `nb_steps`, per year | [Monte Carlo schemes](monte_carlo_simulation.md), [QV options](quadratic_variance_options.md) |
 | Moment truncation | Order $k^\ast$ of the moment system for expected quadratic variance; converged at $k^\ast = 4$ for short maturities | `n_terms` | [Moments and expected QV](volatility_distribution_and_moments.md) |
 | Calibration | A local optimum of SLSQP; weakly identified smile parameters | Restarts, fixed mean reversion | [Calibration](calibration.md) |
 

@@ -219,7 +219,7 @@ The registry is
 |---|---|
 | Question | What skew do call options on quadratic variance have, and do the MMA and inverse valuations agree with simulation? |
 | Class | Paper replication, IJTAF Fig. 10, computed with the package because the paper module needs `qis` |
-| Parameters | Eq. (6.4); packaged QV chain with strikes from 75% to 150% of the expected QV; 400,000 paths with 5,760 steps per year, seed 13 (the paper: 200,000 paths, the pricer's default steps) |
+| Parameters | Eq. (6.4); packaged QV chain with strikes from 75% to 150% of the expected QV; 400,000 paths with 5,760 steps per year, seed 13 (paper code used 200,000 paths and the historical default of 31 steps per year) |
 | Result | Upward skews, from 344% to 368% at one week; MMA and inverse within $5 \times 10^{-4}$; every strike inside the 95% Monte Carlo interval |
 | Script | [`examples/docs/quadratic_variance_options.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/quadratic_variance_options.py) |
 | Producer | `scripts/docs_analytics/transforms.py`, `produce_qvar_option_smiles` |

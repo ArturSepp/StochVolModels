@@ -613,7 +613,7 @@
         "measure": "MMA and inverse; Monte Carlo under MMA",
         "data": "Packaged QV chain get_qv_options_test_chain_data; forwards set to the expected QV and strikes to 75% to 150% of it, as plot_qvar_figure",
         "reimplementation": "article_figures.py imports qis, which is not a dependency; the producer computes the quantities of LogSVPricer.plot_comp_mma_inverse_options_with_mc and draws them with vol_slice_fit in two rows",
-        "simulation": "400,000 paths with 5,760 steps per year, seed 13 for the numba generator, through qv_option_mc_vols of the canonical script. The paper code uses 200,000 paths and seed 20 and passes no step count; with the current package the pricer then takes int(360 T) + 1 = 31 steps per year, and its Monte Carlo intervals (one week: 302% to 385%) match neither the transform values nor the published figure, whose intervals resemble the fine-step ones",
+        "simulation": "400,000 paths with 5,760 steps per year, seed 13 for the numba generator, through qv_option_mc_vols of the canonical script. The paper code uses 200,000 paths and seed 20 and passes no step count. Under the historical wrapper this gave 31 steps per year. The resulting Monte Carlo intervals (one week: 302% to 385%) match neither the transform values nor the published figure, whose intervals resemble the fine-step ones",
         "error": "Root-mean-square difference to the Monte Carlo implied volatility, labelled mse in the legend",
         "existence": "Theorem 4.3 guarantees the QV transform on Re(Psi) = -1/2 when kappa2 > vartheta; Eq. (6.4) has vartheta = 3.10 above kappa2 = 2.18"
       }

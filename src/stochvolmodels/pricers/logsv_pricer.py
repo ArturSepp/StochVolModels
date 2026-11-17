@@ -415,6 +415,9 @@ class LogSVPricer(ModelPricer):
         """
         price an option chain by Monte Carlo rather than the affine expansion.
 
+        ``nb_steps`` is a positive integer rate in steps per year, defaulting to 360.
+        For the classical simulator each interval of length dt has int(dt * rate) + 1 steps.
+
         Routes to the rough simulator when ``use_rough_mc`` is passed in kwargs, which
         then also requires ``seed``; otherwise to :func:`logsv_mc_chain_pricer`.
         ``rough_scheme="split_step"`` opts into raw conditional pricing with diffusion-only J
@@ -426,6 +429,10 @@ class LogSVPricer(ModelPricer):
         Tuple[List[np.ndarray], List[np.ndarray]]
             Model prices and their standard errors, one array per maturity slice.
         """
+        steps_per_year = 360 if nb_steps is None else nb_steps
+        if (isinstance(steps_per_year, bool) or not isinstance(steps_per_year, (int, np.integer))
+                or steps_per_year < 1):
+            raise ValueError("nb_steps must be a positive integer in steps per year")
         vol_backbone_etas = params.get_vol_backbone_etas(ttms=option_chain.ttms)
         if 'use_rough_mc' in kwargs and kwargs['use_rough_mc']:
             if not is_spot_measure:
@@ -442,7 +449,7 @@ class LogSVPricer(ModelPricer):
             assert 'seed' in kwargs
             seed = kwargs['seed']
             Z0, Z1, grid_ttms = get_randoms_for_rough_vol_chain_valuation(ttms=option_chain.ttms, nb_path=nb_path,
-                                                                          nb_steps_per_year=360 if nb_steps is None else nb_steps,
+                                                                          nb_steps_per_year=steps_per_year,
                                                                           seed=seed)
             return rough_pricer(ttms=option_chain.ttms,
                                                              forwards=option_chain.forwards,
@@ -477,7 +484,7 @@ class LogSVPricer(ModelPricer):
                                          is_spot_measure=is_spot_measure,
                                          variable_type=variable_type,
                                          nb_path=nb_path,
-                                         nb_steps_per_year=nb_steps or int(360 * np.max(option_chain.ttms)) + 1)
+                                         nb_steps_per_year=steps_per_year)
 
     def set_vol_scaler(self, option_chain: OptionChain) -> float:
         """

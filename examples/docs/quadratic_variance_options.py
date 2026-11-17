@@ -76,8 +76,7 @@ def qv_option_mc_vols(chain: svm.OptionChain, params: svm.LogSvParams = PARAMS,
                       nb_path: int = 400000, nb_steps: int = 5760, seed: int = 13) -> tuple:
     """Monte Carlo implied volatilities of QV calls and the bounds of their 95% price interval.
 
-    ``nb_steps`` is passed as steps per year; left out, the pricer takes int(360 T) + 1 for the
-    longest maturity T, about one step per slice for a one-week option.
+    ``nb_steps`` is an annual rate. This example uses 5,760 for the fine-grid comparison.
     """
     set_seed(seed)
     out = svm.LogSVPricer().compute_mc_chain_implied_vols(
@@ -118,7 +117,7 @@ def run_local(local: Locals) -> None:
         mma = qv_option_vols(chain)[0]
         inverse = qv_option_vols(chain, is_spot_measure=False)[0]
         mc, upper, lower = (vols[0] for vols in qv_option_mc_vols(chain))
-        coarse, _, _ = (vols[0] for vols in qv_option_mc_vols(chain, nb_steps=None))
+        coarse, _, _ = (vols[0] for vols in qv_option_mc_vols(chain, nb_steps=31))
         # the implied volatility of QV calls rises with the strike: an upward skew
         np.testing.assert_allclose(mma[[0, 10, 20]], [1.769, 1.825, 1.861], atol=1e-3)
         assert np.all(np.diff(mma) > 0.0)
@@ -126,7 +125,7 @@ def run_local(local: Locals) -> None:
         # 400,000 paths with 5,760 steps per year: every strike inside the 95% interval
         assert np.all((mma >= lower) & (mma <= upper))
         np.testing.assert_allclose(mc[10], 1.831, atol=1e-3)
-        # the pricer's default steps for a one-month chain, 31 per year, overstate QV option values
+        # The historical one-month default of 31 steps per year overstates QV option values.
         assert coarse[10] > 2.1
 
 

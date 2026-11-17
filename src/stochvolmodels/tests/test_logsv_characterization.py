@@ -602,6 +602,61 @@ def test_logsv_fixed_random_generator_does_not_mutate_global_rng() -> None:
     np.testing.assert_allclose(np.random.random(), expected, rtol=0.0, atol=0.0)
 
 
+def test_logsv_mc_chain_annual_step_rate(monkeypatch):
+    from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
+    from stochvolmodels.utils.funcs import set_time_grid
+
+    def interval_counts(*, ttms, nb_steps_per_year, **kwargs):
+        return [set_time_grid(dt, nb_steps_per_year)[0] for dt in np.diff(np.r_[0.0, ttms])]
+
+    monkeypatch.setattr("stochvolmodels.pricers.logsv_pricer.logsv_mc_chain_pricer", interval_counts)
+    pricer, params = LogSVPricer(), _representative_params()
+    week = OptionChain.get_uniform_chain(ttms=np.array([1 / 52]), ids=np.array(["1w"]))
+    longer = OptionChain.get_uniform_chain(ttms=np.array([1 / 52, 1.0]), ids=np.array(["1w", "1y"]))
+    assert pricer.model_mc_price_chain(week, params) == [7]
+    assert pricer.model_mc_price_chain(longer, params)[0] == 7
+    assert pricer.model_mc_price_chain(week, params, nb_steps=np.int64(720)) == [14]
+    btc = get_btc_test_chain_data()
+    assert pricer.model_mc_price_chain(btc, params) == [16, 22, 36, 84]
+    assert pricer.model_mc_price_chain(btc, params, nb_steps=156) == [7, 10, 16, 37]
+
+
+@pytest.mark.slow
+def test_one_week_logsv_mc_smile_against_forward_pde():
+    from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
+    from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdePricer
+    from stochvolmodels.utils.funcs import set_seed
+
+    ttm = 1 / 52
+    sd = 0.2 * np.sqrt(ttm)
+    chain = OptionChain.slice_to_chain(
+        ttm=ttm, forward=1.0, discfactor=1.0, strikes=np.exp(sd * np.array([-2., 0., 2.])),
+        optiontypes=np.array(["P", "C", "C"]), id="1w",
+    )
+    params = LogSvParams(sigma0=0.2, theta=0.2, kappa1=2., kappa2=2., beta=-0.5, volvol=0.8)
+    # Both initial states and the three log strikes are nodes on this mesh.
+    grid = TensorGrid2D(Grid1D.uniform(-8 * sd, 8 * sd, 385), Grid1D.uniform(0., 0.8, 129))
+    reference = LogSvPdePricer(grid=grid, steps_per_interval=256).price_chain(chain, params)[0]
+    for rate, time_bias_bp in [(None, 0.2), (720, 0.1)]:
+        set_seed(7)
+        prices, errors = LogSVPricer().model_mc_price_chain(chain, params, nb_path=400_000,
+                                                             nb_steps=rate)
+        # Euler bias in units of discounted-forward bp, plus sampling error in price units.
+        assert np.all(np.abs(prices[0] - reference) <= time_bias_bp / 10_000 + 3 * errors[0])
+
+
+@pytest.mark.parametrize("invalid", [0, -1, 2.5, True, np.bool_(False)])
+def test_logsv_mc_chain_rejects_invalid_step_rate(monkeypatch, invalid):
+    def unexpected_simulation(**kwargs):
+        pytest.fail("invalid step rate reached the simulator")
+
+    monkeypatch.setattr(
+        "stochvolmodels.pricers.logsv_pricer.logsv_mc_chain_pricer", unexpected_simulation
+    )
+    with pytest.raises(ValueError, match="nb_steps"):
+        LogSVPricer().model_mc_price_chain(_paired_chain(), _representative_params(), nb_steps=invalid)
+
+
 def test_logsv_unfixed_mc_python_dispatch_produces_valid_prices() -> None:
     chain = OptionChain.slice_to_chain(
         ttm=0.02,

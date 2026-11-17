@@ -254,6 +254,18 @@ def test_forward_variance_paper_smile(monkeypatch):
     verify_case(case)
     assert [row["id"] for row in case["slices"]] == ["2w", "1m", "2m", "3m"]
     assert [len(row["strikes"]) for row in case["slices"]] == [31] * 4
+    assert case["historical_mc_steps_per_year"] == 156
+    assert case["default_mc_steps_per_year"] == 360
+    # Seed-24 prices at the middle display strike from the archived forward-variance replay.
+    np.testing.assert_allclose(
+        [row["mc_prices"][15] for row in case["slices"]],
+        [2575.376965, 3583.801353, 4734.336843, 4921.496570],
+        rtol=1e-7,
+    )
+    for row in case["slices"]:
+        assert np.all(np.isfinite(row["default_mc_prices"]))
+        assert np.all(np.asarray(row["default_mc_se"]) > 0)
+        assert row["default_mc_prices"] != row["mc_prices"]
     np.testing.assert_allclose(
         [r["eta"] for r in case["slices"]],
         [1.02500436, 1.11975866, 1.23471716, 1.25955165],

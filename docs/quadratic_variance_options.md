@@ -158,8 +158,8 @@ of calls on QV rises from 176.9% at 75% of the expected QV to
 182.5% at the money and 186.1% at 150%: an upward skew, the pattern of options on volatility when
 volatility has a heavy right tail. The inverse measure gives the same implied volatilities to
 $5 \times 10^{-4}$. A Monte Carlo valuation with 400,000 paths and 5,760 steps per year puts every
-one of the 21 strikes inside its 95% interval, with 183.1% at the money. With the pricer's default
-number of steps for a one-month chain, 31 per year, the Monte Carlo implied volatility at the money
+one of the 21 strikes inside its 95% interval, with 183.1% at the money. At 31 steps per year,
+the historical one-month setting, the Monte Carlo implied volatility at the money
 is above 210%: the simulated QV then averages volatility over a few points only, which widens its
 distribution.
 
@@ -177,8 +177,7 @@ expected QV to 368% at 150%; the two valuations agree to $5 \times 10^{-4}$ and 
 three slices lies inside its interval. The legend's "mse" is a root-mean-square difference to the
 Monte Carlo implied volatility. Eq. (6.4) has $\vartheta = 3.10$ above $\kappa_2$, outside the
 sufficient condition of Theorem 4.3, yet the transform values agree with simulation here. The
-paper's code draws the Monte Carlo intervals with the pricer's default number of steps, which with
-the current package are too few for options on QV.*
+paper's code used the historical default of 31 steps per year for this chain.*
 
 ## Implementation in stochvolmodels
 
@@ -194,10 +193,9 @@ the current package are too few for options on QV.*
 `get_qv_options_test_chain_data` is a compatibility export (see
 [stability tiers](option_chains_and_conventions.md#stability-tiers)). The QV pricer returns at least
 $10^{-10}$ and raises `ValueError` for put codes. Integrating 40,000 transform points takes about two
-minutes per measure for a chain on a desktop computer. Pass `nb_steps` to `model_mc_price_chain`
-for options on QV: it is read as steps per year, and without it the pricer takes
-$\lfloor 360 T \rfloor + 1$ for the longest maturity $T$, one to three steps per slice for a
-one-month chain. Run the example from a checkout with
+minutes per measure for a chain on a desktop computer. The LogSV Monte Carlo pricer defaults to
+360 steps per year. The example passes `nb_steps=5760` for the refined QV prices and
+`nb_steps=31` to reproduce the historical coarse comparison. Run it from a checkout with
 `python examples/docs/quadratic_variance_options.py`.
 
 ## Interpretation and limitations
@@ -207,8 +205,8 @@ one-month chain. Run the example from a checkout with
 - **Existence.** The Fourier inversion along $\Re \Psi = -\frac{1}{2}$ is guaranteed by Theorem 4.3
   only when $\kappa_2 > \vartheta$; for parameters with a larger total vol-of-vol, compare with
   Monte Carlo.
-- **Time steps.** Monte Carlo prices of options on QV are sensitive to the time step; with the
-  pricer's default for short chains they are far too high.
+- **Time steps.** Check QV prices under refinement. In the one-month example, 31 steps per year
+  overstates the at-the-money price.
 - **Replication needs a wide strip.** The replication of the variance swap integrates over all
   strikes; a truncated market strip underestimates the strike, which is why
   `OptionChain.get_slice_varswap_strikes` floors it at the at-the-money volatility.

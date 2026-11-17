@@ -102,12 +102,16 @@ def run_unit_test(unit_test: UnitTests):
             uniform_chain_data = sv.OptionChain.to_uniform_strikes(obj=option_chain, num_strikes=31)
             fitted_params = LogSvParams(sigma0=0.8626, theta=1.0417, kappa1=2.21, kappa2=2.18, beta=0.13, volvol=1.6286)
 
+        # The published BTC chain used 156 steps/year under the historical wrapper.
+        historical_steps_per_year = 156
         logsv_pricer.plot_model_ivols_vs_mc(option_chain=uniform_chain_data,
                                             params=fitted_params,
+                                            nb_steps=historical_steps_per_year,
                                             nb_path=100000)
 
         logsv_pricer.plot_comp_mma_inverse_options_with_mc(option_chain=uniform_chain_data,
                                                            params=fitted_params,
+                                                           nb_steps=historical_steps_per_year,
                                                            nb_path=100000)
 
     plt.show()

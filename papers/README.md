@@ -95,7 +95,10 @@ input strikes. It uses the original fitter's short-maturity square-root conventi
 
 The JSON includes price differences in basis points of discounted forward, time-step
 and spatial refinements, a wider-domain run, and the original expansion and 100,000-path Monte Carlo
-prices. Monte Carlo uses the replication's forward recentering. Twelve independently
+prices. The `mc_prices` and `mc_se` fields reproduce the historical 156 steps per year
+and seed 24. The `default_mc_prices` and `default_mc_se` fields use the same seed and
+path count with the corrected 360-step annual default. Both use the replication's
+forward recentering. Twelve independently
 seeded batches at 720 simulation steps per year give a second estimate of sampling
 error. The runner also composes the same expansion ODEs backward from each expiry
 to measure sensitivity to the historical ascending interval order. The original
