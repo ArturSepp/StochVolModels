@@ -163,6 +163,46 @@ own monitoring and payoff rules.
 Refine the grid, boundaries and steps for the time horizon and strikes of interest.
 The pricer's module docstring includes an executable two-bucket pricing example.
 
+The local-volatility pricer defaults to a Rannacher start (`theta=None`). Two implicit
+Euler half-steps replace the first nominal step of each interval between quotes
+or volatility knots. Crank–Nicolson advances the remaining steps of that interval.
+At 128 nominal steps this takes 129 solves per interval. Damping restarts because
+a change in the volatility or step length can create oscillations in the carried
+density. With 10% volatility for one day followed by 50% through one year, the
+peak negative mass was 0.322 when damping only at time zero and zero with the
+restart (401 nodes, 128 nominal steps per bucket).
+A numeric `theta` applies to every step. Use `theta=1.0` to replay historical
+implicit Euler prices or `theta=0.5` for undamped Crank–Nicolson.
+`result.steps` gives each accepted step's times, raw mass and negative mass.
+
+The following one-week example uses flat 20% volatility, forward 100, discount 0.97,
+401 concentrated log-forward nodes over eight standard deviations on each side, and 128
+nominal steps. The strikes have log-moneyness of −2.5, 0 and +2.5 standard deviations.
+Entries are signed errors against exact Black implied volatility in bp. Peak negative
+mass is the integral of the negative part in magnitude, maximized over all steps.
+
+| Initial steps and continuation | Put wing | ATM call | Call wing | Peak negative mass |
+|---|---:|---:|---:|---:|
+| Implicit Euler throughout | +10.433 | −2.025 | +10.439 | 0 |
+| Crank–Nicolson throughout | +0.406 | −0.075 | +0.413 | 0.68968 |
+| Two implicit half-steps, then Crank–Nicolson | +0.446 | −0.076 | +0.453 | 0 |
+| Four implicit half-steps, then Crank–Nicolson | +0.486 | −0.084 | +0.493 | 0 |
+
+For the same strikes at one year, the maximum absolute premium error due to time
+stepping alone was measured against the matrix exponential of the fixed 401-node
+spatial generator. Errors are in bp of discounted forward.
+
+| Nominal steps | Implicit Euler | Crank–Nicolson | Two half-steps, then Crank–Nicolson |
+|---:|---:|---:|---:|
+| 32 | 3.1261 | 4.1751 | 0.023218 |
+| 64 | 1.5646 | 0.6364 | 0.005949 |
+| 128 | 0.7827 | 0.001288 | 0.001532 |
+| 256 | 0.3915 | 0.000381 | 0.000384 |
+
+Spatial resolution still affects the wings. At 512 nominal steps the maximum Black
+IV error of the damped scheme was 6.808, 1.646, 0.429 and 0.105 bp on 101, 201, 401
+and 801 nodes respectively.
+
 ### Continuous Dupire inversion
 
 `stochvolmodels.fitters.dupire.CallSurface` takes discounted European call premiums
@@ -228,7 +268,7 @@ Rows are constant through their inclusive maturity and interpolate linearly
 in log-forward space with either flat wings or an explicit extrapolation error.
 
 `SequentialLSVProjector(grid).project(params, local_vol)` starts from a point
-mass at $(0,\sigma_0)$. It advances each interval with the previous leverage row
+mass at $(0,\sigma_0)$. With default end collocation it advances each interval with the previous leverage row
 and computes $m(x)=E[\sigma^2\mid X=x]$ from the terminal joint density using
 the volatility-axis quadrature weights. The new row targets
 $L=\sigma_{LV}/(\eta\sqrt{m})$. Low-marginal and invalid-moment masks identify
@@ -255,10 +295,55 @@ propagation with the recovered rows. It splits at leverage and backbone knots
 as well as quoted maturities and discounts each vanilla in its quote currency.
 The projection module docstring includes an executable recovery and pricing example.
 
+Both fitters accept `leverage_times` for additional row endpoints inside the target horizon.
+The fitted rows keep the target dates. Refinement and midpoint mode also include interior
+backbone knots. `steps_per_interval` specifies the ADI budget for each coefficient bucket
+inside the corresponding target interval. Keeping this budget fixed while adding rows
+increases the total number of steps.
+
+Set `collocation="midpoint"` in the projection or fixed-point configuration to evaluate
+the conditional second moment halfway through each bucket. Sequential projection predicts
+the midpoint law with the incoming leverage. The fixed-point fitter iterates the candidate
+at that same midpoint. Both propagate the accepted row from the original bucket start to
+its end and check the endpoint density. Accepted slices expose `collocation_time`, midpoint
+step diagnostics, and the full-interval diagnostics.
+
+`result.repricing` restarts the fitted law at time zero. Pass `quote_chain` to compare
+discounted calls and puts at its forwards and strikes. Without quotes the comparison
+uses a unit-forward, undiscounted ATM call at each target date. A spatially constant
+target uses exact Black prices with integrated bucket variance. A skewed target uses
+the independent one-dimensional local-volatility PDE. The target is the supplied local-volatility
+surface. For a surface recovered from market data, its own market repricing error is a separate
+quantity. Each slice exposes signed `price_errors` in quote currency and `iv_errors` in
+decimal annualized volatility. Multiply the latter by 10,000 for IV bp. An invalid Black
+inversion leaves a NaN in the strike residual and in its maximum. Use `density_mass` and
+`negative_mass` to inspect the independently repriced law.
+
+For a flat 25% target with $\sigma_0=\theta=0.2$, $\kappa_1=\kappa_2=2$,
+$\beta=-0.5$ and $\varepsilon=0.8$, the table gives maximum absolute Black IV
+errors in bp at $T=0.1,0.25,0.5$ and $K/F=0.85,0.95,1,1.05,1.15$. Each solve
+used the same default LogSV spatial grid and 64 ADI steps per full bucket.
+
+| Leverage rows and collocation | Sequential | Fixed point |
+|---|---:|---:|
+| 3, end | 66.30 | 57.64 |
+| 3, midpoint | 42.18 | 26.83 |
+| 10, midpoint | 11.83 | 13.92 |
+| 40, midpoint | 4.77 | 4.79 |
+
+On the frozen BTC chain of 21 October 2021, with the repaired Dupire bucket surface
+as target, fixed-point midpoint fitting reduced the maximum error across the 49 vanillas
+from 73.20 IV bp with four rows to 43.94 with eight and 28.67 with sixteen. At sixteen
+rows the largest premium error was 2.34 bp of discounted forward. The fitted-model
+PDE and antithetic Monte Carlo prices agreed within 1.83 pair-adjusted standard errors
+across the chain (65,536 paths, 720 steps/year, seed 718). Refining the independent
+one-dimensional target solver itself moved some wing IVs by 10.37 bp. These BTC target
+comparisons used the historical implicit Euler setting (`theta=1.0`).
+
 ### Fixed-point leverage calibration
 
 `LSVFixedPointCalibrator(grid, config).calibrate(params, target_local_vol)` holds
-LogSV dynamics fixed and fits one leverage row per positive target maturity.
+LogSV dynamics fixed and fits one leverage row per calibration bucket.
 It begins at the point mass $(0,\sigma_0)$. Every trial in an interval starts from
 the same last accepted density. The solver propagates the candidate row $c$, checks
 the terminal density against the projection mass limits and computes a bounded

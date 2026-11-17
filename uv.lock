@@ -3631,7 +3631,7 @@ wheels = [
 
 [[package]]
 name = "stochvolmodels"
-version = "2.18.5"
+version = "2.18.7"
 source = { editable = "." }
 dependencies = [
     { name = "matplotlib" },

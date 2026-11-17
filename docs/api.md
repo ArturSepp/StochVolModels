@@ -236,8 +236,10 @@ The detailed 1D and 2D pricer results expose `expiry.boundary_mass` for each mat
 same `BoundaryMass1D` and `BoundaryMass2D` diagnostics from supplied densities.
 The provisional `stochvolmodels.models.local_vol.LocalVolSurface` supplies deterministic
 volatility to `stochvolmodels.pricers.local_vol_pde_pricer.LocalVolPdePricer`.
-See [local-volatility pricing](software_design.md#deterministic-local-volatility) for units
-and bucket conventions. The provisional `stochvolmodels.fitters.dupire` module exposes
+The pricer uses a Rannacher start followed by Crank–Nicolson in each interval. A numeric `theta`
+selects a fixed scheme, and `price_chain_detailed(...).steps` reports every substep.
+See [local-volatility pricing](software_design.md#deterministic-local-volatility) for
+bucket conventions, replay settings and measured accuracy. The provisional `stochvolmodels.fitters.dupire` module exposes
 `CallSurface`, `DupireRecoverer`, `DupireResult` and `DupireRepairPolicy` for
 [continuous Dupire inversion](software_design.md#continuous-dupire-inversion).
 `DupireRecoverer.jump_adjusted` also returns a `DupireJumpAdjustment` on the result.
@@ -245,7 +247,9 @@ See [fixed-jump Dupire inversion](software_design.md#fixed-jump-dupire-inversion
 The provisional `stochvolmodels.models.lsv.LSVModel` binds LogSV dynamics to a
 `LeverageSurface`. The `stochvolmodels.pricers.lsv_projection` module provides
 `project_conditional_variance`, `recover_leverage_slice` and `SequentialLSVProjector`.
-The returned model can be priced by `LogSvPdePricer`.
+Both leverage fitters accept `leverage_times` and `quote_chain`. Each `LSVRepricingSlice`
+in `result.repricing` contains the target and fitted premiums, Black IVs and signed errors
+in the original strike order. The returned model can be priced by `LogSvPdePricer`.
 See [conditional variance and leverage](software_design.md#conditional-variance-and-leverage).
 The provisional `stochvolmodels.fitters.lsv_fixed_point.LSVFixedPointCalibrator` fits
 the leverage and exposes the convergence history for every maturity.

@@ -4,6 +4,28 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.18.7] - 2026-11-17
+
+### Changed
+
+- `LocalVolPdePricer` now starts each pricing interval with two implicit Euler half-steps
+  and continues with Crank–Nicolson. Set `theta=1.0` for historical Euler prices
+  or `theta=0.5` for undamped Crank–Nicolson. `LocalVolPdeResult.steps` reports
+  the raw density diagnostics for every accepted step.
+
+## [2.18.6] - 2026-11-17
+
+### Added
+
+- `SequentialLSVProjector.project` and `LSVFixedPointCalibrator.calibrate` accept
+  internal leverage dates and an optional vanilla quote chain. Their results report
+  independently repriced target and fitted premiums, implied volatilities and
+  signed errors at each strike. Without quotes the comparison uses a normalized
+  ATM call at each target expiry.
+- `LSVProjectionConfig(collocation="midpoint")` and its fixed-point counterpart
+  estimate conditional variance at the bucket midpoint and carry the accepted
+  row across the full bucket. End collocation remains the default for paper replays.
+
 ## [2.18.5] - 2026-11-17
 
 ### Fixed

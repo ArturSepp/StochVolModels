@@ -32,6 +32,7 @@ from numbers import Integral
 import numpy as np
 from numpy.typing import ArrayLike
 
+from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.models.local_vol import LocalVolSurface
 from stochvolmodels.models.lsv import LSVModel
 from stochvolmodels.pde_solvers import ADIConfig, PDEState2D, TensorGrid2D
@@ -40,6 +41,7 @@ from stochvolmodels.pricers.lsv_projection import (
     _DEFAULT_LSV_STEPS,
     LSVProjectionConfig,
     LSVProjectionSlice,
+    LSVRepricingSlice,
     _LSVProjectionRun,
 )
 
@@ -97,6 +99,7 @@ class LSVFixedPointResult:
 
     model: LSVModel
     slices: tuple[LSVFixedPointSlice, ...]
+    repricing: tuple[LSVRepricingSlice, ...] = ()
 
     @property
     def peak_negative_mass(self) -> float:
@@ -105,7 +108,7 @@ class LSVFixedPointResult:
             d.negative_mass
             for row in self.slices
             for trial in row.iterations
-            for d in trial.projection.diagnostics
+            for d in (*trial.projection.collocation_diagnostics, *trial.projection.diagnostics)
         )
 
 
@@ -152,6 +155,9 @@ class LSVFixedPointCalibrator:
         params: LogSvParams,
         target_local_vol: LocalVolSurface,
         steps_per_interval: int | ArrayLike = _DEFAULT_LSV_STEPS,
+        *,
+        leverage_times: ArrayLike | None = None,
+        quote_chain: OptionChain | None = None,
     ) -> LSVFixedPointResult:
         """Fit each bucket from the last accepted law, starting at (0, sigma0).
 
@@ -159,15 +165,20 @@ class LSVFixedPointCalibrator:
         bounded proposal b, require |b-c| <= atol + rtol * max(|c|, |b|) at every
         log-forward node. Damping controls retries. The model carries the candidate
         and terminal density of the converged solve. Step counts apply per continuous
-        coefficient bucket, including any interior backbone knots.
+        coefficient bucket, including any interior backbone knots. leverage_times adds
+        endpoints inside target intervals. With midpoint collocation the stopping rule
+        uses the half-interval law. A converged candidate then advances the full bucket.
+        The returned model is repriced from time zero at quote_chain strikes, or at
+        normalized ATM calls at each target date when the chain is omitted.
         """
         cfg = self.config
         run = _LSVProjectionRun(
-            self.grid, cfg, self.adi, params, target_local_vol, steps_per_interval
+            self.grid, cfg, self.adi, params, target_local_vol, steps_per_interval,
+            leverage_times, quote_chain,
         )
         state, candidate = run.initial_density, run.initial_leverage
         slices = []
-        for maturity, steps in zip(target_local_vol.times, run.counts):
+        for maturity, steps in zip(run.times, run.counts):
             history = []
             for number in range(1, cfg.maximum_iterations + 1):
                 try:
@@ -182,6 +193,8 @@ class LSVFixedPointCalibrator:
                 converged = bool(
                     np.all(change <= cfg.absolute_tolerance + cfg.relative_tolerance * scale)
                 )
+                if converged:
+                    trial = run.finish(trial, state, maturity, steps, candidate)
                 history.append(
                     LSVFixedPointIteration(
                         trial,
@@ -199,4 +212,4 @@ class LSVFixedPointCalibrator:
             state = trial.terminal_density
             candidate = trial.propagation_leverage
         model = run.fitted_model([row.accepted.propagation_leverage for row in slices])
-        return LSVFixedPointResult(model, tuple(slices))
+        return LSVFixedPointResult(model, tuple(slices), run.reprice(model))

@@ -30,6 +30,9 @@ from enum import Enum
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from vanilla_option_pricers import compute_bsm_vanilla_slice_prices
+
+from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.models.local_vol import CoordinateSystem, LocalVolSurface
 from stochvolmodels.models.lsv import LSVModel, LeverageSurface
 from stochvolmodels.pde_solvers import (
@@ -72,11 +75,14 @@ class LSVProjectionConfig:
     mass_tolerance: float = 1.0e-10
     negative_mass_tolerance: float = _DEFAULT_NEGATIVE_MASS_TOLERANCE
     quadratic_start: bool = field(default=True, kw_only=True)
+    collocation: str = field(default="end", kw_only=True)
 
     def __post_init__(self) -> None:
         """Validate and normalize a newly constructed ``LSVProjectionConfig`` instance."""
         if not isinstance(self.quadratic_start, (bool, np.bool_)):
             raise TypeError("quadratic_start must be boolean")
+        if self.collocation not in ("end", "midpoint"):
+            raise ValueError("collocation must be end or midpoint")
         nonnegative_names = (
             "density_floor",
             "mass_tolerance",
@@ -319,6 +325,52 @@ class LSVProjectionSlice:
     conditional_moments: ConditionalMomentResult
     leverage_update: LeverageUpdateResult
     diagnostics: tuple[PDEDiagnostics2D, ...]
+    collocation_diagnostics: tuple[PDEDiagnostics2D, ...] = ()
+    collocation_leverage: FloatArray | None = None
+
+    @property
+    def collocation_time(self) -> float:
+        """Calendar time of the density used to recover leverage."""
+        if self.collocation_diagnostics:
+            return self.collocation_diagnostics[-1].time_end
+        return self.terminal_density.time
+
+
+@dataclass(frozen=True, slots=True)
+class LSVRepricingSlice:
+    """Independent fitted-model and target vanillas in original strike order and currency."""
+
+    ttm: float
+    forward: float
+    discount_factor: float
+    strikes: FloatArray
+    option_types: np.ndarray
+    model_prices: FloatArray
+    target_prices: FloatArray
+    model_ivols: FloatArray
+    target_ivols: FloatArray
+    density_mass: float
+    negative_mass: float
+
+    @property
+    def price_errors(self) -> FloatArray:
+        """Signed fitted minus target premiums in quote currency."""
+        return self.model_prices - self.target_prices
+
+    @property
+    def iv_errors(self) -> FloatArray:
+        """Signed annualized Black IV differences, retaining failed inversions as NaN."""
+        return self.model_ivols - self.target_ivols
+
+    @property
+    def max_abs_price_error(self) -> float:
+        """Largest absolute premium difference across the supplied strikes."""
+        return float(np.max(np.abs(self.price_errors)))
+
+    @property
+    def max_abs_iv_error(self) -> float:
+        """Largest absolute IV difference, or NaN if any inversion failed."""
+        return float(np.max(np.abs(self.iv_errors)))
 
 
 @dataclass(frozen=True, slots=True)
@@ -327,11 +379,13 @@ class SequentialLSVProjectionResult:
 
     model: LSVModel
     slices: tuple[LSVProjectionSlice, ...]
+    repricing: tuple[LSVRepricingSlice, ...] = ()
 
     @property
     def peak_negative_mass(self) -> float:
         """Maximum integrated negative mass across every propagation substep."""
-        return max(d.negative_mass for row in self.slices for d in row.diagnostics)
+        return max(d.negative_mass for row in self.slices
+                   for d in (*row.collocation_diagnostics, *row.diagnostics))
 
 
 def _interval_time_grid(start: float, end: float, steps: int, quadratic_start: bool) -> FloatArray:
@@ -379,6 +433,27 @@ def _advance_lsv(
     return state, tuple(diagnostics)
 
 
+def _include_step_changes(
+    chain: OptionChain, changes: FloatArray,
+) -> tuple[OptionChain, np.ndarray]:
+    """Retain the per-target ADI counts even when quotes skip a step-count change."""
+    ends = np.union1d(chain.ttms, changes[changes < chain.ttms[-1]])
+    quoted = np.searchsorted(ends, chain.ttms)
+    if len(ends) == len(chain.ttms):
+        return chain, quoted
+    # The pricing chain needs a payoff at every observation. Discard the added ATM calls.
+    forwards, discounts = np.ones(len(ends)), np.ones(len(ends))
+    forwards[quoted], discounts[quoted] = chain.forwards, chain.discfactors
+    strikes = [np.ones(1) for _ in ends]
+    kinds = [np.array(["C"]) for _ in ends]
+    for i, index in enumerate(quoted):
+        strikes[index], kinds[index] = chain.strikes_ttms[i], chain.optiontypes_ttms[i]
+    return OptionChain(
+        ttms=ends, forwards=forwards, discfactors=discounts, ids=None,
+        strikes_ttms=tuple(strikes), optiontypes_ttms=tuple(kinds),
+    ), quoted
+
+
 class _LSVProjectionRun:
     """Shared state, propagation and density acceptance for one local-volatility target."""
 
@@ -390,6 +465,8 @@ class _LSVProjectionRun:
         params: LogSvParams,
         target_local_vol: LocalVolSurface,
         steps_per_interval: int | ArrayLike,
+        leverage_times: ArrayLike | None,
+        quote_chain: OptionChain | None,
     ) -> None:
         """Bind the numerical settings and construct the initial point mass and leverage."""
         if (
@@ -400,8 +477,31 @@ class _LSVProjectionRun:
         times = target_local_vol.times
         if times[0] <= 0:
             raise ValueError("the first target maturity must be positive")
-        self.counts = _step_counts(steps_per_interval, len(times))
+        self.target_counts = _step_counts(steps_per_interval, len(times))
         self.model = LSVModel.from_params(params)
+        self.adi = adi
+        self.times = times
+        if leverage_times is not None:
+            extra = np.asarray(leverage_times, dtype=float)
+            if (extra.ndim != 1 or not np.isfinite(extra).all() or np.any(extra <= 0)
+                    or np.any(extra > times[-1]) or np.any(np.diff(extra) <= 0)):
+                raise ValueError("leverage_times must increase within (0, last target expiry]")
+            self.times = np.union1d(times, extra)
+        if leverage_times is not None or config.collocation == "midpoint":
+            knots = self.model.time_knots
+            self.times = np.union1d(self.times, knots[(0 < knots) & (knots < times[-1])])
+        self.counts = self.target_counts[np.searchsorted(times, self.times)]
+        if quote_chain is None:
+            quote_chain = OptionChain(
+                ttms=times, forwards=np.ones(len(times)), discfactors=np.ones(len(times)),
+                strikes_ttms=tuple(np.ones(1) for _ in times),
+                optiontypes_ttms=tuple(np.array(["C"]) for _ in times), ids=None,
+            )
+        if not isinstance(quote_chain, OptionChain):
+            raise TypeError("quote_chain must be an OptionChain")
+        if any(not np.isin(kinds, ["C", "P"]).all() for kinds in quote_chain.optiontypes_ttms):
+            raise ValueError("quote_chain must contain ordinary European calls and puts")
+        self.quotes = quote_chain
         sigma0 = self.model.dynamics.params.sigma0
         if not (
             grid.x.nodes[0] < 0 < grid.x.nodes[-1]
@@ -412,7 +512,7 @@ class _LSVProjectionRun:
         self.bounds = (config.leverage_floor, config.leverage_cap)
         first_target = target_local_vol.evaluate(times[0], grid.x.nodes)
         self.initial_leverage = np.clip(
-            first_target / (self.model.volatility_scale(times[0]) * sigma0), *self.bounds
+            first_target / (self.model.volatility_scale(self.times[0]) * sigma0), *self.bounds
         )
         self.solver = PDE2DADISolver(
             adi,
@@ -429,34 +529,112 @@ class _LSVProjectionRun:
         self, start: PDEState2D, maturity: float, steps: int, candidate: FloatArray
     ) -> LSVProjectionSlice:
         """Project one propagated candidate from the supplied interval-start density."""
-        surface = LeverageSurface([maturity], self.grid.x, candidate[None, :], *self.bounds)
-        applied = replace(self.model, leverage_surface=surface)
-        state, diagnostics = _advance_lsv(
-            applied, self.grid, self.solver, start, maturity, steps,
-            quadratic_start=self.config.quadratic_start,
-        )
+        sample_time = maturity
+        if self.config.collocation == "midpoint":
+            middle = start.time + 0.5 * (maturity - start.time)
+            if start.time < middle < maturity:
+                sample_time = middle
+                steps = (steps + 1) // 2
+        state, diagnostics, row = self.advance(start, sample_time, steps, candidate)
         try:
             moments = project_conditional_variance(self.grid, state.values, self.config)
         except ValueError as exc:
-            raise ValueError(f"LSV projection at T={maturity:g}: {exc}") from exc
+            raise ValueError(f"LSV projection at T={sample_time:g}: {exc}") from exc
         update = recover_leverage_slice(
-            self.target.evaluate(maturity, self.grid.x.nodes),
+            self.target.evaluate(sample_time, self.grid.x.nodes),
             moments,
             candidate,
             self.config,
-            volatility_scale=self.model.volatility_scale(maturity),
+            volatility_scale=self.model.volatility_scale(sample_time),
         )
-        return LSVProjectionSlice(surface.values[0], state, moments, update, diagnostics)
+        return LSVProjectionSlice(row, state, moments, update, diagnostics)
+
+    def advance(
+        self, start: PDEState2D, end: float, steps: int, candidate: FloatArray,
+    ) -> tuple[PDEState2D, tuple[PDEDiagnostics2D, ...], FloatArray]:
+        """Propagate a single candidate from the supplied start under calendar loadings."""
+        surface = LeverageSurface([end], self.grid.x, candidate[None, :], *self.bounds)
+        applied = replace(self.model, leverage_surface=surface)
+        state, diagnostics = _advance_lsv(
+            applied, self.grid, self.solver, start, end, steps,
+            quadratic_start=self.config.quadratic_start,
+        )
+        return state, diagnostics, surface.values[0]
+
+    def finish(
+        self, trial: LSVProjectionSlice, start: PDEState2D, maturity: float, steps: int,
+        row: FloatArray,
+    ) -> LSVProjectionSlice:
+        """Carry the accepted midpoint row over the full interval from its original start."""
+        if trial.terminal_density.time == maturity:
+            return trial
+        state, diagnostics, applied = self.advance(start, maturity, steps, row)
+        last = diagnostics[-1]
+        try:
+            _check_density_mass(last.mass, last.negative_mass, self.config.mass_tolerance,
+                                self.config.negative_mass_tolerance)
+        except ValueError as exc:
+            raise ValueError(f"LSV accepted-row propagation at T={maturity:g}: {exc}") from exc
+        return replace(trial, propagation_leverage=applied, terminal_density=state,
+                       diagnostics=diagnostics, collocation_diagnostics=trial.diagnostics,
+                       collocation_leverage=trial.propagation_leverage)
 
     def fitted_model(self, rows: list[FloatArray]) -> LSVModel:
         """Bind the chosen positive leverage rows to the snapshotted LogSV dynamics."""
-        surface = LeverageSurface(self.target.times, self.grid.x, np.vstack(rows), *self.bounds)
+        surface = LeverageSurface(self.times, self.grid.x, np.vstack(rows), *self.bounds)
         return replace(self.model, leverage_surface=surface)
+
+    def reprice(self, model: LSVModel) -> tuple[LSVRepricingSlice, ...]:
+        """Restart the fitted law at zero and value the deterministic local-vol target."""
+        # The LogSV pricer uses the interval propagator defined in this module.
+        from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdePricer
+        from stochvolmodels.pricers.local_vol_pde_pricer import LocalVolPdePricer
+
+        chain = self.quotes
+        times = self.target.times
+        changes = times[:-1][np.diff(self.target_counts) != 0]
+        replay_chain, quoted = _include_step_changes(chain, changes)
+        indices = np.minimum(np.searchsorted(times, replay_chain.ttms), len(times) - 1)
+        fitted = LogSvPdePricer(
+            grid=self.grid, steps_per_interval=self.target_counts[indices], adi=self.adi,
+            quadratic_start=self.config.quadratic_start,
+        ).price_chain_detailed(replay_chain, model)
+        spatially_flat = np.all(self.target.values == self.target.values[:, :1])
+        if not spatially_flat:
+            target = LocalVolPdePricer(steps_per_interval=max(128, int(max(self.target_counts))))
+            reference = target.price_chain_detailed(chain, self.target)
+        rows = []
+        for i, index in enumerate(quoted):
+            t = chain.ttms[i]
+            f, df = chain.forwards[i], chain.discfactors[i]
+            strikes = np.asarray(chain.strikes_ttms[i], dtype=np.float64)
+            kinds = chain.optiontypes_ttms[i]
+            if spatially_flat:
+                ends = np.r_[times[times < t], t]
+                buckets = np.minimum(np.searchsorted(times, ends), len(times) - 1)
+                variance = np.dot(np.diff(np.r_[0., ends]), self.target.values[buckets, 0]**2) / t
+                vols = np.full(len(strikes), np.sqrt(variance))
+                prices = compute_bsm_vanilla_slice_prices(
+                    ttm=t, forward=f, strikes=strikes, vols=vols, optiontypes=kinds, discfactor=df,
+                )
+            else:
+                prices, vols = reference.prices[i], reference.implied_vols[i]
+            types = np.array(kinds, copy=True)
+            types.setflags(write=False)
+            rows.append(LSVRepricingSlice(
+                float(t), float(f), float(df), _readonly_vector(strikes, "strikes"), types,
+                _readonly_vector(fitted.prices[index], "model_prices"),
+                _readonly_vector(prices, "target_prices"),
+                _readonly_vector(fitted.implied_vols[index], "model_ivols", require_finite=False),
+                _readonly_vector(vols, "target_ivols", require_finite=False),
+                fitted.expiries[index].mass, fitted.expiries[index].negative_mass,
+            ))
+        return tuple(rows)
 
 
 @dataclass(frozen=True, slots=True)
 class SequentialLSVProjector:
-    """Project one leverage row per target maturity using the historical lagged update."""
+    """Recover leverage from one conditional-moment update per calendar bucket."""
 
     grid: TensorGrid2D
     config: LSVProjectionConfig = field(default_factory=LSVProjectionConfig)
@@ -467,24 +645,33 @@ class SequentialLSVProjector:
         params: LogSvParams,
         target_local_vol: LocalVolSurface,
         steps_per_interval: int | ArrayLike = _DEFAULT_LSV_STEPS,
+        *,
+        leverage_times: ArrayLike | None = None,
+        quote_chain: OptionChain | None = None,
     ) -> SequentialLSVProjectionResult:
-        """Carry the previous row's density forward, then recover leverage at this maturity.
+        """Recover one leverage row per bucket under the chosen collocation rule.
 
-        Each positive step count applies per uninterrupted coefficient bucket within
-        that target interval. The returned model uses the newly recovered rows when
-        repriced. Per-step diagnostics include dates between projection observations.
+        Optional leverage_times add calendar endpoints to the target dates. Step
+        counts are specified per target interval and apply to each of its buckets.
+        End collocation carries the historical lagged law. Midpoint collocation
+        predicts the half-interval moments, updates the row, and propagates it
+        over the entire bucket from the original start. The returned model is
+        independently repriced at quote_chain strikes, or normalized ATM calls at
+        the target dates when the chain is omitted.
         """
         run = _LSVProjectionRun(
-            self.grid, self.config, self.adi, params, target_local_vol, steps_per_interval
+            self.grid, self.config, self.adi, params, target_local_vol, steps_per_interval,
+            leverage_times, quote_chain,
         )
         state, previous = run.initial_density, run.initial_leverage
         slices = []
-        for maturity, steps in zip(target_local_vol.times, run.counts):
+        for maturity, steps in zip(run.times, run.counts):
             row = run.evaluate(state, maturity, steps, previous)
+            row = run.finish(row, state, maturity, steps, row.leverage_update.accepted_leverage)
             slices.append(row)
             state, previous = row.terminal_density, row.leverage_update.accepted_leverage
         model = run.fitted_model([row.leverage_update.accepted_leverage for row in slices])
-        return SequentialLSVProjectionResult(model, tuple(slices))
+        return SequentialLSVProjectionResult(model, tuple(slices), run.reprice(model))
 
 
 def _step_counts(values: int | ArrayLike, size: int) -> NDArray[np.int64]:

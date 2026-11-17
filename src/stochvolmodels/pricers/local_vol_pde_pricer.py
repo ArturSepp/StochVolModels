@@ -14,7 +14,7 @@ Price a six-month call using two distinct volatility buckets.
 True
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from numbers import Integral
 
 import numpy as np
@@ -31,6 +31,7 @@ from stochvolmodels.pde_solvers import (
     BoundaryPair1D,
     Grid1D,
     PDE1DSolver,
+    PDEDiagnostics,
     PDEDirection,
     StaticCoefficientProvider1D,
     TimeStepConfig,
@@ -58,7 +59,8 @@ class LocalVolPdeResult:
 
     normalized_forward has target one. max_parity_error is measured against the
     input discounted forward-minus-strike, in the option's quote currency.
-    peak_negative_mass covers all time steps, including dates between expiries.
+    steps contains the raw diagnostics in chronological order, including startup
+    half-steps. peak_negative_mass is the largest negative mass over these steps.
     """
 
     prices: List
@@ -66,6 +68,7 @@ class LocalVolPdeResult:
     invalid_iv: tuple[np.ndarray, ...]
     expiries: tuple[LocalVolPdeExpiry, ...]
     peak_negative_mass: float
+    steps: tuple[PDEDiagnostics, ...] = ()
 
 
 def _default_grid(chain: OptionChain, surface: LocalVolSurface) -> Grid1D:
@@ -92,16 +95,20 @@ class LocalVolPdePricer(ModelPricer):
 
     The optional solver grid uses the surface's coordinate and is independent of
     its interpolation nodes. Each expiry or interior bucket end splits the time
-    grid; steps_per_interval applies to each resulting interval. theta=1 uses
-    implicit Euler with natural endpoints. A LEVEL law has one constant forward.
+    grid. steps_per_interval applies to each resulting interval. By default
+    (theta=None), two implicit Euler half-steps replace the first full step of
+    each interval, then Crank–Nicolson advances the remaining steps. A numeric
+    theta applies throughout, including the first step (1 for implicit Euler,
+    0.5 for plain Crank–Nicolson). A LEVEL law has one constant forward.
     """
 
     grid: Grid1D | None = None
     steps_per_interval: int = 128
-    theta: float = 1.0
+    theta: float | None = None
 
     def _project_chain(
-        self, option_chain, params, *, variable_type=VariableType.LOG_RETURN, is_spot_measure=True
+        self, option_chain, params, *, variable_type=VariableType.LOG_RETURN, is_spot_measure=True,
+        collect_steps=False,
     ):
         """Propagate the unit point mass once through all buckets and project raw payoffs."""
         if not isinstance(option_chain, OptionChain) or not isinstance(params, LocalVolSurface):
@@ -133,19 +140,35 @@ class LocalVolPdePricer(ModelPricer):
         knots = params.times[(params.times > 0) & (params.times < maturities[-1])]
         ends = np.union1d(maturities, knots)
         provider = LocalVolCoefficientProvider1D(params)
-        solver = PDE1DSolver(TimeStepConfig(theta=self.theta))
+        solver = PDE1DSolver(TimeStepConfig(theta=0.5 if self.theta is None else self.theta))
+        startup = PDE1DSolver(TimeStepConfig(theta=1.0)) if self.theta is None else None
         boundaries = BoundaryPair1D.natural()
         state = grid.project_delta(start_value)
         nodes = np.exp(grid.nodes) if relative else grid.nodes
         prices, expiries = List(), []
+        steps = []
         peak, start, i = 0.0, 0.0, 0
         for end in ends:
             # Inclusive right endpoint selects the coefficient valid on (start, end].
             fixed = StaticCoefficientProvider1D(provider.evaluate(end, grid))
             times = np.unique(np.linspace(start, end, self.steps_per_interval + 1))
-            law = solver.solve(grid, fixed, boundaries, PDEDirection.FORWARD, times, state)
-            state = law.values
-            peak = max(peak, max(d.negative_mass for d in law.diagnostics))
+            segments = []
+            if startup is not None:
+                # A volatility or step-size jump can excite oscillations again at a knot.
+                mid = start + 0.5 * (times[1] - start)
+                segments.append((startup, np.unique([start, mid, times[1]])))
+                times = times[1:]
+            if times.size > 1:
+                segments.append((solver, times))
+            for integrator, mesh in segments:
+                law = integrator.solve(grid, fixed, boundaries, PDEDirection.FORWARD, mesh, state)
+                state = law.values
+                peak = max(peak, max(d.negative_mass for d in law.diagnostics))
+                if collect_steps:
+                    offset = len(steps)
+                    steps.extend(
+                        replace(d, step_index=offset + d.step_index) for d in law.diagnostics
+                    )
             if end == maturities[i]:
                 forward = option_chain.forwards[i]
                 discount = option_chain.discfactors[i]
@@ -179,17 +202,21 @@ class LocalVolPdePricer(ModelPricer):
                 )
                 i += 1
             start = end
-        return prices, tuple(expiries), peak
+        return prices, tuple(expiries), peak, tuple(steps)
 
     def price_chain(self, option_chain: OptionChain, params: LocalVolSurface, **kwargs) -> List:
         """Return discounted vanilla premiums in original expiry and strike order."""
-        prices, _, _ = self._project_chain(option_chain, params, **kwargs)
+        prices, _, _, _ = self._project_chain(option_chain, params, **kwargs)
         return prices
 
     def price_chain_detailed(
         self, option_chain: OptionChain, params: LocalVolSurface, **kwargs
     ) -> LocalVolPdeResult:
-        """Also invert raw premiums and return expiry diagnostics and peak negative mass."""
-        prices, expiries, peak = self._project_chain(option_chain, params, **kwargs)
+        """Also invert raw premiums and return expiry and individual time-step diagnostics."""
+        prices, expiries, peak, steps = self._project_chain(
+            option_chain, params, collect_steps=True, **kwargs
+        )
         ivs = option_chain.compute_model_ivols_from_chain_data(prices)
-        return LocalVolPdeResult(prices, ivs, tuple(~np.isfinite(v) for v in ivs), expiries, peak)
+        return LocalVolPdeResult(
+            prices, ivs, tuple(~np.isfinite(v) for v in ivs), expiries, peak, steps
+        )

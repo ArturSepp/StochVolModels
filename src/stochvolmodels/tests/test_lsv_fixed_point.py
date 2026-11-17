@@ -103,6 +103,106 @@ def test_converged_candidate_density_and_black_repricing():
         np.testing.assert_allclose(prices[i], expected, rtol=0, atol=2e-12)
 
 
+@pytest.mark.parametrize("method", ["project", "calibrate"])
+def test_internal_midpoint_rows_and_independent_quote_repricing(method):
+    from stochvolmodels.pricers.lsv_projection import LSVProjectionConfig, SequentialLSVProjector
+
+    grid, params, target = _deterministic()
+    params = replace(params, vol_backbone=pd.Series([1.1, 0.95], index=[0.06, 0.2]))
+    if method == "project":
+        engine = SequentialLSVProjector(grid, LSVProjectionConfig(collocation="midpoint"))
+    else:
+        engine = LSVFixedPointCalibrator(grid, LSVFixedPointConfig(collocation="midpoint"))
+    quotes = _quotes(target.times)
+    fit = getattr(engine, method)(params, target, [12, 16], leverage_times=[0.035, 0.16],
+                                  quote_chain=quotes)
+    np.testing.assert_allclose(fit.model.leverage_surface.times, [0.035, 0.06, 0.1, 0.16, 0.2])
+    slices = [getattr(s, "accepted", s) for s in fit.slices]
+    np.testing.assert_allclose([s.collocation_time for s in slices],
+                               [0.0175, 0.0475, 0.08, 0.13, 0.18])
+    np.testing.assert_allclose([s.terminal_density.time for s in slices],
+                               fit.model.leverage_surface.times)
+    replay = LogSvPdePricer(grid=grid, steps_per_interval=[12, 16]).price_chain(quotes, fit.model)
+    assert len(fit.repricing) == 2
+    for i, row in enumerate(fit.repricing):
+        np.testing.assert_array_equal(row.strikes, quotes.strikes_ttms[i])
+        np.testing.assert_array_equal(row.option_types, quotes.optiontypes_ttms[i])
+        np.testing.assert_allclose(row.model_prices, replay[i], atol=1e-12, rtol=0)
+        np.testing.assert_allclose(row.price_errors, row.model_prices - row.target_prices)
+        expected_iv = 0.2 if i == 0 else np.sqrt((0.2**2 + 0.26**2) / 2)
+        np.testing.assert_allclose(row.target_ivols, expected_iv)
+        np.testing.assert_allclose(row.iv_errors, row.model_ivols - expected_iv, equal_nan=True)
+        assert row.max_abs_price_error == pytest.approx(np.max(abs(row.price_errors)))
+
+
+@pytest.mark.parametrize("dates", [[0.0], [0.3], [0.15, 0.1], [np.nan]])
+def test_invalid_internal_leverage_dates(dates):
+    grid, params, target = _deterministic()
+    with pytest.raises(ValueError, match="leverage_times"):
+        LSVFixedPointCalibrator(grid).calibrate(params, target, leverage_times=dates)
+
+
+def test_flat_target_preserves_fractional_premiums_on_integer_strikes():
+    from stochvolmodels.data.option_chain import OptionChain
+
+    grid, params, target = _deterministic()
+    chain = OptionChain.slice_to_chain(0.1, 100., np.array([100]), np.array(["C"]), 0.98)
+    fit = LSVFixedPointCalibrator(grid).calibrate(params, target, 12, quote_chain=chain)
+    (row,) = fit.repricing
+    exact = 0.98 * 100 * (2 * ndtr(0.2 * np.sqrt(0.1) / 2) - 1)
+    assert row.target_prices[0] == pytest.approx(exact, abs=1e-12)
+    assert row.target_ivols[0] == pytest.approx(0.2)
+
+
+def test_sparse_midpoint_quote_uses_target_step_counts_and_skew_oracle():
+    from stochvolmodels.data.option_chain import OptionChain
+    from stochvolmodels.pricers.lsv_projection import LSVProjectionConfig, SequentialLSVProjector
+
+    grid, params, original = _deterministic()
+    target = LocalVolSurface(original.times, grid.x, original.values * (1 + 0.1 * grid.x.nodes))
+    full = _quotes(target.times)
+    last = OptionChain.slice_to_chain(full.ttms[-1], full.forwards[-1], full.strikes_ttms[-1],
+                                      full.optiontypes_ttms[-1], full.discfactors[-1])
+    fit = SequentialLSVProjector(grid, LSVProjectionConfig(collocation="midpoint")).project(
+        params, target, [3, 20], quote_chain=last,
+    )
+    (row,) = fit.repricing
+    replay = LogSvPdePricer(grid=grid, steps_per_interval=[3, 20]).price_chain(full, fit.model)
+    reference = LocalVolPdePricer().price_chain(last, target)
+    np.testing.assert_allclose(row.model_prices, replay[-1], atol=1e-12, rtol=0)
+    np.testing.assert_allclose(row.target_prices, reference[0], atol=1e-12, rtol=0)
+    assert row.density_mass == pytest.approx(1., abs=1e-10)
+    assert row.negative_mass < 1e-4
+
+
+@pytest.mark.parametrize("method", ["project", "calibrate"])
+def test_refining_midpoint_rows_reduces_flat_smile_error(method):
+    from stochvolmodels.data.option_chain import OptionChain
+    from stochvolmodels.pricers.logsv_pde_pricer import _default_grid
+    from stochvolmodels.pricers.lsv_projection import LSVProjectionConfig, SequentialLSVProjector
+
+    params = LogSvParams(sigma0=.2, theta=.2, kappa1=2., kappa2=2., beta=-.5, volvol=.8)
+    times = np.array([.1, .25, .5])
+    strikes = np.array([.85, .95, 1., 1.05, 1.15])
+    quotes = OptionChain(
+        ttms=times, forwards=np.ones(3), discfactors=np.ones(3), ids=None,
+        strikes_ttms=(strikes,) * 3, optiontypes_ttms=(np.where(strikes < 1, "P", "C"),) * 3,
+    )
+    grid = _default_grid(params, quotes)
+    target = LocalVolSurface(times, grid.x, np.full((3, grid.x.size), .25))
+    if method == "project":
+        fitter = SequentialLSVProjector(grid, LSVProjectionConfig(collocation="midpoint"))
+    else:
+        fitter = LSVFixedPointCalibrator(grid, LSVFixedPointConfig(collocation="midpoint"))
+    maxima = []
+    for dates in (None, np.arange(1, 11) / 20):
+        result = getattr(fitter, method)(params, target, leverage_times=dates, quote_chain=quotes)
+        assert max(row.negative_mass for row in result.repricing) < 1e-4
+        maxima.append(max(row.max_abs_iv_error for row in result.repricing))
+    assert maxima[1] < 0.6 * maxima[0]
+    assert maxima[1] < .0015
+
+
 def test_zero_damping_exhausts_budget_only_on_unconverged_interval():
     grid, params, target = _deterministic()
     cfg = LSVFixedPointConfig(
@@ -145,7 +245,9 @@ def test_bounded_fixed_point_and_interior_backbone_knot():
         grid.x,
         np.repeat([[0.10], [0.20], [0.2 * 0.8 * 1.4]], grid.x.size, axis=1),
     )
-    expected = LocalVolPdePricer(grid=grid.x, steps_per_interval=32).price_chain(chain, local)
+    expected = LocalVolPdePricer(grid=grid.x, steps_per_interval=32, theta=1.0).price_chain(
+        chain, local
+    )
     # The independent 1D price above uses equal time steps in every bucket.
     actual = LogSvPdePricer(grid=grid, steps_per_interval=32, quadratic_start=False).price_chain(
         chain, fit.model
@@ -156,7 +258,7 @@ def test_bounded_fixed_point_and_interior_backbone_knot():
 def _config(archived):
     settings = {
         f.name: getattr(archived, f.name) for f in fields(LSVFixedPointConfig)
-        if f.name != "quadratic_start"
+        if f.name not in ("quadratic_start", "collocation")
     }
     settings["low_density_policy"] = LowDensityPolicy(archived.low_density_policy.value)
     return LSVFixedPointConfig(**settings, quadratic_start=False)
@@ -280,7 +382,7 @@ def test_archived_convergence_surface_and_repricing(stress, record_property):
         prices, _archive_prices(chain, params, ref.leverage_surface, grid, steps, adi), chain
     )
     assert max(errors) < 2e-12
-    target_prices = LocalVolPdePricer(grid=grid.x, steps_per_interval=steps).price_chain(
+    target_prices = LocalVolPdePricer(grid=grid.x, steps_per_interval=steps, theta=1.0).price_chain(
         chain, target
     )
     target_errors = _price_errors(prices, target_prices, chain)
@@ -375,7 +477,9 @@ def test_frozen_btc_fixed_point_history_and_49_vanillas(record_property):
     ).price_chain(chain, fit.model)
     errors = _price_errors(actual, expected, chain)
     assert sum(map(len, actual)) == 49 and max(errors) < 2e-12
-    target_prices = LocalVolPdePricer(grid=g.x, steps_per_interval=96).price_chain(chain, target)
+    target_prices = LocalVolPdePricer(grid=g.x, steps_per_interval=96, theta=1.0).price_chain(
+        chain, target
+    )
     _record(
         record_property, fit, ref, residual, errors, _price_errors(actual, target_prices, chain)
     )

@@ -239,7 +239,8 @@ def test_both_lsv_calibrators_receive_the_effective_bucket_variance():
                                    atol=1e-12, rtol=0)
 
 
-def test_packaged_btc_bucket_prefit_reprices_all_common_calls():
+@pytest.mark.parametrize("theta,historical_rms", [(1.0, 58.288), (None, 57.906)])
+def test_packaged_btc_bucket_prefit_reprices_all_common_calls(theta, historical_rms):
     from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
     from stochvolmodels.fitters.lsv_market import LSVOptionChainAdapter
 
@@ -248,7 +249,7 @@ def test_packaged_btc_bucket_prefit_reprices_all_common_calls():
     source = fit.call_surface
     chain = _chain(source)
     pricer = LocalVolPdePricer(grid=Grid1D.concentrated(-3.0, 3.0, 501, 0.0, 0.22),
-                               steps_per_interval=128)
+                               steps_per_interval=128, theta=theta)
     rms = []
     for historical in (True, False):
         local = fit.to_local_vol_surface(historical_endpoints=historical)
@@ -256,7 +257,7 @@ def test_packaged_btc_bucket_prefit_reprices_all_common_calls():
         gap = 1e4 * (calls - source.calls) / (source.discount_factors * source.forwards)[:, None]
         assert gap.shape == (4, 11)
         rms.append(np.sqrt(np.mean(gap**2)))
-    assert rms[0] == pytest.approx(58.288, abs=0.02)
+    assert rms[0] == pytest.approx(historical_rms, abs=0.02)
     assert rms[1] < 35.0 and np.max(abs(gap)) < 140.0
 
 
@@ -371,7 +372,7 @@ def _compare_archive_prices(fit, old_vols, old_axis, grid, steps):
             source.strikes
         )
         expected.append(np.r_[prices.calls, prices.puts])
-    calculated = LocalVolPdePricer(grid=grid, steps_per_interval=steps).price_chain(
+    calculated = LocalVolPdePricer(grid=grid, steps_per_interval=steps, theta=1.0).price_chain(
         chain, fit.to_local_vol_surface(historical_endpoints=True)
     )
     actual = np.array(list(calculated))

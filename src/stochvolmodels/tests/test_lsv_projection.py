@@ -151,7 +151,7 @@ def test_interior_backbone_and_leverage_knots_against_independent_1d_law():
     vols = np.array([0.6 * 0.8, 1.2 * 0.8, 1.2 * 1.35, 1.2 * 1.35]) * 0.2
     law = LocalVolSurface(ts, x, vols[:, None] * np.ones((len(ts), x.size)))
     chain = _quotes(np.array([0.1, 0.31]))
-    ref = LocalVolPdePricer(grid=x, steps_per_interval=32).price_chain(chain, law)
+    ref = LocalVolPdePricer(grid=x, steps_per_interval=32, theta=1.0).price_chain(chain, law)
     adi = ADIConfig(theta=1.0, coefficient_evaluation=CoefficientEvaluation.STEP_START)
     # Match the uniform time grid of the independent 1D discretization.
     result = LogSvPdePricer(
@@ -290,9 +290,8 @@ def test_archived_sequential_leverage_and_vanilla_replay(stochastic, record_prop
     numeraire = (chain.forwards * chain.discfactors)[:, None]
     price_error = np.max(np.abs(prices - expected) / numeraire)
     assert price_error < 2e-12
-    local_prices = np.array(
-        list(LocalVolPdePricer(grid=x, steps_per_interval=steps).price_chain(chain, target))
-    )
+    local_pricer = LocalVolPdePricer(grid=x, steps_per_interval=steps, theta=1.0)
+    local_prices = np.array(list(local_pricer.price_chain(chain, target)))
     residual = np.abs(prices - local_prices) / numeraire
     if stochastic:
         assert max(residual[-1]) < 1.5e-5

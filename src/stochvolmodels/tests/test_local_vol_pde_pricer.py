@@ -123,6 +123,92 @@ def test_bucketed_black_prices_and_refinement(relative):
     )
 
 
+@pytest.mark.parametrize("ttm", [7 / 365, 1 / 12, 1.0])
+def test_rannacher_black_smile_and_first_step_negativity(ttm):
+    vol, forward, discount = 0.20, 100., 0.97
+    sd = vol * np.sqrt(ttm)
+    strikes = forward * np.exp(np.array([-2.5, 0., 2.5]) * sd)
+    signs = np.array([-1., 1., 1.])
+    d1 = np.log(forward / strikes) / sd + sd / 2
+    exact = discount * signs * (
+        forward * ndtr(signs * d1) - strikes * ndtr(signs * (d1 - sd))
+    )
+    chain = OptionChain.slice_to_chain(ttm, forward, strikes, np.array(["P", "C", "C"]), discount)
+    surface = LocalVolSurface([ttm], Grid1D.uniform(-1., 1., 3), [[vol] * 3])
+    euler, cn, damped = (
+        LocalVolPdePricer(**options).price_chain_detailed(chain, surface)
+        for options in ({"theta": 1.}, {"theta": 0.5}, {})
+    )
+    assert np.max(abs(damped.implied_vols[0] - vol)) < 0.5e-4
+    assert np.max(abs(damped.prices[0] - exact)) < 0.1 * np.max(abs(euler.prices[0] - exact))
+    assert np.max(abs(euler.implied_vols[0] - vol)) > 10.e-4
+    assert cn.steps[0].negative_mass == pytest.approx(0.69, abs=0.001)
+    for result in (euler, cn, damped):
+        assert result.peak_negative_mass == max(s.negative_mass for s in result.steps)
+        assert all(abs(s.raw_mass - 1.) < 2e-12 and not s.renormalized for s in result.steps)
+    assert damped.peak_negative_mass < 1e-12 and len(damped.steps) == 129
+    assert len(euler.steps) == len(cn.steps) == 128
+
+
+@pytest.mark.parametrize("steps", [1, 3])
+def test_rannacher_half_steps_preserve_quotes_and_volatility_knots(steps):
+    from stochvolmodels.pde_solvers import (
+        BoundaryPair1D, PDE1DSolver, PDEDirection, StaticCoefficientProvider1D, TimeStepConfig,
+    )
+
+    chain = _chain()
+    grid = Grid1D.uniform(-1., 1., 101)
+    # The bucket immediately after the .16 quote has no representable midpoint.
+    times = [0.012, 0.16, np.nextafter(0.16, 1.), 0.3]
+    vols = np.array([0.19, 0.37, 0.21, 0.25])
+    surface = LocalVolSurface(times, grid, np.tile(vols[:, None], (1, grid.size)))
+    result = LocalVolPdePricer(grid=grid, steps_per_interval=steps).price_chain_detailed(
+        chain, surface
+    )
+    ends = np.union1d(chain.ttms, times)
+    state = grid.project_delta(0.)
+    provider = LocalVolCoefficientProvider1D(surface)
+    expected_ends = []
+    for start, end in zip(np.r_[0., ends[:-1]], ends):
+        fixed = StaticCoefficientProvider1D(provider.evaluate(end, grid))
+        mesh = np.unique(np.linspace(start, end, steps + 1))
+        for left, right in zip(mesh[:-1], mesh[1:]):
+            if left == start:
+                substeps, theta = np.unique([left, left + (right - left) / 2., right]), 1.
+            else:
+                substeps, theta = [left, right], 0.5
+            state = PDE1DSolver(TimeStepConfig(theta=theta)).solve(
+                grid, fixed, BoundaryPair1D.natural(), PDEDirection.FORWARD, substeps, state
+            ).values
+            expected_ends.extend(substeps[1:])
+        if end in chain.ttms:
+            i = chain.ttms.searchsorted(end)
+            asset = chain.forwards[i] * np.exp(grid.nodes)
+            signed_payoff = (asset[:, None] - chain.strikes_ttms[i]) * np.where(
+                chain.optiontypes_ttms[i] == "C", 1., -1.
+            )
+            expected = chain.discfactors[i] * (grid.quadrature_weights * state) @ np.maximum(
+                signed_payoff, 0.
+            )
+            np.testing.assert_allclose(result.prices[i], expected, rtol=0, atol=1e-12)
+    np.testing.assert_array_equal([s.time_end for s in result.steps], expected_ends)
+    np.testing.assert_array_equal([s.time_start for s in result.steps], [0., *expected_ends[:-1]])
+    assert [s.step_index for s in result.steps] == list(range(len(expected_ends)))
+
+
+def test_rannacher_damps_after_a_short_low_variance_bucket():
+    first = 1 / 365
+    grid = Grid1D.concentrated(-4., 4., 401, 0., 0.30)
+    surface = LocalVolSurface([first, 1.], grid, np.repeat([[0.10], [0.50]], grid.size, axis=1))
+    chain = OptionChain.slice_to_chain(1., 100., np.array([100.]), np.array(["C"]), 0.97)
+    exact_sd = np.sqrt(first * 0.10**2 + (1. - first) * 0.50**2)
+    exact_price = 97. * (2. * ndtr(exact_sd / 2.) - 1.)
+    result = LocalVolPdePricer(grid=grid).price_chain_detailed(chain, surface)
+    assert result.peak_negative_mass < 1e-12
+    assert abs(result.prices[0][0] - exact_price) / 97. < 0.06e-4
+    assert abs(result.expiries[0].mass - 1.) < 1e-12
+
+
 def test_local_vol_pricer_input_contract():
     chain = _chain()
     grid = Grid1D.uniform(0.1, 2.0, 7)
@@ -179,7 +265,9 @@ def test_private_local_vol_price_replay(relative):
         surface = replace(surface, grid=levels, coordinate=CoordinateSystem.LEVEL)
         historic = replace(historic, grid=levels, coordinate=old.CoordinateSystem.LEVEL)
     steps = 30
-    actual = LocalVolPdePricer(grid=grid, steps_per_interval=steps).price_chain(chain, surface)
+    actual = LocalVolPdePricer(grid=grid, steps_per_interval=steps, theta=1.0).price_chain(
+        chain, surface
+    )
     breaks = np.union1d(chain.ttms, ts)
     times = np.r_[
         0.0,
