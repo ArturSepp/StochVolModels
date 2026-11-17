@@ -115,12 +115,15 @@ def func_a_ode_quadratic_terms(theta: float,
 
     Returns
     -------
-    M : np.ndarray, shape (n, n, n), complex
+    M : np.ndarray
+        Complex array with shape ``(n, n, n)``.
         Quadratic forms M^(k), stacked on the leading axis and symmetric in the
         trailing two. Independent of p (Remark 4.1).
-    L : np.ndarray, shape (n, n), complex
+    L : np.ndarray
+        Complex array with shape ``(n, n)``.
         Linear terms L^(k)(p).
-    H : np.ndarray, shape (n,), complex
+    H : np.ndarray
+        Complex array with shape ``(n,)``.
         Free terms H^(k)(p), proportional to Phi^2 + p Phi - 2 Psi.
     """
     theta2 = theta * theta
@@ -366,7 +369,8 @@ def solve_analytic_ode_for_a(ttm: float,
 
     Returns
     -------
-    np.ndarray, shape (n,), complex
+    np.ndarray
+        Complex array with shape ``(n,)``.
         Coefficient vector A(tau).
 
     Notes
@@ -581,7 +585,8 @@ def get_init_conditions_a(phi_grid: np.ndarray,
 
     Returns
     -------
-    np.ndarray, shape (n_grid, n_terms), complex
+    np.ndarray
+        Complex array with shape ``(n_grid, n_terms)``.
         Initial coefficients, one row per transform grid point.
 
     Raises
@@ -661,9 +666,11 @@ def compute_logsv_a_mgf_grid(ttm: float,
 
     Returns
     -------
-    a_t1 : np.ndarray, shape (n_grid, n_terms), complex
+    a_t1 : np.ndarray
+        Complex array with shape ``(n_grid, n_terms)``.
         Coefficients A(tau) on the grid.
-    log_mgf : np.ndarray, shape (n_grid,), complex
+    log_mgf : np.ndarray
+        Complex array with shape ``(n_grid,)``.
         log E^[m](tau, Y) on the grid.
 
     Raises

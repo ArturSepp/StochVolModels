@@ -167,6 +167,18 @@ def test_checkout_images_are_registered_and_verified(analytics):
     assert run.verify_published(REPOSITORY_ROOT) == []
 
 
+
+def test_multi_script_exhibit_records_each_source(analytics):
+    """A figure using two canonical scripts fingerprints both inputs."""
+    registry, run = analytics
+    loaded = registry.load_registry(REPOSITORY_ROOT)
+    spec = loaded["exhibits"]["pde_refinement.png"]
+    assert spec["additional_sources"] == ["examples/docs/local_volatility_and_lsv.py"]
+    hashes = run.source_identity(REPOSITORY_ROOT, loaded)["hashes"]
+    for name in [spec["script"], *spec["additional_sources"]]:
+        assert hashes[name] == registry.sha256(REPOSITORY_ROOT / name)
+
+
 def test_registry_is_valid_json_with_known_classes(analytics):
     """Every registered exhibit names a known class and existing consuming pages."""
     registry, _ = analytics

@@ -15,9 +15,9 @@ separately rather than presented as stable derivatives infrastructure.
 For finite-difference pricing, the provisional `stochvolmodels.pde_solvers` module provides
 `PDE1DSolver` and `PDE2DADISolver`. The opt-in `LogSvPdePricer` prices chains of European
 calls and puts under the money-market measure.
-[Solver guide](https://stochvolmodels.readthedocs.io/en/latest/software_design.html#generic-finite-difference-solvers) ·
+[Solver guide](https://stochvolmodels.readthedocs.io/en/latest/pde_solvers.html) ·
 [LogSV PDE pricing](https://stochvolmodels.readthedocs.io/en/latest/software_design.html#logsv-vanilla-pde-valuation) ·
-[API reference](https://stochvolmodels.readthedocs.io/en/latest/api.html#provisional-and-experimental-surfaces)
+[API reference](https://stochvolmodels.readthedocs.io/en/latest/api.html#finite-difference-pde-solvers)
 
 **Install:** `pip install stochvolmodels` · **Import:** `stochvolmodels` · **Status:** Stable
 
@@ -88,7 +88,7 @@ own payoffs and discounting.
 Use `stochvolmodels` for European vanilla pricing and implied-volatility analytics under stochastic volatility, for model calibration to option chains (a calibration example to Bitcoin options data is included), and for replicating the papers listed under [Statement of need](#statement-of-need).
 
 For deterministic local volatility, the provisional fitting and pricing APIs support
-[Dupire inversion and European vanilla PDE prices](docs/software_design.md#continuous-dupire-inversion).
+[Dupire inversion and European vanilla PDE prices](https://stochvolmodels.readthedocs.io/en/latest/local_volatility_and_lsv.html).
 American options and general term-structure modelling are outside the package scope. Black-Scholes-Merton and absolute-normal Bachelier analytics are
 provided by the required
 [`vanilla-option-pricers`](https://github.com/ArturSepp/VanillaOptionPricers) package and

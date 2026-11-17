@@ -54,6 +54,7 @@ def source_identity(root: Path, registry: dict) -> dict:
     files = {REGISTRY}
     for spec in registry["exhibits"].values():
         files.add(spec["producer"].replace(".", "/") + ".py")
+        files.update(spec.get("additional_sources", ()))
         for key in ("script", "paper_module"):
             if spec.get(key):
                 files.add(spec[key])

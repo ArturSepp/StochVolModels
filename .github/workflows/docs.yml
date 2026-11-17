@@ -30,6 +30,9 @@ jobs:
           python-version: "3.12"
       - name: Sync documentation environment
         run: uv sync --locked --extra docs
+      - name: Run provisional PDE module examples in empty namespaces
+        run: uv run --no-sync python scripts/check_pde_examples.py
+
       - name: Build documentation with the shared profile
         run: uv run --no-sync python .github/oss_checks.py docs --working-tree --output-dir "$RUNNER_TEMP/oss-docs"
 

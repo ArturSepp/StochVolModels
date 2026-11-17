@@ -162,7 +162,7 @@ class LSVFixedPointCalibrator:
         """Fit each bucket from the last accepted law, starting at (0, sigma0).
 
         Each trial uses the same interval-start density. For candidate c and the
-        bounded proposal b, require |b-c| <= atol + rtol * max(|c|, |b|) at every
+        bounded proposal b, require ``|b-c| <= atol + rtol * max(|c|, |b|)`` at every
         log-forward node. Damping controls retries. The model carries the candidate
         and terminal density of the converged solve. Step counts apply per continuous
         coefficient bucket, including any interior backbone knots. leverage_times adds

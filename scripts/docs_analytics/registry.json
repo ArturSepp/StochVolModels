@@ -998,6 +998,31 @@
         "layout": "Panels stacked for the web",
         "seed": "37 for numba's generator, as in the paper code, and for NumPy's global generator, which simulate_vol_paths uses; the published figure seeded only numba's"
       }
+    },
+    "pde_refinement.png": {
+      "class": "synthetic",
+      "pages": [
+        "docs/pde_solvers.md",
+        "docs/local_volatility_and_lsv.md"
+      ],
+      "producer": "scripts.docs_analytics.pde",
+      "function": "produce_pde_refinement",
+      "script": "examples/docs/pde_solvers.py",
+      "question": "How do one-week PDE premiums and effective Dupire bucket prices refine?",
+      "parameters": {
+        "short_expiry": "7/365, forward 100, discount 0.98, strikes 95/100/105, grids 121x61 and 241x121",
+        "buckets": "examples/docs/local_volatility_and_lsv.py, five maturities, sigma=0.2+0.4t and sigma=0.6-0.4t, grids 251 and 501"
+      },
+      "seed": null,
+      "conventions": {
+        "data": "synthetic",
+        "measure": "money-market",
+        "price_errors": "bp of discounted forward",
+        "iv_errors": "signed absolute annualized volatility bp"
+      },
+      "additional_sources": [
+        "examples/docs/local_volatility_and_lsv.py"
+      ]
     }
   }
 }

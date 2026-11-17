@@ -5,6 +5,9 @@ Examples
 Fit a single flat leverage bucket and inspect its scale.
 
 >>> import numpy as np
+>>> from stochvolmodels.fitters.lsv_parametric import (
+...     ImpliedVolCalibrationTarget, LSVParametricCalibrationConfig, LSVParametricCalibrator,
+... )
 >>> from stochvolmodels.models.local_vol import LocalVolFamily, LocalVolSurface
 >>> from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
 >>> from stochvolmodels.pricers.logsv.logsv_params import LogSvParams

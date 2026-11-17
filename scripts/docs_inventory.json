@@ -187,6 +187,16 @@
       "id": "U2",
       "form": "utility",
       "status": "review"
+    },
+    "docs/pde_solvers.md": {
+      "form": "methodology",
+      "status": "review",
+      "example": "examples/docs/pde_solvers.py"
+    },
+    "docs/local_volatility_and_lsv.md": {
+      "form": "methodology",
+      "status": "review",
+      "example": "examples/docs/local_volatility_and_lsv.py"
     }
   },
   "planned": {},

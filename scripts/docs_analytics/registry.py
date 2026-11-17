@@ -60,6 +60,9 @@ def load_registry(root: Path = ROOT) -> dict:
         for page in spec["pages"]:
             if not (root / page).is_file():
                 raise ValueError(f"{name}: consuming page {page} does not exist")
+        for source in spec.get("additional_sources", ()):
+            if not (root / source).is_file():
+                raise ValueError(f"{name}: additional source {source} does not exist")
         script = spec.get("script")
         if script is not None and not (root / script).is_file():
             raise ValueError(f"{name}: canonical script {script} does not exist")

@@ -65,6 +65,9 @@ the provisional stack.
 
 ### Generic finite-difference solvers
 
+For executable examples, coefficient conventions and refinement measurements, see the
+[PDE solver guide](pde_solvers.md) and [local-volatility and LSV guide](local_volatility_and_lsv.md).
+
 The provisional `stochvolmodels.pde_solvers` module in the 2.7.0 source and distribution
 provides `PDE1DSolver` for theta stepping and `PDE2DADISolver` for Douglas, Craig–Sneyd
 and Hundsdorfer–Verwer ADI. Import them directly from this module. The caller supplies the

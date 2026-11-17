@@ -200,6 +200,11 @@ jobs:
           mkdir -p "$RUNNER_TEMP/wheelcheck"
           cd "$RUNNER_TEMP/wheelcheck"
           "$RUNNER_TEMP/wheelcheck-venv/bin/python" -m pytest --pyargs stochvolmodels -m "not slow" -q
+      - name: Run PDE examples against the installed core wheel
+        run: |
+          cd "$RUNNER_TEMP/wheelcheck"
+          "$RUNNER_TEMP/wheelcheck-venv/bin/python" -I "$GITHUB_WORKSPACE/scripts/check_pde_examples.py" --installed "$GITHUB_WORKSPACE/examples/docs/pde_solvers.py" "$GITHUB_WORKSPACE/examples/docs/local_volatility_and_lsv.py"
+
       - name: Verify installed metadata and quickstart
         run: |
           cd "$RUNNER_TEMP/wheelcheck"

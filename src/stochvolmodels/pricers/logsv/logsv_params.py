@@ -344,7 +344,8 @@ class LogSvParams(ModelParams):
 
         Returns
         -------
-        np.ndarray, shape (n_terms, n_terms)
+        np.ndarray
+            Array with shape ``(n_terms, n_terms)``.
             Lower-Hessenberg generator Lambda^(1,k*).
         """
 

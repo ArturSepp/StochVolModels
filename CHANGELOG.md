@@ -6,6 +6,13 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [2.18.8] - 2026-11-17
 
+### Documentation
+
+- Added standalone PDE and local-volatility/LSV guides, measured refinement examples,
+  and rendered provisional solver, model, pricer and fitter APIs.
+- Fixed missing imports in parametric-fit, Monte Carlo and market-pipeline docstrings.
+  CI executes reviewed examples in empty namespaces and against the installed core wheel.
+
 ### Added
 
 - `TranslationJump` and `strang_split_step` expose the generically applicable jump

@@ -5,6 +5,7 @@ Examples
 Price a call under deterministic volatility with a seeded antithetic simulation.
 
 >>> from stochvolmodels.models.lsv import LSVModel
+>>> from stochvolmodels.pricers.lsv_mc_pricer import LSVMonteCarloPricer
 >>> from stochvolmodels.models.lsv_simulation import LSVMonteCarloConfig
 >>> from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 >>> model = LSVModel.from_params(LogSvParams(sigma0=.2, theta=.2, beta=0., volvol=0.))

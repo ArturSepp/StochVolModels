@@ -742,6 +742,40 @@
         "mc_convergence__errors.csv": "25d6f8bd48e20f6696076c95b22a4cfa871ef0e7d0d6052b599de96836be8c4a"
       }
     },
+    "pde_refinement.png": {
+      "additional_sources": [
+        "examples/docs/local_volatility_and_lsv.py"
+      ],
+      "checks": {
+        "buckets_under_one_iv_bp": true,
+        "short_expiry_under_two_price_bp": true
+      },
+      "class": "synthetic",
+      "conventions": {
+        "data": "synthetic",
+        "iv_errors": "signed absolute annualized volatility bp",
+        "measure": "money-market",
+        "price_errors": "bp of discounted forward"
+      },
+      "function": "produce_pde_refinement",
+      "pages": [
+        "docs/pde_solvers.md",
+        "docs/local_volatility_and_lsv.md"
+      ],
+      "parameters": {
+        "buckets": "examples/docs/local_volatility_and_lsv.py, five maturities, sigma=0.2+0.4t and sigma=0.6-0.4t, grids 251 and 501",
+        "short_expiry": "7/365, forward 100, discount 0.98, strikes 95/100/105, grids 121x61 and 241x121"
+      },
+      "producer": "scripts.docs_analytics.pde",
+      "question": "How do one-week PDE premiums and effective Dupire bucket prices refine?",
+      "script": "examples/docs/pde_solvers.py",
+      "seed": null,
+      "sha256": "91259a5c8ad6e2afbdad0c89f828ebaf549c5070e02f290cc3c6493238357d13",
+      "tables": {
+        "pde_refinement__buckets.csv": "8310a43cce562890218b17ef3fef58b127a57cc50172e6a964fd02133ff2246b",
+        "pde_refinement__short_expiry.csv": "fcc745d3c00319e153272a14516c77ba10653871963669597cdc2f29355b8d26"
+      }
+    },
     "qvar_option_smiles.png": {
       "checks": {
         "every_strike_inside_mc_interval": true,
@@ -1392,5 +1426,74 @@
       "scripts/docs_analytics/registry.json": "19f9cdb337faf2cc505514c60151cf75d0117908c21b6f3e3915bcbf80516880",
       "scripts/docs_analytics/transforms.py": "75a0a148c9df1c06bda75a812f3c94daad671ae1af55deba3b3e9d0cd2891cd2"
     }
-  }
+  },
+  "supplemental_runs": [
+    {
+      "base_commit": "a117df03716f91cec211434633474df2e527f660",
+      "environment": {
+        "dependencies": {
+          "matplotlib": "3.11.1",
+          "numba": "0.68.0",
+          "numpy": "2.5.2",
+          "pandas": "3.0.5",
+          "scipy": "1.18.0",
+          "stochvolmodels": "2.18.0",
+          "vanilla-option-pricers": "2.2.0"
+        },
+        "platform": "Windows-11-10.0.26300-SP0",
+        "python": "3.12.14"
+      },
+      "exhibits": [
+        "pde_refinement.png"
+      ],
+      "generated_at_utc": "2026-11-17T15:53:37+00:00",
+      "source": {
+        "commit": "unavailable",
+        "dirty_paths": [
+          "unavailable"
+        ],
+        "hashes": {
+          "examples/docs/affine_expansion.py": "1b14482972ddade9404289526a869cc6bfda1c25b309be63756725f85804665a",
+          "examples/docs/analytic_vs_monte_carlo.py": "18fcf0c130c43e6c83575938f47cf7fac58e20faa0d9e5f608ceb8bd775c758e",
+          "examples/docs/app_bitcoin_options.py": "685f17c4c35a2b3aaebbb60b3e6449883115e646378f9e5a60b1a56991c5704d",
+          "examples/docs/app_impermanent_loss_hedging.py": "2420593ca564ce12428508f4d1e9c092e8e6a5a9e774c5aa58d2049bcfad82c9",
+          "examples/docs/app_positive_and_negative_skews.py": "7163b192f51009a41c9dd429897f95ce31f418c8f7edd735fd679b5a0e86e8da",
+          "examples/docs/app_robust_volatility_models.py": "1cb5ebf10883080f3146c5631cc3fc83eb57d319d58cd0d642f1cd11ed43d858",
+          "examples/docs/app_swaptions_and_sofr_options.py": "7b6496b75548f44fca9881bec4eaaf056a9acac7d178b9ee813913c1a83ce94f",
+          "examples/docs/calibration.py": "b83ee1a11d784b2cd177259bac26e70b09f4ae327f1faaa37f803d143b8126ba",
+          "examples/docs/european_option_pricing.py": "b297bd2fd4a4d709d901ddbe567423c1f9de4310848cfe74429d67293a85220a",
+          "examples/docs/factor_hjm_stochastic_volatility.py": "9e62e1082028767719bf94e6480226298028a930660a9dc1fe30ee8436370c04",
+          "examples/docs/hawkes_jump_diffusion.py": "bafb01a5eae562e6053e842a85c738ff9eb4c9a0cfc40a7cee2879ee2bfd6a9a",
+          "examples/docs/heston_model.py": "bf8ee24090535138c74284d84281ee78b865b536dd1245d9cd51f3f5a483a485",
+          "examples/docs/inverse_options.py": "d41b8356ef092379027a134d3a7acb7a8ec9c62a79f3899e0fcbe1ba0eaf4348",
+          "examples/docs/local_volatility_and_lsv.py": "4f2ba86c8f10c1d0a237317f0b82440ae20941cb08ad87a0765f0e91294c377e",
+          "examples/docs/logsv_model.py": "992ba3de4fd9e8b4ea269de9613709fb44112c73e7690d8102bf1027567f231b",
+          "examples/docs/logsv_smile_fitter.py": "ce5820f6d1110f149df77512a0c8f38996329bbcbab5c050998531ccca6f01ad",
+          "examples/docs/martingale_conditions_and_skews.py": "2a9109f723d043a20ddb8183dc13645a9ecf3d067156fd957e1823a0b5ca9030",
+          "examples/docs/monte_carlo_simulation.py": "3263f04735bc4296b777bf1b51f258fa15ed57a9c96c97490235c011997f641b",
+          "examples/docs/pde_solvers.py": "6fa6e3369bcaf4d589254a3a06ca83330189fb61949196e34185da00b627220a",
+          "examples/docs/quadratic_variance_options.py": "6ad3096345bb55e3e59b34726ea8a6f6f1ae0dfbafa6a5c0d42de64bf56741a2",
+          "examples/docs/terminal_distribution_models.py": "23461c7658edf02b34fa9c3c457c4054f970feae22b0468d7d73444edfefdb8a",
+          "examples/docs/volatility_distribution_and_moments.py": "508c1ac2bee863db3a066d040105d93ea45aa90899bd8b86e61b47c3c0b2fc1e",
+          "papers/logsv_model_with_quadratic_drift_ijtaf_2023/paper/log-normal-stochastic-volatility-model-with-quadratic-drift.pdf": "7232e16c08982946a1ceafde0ed494dfad64e61be294316b5e8bf89161570f0a",
+          "papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/figures/article_figures.py": "eb509ceb54a557ef2f6ce68cc13f8de247675b39520e811f57c3bf18ff64855e",
+          "papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/theory/moments_vol_qvar.py": "ae3b7ea7d55da0e9ffd05bcdf5d3458be222d08d9c6431c13a48da182688fbf7",
+          "papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/theory/ode_sol_in_time.py": "12e21bcb9a3fc813757643d633f3c11a4b17a940f2b4d819c29f6d6d30292bbb",
+          "papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/theory/steady_state_pdf.py": "8987eca409e1d4cca963f02db295c7d50a675029eeade6954b6986b20c1dec08",
+          "papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/theory/vol_drift.py": "10156c7c40ce36695808ca041499b0d236f57ffea27c016848d9d6de6e0678eb",
+          "papers/sv_for_factor_hjm_rdr_2025/calibration_fig_5_6_7.py": "6da0555d9663f4575d2f44256755ca6c69131fafe28198295975debb026c7b5f",
+          "papers/sv_for_factor_hjm_rdr_2025/calibration_fig_8_9.py": "16c2ca39cf6e3bdae88e7ae6204ea81537fb0404a0fceb7e3eae9dd8c4611fdf",
+          "scripts/docs_analytics/applications.py": "d96cb5f76011c437c4c89119f122e8cc0fe0799ffed1db515b7c349997644062",
+          "scripts/docs_analytics/calibration.py": "8b47c3b2aa156b8d1eff29f0acb662fa9364d44e7234887fbe614f2b1f82c45d",
+          "scripts/docs_analytics/logsv_model.py": "a6c7127af6ac5193bd045744c9bd74aa1d238a35507a64ef39068d319e9c1202",
+          "scripts/docs_analytics/other_models.py": "9c287dffeddf8a43e74f5c87b5c627afea99112fa3cfbb364b5fc0ed07f11ced",
+          "scripts/docs_analytics/paper_pdf.py": "16e1c00d015c3ca9dbd48d4feeebd523ae1cd242cef25c72557315991042fa59",
+          "scripts/docs_analytics/pde.py": "3f07962de3142387279844803daf311d5f5886e15bd489e7c2989a4e81911539",
+          "scripts/docs_analytics/rates.py": "d49bedb32492e3aa188cf8806891b6ecb36093b40b5cad314f8dd8c7b1007cbc",
+          "scripts/docs_analytics/registry.json": "7b785feac9e97d7794ef3df1f76a025ba827b5c2af4f591a71a7c20621433138",
+          "scripts/docs_analytics/transforms.py": "bd3e404c5fe607a2c21eb1406279e8f3eb764470613336193e45c5ebb1a0f231"
+        }
+      }
+    }
+  ]
 }

@@ -225,6 +225,250 @@ names are reached by deep imports from the experimental `stochvolmodels.pricers.
 .. autofunction:: stochvolmodels.pricers.factor_hjm.factor_hjm_pricer.calc_mc_vols
 ```
 
+## Finite-difference PDE solvers
+
+The provisional types and functions below are explained in [Finite-difference PDE solvers](pde_solvers.md).
+
+```{eval-rst}
+.. autoclass:: stochvolmodels.pde_solvers.ADIConfig
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.ADIScheme
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.BoundaryCondition1D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.BoundaryKind
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.BoundaryMass1D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.BoundaryMass2D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.BoundaryPair1D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.BoundarySet2D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.BoundarySide
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.BoundaryTarget
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.CoefficientEvaluation
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.CoefficientProvider1D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.CoefficientProvider2D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.DensityPolicy
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.DriftDiscretization
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.Grid1D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.JumpCoordinate
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.JumpOperator1D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.JumpOperator2D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.JumpStepDiagnostics
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.JumpStepKind
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.JumpStepResult
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.TranslationJump
+   :members:
+
+.. autofunction:: stochvolmodels.pde_solvers.log_forward_jump_compensator
+
+.. autofunction:: stochvolmodels.pde_solvers.strang_split_step
+
+.. autoclass:: stochvolmodels.pde_solvers.PDE1DCoefficients
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.PDE1DSolver
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.PDE2DADISolver
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.PDE2DCoefficients
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.PDEDiagnostics
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.PDEDiagnostics2D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.PDEDirection
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.PDESolution1D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.PDESolution2D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.PDEState1D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.PDEState2D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.StaticCoefficientProvider1D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.StaticCoefficientProvider2D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.TensorGrid2D
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.TimeScheme
+   :members:
+
+.. autoclass:: stochvolmodels.pde_solvers.TimeStepConfig
+   :members:
+
+```
+
+## Local volatility and local stochastic volatility
+
+These provisional models, configurations, pricers, fitters and result records are explained in [Local volatility and local stochastic volatility](local_volatility_and_lsv.md).
+
+### `models.local_vol`
+
+```{eval-rst}
+.. automodule:: stochvolmodels.models.local_vol
+   :members: CoordinateSystem, LocalVolFamily, ParametricLocalVolSlice, ParametricLocalVolFormula, LocalVolSurface, LocalVolCoefficientProvider1D
+   :member-order: bysource
+```
+
+### `models.logsv_pde`
+
+```{eval-rst}
+.. automodule:: stochvolmodels.models.logsv_pde
+   :members: LogSvPdeCoefficients, LogSvCoefficientProvider
+   :member-order: bysource
+```
+
+### `models.lsv`
+
+```{eval-rst}
+.. automodule:: stochvolmodels.models.lsv
+   :members: LeverageExtrapolation, LeverageSurface, FixedLogForwardJump, LSVModel
+   :member-order: bysource
+```
+
+### `models.lsv_simulation`
+
+```{eval-rst}
+.. automodule:: stochvolmodels.models.lsv_simulation
+   :members: LSVMonteCarloConfig, LSVMonteCarloEngine
+   :member-order: bysource
+```
+
+### `pricers.density_pricer`
+
+```{eval-rst}
+.. automodule:: stochvolmodels.pricers.density_pricer
+   :members: DensityState1D, DensityState2D, DensityPricingResult, DensityPricer
+   :member-order: bysource
+```
+
+### `pricers.local_vol_pde_pricer`
+
+```{eval-rst}
+.. automodule:: stochvolmodels.pricers.local_vol_pde_pricer
+   :members: LocalVolPdeExpiry, LocalVolPdeResult, LocalVolPdePricer
+   :member-order: bysource
+```
+
+### `pricers.logsv_pde_pricer`
+
+```{eval-rst}
+.. automodule:: stochvolmodels.pricers.logsv_pde_pricer
+   :members: LogSvPdeExpiry, LogSvPdeResult, LogSvPdePricer
+   :member-order: bysource
+```
+
+### `pricers.lsv_projection`
+
+```{eval-rst}
+.. automodule:: stochvolmodels.pricers.lsv_projection
+   :members: LowDensityPolicy, LSVProjectionConfig, ConditionalMomentResult, project_conditional_variance, LeverageUpdateResult, recover_leverage_slice, LSVProjectionSlice, LSVRepricingSlice, SequentialLSVProjectionResult, SequentialLSVProjector
+   :member-order: bysource
+```
+
+### `pricers.lsv_mc_pricer`
+
+```{eval-rst}
+.. automodule:: stochvolmodels.pricers.lsv_mc_pricer
+   :members: LSVMonteCarloExpiry, LSVMonteCarloResult, LSVMonteCarloPricer
+   :member-order: bysource
+```
+
+### `fitters.dupire`
+
+```{eval-rst}
+.. automodule:: stochvolmodels.fitters.dupire
+   :members: CallSurface, DupireRepairPolicy, DupireJumpAdjustment, DupireResult, DupireRecoverer
+   :member-order: bysource
+```
+
+### `fitters.lsv_fixed_point`
+
+```{eval-rst}
+.. automodule:: stochvolmodels.fitters.lsv_fixed_point
+   :members: LSVFixedPointConfig, LSVFixedPointIteration, LSVFixedPointSlice, LSVFixedPointResult, LSVConvergenceError, LSVFixedPointCalibrator
+   :member-order: bysource
+```
+
+### `fitters.lsv_parametric`
+
+```{eval-rst}
+.. automodule:: stochvolmodels.fitters.lsv_parametric
+   :members: CalibrationWeighting, ImpliedVolCalibrationTarget, calibration_weights, LSVParametricCalibrationConfig, LSVRejectedTrial, LSVCalibrationError, LSVCalibrationEvaluation, LSVParametricSlice, LSVParametricCalibrationResult, LSVParametricCalibrator
+   :member-order: bysource
+```
+
+### `fitters.lsv_market`
+
+```{eval-rst}
+.. automodule:: stochvolmodels.fitters.lsv_market
+   :members: LSVQuoteSelection, MarketQuoteSlice, LSVCalibrationInput, LSVOptionChainAdapter
+   :member-order: bysource
+```
+
+### `fitters.lsv_market_pipeline`
+
+```{eval-rst}
+.. automodule:: stochvolmodels.fitters.lsv_market_pipeline
+   :members: LSVMarketAcceptanceCriteria, LSVMarketAcceptance, LSVMarketPriceSlice, LSVMarketPipelineResult, LSVMarketPipeline
+   :member-order: bysource
+```
+
 ## Provisional and experimental surfaces
 
 The provisional [finite-difference solvers](software_design.md#generic-finite-difference-solvers)

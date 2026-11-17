@@ -26,9 +26,10 @@ than [vanilla-option-pricers](https://github.com/ArturSepp/VanillaOptionPricers)
 The provisional `stochvolmodels.pde_solvers` module provides `PDE1DSolver` and `PDE2DADISolver`
 for evolving option values backward or densities forward. To price a chain of European calls
 and puts under the money-market measure, use the opt-in `LogSvPdePricer`.
-[Solver guide](software_design.md#generic-finite-difference-solvers) ·
+[Solver guide](pde_solvers.md) ·
 [LogSV PDE pricing](software_design.md#logsv-vanilla-pde-valuation) ·
-[API reference](api.md#provisional-and-experimental-surfaces)
+[Local volatility and LSV](local_volatility_and_lsv.md) ·
+[API reference](api.md#finite-difference-pde-solvers)
 
 ## Start here
 
@@ -246,6 +247,8 @@ martingale_conditions_and_skews
 
 affine_expansion
 european_option_pricing
+pde_solvers
+local_volatility_and_lsv
 inverse_options
 quadratic_variance_options
 ```

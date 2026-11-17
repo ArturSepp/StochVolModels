@@ -27,6 +27,8 @@ enum case and includes Numba compilation on first use.
 | Script | Lane | Data/dependencies | Automation |
 |---|---|---|---|
 | `docs/affine_expansion.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py`; the price-impact case in the slow lane |
+| `docs/pde_solvers.py` | canonical script | core, synthetic | source and installed-wheel cases |
+| `docs/local_volatility_and_lsv.py` | canonical script | core, synthetic | source and installed-wheel cases |
 | `docs/analytic_vs_monte_carlo.py` | canonical script of a documentation page | core only, bundled Bitcoin chain | every case run by `test_docs_examples.py` |
 | `docs/app_bitcoin_options.py` | canonical script of a documentation page | core only, bundled Bitcoin chain | every case run by `test_docs_examples.py`; the calibration case in the slow lane |
 | `docs/app_impermanent_loss_hedging.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
