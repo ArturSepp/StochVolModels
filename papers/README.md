@@ -100,7 +100,7 @@ input strikes. The corrected fitter takes the square root of the market/model in
 variance ratio at every maturity. Quotes and their ATM floor are in volatility units;
 non-positive variance increments are rejected. Each quoted expiry matches within the
 model's truncated-moment approximation.
-[Replication inputs](forward_var/calibrate_forward_var.py) · [Comparison runner](forward_var/verify_pde.py)
+[Model specification and calibration](forward_var/README.md) | [Replication inputs](forward_var/calibrate_forward_var.py) · [Comparison runner](forward_var/verify_pde.py)
 
 The JSON includes price differences in basis points of discounted forward, time-step
 and spatial refinements, a wider-domain run, and the original expansion and 100,000-path Monte Carlo

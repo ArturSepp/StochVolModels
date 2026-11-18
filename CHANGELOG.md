@@ -25,6 +25,10 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Added
 
+- Forward-variance model specification and calibration guide in
+  `papers/forward_var/README.md`, including the loading bootstrap, current bounds,
+  approximation conventions and independently checked PDE/Monte Carlo results.
+
 - Full-history rough-logSV splitting, bounded conditional pricing, validated
   discrete classical controls, explicit multilevel allocations, separate
   raw-forward diagnostics and the nonlinear H=0.50 Fourier PDE reference.
