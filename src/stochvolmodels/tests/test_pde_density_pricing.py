@@ -1,5 +1,5 @@
 """
-Stage 5 tests for density states and vanilla pricing projections.
+Numerical tests for density states and vanilla pricing projections.
 
 The cases compare density-projected vanillas with Black prices and parity, verify level versus
 log coordinates, reconcile two-dimensional marginals with direct projection, and enforce

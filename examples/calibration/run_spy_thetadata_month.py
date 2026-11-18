@@ -96,7 +96,7 @@ def plot_monthly_atm_skew(options_data) -> tuple[pd.DataFrame, plt.Figure]:
 
 
 def fit_and_plot_approximate_smile(option_chain) -> tuple[dict[str, float], plt.Figure]:
-    """Fit the migrated approximate LogSV smile to the nearest SVM maturity."""
+    """Fit the approximate LogSV smile to the nearest SVM maturity."""
     idx = 0
     forward = option_chain.forwards[idx]
     log_strikes = np.log(option_chain.strikes_ttms[idx] / forward)

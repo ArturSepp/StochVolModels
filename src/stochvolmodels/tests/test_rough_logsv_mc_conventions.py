@@ -1,4 +1,4 @@
-"""Independent checks of the raw conditional estimator and stage-0 boundaries."""
+"""Independent checks of conditional Monte Carlo payoffs and supported rough-model conventions."""
 import numpy as np
 import pandas as pd
 import pytest

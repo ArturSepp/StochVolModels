@@ -354,7 +354,7 @@ def _controlled_call_pair_values(
 @pytest.mark.parametrize("parameter_name", ["crypto", "equity"])
 @pytest.mark.parametrize("measure", list(TgarchMeasure))
 @pytest.mark.parametrize("chunk_steps", [8, 3])
-def test_terminal_paths_match_pre_lift_legacy_capture(
+def test_terminal_paths_match_frozen_reference(
     parameter_name: str,
     measure: TgarchMeasure,
     chunk_steps: int,
@@ -499,7 +499,7 @@ def test_floor_capture_preserves_post_update_floor_and_hit_count() -> None:
 
 
 def test_terminal_model_returns_two_observation_capability_payload() -> None:
-    """The first lift labels state, measures, RNG ordering and realized grid explicitly."""
+    """Terminal paths label state, measures, RNG ordering and realized grid explicitly."""
     model = TgarchModel(_study_params("crypto"))
     assert isinstance(model, PathModel)
 
@@ -557,7 +557,7 @@ assert not loaded, loaded
 
 
 def test_tgarch_types_remain_submodule_only() -> None:
-    """The bounded lift does not widen either provisional capabilities or the root API."""
+    """The model exposes its supported provisional capabilities without adding root exports."""
     assert "TgarchModel" not in stochvolmodels.__all__
     assert not hasattr(stochvolmodels, "TgarchModel")
     assert not hasattr(model_capabilities, "TgarchModel")

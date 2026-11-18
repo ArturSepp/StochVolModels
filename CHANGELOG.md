@@ -16,6 +16,15 @@ Entries start at 1.2.0. For earlier releases see the git log.
   independent domain/space/time refinement, density and price checks, and warmed
   accuracy-versus-runtime reports. See `validation/README.md`.
 
+### Changed
+
+- The rough-LogSV benchmark calls the supported random-generator signature directly,
+  preserving seeded draws and dtype conversions.
+- Replaced development-stage labels and removed commented debug assignments while
+  retaining numerical regression cases and reference values.
+- Refreshed current JOSS metrics and public evidence links while preserving the
+  historical baseline and approved AI-use disclosures.
+
 ## [2.18.8] - 2026-11-17
 
 ### Fixed

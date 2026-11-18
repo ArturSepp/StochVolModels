@@ -118,7 +118,8 @@ def measure() -> dict[str, Any]:
                 "value": len(set(commit_months)),
                 "how": "distinct commit YYYY-MM values through measured_at_commit",
                 "live": False,
-                "paper_phrase": f"activity in {len(set(commit_months))} distinct calendar months",
+                # The manuscript quotes the immutable v2.1.0 baseline for this count.
+                "paper_phrase": None,
             },
             "first_commit_date": {
                 "value": _git("log", "--reverse", "--format=%ad", "--date=short").splitlines()[0],

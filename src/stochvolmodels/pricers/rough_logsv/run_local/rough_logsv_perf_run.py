@@ -180,28 +180,16 @@ def run_rough_logsv_loop_bench(nb_path: int = 50000,
     Z1 = None
     grid_ttms: List[np.ndarray] = []
     if random_mode == "fixed":
-        try:
-            Z0, Z1, grid_ttms = sv.get_randoms_for_rough_vol_chain_valuation(
-                ttms=option_chain.ttms,
-                nb_path=nb_path,
-                nb_steps_per_year=nb_steps_per_year,
-                seed=seed,
-                dtype=dtype,
-                chunk_size=2048,
-                use_legacy_rng=False,
-            )
-        except TypeError:
-            # Older signatures may not support dtype, chunk_size, or use_legacy_rng.
-            Z0, Z1, grid_ttms = sv.get_randoms_for_rough_vol_chain_valuation(
-                ttms=option_chain.ttms,
-                nb_path=nb_path,
-                nb_steps_per_year=nb_steps_per_year,
-                seed=seed,
-            )
-            if Z0.dtype != dtype:
-                Z0 = Z0.astype(dtype, copy=False)
-            if Z1.dtype != dtype:
-                Z1 = Z1.astype(dtype, copy=False)
+        Z0, Z1, grid_ttms = sv.get_randoms_for_rough_vol_chain_valuation(
+            ttms=option_chain.ttms,
+            nb_path=nb_path,
+            nb_steps_per_year=nb_steps_per_year,
+            seed=seed,
+        )
+        if Z0.dtype != dtype:
+            Z0 = Z0.astype(dtype, copy=False)
+        if Z1.dtype != dtype:
+            Z1 = Z1.astype(dtype, copy=False)
         if float32_mode:
             grid_ttms = [np.asarray(g, dtype=np.float32) for g in grid_ttms]
     else:

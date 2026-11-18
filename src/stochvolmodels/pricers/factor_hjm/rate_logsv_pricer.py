@@ -367,8 +367,6 @@ def logsv_chain_de_pricer(params: MultiFactRateLogSvParams,
             itemindex = itemindex[0][0]
             t_grid = t_grid0[:itemindex + 1]
 
-            # delta = np.zeros_like(delta)  # TODO: remove. just for testing
-            # params.q = 0.0  # TODO: q=0 just for testing. reset it for pricing
             def ff(p: np.ndarray) -> np.ndarray:
                 real_phi = -0.5
                 phi_grid = real_phi + 1j * p

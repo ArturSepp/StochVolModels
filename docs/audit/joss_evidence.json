@@ -29,14 +29,14 @@
   "provenance": {
     "git_metrics": "local git history ending at baseline.commit",
     "github_metrics": "GitHub REST API queried 2026-08-21",
-    "test_metrics": "commands recorded in agents/JOSS_S00_BASELINE_REPORT.md",
+    "test_metrics": "Historical baseline test and coverage measurements are preserved at https://github.com/ArturSepp/StochVolModels/blob/83e164c17fcfaa4ef8cd08cbe099bf89681efeb4/docs/audit/joss_evidence.json. The original execution log is not distributed; these are reported baseline measurements, not a fresh verification.",
     "moving_metrics_policy": "Regenerate at the submission commit; do not gate ordinary commits on moving GitHub counts."
   },
   "current": {
-    "measured_at_commit": "835e1144b9c40fddd161a634459d56d33293d3d5",
+    "measured_at_commit": "4aa2d3712b57e1c63a63f2e408fc4f31c0561491",
     "metrics": {
       "package_version": {
-        "value": "2.1.0",
+        "value": "2.18.8",
         "how": "project.version in pyproject.toml",
         "live": true,
         "paper_phrase": null
@@ -60,22 +60,22 @@
         "paper_phrase": null
       },
       "collected_tests": {
-        "value": 187,
+        "value": 1709,
         "how": "python -m pytest --collect-only -q",
         "live": false,
         "paper_phrase": null
       },
       "commits": {
-        "value": 110,
+        "value": 309,
         "how": "git rev-list --count HEAD",
         "live": false,
         "paper_phrase": null
       },
       "active_calendar_months": {
-        "value": 25,
+        "value": 28,
         "how": "distinct commit YYYY-MM values through measured_at_commit",
         "live": false,
-        "paper_phrase": "activity in 25 distinct calendar months"
+        "paper_phrase": null
       },
       "first_commit_date": {
         "value": "2022-08-03",
@@ -84,7 +84,7 @@
         "paper_phrase": null
       },
       "release_tags": {
-        "value": 7,
+        "value": 17,
         "how": "Git tags matching v* through measured_at_commit",
         "live": false,
         "paper_phrase": null

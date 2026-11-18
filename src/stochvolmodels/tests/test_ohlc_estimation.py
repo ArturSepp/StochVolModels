@@ -1,4 +1,4 @@
-"""Reference and migration tests for OHLC volatility estimators."""
+"""Reference tests for OHLC volatility estimators."""
 
 import numpy as np
 import pandas as pd

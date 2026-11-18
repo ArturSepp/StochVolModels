@@ -15,7 +15,7 @@
         "code-refactoring assistance",
         "JOSS submission review and the 2026-08-21 manuscript/repository-documentation consistency pass"
       ],
-      "evidence": "maintainer-provided CLAUDE roadmap reference, repository agent reports, and agents/JOSS_SUBMISSION_REVIEW_2026-08-21.md; exact earlier sessions/models require human confirmation"
+      "evidence": "Maintainer-approved disclosure retained at https://github.com/ArturSepp/StochVolModels/blob/db6ea3ec2e724ae8d08e19bc9a8e41054b6f4dd7/docs/audit/ai_use.json and described in paper.md#ai-usage-disclosure; exact earlier sessions/models remain unestablished by the retained public record."
     },
     {
       "provider": "OpenAI",

@@ -7,6 +7,7 @@ import json
 import re
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from typing import Callable
 
@@ -118,6 +119,13 @@ def test_live_joss_evidence_matches_repository() -> None:
     metrics = current["metrics"]
     paper = PAPER_PATH.read_text(encoding="utf-8")
     api = API_PATH.read_text(encoding="utf-8")
+
+    project = tomllib.loads((REPOSITORY_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    assert metrics["package_version"]["value"] == project["project"]["version"]
+    baseline_months = evidence["repository_history"]["active_calendar_months"]
+    baseline_tag = evidence["baseline"]["tag"]
+    assert f"activity in {baseline_months} distinct calendar months" in paper
+    assert f"the {baseline_tag} baseline" in paper
 
     assert len(current["measured_at_commit"]) == 40
     assert metrics["stable_root_exports"]["value"] == len(stochvolmodels.__all__)

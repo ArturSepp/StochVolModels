@@ -1,5 +1,5 @@
 """
-Stage 5 tests for weighted-adjoint deterministic and compound-Poisson jumps.
+Numerical tests for weighted-adjoint deterministic and compound-Poisson jumps.
 
 The cases verify weighted-adjoint translations, mass and moment diagnostics, analytic compound-
 Poisson mixtures, lognormal jump-diffusion martingales, Strang splitting, tensor translations,

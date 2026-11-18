@@ -2,7 +2,7 @@
 
 This TGARCH recursion is a distinct discrete model, not a discretization scheme for
 ``LogSVPricer``. Times are measured in years, rates and volatilities are annualized, and asset
-returns are log returns. The bounded first lift stores only the initial and terminal observations.
+returns are log returns. The terminal simulator stores only the initial and terminal observations.
 """
 
 from __future__ import annotations

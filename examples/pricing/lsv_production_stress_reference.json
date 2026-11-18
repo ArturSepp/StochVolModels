@@ -1,5 +1,5 @@
 {
-  "source": "Stage 14, stochvolmodels.pde_solvers.stress.run_lsv_propagation_stress over production_lsv_stress_scenarios()",
+  "source": "Frozen LSV propagation reference from the historical stress implementation retained in validation/pde_reference/stress.py; public replay: examples/pricing/lsv_production_stress.py.",
   "price_units": "undiscounted call per unit forward",
   "monte_carlo": {"paths": 80000, "steps_per_year": 720, "seed": 20260818, "antithetic": true},
   "strikes": [0.82, 0.92, 1.0, 1.08, 1.22],
