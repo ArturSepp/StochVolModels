@@ -29,9 +29,6 @@ S1 = float(np.sqrt(1.0 - 2.0 / np.pi))
 SIGMA_FLOOR = 1.0e-6
 
 _DEFAULT_CHUNK_STEPS = 8
-_LEGACY_SOURCE_SHA256 = "4a07de7c20591276a9f241b1c18b96e2f2c3fd1b953e29375ab5096b3fb35f38"
-_SOURCE_TAG = "tgarch-study-round2-v1"
-_SOURCE_COMMIT = "add76d1909b4223d005e31fcf377845501021362"
 
 FloatArray = NDArray[np.float64]
 
@@ -590,9 +587,6 @@ class TgarchModel:
             "bit_generator": "PCG64",
             "chunk_steps": chunk_value,
             "antithetic_layout": "first_half_draws_then_negatives_singleton_last",
-            "source_tag": _SOURCE_TAG,
-            "source_commit": _SOURCE_COMMIT,
-            "legacy_source_sha256": _LEGACY_SOURCE_SHA256,
             "numpy_version": np.__version__,
         }
         diagnostics: dict[str, Any] = {

@@ -4,6 +4,12 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+### Removed
+
+- Historical migration hashes from `LogSvModel` and `TgarchModel` path provenance,
+  and the TGARCH study tag and source commit. Current-run reproducibility metadata
+  and numerical regression references are retained.
+
 ### Added
 
 - Repository-only PDE qualification runner using frozen BTC and stress cases,

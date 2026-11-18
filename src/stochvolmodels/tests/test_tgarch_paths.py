@@ -26,9 +26,6 @@ from stochvolmodels.models.tgarch import (
 )
 
 
-REFERENCE_SOURCE_SHA256 = (
-    "4a07de7c20591276a9f241b1c18b96e2f2c3fd1b953e29375ab5096b3fb35f38"
-)
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 REFERENCE_TERMINALS = {
     ("crypto", TgarchMeasure.P): {
@@ -376,7 +373,6 @@ def test_terminal_paths_match_pre_lift_legacy_capture(
     assert paths.diagnostics["floor_hits"] == 0
     assert paths.diagnostics["spot_overflow_count"] == 0
     assert paths.provenance["chunk_steps"] == chunk_steps
-    assert paths.provenance["legacy_source_sha256"] == REFERENCE_SOURCE_SHA256
 
     if measure is TgarchMeasure.P:
         np.testing.assert_allclose(
@@ -529,9 +525,6 @@ def test_terminal_model_returns_two_observation_capability_payload() -> None:
         "bit_generator": "PCG64",
         "chunk_steps": 8,
         "antithetic_layout": "first_half_draws_then_negatives_singleton_last",
-        "source_tag": "tgarch-study-round2-v1",
-        "source_commit": "add76d1909b4223d005e31fcf377845501021362",
-        "legacy_source_sha256": REFERENCE_SOURCE_SHA256,
         "numpy_version": np.__version__,
     }
     assert paths.diagnostics["weight_convention"] == "raw_log_dQ_EXACT_dP"

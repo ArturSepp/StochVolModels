@@ -28,7 +28,6 @@ from stochvolmodels.pricers.logsv_pricer import (
 )
 
 
-LEGACY_SOURCE_SHA256 = "50f8b31efae2c3c714e981ced0b3b30d92cb33cb8290702e323a1433a611b40f"
 FROZEN_MMA_TERMINAL = {
     "log_zero_drift_return": np.array(
         [
@@ -335,7 +334,6 @@ def test_full_grid_payload_is_read_only_and_has_explicit_zero_drift_semantics(
     assert provenance["draw_ordering"] == "per_interval_W0_matrix_then_W1_matrix_row_major"
     assert provenance["kernel"] == "simulate_logsv_x_vol_terminal"
     assert provenance["vol_backbone_eta"] == 1.0
-    assert provenance["legacy_source_sha256"] == LEGACY_SOURCE_SHA256
     assert provenance["numpy_version"] == np.__version__
     assert provenance["observation_partition_dependent"] is True
 

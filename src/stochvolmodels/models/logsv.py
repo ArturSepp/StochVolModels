@@ -25,7 +25,6 @@ __all__ = ("LogSvMeasure", "LogSvModel")
 
 _MAX_RANDOMSTATE_SEED = 2**32 - 1
 _SCHEME = "logsv_explicit_log_euler_trapezoidal_qvar_v1"
-_LEGACY_SOURCE_SHA256 = "50f8b31efae2c3c714e981ced0b3b30d92cb33cb8290702e323a1433a611b40f"
 
 FloatArray = NDArray[np.float64]
 
@@ -305,7 +304,6 @@ class LogSvModel:
             "normal_convention": "unscaled_standard_normals_kernel_scales_sqrt_dt",
             "draw_ordering": "per_interval_W0_matrix_then_W1_matrix_row_major",
             "kernel": "simulate_logsv_x_vol_terminal",
-            "legacy_source_sha256": _LEGACY_SOURCE_SHA256,
             "vol_backbone_eta": 1.0,
             "numpy_version": np.__version__,
             "observation_partition_dependent": True,
