@@ -197,6 +197,10 @@
       "form": "methodology",
       "status": "review",
       "example": "examples/docs/local_volatility_and_lsv.py"
+    },
+    "docs/rough_logsv.md": {
+      "form": "utility",
+      "status": "review"
     }
   },
   "planned": {},

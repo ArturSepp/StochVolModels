@@ -204,7 +204,7 @@ The registry is
 | | |
 |---|---|
 | Question | How does the net delta of an inverse option differ from its Black delta? |
-| Class | Synthetic teaching exhibit; the computation of `papers/inverse_options/compare_net_delta.py` |
+| Class | Synthetic teaching exhibit; the computation of `../papers/inverse_options_qf_2023/compare_net_delta.py` |
 | Parameters | One week, 60% volatility, strike 50,000 dollars |
 | Result | At the money, the call's Black delta 0.5166 against a net delta of 0.4834, and the put's -0.4834 against -0.5166 |
 | Script | [`examples/docs/inverse_options.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/inverse_options.py) |

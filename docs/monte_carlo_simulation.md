@@ -194,36 +194,31 @@ units, transform conventions and the effect of the observation partition on repr
 
 ### The rough extension
 
-With a Hurst exponent $H < 1/2$, `LogSvParams` approximates the fractional kernel by a sum of
-exponentials, whose nodes and weights `approximate_kernel` sets for a horizon, and
-`model_mc_price_chain` simulates the resulting multi-factor dynamics when called with
-`use_rough_mc=True` and a `seed`. This extension is experimental and outside the paper; it has no
-transform price. With $H = 1/2$ the kernel is a single node at $10^{-3}$ with weight one, and the
-three-month prices of the legacy rough simulator agree with those of the standard simulator
-within two combined standard errors when both use seed 7. The error bars count scalar paths;
-the earlier 0.01 claim used the erroneous row-array denominator. The separate experimental
-`rough_logsv_mc_chain_pricer_split_step` entry point uses raw conditional prices without
-forward renormalization; select it with `rough_scheme="split_step"` on `model_mc_price_chain`.
+Experimental rough-logSV now has a standalone interface: import `RoughLogSvParams` and
+`RoughLogSVPricer` from `stochvolmodels.pricers.rough_logsv`. The classical
+`LogSVPricer.model_mc_price_chain` no longer accepts `use_rough_mc` or `rough_scheme`;
+supplying either raises a migration error, including `use_rough_mc=False`.
 
-```python
-def rough_params(hurst: float, params: svm.LogSvParams = PARAMS, ttm: float = 0.25):
-    """Parameters with Hurst exponent H and the Markovian kernel approximation for horizon ttm."""
-    rough = svm.LogSvParams(sigma0=params.sigma0, theta=params.theta, kappa1=params.kappa1,
-                            kappa2=params.kappa2, beta=params.beta, volvol=params.volvol, H=hurst)
-    rough.approximate_kernel(T=ttm)
-    return rough
-```
+The standalone pricer retains the entire exponential-factor history across expiries and uses
+adapted price integrals, a bounded conditional payoff, and a discrete classical control whose
+mean must be validated before sampling. Raw-forward diagnostics use separate ordinary-measure
+streams and are never recentered. At $H=1/2$, the exact constant kernel is a zero node with
+unit weight and pricing uses the full nonlinear Fourier/backward PDE.
+
+See [Experimental rough-logSV pricing](rough_logsv.md) for configuration, units, saved-result
+replay and the calibration gate. Historical low-level rough functions remain available for
+reproduction; their numerical results do not qualify the standalone model.
 
 ## Implementation in stochvolmodels
 
 | Name | Role |
 |---|---|
-| `LogSVPricer.model_mc_price_chain` | Prices and standard errors of a chain; `nb_path`, `nb_steps` per year, `is_spot_measure`, `variable_type`; `use_rough_mc=True` with `seed` for the rough extension |
+| `LogSVPricer.model_mc_price_chain` | Prices and standard errors of a chain; `nb_path`, `nb_steps` per year, `is_spot_measure`, `variable_type` |
 | `LogSVPricer.simulate_terminal_values` | Terminal $X_T$, $\sigma_T$ and $I_T$, 360 steps per year |
 | `LogSVPricer.simulate_vol_paths` | Volatility paths; NumPy's generator, or given increments through `brownians` |
 | `get_randoms_for_chain_valuation`, `logsv_mc_chain_pricer_fixed_randoms` | Random numbers drawn once from a local generator, and the chain pricer that reuses them |
-| `get_randoms_for_rough_vol_chain_valuation`, `rough_logsv_mc_chain_pricer_fixed_randoms` | The same for the rough extension |
-| `LogSvParams` fields `H`, `weights` and `nodes` | Hurst exponent, and the kernel approximation that `approximate_kernel` sets |
+| `get_randoms_for_rough_vol_chain_valuation`, `rough_logsv_mc_chain_pricer_fixed_randoms` | Historical rough simulator, retained for reproduction |
+| `LogSvParams` fields `H`, `weights` and `nodes` | Legacy rough-function inputs; the standalone model uses `RoughLogSvParams` and `RoughKernel` |
 
 The four fixed-random functions are advanced exports (see
 [stability tiers](option_chains_and_conventions.md#stability-tiers)); the rough simulator is

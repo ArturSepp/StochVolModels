@@ -44,7 +44,7 @@ autocorrelation of volatility and fits the four remaining parameters to options.
 | `is_unit_ttm_vega` | Compute the vegas at unit maturity | `False` |
 | `model_calibration_type` | Free parameters, `LogsvModelCalibrationType` | `PARAMS5` |
 | `constraints_type` | Martingale constraints, `ConstraintsType` | `UNCONSTRAINT` |
-| `calibration_engine` | `CalibrationEngine.ANALYTIC`, `MC` or `ROUGH_MC` | `ANALYTIC` |
+| `calibration_engine` | `CalibrationEngine.ANALYTIC` or `MC` | `ANALYTIC` |
 | `nb_path`, `nb_steps`, `seed` | Monte Carlo engines only: paths, steps per year, seed of the fixed random numbers | 100,000; 360; 10 |
 
 Implied volatilities are Black-Scholes volatilities in decimals; the chain's conventions are on the
@@ -93,18 +93,27 @@ the [affine expansion](affine_expansion.md), on a grid fixed from the chain's fi
 volatility so that it does not move as $\sigma_0$ changes. The Monte Carlo engine draws its random
 numbers once, with `get_randoms_for_chain_valuation` and the given `seed`, and reuses them at every
 evaluation, so the objective is a smooth function of the parameters
-([Monte Carlo schemes](monte_carlo_simulation.md)). `ROUGH_MC` does the same for the experimental
-rough extension.
+([Monte Carlo schemes](monte_carlo_simulation.md)). The former `ROUGH_MC` route now raises
+a migration error. Rough-logSV uses its [own experimental interface](rough_logsv.md); saved
+selected-case fits support pointwise replay, while wider calibration remains gated.
 
 ### The variance-swap backbone
 
 The variance-swap fit stores a return-volatility loading $\eta_i$ on each calendar interval
 $(T_{i-1},T_i]$ in `LogSvParams.vol_backbone`. Instantaneous return volatility is
 $\eta_i\sigma_t$ and the quadratic-variation rate is $\eta_i^2\sigma_t^2$. The volatility
-drift retains its model parameter $\theta$. The historical fitter takes the ratio of market
-to model expected quadratic-variance increments, replaces a non-positive ratio with one,
-and uses its square root for maturities below 0.06 years. The loading after the final knot
-stays at its last value.
+drift retains its model parameter $\theta$. Quotes and the ATM floor are both in volatility
+units. Let $A_i=T_i K_i^2$ be market integrated variance and $B_i$ the unscaled model's
+expected integrated variance from the truncated moment system. With $A_0=B_0=0$, the fit is
+
+$$
+\eta_i=\sqrt{\frac{A_i-A_{i-1}}{B_i-B_{i-1}}}.
+$$
+
+The square root applies at every maturity. Summing $\eta_i^2(B_i-B_{i-1})$ reproduces
+each target $A_i$ within the moment approximation. Non-finite or non-positive increments
+are rejected instead of being replaced with unit loading. The loading after the final
+knot stays at its last value.
 
 Analytic calibration fixes both the cutoff and the node count from the shortest market
 expiry and its ATM volatility throughout optimization. `vol_scaler` and `max_phi` allow

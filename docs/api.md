@@ -558,10 +558,40 @@ Root aliases and protocol stabilization are deferred until the same contracts ha
 across the supported measures and pricing methods of the dynamic models.
 
 The deep modules `stochvolmodels.pricers.rough_logsv` and `stochvolmodels.pricers.factor_hjm` are
-experimental research surfaces that may evolve between minor releases; the second is explained in
+experimental research surfaces that may evolve between minor releases. The first has the
+standalone interface documented below; the second is explained in
 [Stochastic volatility for factor HJM rates](factor_hjm_stochastic_volatility.md). The removed
 `stochvolmodels.pricers.analytic.bsm` and `stochvolmodels.pricers.analytic.bachelier` paths are not
 compatibility facades in 2.0.
+
+### Experimental rough-logSV pricing
+
+The [rough-logSV guide](rough_logsv.md) explains units, explicit kernel/control inputs and
+the calibration gate. These names are available through the experimental subpackage, not
+the stable package-root export list.
+
+```{eval-rst}
+.. autoclass:: stochvolmodels.pricers.rough_logsv.params.RoughLogSvParams
+   :members:
+
+.. autoclass:: stochvolmodels.pricers.rough_logsv.params.RoughKernel
+   :members:
+
+.. autoclass:: stochvolmodels.pricers.rough_logsv.multilevel.RoughMCConfig
+   :members:
+
+.. autoclass:: stochvolmodels.pricers.rough_logsv.multilevel.DiscretePdeControl
+   :members:
+
+.. autoclass:: stochvolmodels.pricers.rough_logsv_pricer.ClassicalPdeConfig
+   :members:
+
+.. autoclass:: stochvolmodels.pricers.rough_logsv_pricer.RoughPricingResult
+   :members:
+
+.. autoclass:: stochvolmodels.pricers.rough_logsv_pricer.RoughLogSVPricer
+   :members: price_chain, price_chain_result, model_mc_price_chain, calibrate_model_params_to_chain
+```
 
 ### Heston path and transform adapter
 

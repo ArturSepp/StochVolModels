@@ -479,7 +479,7 @@ def test_logsv_calibration_components_preserve_weights_and_constraints() -> None
         logsv_module._build_logsv_constraints(codec, object())
 
 
-@pytest.mark.parametrize("engine", [CalibrationEngine.MC, CalibrationEngine.ROUGH_MC])
+@pytest.mark.parametrize("engine", [CalibrationEngine.MC])
 def test_logsv_calibration_objective_supports_simulation_engines(
     monkeypatch: pytest.MonkeyPatch,
     engine: CalibrationEngine,

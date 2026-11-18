@@ -266,27 +266,9 @@ def run_local(local: Locals):
                                                  params=btc_calibrated_params)
 
     elif local == Locals.CALIBRATE_MODEL_TO_BTC_OPTIONS_WITH_MC:
-        btc_option_chain = sv.get_btc_test_chain_data()
-        params0 = LogSvParams(sigma0=0.8, theta=1.0, kappa1=2.21, kappa2=2.18, beta=0.15, volvol=2.0)
-        params0.H = 0.2
-        params0.approximate_kernel(T=btc_option_chain.ttms[-1])
-        btc_calibrated_params = logsv_pricer.calibrate_model_params_to_chain(option_chain=btc_option_chain,
-                                                                             params0=params0,
-                                                                             model_calibration_type=LogsvModelCalibrationType.PARAMS4,
-                                                                             constraints_type=sv.ConstraintsType.INVERSE_MARTINGALE,
-                                                                             calibration_engine=sv.CalibrationEngine.ROUGH_MC,
-                                                                             nb_path=5000,
-                                                                             seed=7)
-        print(btc_calibrated_params)
-        fig = logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=btc_option_chain,
-                                                 params=btc_calibrated_params,
-                                                       mode='mc',
-                                                       use_rough_mc=True,
-                                                       seed=16,
-                                                       nb_steps=360
-                                                       )
-
-        # uuid = str(uuid4())
+        raise NotImplementedError(
+            "Rough calibration is gated. Use the standalone RoughLogSVPricer and "
+            "validation/rough_logsv/benchmark.py for the selected BTC/ETH cases.")
 
     plt.show()
 

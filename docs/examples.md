@@ -198,7 +198,7 @@ extra, and several need local data. Their status and prerequisites are described
 | `logsv_model_with_quadratic_drift_ijtaf_2023` | `replication/figures/article_figures.py`, `replication/verification/run_checks.py` | Published paper (IJTAF 2023) |
 | `sv_for_factor_hjm_rdr_2025` | `calibration_fig_5_6_7.py`, `calibration_fig_8_9.py` | Published paper (Review of Derivatives Research 2025) |
 | `robust_volatility_models_2026/replication/ssrn_2023` (local) | `article_figures.py` | [Original SSRN scripts](https://github.com/ArturSepp/StochVolModels/tree/588193611f4fbf5595d60b198e34cb5c24826f8a/papers/volatility_models) |
-| `inverse_options` | `compare_net_delta.py` | Supporting illustrations for the inverse-options paper |
+| `inverse_options_qf_2023` | `compare_net_delta.py` | Supporting illustrations for the inverse-options paper |
 | `unified_approach_for_hedging_il_df_2025` | `replication/replicate_figures.py`, `replication/verify_replication.py` | Corrected author manuscript and theoretical replication (Digital Finance 2025) |
 | `jump_risk_premia_clustered_jumps` | `hawkes_estimator.py`, `risk_premia_calibration.py` | Development code related to a working paper |
 | `risk_premia_gmm`, `t_distribution`, `forward_var`, `barriers` | see the papers README | Exploratory; no publication mapping |

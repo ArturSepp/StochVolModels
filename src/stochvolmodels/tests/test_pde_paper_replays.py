@@ -128,7 +128,10 @@ def test_ijtaf_figure3_expected_variance(monkeypatch):
 
 def test_barrier_paper_partition(monkeypatch):
     monkeypatch.syspath_prepend(str(ROOT))
-    from papers.barriers.verify_pde import check_independent, check_partition
+    from papers.barrier_options_sv_wilmott_2022.replication.verify_pde import (
+        check_independent,
+        check_partition,
+    )
 
     example = check_partition()
     assert example["survivor"] == pytest.approx(0.5736505196, abs=1e-9)
@@ -144,7 +147,7 @@ def test_barrier_paper_partition(monkeypatch):
 
 def test_barrier_endpoints_and_single_interval(monkeypatch):
     monkeypatch.syspath_prepend(str(ROOT))
-    from papers.barriers.pde_adapter import BarrierPde1D
+    from papers.barrier_options_sv_wilmott_2022.replication.pde_adapter import BarrierPde1D
 
     x = np.linspace(-0.05, 0.05, 101)
     a = BarrierPde1D(x)
@@ -256,10 +259,10 @@ def test_forward_variance_paper_smile(monkeypatch):
     assert [len(row["strikes"]) for row in case["slices"]] == [31] * 4
     assert case["historical_mc_steps_per_year"] == 156
     assert case["default_mc_steps_per_year"] == 360
-    # Seed-24 prices at the middle display strike from the archived forward-variance replay.
+    # Seed-24 middle-strike prices after correcting the volatility-loading bootstrap.
     np.testing.assert_allclose(
         [row["mc_prices"][15] for row in case["slices"]],
-        [2575.376965, 3583.801353, 4734.336843, 4921.496570],
+        [2575.376965299218, 3341.946973557681, 4005.352007972042, 3674.418278966913],
         rtol=1e-7,
     )
     for row in case["slices"]:
@@ -268,7 +271,7 @@ def test_forward_variance_paper_smile(monkeypatch):
         assert row["default_mc_prices"] != row["mc_prices"]
     np.testing.assert_allclose(
         [r["eta"] for r in case["slices"]],
-        [1.02500436, 1.11975866, 1.23471716, 1.25955165],
+        [1.025004363026, 1.058186496277, 1.111178274150, 1.122297489517],
         rtol=0,
         atol=2e-7,
     )

@@ -169,20 +169,15 @@ def run_local(local: Locals) -> None:
             assert np.max(np.abs(z)) < 3.0
 
     elif local == Locals.ROUGH_LIMIT:
-        chain = svm.OptionChain.get_uniform_chain(ttms=np.array([0.25]), ids=np.array(["3m"]),
-                                                  strikes=np.array([0.8, 1.0, 1.2]))
-        pricer = svm.LogSVPricer()
-        rough = rough_params(0.5)
-        np.testing.assert_allclose([rough.nodes[0], rough.weights[0]], [1e-3, 1.0])
-        rough_prices, rough_errors = pricer.model_mc_price_chain(
-            option_chain=chain, params=rough, nb_path=100000, nb_steps=360, use_rough_mc=True,
-            seed=7)
-        set_seed(7)
-        prices, errors = pricer.model_mc_price_chain(option_chain=chain, params=PARAMS,
-                                                     nb_path=100000, nb_steps=360)
-        z = (rough_prices[0] - prices[0]) / np.sqrt(rough_errors[0] ** 2 + errors[0] ** 2)
-        print(z)
-        assert np.max(np.abs(z)) < 2.0
+        from stochvolmodels.pricers.rough_logsv import RoughLogSVPricer, RoughLogSvParams
+        chain = svm.OptionChain.get_uniform_chain(
+            ttms=np.array([91/365]), ids=np.array(["91d"]),
+            strikes=np.array([0.8, 1.0, 1.2]))
+        params = RoughLogSvParams(
+            sigma0=PARAMS.sigma0, theta=PARAMS.theta, kappa1=PARAMS.kappa1,
+            kappa2=PARAMS.kappa2, beta=PARAMS.beta, epsilon=PARAMS.volvol, H=0.5)
+        result = RoughLogSVPricer().price_chain_result(chain, params)
+        print(result.prices, result.diagnostics)
 
 
 if __name__ == "__main__":

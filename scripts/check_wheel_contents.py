@@ -38,6 +38,14 @@ def check_pde_files(members) -> None:
 
 
 REQUIRED_RUNTIME_FILES = PDE_FILES | {
+    "stochvolmodels/pricers/rough_logsv_pricer.py",
+    "stochvolmodels/pricers/rough_logsv/__init__.py",
+    "stochvolmodels/pricers/rough_logsv/params.py",
+    "stochvolmodels/pricers/rough_logsv/history.py",
+    "stochvolmodels/pricers/rough_logsv/multilevel.py",
+    "stochvolmodels/pricers/rough_logsv/_history.py",
+    "stochvolmodels/pricers/rough_logsv/_history_fast.py",
+    "stochvolmodels/pricers/rough_logsv/_classical_pde.py",
     "stochvolmodels/__init__.py",
     "stochvolmodels/data/model_paths.py",
     "stochvolmodels/models/__init__.py",

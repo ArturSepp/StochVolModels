@@ -1,9 +1,7 @@
 """Independent checks of conditional Monte Carlo payoffs and supported rough-model conventions."""
 import numpy as np
-import pandas as pd
 import pytest
 from scipy.integrate import quad
-from scipy.special import ndtr
 
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
@@ -56,35 +54,9 @@ def test_conditional_estimator_rejects_invalid_variance(variance):
         )
 
 
-@pytest.mark.parametrize("backbone", [1.2, np.nan])
-def test_rough_model_rejects_unimplemented_backbone(backbone):
+@pytest.mark.parametrize("flag", [True, False])
+def test_removed_rough_switch_raises_migration_error(flag):
     chain = OptionChain.get_uniform_chain(
-        ttms=np.array([0.25]), ids=np.array(["3m"]), strikes=np.array([1.0])
-    )
-    params = LogSvParams(vol_backbone=pd.Series([backbone], index=[0.25]))
-    with pytest.raises(NotImplementedError, match="backbone"):
-        LogSVPricer().model_mc_price_chain(chain, params, use_rough_mc=True, seed=1)
-
-
-def test_rough_model_rejects_unimplemented_inverse_measure():
-    chain = OptionChain.get_uniform_chain(
-        ttms=np.array([0.25]), ids=np.array(["3m"]), strikes=np.array([1.0])
-    )
-    with pytest.raises(NotImplementedError, match="money-market"):
-        LogSVPricer().model_mc_price_chain(
-            chain, LogSvParams(), is_spot_measure=False, use_rough_mc=True, seed=1
-        )
-
-
-def test_high_level_split_step_default_grid_prices_constant_volatility():
-    """Public routing and its default grid recover a deterministic-volatility Black price."""
-    chain = OptionChain.get_uniform_chain(
-        ttms=np.array([0.25]), ids=np.array(["3m"]), strikes=np.array([1.0])
-    )
-    params = LogSvParams(sigma0=0.2, theta=0.2, beta=0.0, volvol=0.0,
-                         weights=np.array([1.0]), nodes=np.array([0.0]))
-    prices, errors = LogSVPricer().model_mc_price_chain(
-        chain, params, nb_path=4, use_rough_mc=True, rough_scheme="split_step", seed=1
-    )
-    np.testing.assert_allclose(prices[0], [2 * ndtr(0.05) - 1], rtol=1e-12)
-    np.testing.assert_allclose(errors[0], [0.0], atol=1e-14)
+        ttms=np.array([0.25]), ids=np.array(["3m"]), strikes=np.array([1.0]))
+    with pytest.raises(TypeError, match="RoughLogSVPricer"):
+        LogSVPricer().model_mc_price_chain(chain, LogSvParams(), use_rough_mc=flag)

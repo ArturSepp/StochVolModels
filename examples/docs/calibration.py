@@ -132,7 +132,8 @@ def run_local(local: Locals) -> None:
         strikes = chain.get_slice_varswap_strikes(floor_with_atm_vols=True)
         eta = fit_model_vol_backbone_to_varswaps(log_sv_params=FITTED, varswap_strikes=strikes)
         np.testing.assert_allclose(strikes.to_numpy(), [0.882, 0.909, 0.946, 0.969], atol=1e-3)
-        np.testing.assert_allclose(eta.to_numpy(), [0.981, 0.928, 0.938, 0.869], atol=1e-3)
+        # Reference loadings from independent integration of instantaneous second moments.
+        np.testing.assert_allclose(eta.to_numpy(), [0.981, 0.963, 0.968, 0.932], atol=1e-3)
 
     elif local == Locals.REFIT:
         fitted = refit(chain)

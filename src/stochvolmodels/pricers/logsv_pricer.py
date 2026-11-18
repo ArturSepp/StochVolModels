@@ -98,8 +98,8 @@ class CalibrationEngine(Enum):
     """
     how model implied volatilities are produced inside the calibration objective.
 
-    ANALYTIC uses the affine expansion of Sec. 4; MC and ROUGH_MC use simulation
-    with randoms fixed across the optimizer's iterations.
+    ANALYTIC uses the affine expansion of Sec. 4; MC uses fixed-random simulation.
+    ROUGH_MC is retained only to raise a standalone-model migration error.
     """
     ANALYTIC = 1
     MC = 2
@@ -294,28 +294,7 @@ class _LogSvCalibrationObjective:
                 model_prices=option_prices_ttm
             )
         elif self.calibration_engine == CalibrationEngine.ROUGH_MC:
-            Z0, Z1, grid_ttms = self.random_inputs
-            option_prices_ttm, _ = rough_logsv_mc_chain_pricer_fixed_randoms(
-                ttms=self.option_chain.ttms,
-                forwards=self.option_chain.forwards,
-                discfactors=self.option_chain.discfactors,
-                strikes_ttms=self.option_chain.strikes_ttms,
-                optiontypes_ttms=self.option_chain.optiontypes_ttms,
-                Z0=Z0,
-                Z1=Z1,
-                sigma0=params.sigma0,
-                theta=params.theta,
-                kappa1=params.kappa1,
-                kappa2=params.kappa2,
-                beta=params.beta,
-                orthog_vol=params.volvol,
-                weights=params.weights,
-                nodes=params.nodes,
-                timegrids=grid_ttms,
-            )
-            model_vols = self.option_chain.compute_model_ivols_from_chain_data(
-                model_prices=option_prices_ttm
-            )
+            raise NotImplementedError('Use RoughLogSVPricer; wider rough calibration remains gated')
         else:
             raise NotImplementedError(f"{self.calibration_engine}")
 
@@ -423,11 +402,8 @@ class LogSVPricer(ModelPricer):
         ``nb_steps`` is a positive integer rate in steps per year, defaulting to 360.
         For the classical simulator each interval of length dt has int(dt * rate) + 1 steps.
 
-        Routes to the rough simulator when ``use_rough_mc`` is passed in kwargs, which
-        then also requires ``seed``; otherwise to :func:`logsv_mc_chain_pricer`.
-        ``rough_scheme="split_step"`` opts into raw conditional pricing with diffusion-only J
-        and positivity fallback. The default ``"legacy"`` preserves historical prices.
-        Rough pricing supports eta = 1 and the money-market measure only.
+        This interface prices classical LogSV. Use RoughLogSVPricer for the rough model.
+        Removed rough-mode keywords raise a migration error, even when set to False.
 
         Returns
         -------
@@ -438,59 +414,26 @@ class LogSVPricer(ModelPricer):
         if (isinstance(steps_per_year, bool) or not isinstance(steps_per_year, (int, np.integer))
                 or steps_per_year < 1):
             raise ValueError("nb_steps must be a positive integer in steps per year")
-        if 'use_rough_mc' in kwargs and kwargs['use_rough_mc']:
-            if not is_spot_measure:
-                raise NotImplementedError("rough pricing currently requires the money-market measure")
-            if params.vol_backbone is not None and not np.all(
-                    np.isfinite(params.vol_backbone.to_numpy())
-                    & (params.vol_backbone.to_numpy() == 1.0)):
-                raise NotImplementedError("rough backbone loading is not implemented; use eta = 1")
-            rough_scheme = kwargs.get('rough_scheme', 'legacy')
-            if rough_scheme not in ('legacy', 'split_step'):
-                raise ValueError("rough_scheme must be 'legacy' or 'split_step'")
-            rough_pricer = (rough_logsv_mc_chain_pricer_split_step if rough_scheme == 'split_step'
-                            else rough_logsv_mc_chain_pricer_fixed_randoms)
-            assert 'seed' in kwargs
-            seed = kwargs['seed']
-            Z0, Z1, grid_ttms = get_randoms_for_rough_vol_chain_valuation(ttms=option_chain.ttms, nb_path=nb_path,
-                                                                          nb_steps_per_year=steps_per_year,
-                                                                          seed=seed)
-            return rough_pricer(ttms=option_chain.ttms,
-                                                             forwards=option_chain.forwards,
-                                                             discfactors=option_chain.discfactors,
-                                                             strikes_ttms=option_chain.strikes_ttms,
-                                                             optiontypes_ttms=option_chain.optiontypes_ttms,
-                                                             Z0=Z0,
-                                                             Z1=Z1,
-                                                             sigma0=params.sigma0,
-                                                             theta=params.theta,
-                                                             kappa1=params.kappa1,
-                                                             kappa2=params.kappa2,
-                                                             beta=params.beta,
-                                                             orthog_vol=params.volvol,
-                                                             weights=params.weights,
-                                                             nodes=params.nodes,
-                                                             timegrids=grid_ttms,
-                                                             variable_type=variable_type)
-        else:
-            simulation_ttms, vol_backbone_etas = _backbone_schedule(params, option_chain.ttms)
-            return logsv_mc_chain_pricer(simulation_ttms=simulation_ttms,
-                                         v0=params.sigma0,
-                                         theta=params.theta,
-                                         kappa1=params.kappa1,
-                                         kappa2=params.kappa2,
-                                         beta=params.beta,
-                                         volvol=params.volvol,
-                                         vol_backbone_etas=vol_backbone_etas,
-                                         ttms=option_chain.ttms,
-                                         forwards=option_chain.forwards,
-                                         discfactors=option_chain.discfactors,
-                                         strikes_ttms=option_chain.strikes_ttms,
-                                         optiontypes_ttms=option_chain.optiontypes_ttms,
-                                         is_spot_measure=is_spot_measure,
-                                         variable_type=variable_type,
-                                         nb_path=nb_path,
-                                         nb_steps_per_year=steps_per_year)
+        if 'use_rough_mc' in kwargs or 'rough_scheme' in kwargs:
+            raise TypeError('Rough mode was removed; use RoughLogSVPricer with RoughLogSvParams')
+        simulation_ttms, vol_backbone_etas = _backbone_schedule(params, option_chain.ttms)
+        return logsv_mc_chain_pricer(simulation_ttms=simulation_ttms,
+                                     v0=params.sigma0,
+                                     theta=params.theta,
+                                     kappa1=params.kappa1,
+                                     kappa2=params.kappa2,
+                                     beta=params.beta,
+                                     volvol=params.volvol,
+                                     vol_backbone_etas=vol_backbone_etas,
+                                     ttms=option_chain.ttms,
+                                     forwards=option_chain.forwards,
+                                     discfactors=option_chain.discfactors,
+                                     strikes_ttms=option_chain.strikes_ttms,
+                                     optiontypes_ttms=option_chain.optiontypes_ttms,
+                                     is_spot_measure=is_spot_measure,
+                                     variable_type=variable_type,
+                                     nb_path=nb_path,
+                                     nb_steps_per_year=steps_per_year)
 
     def set_vol_scaler(self, option_chain: OptionChain) -> float:
         """
@@ -572,6 +515,8 @@ class LogSVPricer(ModelPricer):
             sigma0 = 0.41, theta = 0.38, beta = 0.50, epsilon = 3.06 for Bitcoin
             on 20 June 2023.
         """
+        if calibration_engine == CalibrationEngine.ROUGH_MC:
+            raise NotImplementedError('Use RoughLogSVPricer; wider rough calibration remains gated')
         if vol_scaler is None:
             vol_scaler = self.set_vol_scaler(option_chain=option_chain)
             if max_phi is None:
@@ -601,13 +546,6 @@ class LogSVPricer(ModelPricer):
         random_inputs = None
         if calibration_engine == CalibrationEngine.MC:
             random_inputs = get_randoms_for_chain_valuation(
-                ttms=option_chain.ttms,
-                nb_path=nb_path,
-                nb_steps_per_year=nb_steps,
-                seed=seed,
-            )
-        elif calibration_engine == CalibrationEngine.ROUGH_MC:
-            random_inputs = get_randoms_for_rough_vol_chain_valuation(
                 ttms=option_chain.ttms,
                 nb_path=nb_path,
                 nb_steps_per_year=nb_steps,

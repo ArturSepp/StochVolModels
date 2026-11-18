@@ -4,7 +4,20 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+### Fixed
+
+- `fit_model_vol_backbone_to_varswaps` now takes the square root of incremental
+  market/model variance at every expiry, matching each variance-swap quote within
+  the moment approximation. Invalid variance increments are rejected. Verbose
+  diagnostics retain volatility quote units.
+- The forward-variance driver applies the ATM floor in volatility units. Added
+  expiry-by-expiry and above-100%-volatility regressions; reran all three PDE/MC
+  comparisons and updated the intentionally changed smile replay baselines.
+
 ### Removed
+
+- Unused barrier-study scripts `article_figures_old.py`, `drift_expansion.py` and
+  `time_barrier.py`, and the superseded standalone conditional-valuation note.
 
 - Historical migration hashes from `LogSvModel` and `TgarchModel` path provenance,
   and the TGARCH study tag and source commit. Current-run reproducibility metadata
@@ -12,12 +25,35 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Added
 
+- Full-history rough-logSV splitting, bounded conditional pricing, validated
+  discrete classical controls, explicit multilevel allocations, separate
+  raw-forward diagnostics and the nonlinear H=0.50 Fourier PDE reference.
+  Selected BTC/ETH saved results are replayed by validation/rough_logsv/benchmark.py.
+  This experimental interface does not qualify wider calibration or H=0.20 fits.
+
+- Complete barrier-option author manuscript, compiled PDF and original figure assets
+  under `papers/barrier_options_sv_wilmott_2022/paper/`, with a reproducible LaTeX build.
+  The active Python workflows now live under `replication/`; paper links and
+  barrier regression imports use the new module path.
+
 - Repository-only PDE qualification runner using frozen BTC and stress cases,
   independent domain/space/time refinement, density and price checks, and warmed
   accuracy-versus-runtime reports. See `validation/README.md`.
 
 ### Changed
 
+- The forward-variance paper calibration relaxes its volvol lower bound from 1.5
+  to 0.2. Recalibration reduces the weighted IV objective by 22.72%; independent
+  PDE and Monte Carlo comparisons pass with the original controls and tolerances.
+
+- Experimental rough-logSV is now a standalone model: import RoughLogSvParams,
+  RoughKernel and RoughLogSVPricer from stochvolmodels.pricers.rough_logsv.
+  The removed use_rough_mc and rough_scheme switches on LogSVPricer raise
+  migration errors. CalibrationEngine.ROUGH_MC also rejects routing through the
+  classical pricer. Historical low-level rough functions remain available.
+
+- Replaced the root API count and hash assertion with an explicit expected-name list,
+  retaining compatibility export resolution and lazy-import checks.
 - The rough-LogSV benchmark calls the supported random-generator signature directly,
   preserving seeded draws and dtype conversions.
 - Replaced development-stage labels and removed commented debug assignments while

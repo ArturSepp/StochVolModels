@@ -120,7 +120,9 @@ parameters to the implied volatilities of a market chain.
 
 - [Monte Carlo simulation schemes](monte_carlo_simulation.md): the log-volatility scheme of the
   paper and the explicit scheme of the package, strong and weak convergence, sampling error,
-  fixed random numbers and the experimental rough extension.
+  fixed random numbers and historical rough functions.
+- [Experimental rough-logSV pricing](rough_logsv.md): the standalone model, complete factor
+  history, bounded conditional controls, raw-forward diagnostics and selected-case replay.
 - [Analytic versus Monte Carlo validation](analytic_vs_monte_carlo.md): what agreement between
   the transform price and the simulated price establishes, and where on the Bitcoin chain the two
   separate.
@@ -259,6 +261,7 @@ quadratic_variance_options
 :caption: Simulation and validation
 
 monte_carlo_simulation
+rough_logsv
 analytic_vs_monte_carlo
 ```
 

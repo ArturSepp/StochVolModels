@@ -1,6 +1,4 @@
 # packages
-import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 from enum import Enum
 
@@ -28,21 +26,19 @@ def varswap_fit(option_chain, *, verbose=False):
         sigma0=0.88, theta=0.88, kappa1=2.214702576955766, kappa2=2.18028273418397,
         beta=0.0, volvol=0.921487415907961,
     )
-    strikes = option_chain.get_slice_varswap_strikes()
-    atm_squared = pd.Series(np.square(option_chain.get_chain_atm_vols()), index=option_chain.ttms)
-    targets = np.maximum(strikes, atm_squared)
-    params.set_vol_backbone(fit_model_vol_backbone_to_varswaps(params, targets, verbose=verbose))
+    strikes = option_chain.get_slice_varswap_strikes(floor_with_atm_vols=True)
+    params.set_vol_backbone(fit_model_vol_backbone_to_varswaps(params, strikes, verbose=verbose))
     return params
 
 
 def calibrated_varswap_fit(option_chain):
-    """Run the driver's original two-parameter calibration with its variance-swap backbone."""
+    """Fit beta and volvol with the variance-swap backbone and a 0.2 volvol floor."""
     return LogSVPricer().calibrate_model_params_to_chain(
         option_chain=option_chain,
         params0=LogSvParams(sigma0=0.85, theta=0.85, kappa1=2.21, kappa2=2.18,
                             beta=0.15, volvol=1.5),
         params_min=LogSvParams(sigma0=0.1, theta=0.1, kappa1=0.25, kappa2=0.25,
-                               beta=0.0, volvol=1.5),
+                               beta=0.0, volvol=0.2),
         model_calibration_type=LogsvModelCalibrationType.PARAMS_WITH_VARSWAP_FIT,
         historical_backbone_order=True,
         constraints_type=sv.ConstraintsType.INVERSE_MARTINGALE,

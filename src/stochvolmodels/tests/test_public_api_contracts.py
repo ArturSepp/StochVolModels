@@ -1,4 +1,5 @@
-import hashlib
+"""Root API contracts for stable exports, compatibility names and lazy dependency loading."""
+
 import inspect
 import json
 import subprocess
@@ -46,9 +47,129 @@ STABLE_PUBLIC_API = (
     "infer_normal_ivols_from_slice_prices",
     "compute_analytic_qvar",
 )
-LEGACY_PUBLIC_NAME_COUNT = 121
-LEGACY_PUBLIC_NAME_SHA256 = (
-    "d88adc979f2a8a4f5accf12ef7970a0e18dd46f6b44fc46bad21cff949912ff1"
+EXPECTED_ROOT_NAMES = (
+    "BTC_HESTON_PARAMS",
+    "CalibrationEngine",
+    "CalibrationError",
+    "ConstraintsType",
+    "ExpansionOrder",
+    "GmmParams",
+    "GmmPricer",
+    "HawkesJDParams",
+    "HawkesJDPricer",
+    "HestonParams",
+    "HestonPricer",
+    "LOGSV_BTC_PARAMS",
+    "LogSVPricer",
+    "LogSvParams",
+    "LogsvModelCalibrationType",
+    "OptionChain",
+    "OptionSlice",
+    "OptionType",
+    "TdistParams",
+    "TdistPricer",
+    "VariableType",
+    "align_x_limits_axs",
+    "align_y_limits_axs",
+    "cdf_tdist",
+    "compute_analytic_qvar",
+    "compute_bsm_forward_grid_prices",
+    "compute_bsm_slice_vegas",
+    "compute_bsm_strike_from_delta",
+    "compute_bsm_vanilla_delta",
+    "compute_bsm_vanilla_deltas_ttms",
+    "compute_bsm_vanilla_gamma",
+    "compute_bsm_vanilla_grid_deltas",
+    "compute_bsm_vanilla_price",
+    "compute_bsm_vanilla_slice_deltas",
+    "compute_bsm_vanilla_slice_prices",
+    "compute_bsm_vanilla_theta",
+    "compute_bsm_vanilla_vega",
+    "compute_bsm_vegas_ttms",
+    "compute_default_prob_tdist",
+    "compute_forward_tdist",
+    "compute_histogram_data",
+    "compute_integration_weights",
+    "compute_logsv_a_mgf_grid",
+    "compute_mc_vars_payoff",
+    "compute_normal_delta",
+    "compute_normal_delta_from_lognormal_vol",
+    "compute_normal_delta_to_strike",
+    "compute_normal_deltas_ttms",
+    "compute_normal_price",
+    "compute_normal_slice_deltas",
+    "compute_normal_slice_prices",
+    "compute_normal_slice_vegas",
+    "compute_normal_vegas_ttms",
+    "compute_vanilla_price_tdist",
+    "create_dummy_line",
+    "cum_mean_tdist",
+    "data",
+    "digital_slice_pricer_with_mgf_grid",
+    "fig_list_to_pdf",
+    "fig_to_pdf",
+    "find_nearest",
+    "func_a_ode_quadratic_terms",
+    "func_rhs",
+    "func_rhs_jac",
+    "get_btc_test_chain_data",
+    "get_expansion_n",
+    "get_gld_test_chain_data",
+    "get_gld_test_chain_data_6m",
+    "get_init_conditions_a",
+    "get_n_sns_colors",
+    "get_phi_grid",
+    "get_psi_grid",
+    "get_qv_options_test_chain_data",
+    "get_randoms_for_chain_valuation",
+    "get_randoms_for_rough_vol_chain_valuation",
+    "get_spy_test_chain_data",
+    "get_sqqq_test_chain_data",
+    "get_theta_grid",
+    "get_transform_var_grid",
+    "get_vix_test_chain_data",
+    "imply_drift_tdist",
+    "infer_bsm_implied_vol",
+    "infer_bsm_ivols_from_model_chain_prices",
+    "infer_bsm_ivols_from_model_slice_prices",
+    "infer_bsm_ivols_from_slice_prices",
+    "infer_implied_vol_tdist",
+    "infer_normal_implied_vol",
+    "infer_normal_ivols_from_chain_prices",
+    "infer_normal_ivols_from_model_slice_prices",
+    "infer_normal_ivols_from_slice_prices",
+    "infer_tdist_implied_vols_from_model_slice_prices",
+    "logsv_mc_chain_pricer_fixed_randoms",
+    "map_deltas_to_str",
+    "model_param_ts",
+    "model_vols_ts",
+    "ncdf",
+    "npdf",
+    "pdf_tdist",
+    "pdf_with_mgf_grid",
+    "plot_model_risk_var",
+    "pricers",
+    "rough_logsv_mc_chain_pricer_fixed_randoms",
+    "save_fig",
+    "save_figs",
+    "set_fig_props",
+    "set_legend_colors",
+    "set_seed",
+    "set_subplot_border",
+    "set_y_limits",
+    "slice_pricer_with_mgf_grid_with_gamma",
+    "slice_qvar_pricer_with_a_grid",
+    "solve_a_ode_grid",
+    "solve_analytic_ode_for_a",
+    "solve_analytic_ode_for_a0",
+    "solve_analytic_ode_grid_phi",
+    "solve_ode_for_a",
+    "timer",
+    "to_flat_np_array",
+    "update_kwargs",
+    "utils",
+    "vanilla_slice_pricer_with_mgf_grid",
+    "vol_slice_fit",
 )
 
 
@@ -88,18 +209,12 @@ def test_vanilla_analytics_are_direct_dependency_reexports() -> None:
         assert getattr(stochvolmodels, name) is getattr(vanilla_option_pricers, name)
 
 
-def test_all_legacy_root_names_remain_discoverable_and_resolvable() -> None:
-    legacy_names = sorted(
-        name
-        for name in dir(stochvolmodels)
-        if not name.startswith("_") and name != "CalibrationError"
-    )
+def test_root_names_remain_discoverable_and_resolvable() -> None:
+    """Keep stable and compatibility exports visible and importable by their expected names."""
+    actual_names = tuple(sorted(name for name in dir(stochvolmodels) if not name.startswith("_")))
+    assert actual_names == EXPECTED_ROOT_NAMES
 
-    assert len(legacy_names) == LEGACY_PUBLIC_NAME_COUNT
-    fingerprint = hashlib.sha256("\n".join(legacy_names).encode()).hexdigest()
-    assert fingerprint == LEGACY_PUBLIC_NAME_SHA256
-
-    for name in legacy_names:
+    for name in EXPECTED_ROOT_NAMES:
         assert getattr(stochvolmodels, name) is not None
 
 

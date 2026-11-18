@@ -120,7 +120,7 @@ Core dependencies:
 - `matplotlib >= 3.8.0`
 - `seaborn >= 0.13.0`
 
-Version 2.18.8 requires Python 3.11.5 or newer. Versions 2.6.0 through 2.18.7 required
+Version 2.19.0.dev1 requires Python 3.11.5 or newer. Versions 2.6.0 through 2.18.7 required
 Python 3.11 or newer. Python 3.12 is the development and primary CI interpreter.
 Published version 2.5.0 retains its original Python 3.10 requirement.
 
@@ -179,7 +179,7 @@ risk premia under clustered jumps.
 |---|---|---|
 | Sepp, A. and Rakhmonov, P. (2023), *Log-normal Stochastic Volatility Model with Quadratic Drift*, [IJTAF 26(8)](https://www.worldscientific.com/doi/10.1142/S0219024924500031) | The LogSV model: moment-generating-function Fourier pricing, Monte Carlo dynamics, martingale constraints and calibration; the paper figures and equation-mapped analysis | `pricers/logsv_pricer.py`, [`papers/logsv_model_with_quadratic_drift_ijtaf_2023`](papers/logsv_model_with_quadratic_drift_ijtaf_2023), [LogSV model](docs/logsv_model.md) |
 | Sepp, A. and Rakhmonov, P. (2023), *What is a robust stochastic volatility model*, [SSRN 4647027](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027) | Model comparison analytics of the robustness study | [original SSRN scripts](https://github.com/ArturSepp/StochVolModels/tree/588193611f4fbf5595d60b198e34cb5c24826f8a/papers/volatility_models), [robust volatility models](docs/app_robust_volatility_models.md) |
-| Lucic, V. and Sepp, A. (2024), *Valuation and Hedging of Cryptocurrency Inverse Options*, [Quantitative Finance 24(7), 851–869](https://www.tandfonline.com/doi/full/10.1080/14697688.2024.2364804) | Inverse-option valuation and hedging, with the Bitcoin chain calibration | [`papers/inverse_options`](papers/inverse_options), [inverse options](docs/inverse_options.md), [Bitcoin options](docs/app_bitcoin_options.md) |
+| Lucic, V. and Sepp, A. (2024), *Valuation and Hedging of Cryptocurrency Inverse Options*, [Quantitative Finance 24(7), 851–869](https://www.tandfonline.com/doi/full/10.1080/14697688.2024.2364804) | Inverse-option valuation and hedging, with the Bitcoin chain calibration | [`papers/inverse_options_qf_2023`](papers/inverse_options_qf_2023), [inverse options](docs/inverse_options.md), [Bitcoin options](docs/app_bitcoin_options.md) |
 | Lipton, A., Lucic, V. and Sepp, A. (2025), *Unified approach for hedging impermanent loss of liquidity provision*, [Digital Finance 7, 429-477](https://link.springer.com/article/10.1007/s42521-025-00144-5) | Impermanent-loss hedging analytics | [`papers/unified_approach_for_hedging_il_df_2025`](papers/unified_approach_for_hedging_il_df_2025), [impermanent-loss hedging](docs/app_impermanent_loss_hedging.md) |
 | Sepp, A. and Rakhmonov, P. (2025), *Stochastic Volatility for Factor Heath-Jarrow-Morton Framework*, [Review of Derivatives Research 28(3), 12](https://doi.org/10.1007/s11147-025-09217-4) (preprint [SSRN 4646925](https://ssrn.com/abstract=4646925)) | Factor HJM stochastic-volatility pricing (experimental research surface) | [`papers/sv_for_factor_hjm_rdr_2025`](papers/sv_for_factor_hjm_rdr_2025), [factor HJM](docs/factor_hjm_stochastic_volatility.md) |
 | Liu, F., Packham, N. and Sepp, A., *Jump risk premia in the presence of clustered jumps*, [SSRN 4735365](https://ssrn.com/abstract=4735365) | Related development code (not an exact replication package), with the Tardis hourly and EOD chain conventions | [`papers/jump_risk_premia_clustered_jumps`](papers/jump_risk_premia_clustered_jumps), [Hawkes jump-diffusion](docs/hawkes_jump_diffusion.md) |
@@ -474,7 +474,7 @@ package in your research, please cite the software and the relevant papers:
   title={StochVolModels: Python Implementation of Stochastic Volatility Models},
   author={Sepp, Artur},
   year={2026},
-  version={2.18.8},
+  version={2.19.0.dev1},
   url={https://github.com/ArturSepp/StochVolModels},
   note={Python package for pricing analytics and Monte Carlo simulations}
 }
