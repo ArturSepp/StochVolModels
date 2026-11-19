@@ -28,6 +28,13 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Added
 
+- Repository-only `validation.pde_startup` compares the existing Douglas,
+  Craig–Sneyd and Hundsdorfer–Verwer methods with uniform/quadratic time grids
+  and optional full backward-Euler startup half-steps against refined unsplit
+  references. Frozen model snapshots can be replayed without refitting; reports
+  retain price/IV gaps, runtime, transient and expiry density diagnostics, and
+  separate time agreement from density acceptance. Production defaults are unchanged.
+
 - Repository-only unsplit 2D references in `validation.pde_unsplit`, opt-in through
   the PDE qualification runner. Sparse backward Euler/Crank–Nicolson and bounded
   matrix exponentials retain the existing spatial operator and weighted adjoint;

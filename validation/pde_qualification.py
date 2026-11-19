@@ -5,6 +5,7 @@ grids. A refined PDE comparison is evidence of convergence, not an exact error b
 Opt in with ``--unsplit-reference be cn`` to compare full sparse theta solves on
 the base/time_2/time_4 grids. ``expm`` adds a tiny-grid spatial-semigroup reference.
 The same spatial stencil is retained; this does not supply independent spatial accuracy.
+For the fixed-model startup/ADI scheme matrix, run ``python -m validation.pde_startup``.
 """
 
 from __future__ import annotations
@@ -309,9 +310,21 @@ def measure_variant(case: QualificationCase, variant: Variant, *, repeats: int) 
 
 
 def _price_unsplit(case, variant, method, config):
-    """Keep the pricer's frozen right-ended buckets, time grading and vanilla projection."""
+    """Price with the bounded full generator and the pricer's unchanged conventions."""
+    return _price_time_method(case, variant, method, config)
+
+
+def _price_time_method(case, variant, method, config, *, adi=None, startup=False):
+    """Compare time integrators using identical buckets, point mass and valuation.
+
+    With startup enabled, replace only the very first nominal step by two full
+    backward-Euler half-steps. No restart at coefficient knots or expiries, no
+    smoothing, clipping or normalization. The reference includes mixed coupling;
+    Douglas with theta=1 is not a substitute for full backward Euler.
+    """
     from numba.typed import List
     from stochvolmodels.pde_solvers import BoundaryPair1D, BoundarySet2D, PDEDirection
+    from stochvolmodels.pde_solvers.adi import adi_step
     from stochvolmodels.pde_solvers.operators_2d import SplitOperator2D
     from stochvolmodels.pricers.density_pricer import (
         CoordinateSystem, DensityPricer, DensityState2D,
@@ -319,6 +332,12 @@ def _price_unsplit(case, variant, method, config):
     from stochvolmodels.pricers.lsv_projection import _interval_time_grid, _step_counts
 
     grid, model, chain = variant.grid, case.model, case.chain
+    if model.jump is not None:
+        raise ValueError("jump models are not supported by the continuous time reference")
+    if adi is not None and not isinstance(adi, ADIConfig):
+        raise TypeError("adi must be an ADIConfig")
+    if not isinstance(startup, bool):
+        raise TypeError("startup must be a bool")
     if not (grid.x.nodes[0] < 0. < grid.x.nodes[-1]
             and 0. <= grid.y.nodes[0] < model.dynamics.params.sigma0 < grid.y.nodes[-1]):
         raise ValueError("initial (0, sigma0) must be interior, with nonnegative volatility")
@@ -332,21 +351,40 @@ def _price_unsplit(case, variant, method, config):
         knots = model.time_knots
         for stop in np.r_[knots[(start < knots) & (knots < end)], end]:
             times = _interval_time_grid(start, stop, count, variant.quadratic_start)
+            settings = {} if adi is None else {
+                "drift_discretization": adi.drift_discretization,
+                "monotonicity_tolerance": adi.monotonicity_tolerance}
             split = SplitOperator2D.build(
-                grid, model.continuous_coefficients(stop, grid), boundaries)
-            operator = Unsplit2DReference.from_split(split, config)
-            operators.append({"start": start, "end": float(stop), "coefficient_time": float(stop),
-                              **operator.statistics})
+                grid, model.continuous_coefficients(stop, grid), boundaries, **settings)
+            operator = (Unsplit2DReference.from_split(split, config)
+                        if adi is None or (startup and start == 0.) else None)
+            if operator is not None:
+                operators.append({"start": start, "end": float(stop),
+                                  "coefficient_time": float(stop), **operator.statistics})
             for a, b in zip(times[:-1], times[1:], strict=True):
-                step = operator.step(state, PDEDirection.FORWARD, b - a, method)
-                state = step.values
-                diagnostic = density_diagnostics(grid, state)
-                diagnostic.update(time_start=float(a), time_end=float(b),
-                                  coefficient_time=float(stop),
-                                  normalized_forward=grid.integrate(np.exp(grid.x_mesh) * state),
-                                  residual_absolute=step.residual_absolute,
-                                  residual_relative=step.residual_relative)
-                steps.append(diagnostic)
+                damp = startup and a == 0.
+                endpoints = (a + .5 * (b - a), b) if damp else (b,)
+                for endpoint in endpoints:
+                    step = None
+                    if damp or adi is None:
+                        step = operator.step(state, PDEDirection.FORWARD, endpoint - a,
+                                             "be" if damp else method)
+                        state = step.values
+                    else:
+                        state = adi_step(split, state, PDEDirection.FORWARD, endpoint - a, adi)
+                    diagnostic = density_diagnostics(grid, state)
+                    diagnostic.update(time_start=float(a), time_end=float(endpoint),
+                                      coefficient_time=float(stop),
+                                      normalized_forward=grid.integrate(
+                                          np.exp(grid.x_mesh) * state),
+                                      residual_absolute=None if step is None else
+                                      step.residual_absolute,
+                                      residual_relative=None if step is None else
+                                      step.residual_relative,
+                                      integrator="be_startup" if damp else
+                                      (method if adi is None else adi.scheme.value))
+                    steps.append(diagnostic)
+                    a = endpoint
             start = float(stop)
         marginal = DensityState2D(grid, state, end, CoordinateSystem.LOG_FORWARD).marginal_x_state()
         priced = DensityPricer(marginal, chain.forwards[i], chain.discfactors[i])
@@ -549,7 +587,8 @@ def write_report(output: Path, report: dict) -> None:
              "are applied. Missing independent evidence cannot qualify a case.", "",
              "Domain extension preserves the original interior nodes and uses constant endpoint "
              "spacing. Space refinement subdivides every original interval; time refinement "
-             "keeps the grid fixed. Leverage remains frozen, including its clamped extrapolation.", ""]
+             "keeps the grid fixed. Leverage remains frozen, including its clamped extrapolation.",
+             ""]
     lines += ["## Case summary", "", "All gaps below are maximum absolute changes in price bp.", "",
               "| Case | Domain last | Space last | Time last | Joint reference gap | Qualified |",
               "|---|---:|---:|---:|---:|---|"]
@@ -619,7 +658,9 @@ def write_report(output: Path, report: dict) -> None:
     lines += ["", "## Reproducibility", "", "Full input snapshots, source hashes, environment, "
               "timing samples, per-quote errors, boundary edges, inversion masks and step moments "
               "are in `qualification.json`. Qualification gates are study policies, not universal "
-              "production limits. Transient negative mass is reported separately from expiry gates.", ""]
+              "production limits. Transient negative mass is reported separately "
+              "from expiry gates.",
+              ""]
     temporary = output / "qualification.md.tmp"
     temporary.write_text("\n".join(lines), encoding="utf-8")
     temporary.replace(output / "qualification.md")
@@ -646,7 +687,7 @@ def _metadata(args) -> dict:
 
 
 def main(argv=None) -> int:
-    """Run selected cases and checkpoint each result; numerical rejection is not execution failure."""
+    """Checkpoint selected cases; numerical rejection is not execution failure."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cases", nargs="+", choices=CASE_NAMES, default=list(CASE_NAMES))
     parser.add_argument("--repeats", type=int, default=2)
