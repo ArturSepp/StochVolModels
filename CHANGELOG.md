@@ -49,6 +49,11 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Changed
 
+- `SplitOperator2D.build` caches the existing mixed-derivative bands for linear-work
+  application, preserving nonuniform-grid formulas and the weighted-adjoint forward
+  action. Prices and density diagnostics are checked against the former dense action
+  on frozen BTC and stress cases; public signatures and numerical policies are unchanged.
+
 - Paper dispatchers now use `Locals` and `run_local(local=...)`, consistently with
   package development runners and repository examples. Figure selections, numerical
   calculations and random seeds are unchanged. Research dispatchers have typed

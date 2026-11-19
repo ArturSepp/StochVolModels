@@ -111,6 +111,70 @@ def test_zero_covariance_mixed_path_is_initialized_to_exact_zero() -> None:
     np.testing.assert_array_equal(operator.apply_a0(values, PDEDirection.FORWARD), 0.0)
 
 
+@pytest.mark.parametrize("layout", ["c", "fortran", "strided"])
+@pytest.mark.parametrize("small", [False, True])
+def test_mixed_derivative_matches_dense_action_with_variable_covariance(layout, small):
+    """Check nonuniform center weights, endpoint transfers and both adjoint directions."""
+    grid = TensorGrid2D(
+        Grid1D.uniform(-1., 1., 3) if small else
+        Grid1D(np.array([-1.5, -.8, -.2, .15, .6, 1.8, 2.5])),
+        Grid1D(np.array([-1.3, -.5, .1, .4, 1.2])),
+    )
+    coeff = replace(_smooth_coefficients(grid),
+                    covariance_xy=.08 * np.tanh(grid.x_mesh + 2 * grid.y_mesh))
+    op = SplitOperator2D.build(grid, coeff, _boundaries())
+    rng = np.random.default_rng(20261119)
+    point = grid.project_delta(grid.x.nodes[1], grid.y.nodes[1])
+    edge = np.zeros(grid.shape)
+    edge[[0, -1], :] = rng.normal(size=(2, grid.y.size))
+    edge[:, [0, -1]] = rng.normal(size=(grid.x.size, 2))
+    for state in (rng.normal(size=grid.shape), point, edge):
+        if layout == "fortran":
+            state = np.asfortranarray(state)
+        elif layout == "strided":
+            padded = np.zeros((2 * grid.x.size, 2 * grid.y.size))
+            padded[::2, ::2] = state
+            state = padded[::2, ::2]
+        original = state.copy()
+        state.setflags(write=False)
+        for direction in PDEDirection:
+            if direction is PDEDirection.BACKWARD:
+                expected = coeff.covariance_xy * (op.derivative_x @ state @ op.derivative_y.T)
+            else:
+                weighted = grid.quadrature_weights * coeff.covariance_xy * state
+                expected = (op.derivative_x.T @ weighted @ op.derivative_y)
+                expected /= grid.quadrature_weights
+            actual = op.apply_a0(state, direction)
+            np.testing.assert_allclose(actual, expected, rtol=3e-14, atol=3e-14)
+        np.testing.assert_array_equal(state, original)
+
+
+def test_nonuniform_mixed_derivative_retains_center_contribution():
+    """The four-corner secant would not differentiate x**2*y exactly on this grid."""
+    grid = TensorGrid2D(Grid1D(np.array([-.8, -.2, .15, .6, 1.5])),
+                        Grid1D(np.array([-.9, -.4, .1, .8])))
+    op = SplitOperator2D.build(grid, _smooth_coefficients(grid), _boundaries())
+    values = grid.x_mesh**2 * grid.y_mesh
+    expected = 2 * grid.x_mesh * op.coefficients.covariance_xy
+    np.testing.assert_allclose(op.apply_a0(values, PDEDirection.BACKWARD)[1:-1, 1:-1],
+                               expected[1:-1, 1:-1], rtol=0., atol=2e-15)
+
+
+def test_supplied_mixed_derivative_matrices_keep_their_dense_action():
+    """Custom matrices passed to the public dataclass need not have three bands."""
+    grid = TensorGrid2D(Grid1D.uniform(-1., 1., 5), Grid1D.uniform(-1., 1., 4))
+    op = SplitOperator2D.build(grid, _smooth_coefficients(grid), _boundaries())
+    dx, dy = op.derivative_x.copy(), op.derivative_y.copy()
+    dx[1, -1], dy[1, -1] = .3, -.2
+    op = replace(op, derivative_x=dx, derivative_y=dy)
+    state = np.arange(np.prod(grid.shape)).reshape(grid.shape) / 10.
+    np.testing.assert_allclose(op.apply_a0(state, PDEDirection.BACKWARD),
+                               op.coefficients.covariance_xy * (dx @ state @ dy.T))
+    weighted = grid.quadrature_weights * op.coefficients.covariance_xy * state
+    np.testing.assert_allclose(op.apply_a0(state, PDEDirection.FORWARD),
+                               (dx.T @ weighted @ dy) / grid.quadrature_weights)
+
+
 def test_backward_constant_and_forward_mass_rate_include_full_discount_once() -> None:
     grid = TensorGrid2D(
         Grid1D.concentrated(-1.5, 1.5, 17, center=0.0, scale=0.35),

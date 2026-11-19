@@ -22,6 +22,7 @@ from stochvolmodels.pde_solvers.operators_1d import (
     PDEDirection,
 )
 from stochvolmodels.pde_solvers.solver_1d import _eliminate_endpoint, _enforce_prescribed_boundaries
+from stochvolmodels.pde_solvers.tridiagonal import TridiagonalOperator
 
 FloatArray = NDArray[np.float64]
 
@@ -155,6 +156,9 @@ class SplitOperator2D:
     _batches: dict[tuple[int, PDEDirection], _LineBatch] = field(
         default_factory=dict, init=False, repr=False, compare=False
     )
+    _mixed_derivatives: dict[PDEDirection, tuple[TridiagonalOperator, ...]] = field(
+        default_factory=dict, init=False, repr=False, compare=False
+    )
 
     @classmethod
     def build(
@@ -212,7 +216,7 @@ class SplitOperator2D:
             )
             for x_index in range(grid.x.size)
         )
-        return cls(
+        operator = cls(
             grid=grid,
             coefficients=coefficients,
             boundaries=boundaries,
@@ -222,6 +226,17 @@ class SplitOperator2D:
             derivative_y=_first_derivative_matrix(grid.y),
             drift_discretization=drift_discretization,
         )
+        # Keep the inspectable matrices and pack their exact bands once. The transpose
+        # retains contributions to endpoint nodes in the weighted-adjoint forward map.
+        for direction in PDEDirection:
+            matrices = (operator.derivative_x, operator.derivative_y)
+            if direction is PDEDirection.FORWARD:
+                matrices = tuple(matrix.T for matrix in matrices)
+            operator._mixed_derivatives[direction] = tuple(
+                TridiagonalOperator(np.diag(matrix, -1), np.diag(matrix), np.diag(matrix, 1))
+                for matrix in matrices
+            )
+        return operator
 
     def _batch(self, axis: int, direction: PDEDirection) -> _LineBatch:
         """Lazily pack each axis/direction for this frozen operator and its bound grid."""
@@ -247,14 +262,22 @@ class SplitOperator2D:
     def apply_a0(
         self, values: ArrayLike, direction: PDEDirection
     ) -> FloatArray:
-        """Apply the explicit mixed-derivative component."""
+        """Apply the mixed component in linear work using the exact derivative bands.
+
+        Directly constructed operators retain the dense action of their supplied
+        derivative matrices, which need not have the stencil produced by ``build``.
+        """
         array = self.grid.validate_shape(values)
         _validate_direction(direction)
         if not np.any(self.coefficients.covariance_xy):
             return np.zeros(self.grid.shape, dtype=np.float64)
 
+        bands = self._mixed_derivatives.get(direction)
         if direction is PDEDirection.BACKWARD:
-            derivative = self.derivative_x @ array @ self.derivative_y.T
+            derivative = (
+                self.derivative_x @ array @ self.derivative_y.T
+                if bands is None else bands[1].apply(bands[0].apply(array).T).T
+            )
             return np.asarray(
                 self.coefficients.covariance_xy * derivative, dtype=np.float64
             )
@@ -264,7 +287,10 @@ class SplitOperator2D:
             * self.coefficients.covariance_xy
             * array
         )
-        transposed = self.derivative_x.T @ weighted @ self.derivative_y
+        transposed = (
+            self.derivative_x.T @ weighted @ self.derivative_y
+            if bands is None else bands[1].apply(bands[0].apply(weighted).T).T
+        )
         return np.asarray(transposed / self.grid.quadrature_weights, dtype=np.float64)
 
     def apply_a1(
