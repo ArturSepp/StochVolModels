@@ -162,3 +162,116 @@ def test_cli_checkpoint_exit_codes_and_no_overwrite(runner, monkeypatch, tmp_pat
         runner.main(args)
     assert exc.value.code == 2
     assert json.loads((tmp_path / "qualification.json").read_text()) == saved
+
+
+@pytest.fixture
+def tiny_case(black_case):
+    return replace(black_case,
+                   grid=TensorGrid2D(Grid1D.uniform(-.6, .6, 13), Grid1D.uniform(.1, .3, 5)),
+                   steps=(4, 6))
+
+
+def test_unsplit_cli_prices_time_refinement_and_serialized_diagnostics(runner, tiny_case,
+                                                                     monkeypatch, tmp_path):
+    import json
+
+    monkeypatch.setattr(runner, "load_case", lambda name: replace(tiny_case, name=name))
+    assert runner.main(["--cases", "high_vol_of_vol", "--repeats", "1", "--output", str(tmp_path),
+                        "--unsplit-reference", "be", "cn", "expm"]) == 0
+    case = json.loads((tmp_path / "qualification.json").read_text())["cases"][0]
+    reference = case["unsplit_reference"]
+    assert reference["complete"] and len(reference["runs"]) == 7
+    assert case["checks"]["unsplit_reference_available"]
+    assert case["model_sha256"] == case["model_sha256_after"]
+    rows = {(r["method"], r["variant"]): r for r in reference["runs"]}
+    adi_rows = {r["name"]: r for r in case["runs"]}
+    for r in reference["runs"]:
+        assert r["status"] == "ok" and r["actual_steps"] == adi_rows[r["variant"]]["actual_steps"]
+        assert r["grid_sha256"] == adi_rows[r["variant"]]["grid_sha256"]
+        assert r["diagnostics"]["max_mass_error"] < 1e-12
+        assert r["diagnostics"]["step_moments"][-1]["time_end"] == tiny_case.chain.ttms[-1]
+        if r["method"] != "expm":
+            assert r["max_linear_residual"] < 1e-14
+        else:
+            assert r["max_linear_residual"] is None
+    for method in ("be", "cn"):
+        errors = [rows[(method, v)]["vs_exponential"]["max_abs_bp"]
+                  for v in ("base", "time_2", "time_4")]
+        assert errors[2] < errors[1] < errors[0]
+    # With volatility fixed at its equilibrium node, Douglas theta=1 reduces to full BE.
+    assert rows[("be", "base")]["vs_adi"]["max_abs_bp"] < 1e-9
+    report = (tmp_path / "qualification.md").read_text(encoding="utf-8")
+    assert "Unsplit time reference" in report and "not new price-acceptance thresholds" in report
+    assert "be_time_last" in report and "Max scaled residual" in report
+
+
+def test_unsplit_right_ended_buckets_against_independent_dense_exponentials(runner, tiny_case):
+    from scipy.linalg import expm
+    from stochvolmodels.pde_solvers import BoundaryPair1D, BoundarySet2D, PDEDirection
+    from stochvolmodels.pde_solvers.operators_2d import SplitOperator2D
+
+    model = replace(tiny_case.model, backbone_times=(.05, .18), backbone_scales=(.7, 1.2))
+    case = replace(tiny_case, model=model)
+    variant = runner.Variant("base", case.grid, case.steps)
+    result = runner.measure_unsplit_variant(case, variant, "expm",
+                                            runner.UnsplitConfig(methods=("expm",)), repeats=1)
+    assert result["status"] == "ok"
+    assert [s["coefficient_time"] for s in result["operators"]] == [.05, .1, .18, .3]
+    assert result["diagnostics"]["step_moments"][0]["time_end"] == .05 / 4**2
+    grid = case.grid
+    state = grid.project_delta(0., .2)
+    n = int(np.prod(grid.shape))
+    basis = np.eye(n)
+    boundary = BoundaryPair1D.natural()
+    start, expiry = 0., 0
+    for stop in (.05, .1, .18, .3):
+        op = SplitOperator2D.build(grid, model.continuous_coefficients(stop, grid),
+                                   BoundarySet2D(boundary, boundary))
+        dense = np.column_stack([op.apply_full(e.reshape(grid.shape), PDEDirection.FORWARD).ravel()
+                                 for e in basis])
+        state = (expm((stop-start)*dense) @ state.ravel()).reshape(grid.shape)
+        start = stop
+        if stop in case.chain.ttms:
+            f, d = case.chain.forwards[expiry], case.chain.discfactors[expiry]
+            prices = []
+            for k, kind in zip(case.chain.strikes_ttms[expiry],
+                               case.chain.optiontypes_ttms[expiry]):
+                sign = 1 if kind == "C" else -1
+                payoff = np.maximum(sign*(f*np.exp(grid.x_mesh)-k), 0.)
+                prices.append(d*grid.integrate(state*payoff))
+            np.testing.assert_allclose(result["prices"][expiry], prices, atol=2e-12, rtol=2e-13)
+            expiry += 1
+
+
+def test_unsplit_limits_and_jumps_are_visible_skips(runner, tiny_case, monkeypatch):
+    monkeypatch.setattr(runner, "_price_unsplit",
+                        lambda *a: pytest.fail("unsupported solve attempted"))
+    variant = runner.Variant("base", tiny_case.grid, tiny_case.steps)
+    for config, method in [(runner.UnsplitConfig(max_nodes=9), "be"),
+                           (runner.UnsplitConfig(max_expm_nodes=9), "expm")]:
+        skipped = runner.measure_unsplit_variant(tiny_case, variant, method, config, repeats=1)
+        assert skipped["status"] == "skipped" and "limit" in skipped["reason"]
+        assert "prices" not in skipped
+    jump = runner.load_case("compensated_down_jumps")
+    skipped = runner.measure_unsplit_variant(jump, runner.Variant("base", jump.grid, jump.steps),
+                                             "be", runner.UnsplitConfig(), repeats=1)
+    assert skipped["status"] == "skipped" and "jump" in skipped["reason"]
+
+
+def test_requested_reference_failures_cannot_qualify(runner, tiny_case, monkeypatch):
+    def fail(*args):
+        raise RuntimeError("deliberate unsplit solve failure")
+    monkeypatch.setattr(runner, "_price_unsplit", fail)
+    result = runner.qualify_case(tiny_case, repeats=1, unsplit_config=runner.UnsplitConfig(("be",)))
+    assert result["status"] == "error" and not result["qualified"]
+    assert not result["checks"]["unsplit_reference_available"]
+    assert all("deliberate" in r["error"] for r in result["unsplit_reference"]["runs"])
+
+
+def test_requested_oversized_reference_is_incomplete_not_successful(runner, tiny_case):
+    result = runner.qualify_case(tiny_case, repeats=1,
+                                 unsplit_config=runner.UnsplitConfig(("expm",), max_expm_nodes=9))
+    assert result["status"] == "complete" and not result["qualified"]
+    assert not result["checks"]["unsplit_reference_available"]
+    assert result["unsplit_reference"]["comparisons"] == {}
+    assert result["unsplit_reference"]["runs"][0]["status"] == "skipped"

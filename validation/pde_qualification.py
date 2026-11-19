@@ -2,6 +2,9 @@
 
 Uses existing pricers and frozen problem definitions, without recalibrating between
 grids. A refined PDE comparison is evidence of convergence, not an exact error bound.
+Opt in with ``--unsplit-reference be cn`` to compare full sparse theta solves on
+the base/time_2/time_4 grids. ``expm`` adds a tiny-grid spatial-semigroup reference.
+The same spatial stencil is retained; this does not supply independent spatial accuracy.
 """
 
 from __future__ import annotations
@@ -28,6 +31,7 @@ from stochvolmodels.models.lsv import LSVModel
 from stochvolmodels.pde_solvers import ADIConfig, ADIScheme, Grid1D, TensorGrid2D
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdePricer
+from validation.pde_unsplit import Unsplit2DReference, UnsplitConfig, density_diagnostics
 
 ROOT = Path(__file__).resolve().parents[1]
 STRESS_FIXTURE = ROOT / "examples/pricing/lsv_production_stress_reference.json"
@@ -304,6 +308,138 @@ def measure_variant(case: QualificationCase, variant: Variant, *, repeats: int) 
     return _json_value(record)
 
 
+def _price_unsplit(case, variant, method, config):
+    """Keep the pricer's frozen right-ended buckets, time grading and vanilla projection."""
+    from numba.typed import List
+    from stochvolmodels.pde_solvers import BoundaryPair1D, BoundarySet2D, PDEDirection
+    from stochvolmodels.pde_solvers.operators_2d import SplitOperator2D
+    from stochvolmodels.pricers.density_pricer import (
+        CoordinateSystem, DensityPricer, DensityState2D,
+    )
+    from stochvolmodels.pricers.lsv_projection import _interval_time_grid, _step_counts
+
+    grid, model, chain = variant.grid, case.model, case.chain
+    if not (grid.x.nodes[0] < 0. < grid.x.nodes[-1]
+            and 0. <= grid.y.nodes[0] < model.dynamics.params.sigma0 < grid.y.nodes[-1]):
+        raise ValueError("initial (0, sigma0) must be interior, with nonnegative volatility")
+    counts = _step_counts(variant.steps, len(chain.ttms))
+    boundary = BoundaryPair1D.natural()
+    boundaries = BoundarySet2D(boundary, boundary)
+    state = grid.project_delta(0., model.dynamics.params.sigma0)
+    start = 0.
+    prices, expiries, steps, operators = [], [], [], []
+    for i, (end, count) in enumerate(zip(chain.ttms, counts, strict=True)):
+        knots = model.time_knots
+        for stop in np.r_[knots[(start < knots) & (knots < end)], end]:
+            times = _interval_time_grid(start, stop, count, variant.quadratic_start)
+            split = SplitOperator2D.build(
+                grid, model.continuous_coefficients(stop, grid), boundaries)
+            operator = Unsplit2DReference.from_split(split, config)
+            operators.append({"start": start, "end": float(stop), "coefficient_time": float(stop),
+                              **operator.statistics})
+            for a, b in zip(times[:-1], times[1:], strict=True):
+                step = operator.step(state, PDEDirection.FORWARD, b - a, method)
+                state = step.values
+                diagnostic = density_diagnostics(grid, state)
+                diagnostic.update(time_start=float(a), time_end=float(b),
+                                  coefficient_time=float(stop),
+                                  normalized_forward=grid.integrate(np.exp(grid.x_mesh) * state),
+                                  residual_absolute=step.residual_absolute,
+                                  residual_relative=step.residual_relative)
+                steps.append(diagnostic)
+            start = float(stop)
+        marginal = DensityState2D(grid, state, end, CoordinateSystem.LOG_FORWARD).marginal_x_state()
+        priced = DensityPricer(marginal, chain.forwards[i], chain.discfactors[i])
+        prices.append(priced.price_vanillas(chain.strikes_ttms[i], chain.optiontypes_ttms[i]))
+        expiries.append({"ttm": float(end), **density_diagnostics(grid, state),
+                         "normalized_forward": grid.integrate(np.exp(grid.x_mesh) * state)})
+    ivols = list(chain.compute_model_ivols_from_chain_data(List(prices)))
+    return {
+        "prices": prices, "implied_vols": ivols, "invalid_iv": [~np.isfinite(v) for v in ivols],
+        "invalid_iv_count": sum(int(np.count_nonzero(~np.isfinite(v))) for v in ivols),
+        "actual_steps": len(steps), "operators": operators,
+        "max_linear_residual": max((s["residual_relative"] for s in steps
+                                    if s["residual_relative"] is not None), default=None),
+        "diagnostics": {
+            "expiries": expiries, "step_moments": steps,
+            "max_mass_error": max(abs(e["mass"] - 1) for e in expiries),
+            "max_forward_error": max(abs(e["normalized_forward"] - 1) for e in expiries),
+            "max_expiry_negative_mass": max(e["negative_mass"] for e in expiries),
+            "peak_negative_mass": max(s["negative_mass"] for s in steps),
+            "peak_step_mass_error": max(abs(s["mass"] - 1) for s in steps),
+            "max_boundary_mass": max(e["boundary_mass"]["absolute_total"] for e in expiries),
+        },
+    }
+
+
+def measure_unsplit_variant(case: QualificationCase, variant: Variant, method: str,
+                            config: UnsplitConfig, *, repeats: int) -> dict:
+    """Measure a bounded reference; preserve explicit unsupported, missing and failed evidence."""
+    record = {"name": f"unsplit_{method}_{variant.name}", "method": method,
+              "variant": variant.name, "shape": variant.grid.shape,
+              "grid_sha256": _hash({"x": variant.grid.x.nodes, "sigma": variant.grid.y.nodes}),
+              "steps_per_interval": variant.steps, "quadratic_start": variant.quadratic_start,
+              "timings_seconds": []}
+    size = int(np.prod(variant.grid.shape))
+    limit = min(config.max_nodes, config.max_expm_nodes) if method == "expm" else config.max_nodes
+    reason = ("jump models are not supported by the continuous unsplit reference"
+              if case.model.jump is not None else
+              f"grid has {size} nodes; reference limit is {limit}" if size > limit else None)
+    if reason:
+        return _json_value({**record, "status": "skipped", "reason": reason})
+    try:
+        first = None
+        for _ in range(repeats):
+            started = perf_counter()
+            result = _price_unsplit(case, variant, method, config)
+            record["timings_seconds"].append(perf_counter() - started)
+            if first is not None:
+                for a, b in zip(first, result["prices"], strict=True):
+                    if not np.array_equal(a, b, equal_nan=True):
+                        raise ValueError("unsplit pricing repeats returned different prices")
+            first = result["prices"]
+        record.update(result, status="ok",
+                      median_seconds=float(np.median(record["timings_seconds"])))
+    except (ValueError, RuntimeError, FloatingPointError, np.linalg.LinAlgError) as exc:
+        record.update(status="error", error=f"{type(exc).__name__}: {exc}")
+    return _json_value(record)
+
+
+def compare_unsplit(case, variants, adi_runs, config, repeats, boundary_limit, progress):
+    """Compare time refinement on identical nodes; retain independent benchmarks."""
+    runs = []
+    for method in config.methods:
+        for variant in variants:
+            if variant.name not in (
+                ("base",) if method == "expm" else ("base", "time_2", "time_4")
+            ):
+                continue
+            run = measure_unsplit_variant(case, variant, method, config, repeats=repeats)
+            if run["status"] == "ok":
+                run["density_checks"] = density_checks(run, case, boundary_limit)
+                if adi_runs[variant.name]["status"] == "ok":
+                    run["vs_adi"] = price_errors(
+                        case.chain, run["prices"], adi_runs[variant.name]["prices"])
+            runs.append(run)
+            if progress:
+                progress(case.name, run)
+    indexed = {(r["method"], r["variant"]): r for r in runs if r["status"] == "ok"}
+    comparisons = {}
+    for method in config.methods:
+        a, b = indexed.get((method, "time_2")), indexed.get((method, "time_4"))
+        if a is not None and b is not None:
+            comparisons[f"{method}_time_last"] = price_errors(case.chain, a["prices"], b["prices"])
+    exact = indexed.get(("expm", "base"))
+    if exact is not None:
+        for run in runs:
+            if run["status"] == "ok":
+                run["vs_exponential"] = price_errors(case.chain, run["prices"], exact["prices"])
+    return {"config": asdict(config), "runs": runs, "comparisons": comparisons,
+            "complete": all(r["status"] == "ok" for r in runs),
+            "scope": ("Same spatial operator; independent time stepping, "
+                      "not independent spatial accuracy.")}
+
+
 def density_checks(run: dict, case: QualificationCase, boundary_limit: float) -> dict:
     """Apply explicit terminal-density gates; transient negative mass remains an observation."""
     if run.get("status") != "ok":
@@ -319,12 +455,15 @@ def density_checks(run: dict, case: QualificationCase, boundary_limit: float) ->
 
 
 def qualify_case(case: QualificationCase, *, repeats: int = 2, accuracy_bp: float = 1.,
-                 boundary_limit: float = .01, progress=None) -> dict:
+                 boundary_limit: float = .01, progress=None,
+                 unsplit_config: UnsplitConfig | None = None) -> dict:
     """Measure independent axes and reject incomplete or unresolved convergence evidence."""
     if (isinstance(repeats, bool) or not isinstance(repeats, int) or repeats < 1
             or not np.isfinite(accuracy_bp) or accuracy_bp < 0
             or not np.isfinite(boundary_limit) or boundary_limit < 0):
         raise ValueError("repeats must be positive; tolerances must be finite and nonnegative")
+    if unsplit_config is not None and not isinstance(unsplit_config, UnsplitConfig):
+        raise TypeError("unsplit_config must be an UnsplitConfig")
     snapshot = input_snapshot(case)
     result = {"name": case.name, "input": snapshot, "model_sha256": _hash(snapshot["model"]),
               "policy": {"accuracy_bp": accuracy_bp, "boundary_limit": boundary_limit,
@@ -375,6 +514,14 @@ def qualify_case(case: QualificationCase, *, repeats: int = 2, accuracy_bp: floa
     result["model_sha256_after"] = _hash(input_snapshot(case)["model"])
     checks["fixed_model"] = result["model_sha256"] == result["model_sha256_after"]
     errors = any(r["status"] != "ok" for r in result["runs"]) or warmup["status"] != "ok"
+    if unsplit_config is not None:
+        reference = compare_unsplit(case, variants, runs, unsplit_config, repeats,
+                                    boundary_limit, progress)
+        result["unsplit_reference"] = reference
+        checks["unsplit_reference_available"] = reference["complete"]
+        errors |= any(r["status"] == "error" for r in reference["runs"])
+        result["model_sha256_after"] = _hash(input_snapshot(case)["model"])
+        checks["fixed_model"] = result["model_sha256"] == result["model_sha256_after"]
     result.update(comparisons=comparisons, checks=checks,
                   qualified=not errors and all(checks.values()),
                   status="error" if errors or not checks["archive_replay"] else "complete")
@@ -444,6 +591,31 @@ def write_report(output: Path, report: dict) -> None:
             lines.append(f"| {r['name']} | {r['shape'][0]} × {r['shape'][1]} | "
                          f"{r['actual_steps']} | " + " | ".join(_fmt(v) for v in values)
                          + f" | {r['invalid_iv_count']} |")
+        if "unsplit_reference" in case:
+            reference = case["unsplit_reference"]
+            lines += ["", "### Unsplit time reference", "", reference["scope"],
+                      "Reference gaps are observations, not new price-acceptance thresholds. "
+                      "Requested skipped/failed references cannot count as completed evidence. "
+                      "Natural boundaries and continuous diffusions only; matrix exponentials "
+                      "are size-limited. Each coefficient bucket is frozen at its right endpoint, "
+                      "as in the ADI pricer; exponentiation is exact in time only for "
+                      "that frozen operator.", "",
+                      "| Reference | Median s | vs same-grid ADI bp | vs exponential bp | "
+                      "Expiry negative | Peak negative | Boundary | Max scaled residual |",
+                      "|---|---:|---:|---:|---:|---:|---:|---:|"]
+            for r in reference["runs"]:
+                if r["status"] != "ok":
+                    lines.append(f"| {r['name']} | {r['status']}: "
+                                 f"{r.get('reason', r.get('error'))} | | | | | | |")
+                    continue
+                d = r["diagnostics"]
+                vals = (r["median_seconds"], r.get("vs_adi", {}).get("max_abs_bp"),
+                        r.get("vs_exponential", {}).get("max_abs_bp"),
+                        d["max_expiry_negative_mass"], d["peak_negative_mass"],
+                        d["max_boundary_mass"], r["max_linear_residual"])
+                lines.append(f"| {r['name']} | " + " | ".join(_fmt(v) for v in vals) + " |")
+            for name, gap in reference["comparisons"].items():
+                lines += ["", f"{name}: {_fmt(gap['max_abs_bp'])} discounted-forward bp."]
     lines += ["", "## Reproducibility", "", "Full input snapshots, source hashes, environment, "
               "timing samples, per-quote errors, boundary edges, inversion masks and step moments "
               "are in `qualification.json`. Qualification gates are study policies, not universal "
@@ -459,7 +631,8 @@ def _metadata(args) -> dict:
         return subprocess.run(["git", *parts], cwd=ROOT, capture_output=True, text=True,
                               check=False).stdout.strip()
     paths = list((ROOT / "src/stochvolmodels").rglob("*.py"))
-    paths += [Path(__file__), STRESS_FIXTURE, ROOT / "examples/calibration/frozen_btc_lsv.py",
+    paths += [Path(__file__), ROOT / "validation/pde_unsplit.py",
+              STRESS_FIXTURE, ROOT / "examples/calibration/frozen_btc_lsv.py",
               ROOT / "examples/pricing/lsv_production_stress.py"]
     return {"created_utc": datetime.now(timezone.utc).isoformat(), "arguments": vars(args),
             "git_head": git("rev-parse", "HEAD"), "git_status": git("status", "--porcelain"),
@@ -481,10 +654,21 @@ def main(argv=None) -> int:
     parser.add_argument("--boundary-limit", type=float, default=.01)
     parser.add_argument("--output", type=str)
     parser.add_argument("--require-qualified", action="store_true")
+    parser.add_argument("--unsplit-reference", nargs="+", choices=("be", "cn", "expm"),
+                        help="opt-in same-grid sparse/exponential time references")
+    parser.add_argument("--reference-max-nodes", type=int, default=10_000)
+    parser.add_argument("--reference-max-expm-nodes", type=int, default=256)
+    parser.add_argument("--reference-residual-tolerance", type=float, default=1e-11)
     args = parser.parse_args(argv)
     if (args.repeats < 1 or not np.isfinite(args.accuracy_bp) or args.accuracy_bp < 0
             or not np.isfinite(args.boundary_limit) or args.boundary_limit < 0):
         parser.error("repeats must be positive and tolerances finite and nonnegative")
+    try:
+        config = UnsplitConfig(tuple(args.unsplit_reference or ("be", "cn")),
+                               args.reference_max_nodes, args.reference_max_expm_nodes,
+                               args.reference_residual_tolerance)
+    except ValueError as exc:
+        parser.error(str(exc))
     output = (Path(args.output) if args.output else ROOT / "agents/pde_qualification" /
               datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ"))
     if (output / "qualification.json").exists():
@@ -502,7 +686,8 @@ def main(argv=None) -> int:
             case = load_case(name)
             preparation = perf_counter() - started
             result = qualify_case(case, repeats=args.repeats, accuracy_bp=args.accuracy_bp,
-                                  boundary_limit=args.boundary_limit, progress=progress)
+                                  boundary_limit=args.boundary_limit, progress=progress,
+                                  unsplit_config=config if args.unsplit_reference else None)
             result["preparation_seconds"] = preparation
         except (ValueError, RuntimeError, FloatingPointError, np.linalg.LinAlgError) as exc:
             result = {"name": name, "status": "error", "qualified": False,

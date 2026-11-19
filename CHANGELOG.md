@@ -28,6 +28,13 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Added
 
+- Repository-only unsplit 2D references in `validation.pde_unsplit`, opt-in through
+  the PDE qualification runner. Sparse backward Euler/Crank–Nicolson and bounded
+  matrix exponentials retain the existing spatial operator and weighted adjoint;
+  reports expose residuals, signed-density diagnostics and same-grid price gaps.
+  Natural boundaries and continuous diffusions are supported; this is a time
+  reference, not an independent spatial discretization or a positivity guarantee.
+
 - Forward-variance model specification and calibration guide in
   `papers/forward_var/README.md`, including the loading bootstrap, current bounds,
   approximation conventions and independently checked PDE/Monte Carlo results.
