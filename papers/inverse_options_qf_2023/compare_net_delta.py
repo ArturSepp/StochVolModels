@@ -99,12 +99,12 @@ def compare_pnl(ttm: float,
                   **kwargs)
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     DELTA_COMP = 1
     PNL_COMP = 2
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
 
     LOCAL_PATH = lp.get_output_path()
 
@@ -112,7 +112,7 @@ def run_unit_test(unit_test: UnitTests):
 
     ttm = 7.0 / 365.0
 
-    if unit_test == UnitTests.DELTA_COMP:
+    if local == Locals.DELTA_COMP:
 
         with sns.axes_style("darkgrid"):
             fig, axs = plt.subplots(1, 2, figsize=(14, 7), tight_layout=True)
@@ -132,7 +132,7 @@ def run_unit_test(unit_test: UnitTests):
             qis.save_fig(fig, file_name='delta_comp', local_path=LOCAL_PATH)
             qis.save_fig(fig, file_name='delta_comp',  file_type=qis.FileTypes.EPS, dpi=1200, local_path=LOCAL_PATH)
 
-    elif unit_test == UnitTests.PNL_COMP:
+    elif local == Locals.PNL_COMP:
 
         with sns.axes_style("darkgrid"):
             fig, axs = plt.subplots(1, 2, figsize=(14, 7), tight_layout=True)
@@ -159,11 +159,11 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.DELTA_COMP
+    local = Locals.DELTA_COMP
 
     is_run_all_tests = False
     if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
+        for local in Locals:
+            run_local(local=local)
     else:
-        run_unit_test(unit_test=unit_test)
+        run_local(local=local)

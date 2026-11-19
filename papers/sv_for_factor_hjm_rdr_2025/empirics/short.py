@@ -34,12 +34,12 @@ def plot_factors(xs: pd.DataFrame,  # factors xs at weekly freq
     return fig
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     PLOT_FACTORS = 1
 
 
-def run_unit_test(unit_test: UnitTests) -> None:
-    if unit_test == UnitTests.PLOT_FACTORS:
+def run_local(local: Locals) -> None:
+    if local == Locals.PLOT_FACTORS:
         rates = loader.load_ust_rates()
         ys, _ = fit_timeseries_ns_factors(
             rates=rates,
@@ -51,4 +51,4 @@ def run_unit_test(unit_test: UnitTests) -> None:
 
 
 if __name__ == '__main__':
-    run_unit_test(unit_test=UnitTests.PLOT_FACTORS)
+    run_local(local=Locals.PLOT_FACTORS)

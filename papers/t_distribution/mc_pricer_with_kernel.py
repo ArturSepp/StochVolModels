@@ -84,14 +84,14 @@ def compute_implied_vols(b: float = -1,
     return vols
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     IMPLIED_VOLS_WITH_KERNEL = 1
 
 
-def run_unit_test(unit_test: UnitTests) -> None:
-    """run the figure or check selected by unit_test."""
+def run_local(local: Locals) -> None:
+    """run the figure or check selected by local."""
 
-    if unit_test == UnitTests.IMPLIED_VOLS_WITH_KERNEL:
+    if local == Locals.IMPLIED_VOLS_WITH_KERNEL:
         bsm_vols = compute_implied_vols(b=-10.0,
                                         nu=5.0,
                                         ttm=1.0 / 12.0,
@@ -104,4 +104,4 @@ def run_unit_test(unit_test: UnitTests) -> None:
 
 if __name__ == '__main__':
 
-    run_unit_test(unit_test=UnitTests.IMPLIED_VOLS_WITH_KERNEL)
+    run_local(local=Locals.IMPLIED_VOLS_WITH_KERNEL)

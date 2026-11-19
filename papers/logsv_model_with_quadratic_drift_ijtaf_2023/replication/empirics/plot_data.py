@@ -58,11 +58,11 @@ def plot_risk_premia(asset_id: str = 'BTC',
     return fig
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     VOL_PREMIA_TS = 1
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -71,7 +71,7 @@ def run_unit_test(unit_test: UnitTests):
 
     set_fig_props()
 
-    if unit_test == UnitTests.VOL_PREMIA_TS:
+    if local == Locals.VOL_PREMIA_TS:
         fig = plot_risk_premia()
 
         is_update = True
@@ -85,4 +85,4 @@ def run_unit_test(unit_test: UnitTests):
 
 
 if __name__ == '__main__':
-    run_unit_test(unit_test=UnitTests.VOL_PREMIA_TS)
+    run_local(local=Locals.VOL_PREMIA_TS)

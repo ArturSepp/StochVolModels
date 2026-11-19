@@ -206,7 +206,7 @@ def plot_ss_kurtosis(params_dict=SS_PARAMS,
         ax.set_title(title, fontsize=12, color='darkblue')
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     PLOT_VOL_STEADY_STATE = 1
     PLOT_SS_PDF = 2
     PLOT_X_PDF = 3
@@ -215,35 +215,35 @@ class UnitTests(Enum):
     SKEWENESS = 6
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
 
-    if unit_test == UnitTests.PLOT_VOL_STEADY_STATE:
+    if local == Locals.PLOT_VOL_STEADY_STATE:
         with sns.axes_style("darkgrid"):
             fig, ax = plt.subplots(1, 1, figsize=(18, 10), tight_layout=True)
             plot_steady_state(title='Steady state distribution of volatility with $\kappa_{1}=4$',
                               ax=ax)
 
-    elif unit_test == UnitTests.PLOT_SS_PDF:
+    elif local == Locals.PLOT_SS_PDF:
         with sns.axes_style("darkgrid"):
             fig, ax = plt.subplots(1, 1, figsize=(12, 6), tight_layout=True)
             plot_steady_state(ax=ax)
 
-    elif unit_test == UnitTests.PLOT_X_PDF:
+    elif local == Locals.PLOT_X_PDF:
         with sns.axes_style("darkgrid"):
             fig, ax = plt.subplots(1, 1, figsize=(12, 6), tight_layout=True)
             plot_steady_state_x(ax=ax)
 
-    elif unit_test == UnitTests.PLOT_KURT:
+    elif local == Locals.PLOT_KURT:
         with sns.axes_style("darkgrid"):
             fig, ax = plt.subplots(1, 1, figsize=(6, 6), tight_layout=True)
             plot_ss_kurtosis(ax=ax)
 
-    elif unit_test == UnitTests.SKEWENESS:
+    elif local == Locals.SKEWENESS:
         with sns.axes_style("darkgrid"):
             fig, ax = plt.subplots(1, 1, figsize=(6, 6), tight_layout=True)
             plot_vol_skew(ax=ax)
 
-    elif unit_test == UnitTests.JOINT_FIGURE:
+    elif local == Locals.JOINT_FIGURE:
         with sns.axes_style("darkgrid"):
             fig, axs = plt.subplots(1, 3, figsize=(18, 6), tight_layout=True)
             plot_steady_state(title='(A) Steady state distribution of the volatility',
@@ -262,11 +262,11 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.PLOT_VOL_STEADY_STATE
+    local = Locals.PLOT_VOL_STEADY_STATE
 
     is_run_all_tests = False
     if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
+        for local in Locals:
+            run_local(local=local)
     else:
-        run_unit_test(unit_test=unit_test)
+        run_local(local=local)

@@ -222,14 +222,14 @@ def figure_vol_acf(dfs: Dict[str, pd.DataFrame],
     # print(acf(rvols, alpha=0.05))
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     DATA = 1
     BOXPLOT = 2
     QQPLOT = 3
     VOL_ACF = 4
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -239,7 +239,7 @@ def run_unit_test(unit_test: UnitTests):
     local_path = lp.get_output_path()
     is_save = False
 
-    if unit_test == UnitTests.QQPLOT:
+    if local == Locals.QQPLOT:
         time_period = TimePeriod(start='15Jul2021', end='15Jul2022')
         # time_period = TimePeriod(start_date='15Jul2020', end_date='15Jul2022')
     else:
@@ -255,25 +255,25 @@ def run_unit_test(unit_test: UnitTests):
 
     dfs = {'S&P 500': spy, 'VIX': vix, 'Gold': gold, 'Bitcoin': btc}
 
-    if unit_test == UnitTests.DATA:
+    if local == Locals.DATA:
         print(vix)
         print(btc)
 
-    elif unit_test == UnitTests.BOXPLOT:
+    elif local == Locals.BOXPLOT:
         fig = figure_boxplot(dfs=dfs)
         if is_save:
             fu.save_fig(fig=fig, file_name='bbox', local_path=local_path, dpi=300)
 
-    elif unit_test == UnitTests.QQPLOT:
+    elif local == Locals.QQPLOT:
         fig = figure_qqplot(dfs=dfs)
         if is_save:
             fu.save_fig(fig=fig, file_name='qqplot', local_path=local_path, dpi=300)
 
-    if unit_test == UnitTests.VOL_ACF:
+    if local == Locals.VOL_ACF:
         figure_vol_acf(dfs=dfs)
 
     plt.show()
 
 
 if __name__ == '__main__':
-    run_unit_test(unit_test=UnitTests.BOXPLOT)
+    run_local(local=Locals.BOXPLOT)

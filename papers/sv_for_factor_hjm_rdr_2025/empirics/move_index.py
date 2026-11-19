@@ -392,14 +392,14 @@ def generate_figures(is_to_2022: bool = False) -> pd.DataFrame:
     return an_table
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     FIGURES = 1
 
 
-def run_unit_test(unit_test: UnitTests) -> None:
-    if unit_test == UnitTests.FIGURES:
+def run_local(local: Locals) -> None:
+    if local == Locals.FIGURES:
         generate_figures()
 
 
 if __name__ == '__main__':
-    run_unit_test(unit_test=UnitTests.FIGURES)
+    run_local(local=Locals.FIGURES)

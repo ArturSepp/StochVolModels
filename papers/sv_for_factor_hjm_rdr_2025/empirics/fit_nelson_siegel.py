@@ -114,12 +114,12 @@ def plot_fitted_factors(ys: pd.DataFrame, resid: pd.DataFrame):
                                     return_type=qis.ReturnTypes.DIFFERENCE)
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     FIT_TERM_STRUCTURE = 1
     FIT_TIME_SERIES = 2
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -128,7 +128,7 @@ def run_unit_test(unit_test: UnitTests):
 
     rates = loader.load_ust_rates()
 
-    if unit_test == UnitTests.FIT_TERM_STRUCTURE:
+    if local == Locals.FIT_TERM_STRUCTURE:
         rates = rates.loc['2022-12-30', :]
 
         print(rates)
@@ -137,7 +137,7 @@ def run_unit_test(unit_test: UnitTests):
         ys = fitted_model.x
         plot_ns_rates(rates=rates, y1=ys[0], y2=ys[1], y3=ys[2])
 
-    elif unit_test == UnitTests.FIT_TIME_SERIES:
+    elif local == Locals.FIT_TIME_SERIES:
         ys, resid = fit_timeseries_ns_factors(rates=rates,
                                               lambdat=12.0*0.0609,
                                               freq='W-WED')
@@ -147,4 +147,4 @@ def run_unit_test(unit_test: UnitTests):
 
 
 if __name__ == '__main__':
-    run_unit_test(unit_test=UnitTests.FIT_TIME_SERIES)
+    run_local(local=Locals.FIT_TIME_SERIES)

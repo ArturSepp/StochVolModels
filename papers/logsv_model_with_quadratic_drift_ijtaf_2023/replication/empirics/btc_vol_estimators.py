@@ -86,7 +86,7 @@ def ml_fitter_log(params: np.ndarray, args: np.ndarray):
     return -log_lh
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     INTRA_REAL_VOL = 2
     INTRA_OHLC = 5
     INTRA_OHLC_PLOT = 6
@@ -96,30 +96,30 @@ class UnitTests(Enum):
     PLOT_PDF = 10
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
     Use for quick verification during development.
     """
 
-    if unit_test == UnitTests.INTRA_REAL_VOL:
+    if local == Locals.INTRA_REAL_VOL:
 
         ohlc_data = load_ohlc_data()
         joint_data = get_ohlc_vol_data(ohlc_data=ohlc_data,
                                        ohlc_estimator_type=OhlcEstimatorType.PARKINSON,
                                        is_filter_low=False)
 
-    elif unit_test == UnitTests.INTRA_OHLC:
+    elif local == Locals.INTRA_OHLC:
         ohlc_data = load_ohlc_data()
         joint_data = estimate_hf_ohlc_vol(ohlc_data=ohlc_data, ohlc_estimator_type=OhlcEstimatorType.ROGERS_SATCHELL)
         print(joint_data)
 
-    elif unit_test == UnitTests.INTRA_OHLC_PLOT:
+    elif local == Locals.INTRA_OHLC_PLOT:
         ohlc_data = load_ohlc_data()
         plot_vol_estimators(ohlc_data=ohlc_data, is_filter_low=True)
 
-    elif unit_test == UnitTests.INTRA_OHLC_ESTIMATION:
+    elif local == Locals.INTRA_OHLC_ESTIMATION:
 
         ohlc_data = load_ohlc_data()
         joint_data = get_ohlc_vol_data(ohlc_data,
@@ -143,4 +143,4 @@ def run_unit_test(unit_test: UnitTests):
 
 
 if __name__ == '__main__':
-    run_unit_test(unit_test=UnitTests.INTRA_OHLC_ESTIMATION)
+    run_local(local=Locals.INTRA_OHLC_ESTIMATION)

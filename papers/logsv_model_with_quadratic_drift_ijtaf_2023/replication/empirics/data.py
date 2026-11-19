@@ -129,24 +129,24 @@ def get_price_imp_real_vols(ticker: str = 'BTC',
     return prices, implied_vols, realized_vols, skew
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     OHLC_VOL = 1
     JOINT_DATA = 2
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
     Use for quick verification during development.
     """
 
-    if unit_test == UnitTests.OHLC_VOL:
+    if local == Locals.OHLC_VOL:
         ohlc = load_ohlc_data()
         vol = get_ohlc_vol_data(ohlc_data=ohlc)
         print(vol)
 
-    elif unit_test == UnitTests.JOINT_DATA:
+    elif local == Locals.JOINT_DATA:
         price, ivols, rvols, skew = get_price_imp_real_vols()
         print(price)
         print(ivols)
@@ -155,4 +155,4 @@ def run_unit_test(unit_test: UnitTests):
 
 
 if __name__ == '__main__':
-    run_unit_test(unit_test=UnitTests.JOINT_DATA)
+    run_local(local=Locals.JOINT_DATA)

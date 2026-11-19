@@ -215,13 +215,13 @@ def plot_fit(rates: pd.DataFrame, lambdat: float, freq: str = 'ME'):
     plt.close('all')
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     PLOT_FACTORS = 1
     MOVE_FACTOR_CORR = 2
     PLOT_FIT = 3
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -230,11 +230,11 @@ def run_unit_test(unit_test: UnitTests):
 
     rates = loader.load_ust_rates()
 
-    if unit_test == UnitTests.PLOT_FACTORS:
+    if local == Locals.PLOT_FACTORS:
         ys, resid = fit_timeseries_ns_factors(rates=rates, freq='W-WED', lambdat=12.0*0.0609)
         plot_factors(xs=ys)
 
-    elif unit_test == UnitTests.MOVE_FACTOR_CORR:
+    elif local == Locals.MOVE_FACTOR_CORR:
         ys, resid = fit_timeseries_ns_factors(rates=rates, freq='W-WED', lambdat=12.0*0.0609)
         move = loader.fetch_move(is_update=False)
 
@@ -246,11 +246,11 @@ def run_unit_test(unit_test: UnitTests):
             local_path=lp.get_output_path(),
         )
 
-    elif unit_test == UnitTests.PLOT_FIT:
+    elif local == Locals.PLOT_FIT:
         plot_fit(rates=rates, lambdat=12.0*0.0609)
 
     plt.show()
 
 
 if __name__ == '__main__':
-    run_unit_test(unit_test=UnitTests.PLOT_FACTORS)
+    run_local(local=Locals.PLOT_FACTORS)

@@ -474,14 +474,14 @@ def set_fig_props(size: int = 14):
     plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     TEST1 = 1
     REPORT = 2
     SCATTER = 3
     FIGURE = 4
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -490,7 +490,7 @@ def run_unit_test(unit_test: UnitTests):
 
     set_fig_props()
 
-    if unit_test == UnitTests.TEST1:
+    if local == Locals.TEST1:
         asset_id = 'BTC'
         price, ivols, rvols, skew = cvd.get_price_imp_real_vols(ticker=asset_id)
         vol_dynamics = VolDynamics(price=price, ivols=ivols, rvols=rvols, skew=skew, asset_id=asset_id)
@@ -518,18 +518,18 @@ def run_unit_test(unit_test: UnitTests):
             # vol_dynamics.plot_vol_change_boxplot(is_implied=True)
             # vol_dynamics.plot_vol_change_boxplot(is_implied=False)
 
-    elif unit_test == UnitTests.REPORT:
+    elif local == Locals.REPORT:
         generate_report_figures(ticker='BTC')
         # generate_report_figures(ticker='ETH')
 
-    elif unit_test == UnitTests.SCATTER:
+    elif local == Locals.SCATTER:
         cols = ['1wk ATM Vol', '1mth ATM Vol', '3mth ATM Vol', '6mth ATM Vol']
         for col in cols:
             price, ivols, rvols, skew = cvd.get_price_imp_real_vols(ticker='BTC', col=col)
             vol_dynamics = VolDynamics(price=price, ivols=ivols, rvols=rvols, skew=skew)
             vol_dynamics.vol_return_scatters(is_implied=True)
 
-    elif unit_test == UnitTests.FIGURE:
+    elif local == Locals.FIGURE:
         price, ivols, rvols, skew = cvd.get_price_imp_real_vols()
         vol_dynamics = VolDynamics(price=price, ivols=ivols, rvols=rvols, skew=skew)
         kwargs = {'fontsize': 14}
@@ -553,4 +553,4 @@ def run_unit_test(unit_test: UnitTests):
 
 
 if __name__ == '__main__':
-    run_unit_test(unit_test=UnitTests.TEST1)
+    run_local(local=Locals.TEST1)

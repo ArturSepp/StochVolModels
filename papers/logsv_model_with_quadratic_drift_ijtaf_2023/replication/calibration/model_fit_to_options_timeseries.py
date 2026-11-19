@@ -166,14 +166,14 @@ def report_calibration_timeseries(df: pd.DataFrame,
     return fig
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     FIT_LOGSV_MODEL = 1
     REPORT_FITTED_MODEL = 2
     RUN_CALIBRATION_TIMESERIES = 3
     REPORT_CALIBRATION_TIMESERIES = 4
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
 
     pd.set_option('display.max_columns', 1000)
 
@@ -183,10 +183,10 @@ def run_unit_test(unit_test: UnitTests):
     value_time = pd.Timestamp('2022-12-30 10:00:00+00:00')
     value_time = pd.Timestamp('2023-06-30 10:00:00+00:00')
 
-    single_chain_cases = {UnitTests.FIT_LOGSV_MODEL, UnitTests.REPORT_FITTED_MODEL}
+    single_chain_cases = {Locals.FIT_LOGSV_MODEL, Locals.REPORT_FITTED_MODEL}
     option_chain = None
     options_data_dfs = None
-    if unit_test in single_chain_cases:
+    if local in single_chain_cases:
         option_chain = load_tardis_hourly_option_chain(
             ticker=ticker,
             value_time=value_time,
@@ -195,7 +195,7 @@ def run_unit_test(unit_test: UnitTests):
         )
         if option_chain is None:
             raise RuntimeError(f'no Tardis option observation at or before {value_time}')
-    elif unit_test == UnitTests.RUN_CALIBRATION_TIMESERIES:
+    elif local == Locals.RUN_CALIBRATION_TIMESERIES:
         options_data_dfs = load_tardis_hourly_options_data(ticker=ticker)
         options_data_dfs.get_start_end_date().print()
 
@@ -203,7 +203,7 @@ def run_unit_test(unit_test: UnitTests):
     eth_kappas = dict(kappa1=1.96, kappa2=1.98)
     kappas = btc_kappas
 
-    if unit_test == UnitTests.FIT_LOGSV_MODEL:
+    if local == Locals.FIT_LOGSV_MODEL:
         option_chain.print()
         calibrated_params = calibrate_logsv_model_with_fixed_kappas(option_chain=option_chain, **kappas)
         print(calibrated_params)
@@ -211,7 +211,7 @@ def run_unit_test(unit_test: UnitTests):
                                 params=calibrated_params,
                                 value_time=value_time)
 
-    elif unit_test == UnitTests.REPORT_FITTED_MODEL:
+    elif local == Locals.REPORT_FITTED_MODEL:
         option_chain.print()
         params = LogSvParams(sigma0=0.4083, theta=0.3789, kappa1=2.21, kappa2=2.18, beta=0.5010, volvol=3.0633)
         output_dict, figs_dict = plot_calibration_report(option_chain=option_chain,
@@ -222,7 +222,7 @@ def run_unit_test(unit_test: UnitTests):
 
         qis.save_figs_to_pdf(figs=figs_dict, file_name='btc_calibration', local_path=lp.get_output_path())
 
-    elif unit_test == UnitTests.RUN_CALIBRATION_TIMESERIES:
+    elif local == Locals.RUN_CALIBRATION_TIMESERIES:
         if options_data_dfs is None:
             raise RuntimeError('hourly Tardis options data was not loaded')
         time_period = qis.TimePeriod('2019-03-30 00:00:00+00:00', '2024-05-06 00:00:00+00:00', tz='UTC')
@@ -237,7 +237,7 @@ def run_unit_test(unit_test: UnitTests):
                              add_current_date=True)
         qis.save_figs_to_pdf(figs=figs_dict, file_name=file_name, local_path=lp.get_output_path())
 
-    elif unit_test == UnitTests.REPORT_CALIBRATION_TIMESERIES:
+    elif local == Locals.REPORT_CALIBRATION_TIMESERIES:
         # df = qis.load_df_from_excel(file_name='btc_calibration_w_fri_20231209_1504', local_path=lp.get_resource_path())
         # df = qis.load_df_from_excel(file_name='eth_calibration_w_fri_20231210_1124', local_path=lp.get_resource_path())
         df = qis.load_df_from_excel(file_name='btc_calibration_w_fri_may_2024_20241018_1147', local_path=lp.get_resource_path())
@@ -250,11 +250,11 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.REPORT_CALIBRATION_TIMESERIES
+    local = Locals.REPORT_CALIBRATION_TIMESERIES
 
     is_run_all_tests = False
     if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
+        for local in Locals:
+            run_local(local=local)
     else:
-        run_unit_test(unit_test=unit_test)
+        run_local(local=local)

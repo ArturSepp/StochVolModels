@@ -18,14 +18,14 @@ def plot_kernels(kappa: float = -2.0):
     qis.plot_line(df=df)
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     PLOT_KERNELS = 1
 
 
-def run_unit_test(unit_test: UnitTests) -> None:
-    """run the figure or check selected by unit_test."""
+def run_local(local: Locals) -> None:
+    """run the figure or check selected by local."""
 
-    if unit_test == UnitTests.PLOT_KERNELS:
+    if local == Locals.PLOT_KERNELS:
         plot_kernels()
 
         plt.show()
@@ -33,4 +33,4 @@ def run_unit_test(unit_test: UnitTests) -> None:
 
 if __name__ == '__main__':
 
-    run_unit_test(unit_test=UnitTests.PLOT_KERNELS)
+    run_local(local=Locals.PLOT_KERNELS)

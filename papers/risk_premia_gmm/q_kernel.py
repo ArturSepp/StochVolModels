@@ -27,14 +27,14 @@ def value_payoff(pdf: np.ndarray, payoff: np.ndarray):
     return np.sum(pdf*payoff)
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     Q_KERNEL_VALUATION = 1
 
 
-def run_unit_test(unit_test: UnitTests) -> None:
-    """run the figure or check selected by unit_test."""
+def run_local(local: Locals) -> None:
+    """run the figure or check selected by local."""
 
-    if unit_test == UnitTests.Q_KERNEL_VALUATION:
+    if local == Locals.Q_KERNEL_VALUATION:
         x = np.linspace(-5.0, 5.0, 20000)
         pdf = compute_normal_pdf(x)
 
@@ -67,4 +67,4 @@ def run_unit_test(unit_test: UnitTests) -> None:
 
 if __name__ == '__main__':
 
-    run_unit_test(unit_test=UnitTests.Q_KERNEL_VALUATION)
+    run_local(local=Locals.Q_KERNEL_VALUATION)

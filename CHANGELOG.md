@@ -16,6 +16,9 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Removed
 
+- Module-layout and dispatcher-naming contract tests. Numerical regressions,
+  distribution inventories and private-file exclusion checks are retained.
+
 - Unused barrier-study scripts `article_figures_old.py`, `drift_expansion.py` and
   `time_barrier.py`, and the superseded standalone conditional-valuation note.
 
@@ -45,6 +48,11 @@ Entries start at 1.2.0. For earlier releases see the git log.
   accuracy-versus-runtime reports. See `validation/README.md`.
 
 ### Changed
+
+- Paper dispatchers now use `Locals` and `run_local(local=...)`, consistently with
+  package development runners and repository examples. Figure selections, numerical
+  calculations and random seeds are unchanged. Research dispatchers have typed
+  `local` arguments and return annotations; existing fetch/evaluate commands are retained.
 
 - The forward-variance paper calibration relaxes its volvol lower bound from 1.5
   to 0.2. Recalibration reduces the weighted IV objective by 22.72%; independent

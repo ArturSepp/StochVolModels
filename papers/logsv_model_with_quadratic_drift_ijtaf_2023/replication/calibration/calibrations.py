@@ -90,7 +90,7 @@ def calibrate_logsv_model(asset: Assets = Assets.BTC,
     return fig
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     CHAIN_DATA = 0
     CALIBRATION = 1
     MODEL_COMPARISION_WITH_MC = 2
@@ -99,22 +99,22 @@ class UnitTests(Enum):
     PLOT_QVAR_FIGURE_FOR_ARTICLE = 5
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
 
     set_seed(24)
 
-    if unit_test == UnitTests.CHAIN_DATA:
+    if local == Locals.CHAIN_DATA:
         option_chain = get_asset_chain_data(asset=Assets.BTC)
         print(option_chain)
         atm_vols = option_chain.get_chain_atm_vols()
         print(atm_vols)
 
-    elif unit_test == UnitTests.CALIBRATION:
+    elif local == Locals.CALIBRATION:
         asset = Assets.BTC
         fig = calibrate_logsv_model(asset=asset)
         plot.save_fig(fig=fig, local_path=lp.get_output_path(), file_name=f"calibration_{asset.value}")
 
-    elif unit_test == UnitTests.MODEL_COMPARISION_WITH_MC:
+    elif local == Locals.MODEL_COMPARISION_WITH_MC:
 
         asset = Assets.BTC
         option_chain = get_asset_chain_data(asset=asset)
@@ -128,13 +128,13 @@ def run_unit_test(unit_test: UnitTests):
         uniform_chain_data = OptionChain.to_uniform_strikes(obj=option_chain, num_strikes=31)
         logsv_pricer.plot_comp_mma_inverse_options_with_mc(option_chain=uniform_chain_data, params=params, nb_path=400000)
 
-    elif unit_test == UnitTests.ALL_PARAMS_TABLE:
+    elif local == Locals.ALL_PARAMS_TABLE:
         datas = {key.value: param.to_dict() for key, param in CALIBRATED_PARAMS.items()}
         df = pd.DataFrame.from_dict(datas)
         print(df)
         df.to_clipboard()
 
-    elif unit_test == UnitTests.PLOT_BTC_COMP_FOR_ARTICLE:
+    elif local == Locals.PLOT_BTC_COMP_FOR_ARTICLE:
 
         asset = Assets.BTC
         params = CALIBRATED_PARAMS[asset]
@@ -155,7 +155,7 @@ def run_unit_test(unit_test: UnitTests):
             plot.save_fig(fig=fig1, local_path=lp.get_output_path(), file_name="btc_fit")
             plot.save_fig(fig=fig2, local_path=lp.get_output_path(), file_name="btc_mc_comp")
 
-    elif unit_test == UnitTests.PLOT_QVAR_FIGURE_FOR_ARTICLE:
+    elif local == Locals.PLOT_QVAR_FIGURE_FOR_ARTICLE:
 
         asset = Assets.BTC
         params = CALIBRATED_PARAMS[asset]
@@ -182,18 +182,18 @@ def run_unit_test(unit_test: UnitTests):
             plot.save_fig(fig=fig, local_path=lp.get_output_path(), file_name="model_vs_mc_qvar_logsv")
 
     else:
-        raise NotImplementedError(f"not implemented {unit_test}")
+        raise NotImplementedError(f"not implemented {local}")
 
     plt.show()
 
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.CHAIN_DATA
+    local = Locals.CHAIN_DATA
 
     is_run_all_tests = False
     if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
+        for local in Locals:
+            run_local(local=local)
     else:
-        run_unit_test(unit_test=unit_test)
+        run_local(local=local)

@@ -13,7 +13,7 @@ from stochvolmodels.utils.funcs import set_seed
 from stochvolmodels import local_path as lp
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     VARSWAP_FIT = 1
     CALIBRATE_4PARAM_MODEL = 2
     CALIBRATE_VARSWAP_PARAM_MODEL = 3
@@ -54,7 +54,7 @@ def mc_smile_inputs(option_chain):
     return sv.OptionChain.to_uniform_strikes(obj=option_chain, num_strikes=31), params
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
 
     set_seed(24)
 
@@ -63,12 +63,12 @@ def run_unit_test(unit_test: UnitTests):
 
     local_path = lp.get_output_path()
 
-    if unit_test == UnitTests.VARSWAP_FIT:
+    if local == Locals.VARSWAP_FIT:
         btc_log_params = varswap_fit(option_chain, verbose=True)
         logsv_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain,
                                                  params=btc_log_params, historical_backbone_order=True)
 
-    elif unit_test == UnitTests.CALIBRATE_4PARAM_MODEL:
+    elif local == Locals.CALIBRATE_4PARAM_MODEL:
         fitted_params = LogSvParams(sigma0=0.8626, theta=1.0417, kappa1=2.21, kappa2=2.18, beta=0.13, volvol=1.6286)
         btc_calibrated_params = fitted_params
         """
@@ -83,7 +83,7 @@ def run_unit_test(unit_test: UnitTests):
                                                        params=btc_calibrated_params)
         qis.save_fig(fig=fig, file_name='four_param_model_fit', local_path=local_path)
 
-    elif unit_test == UnitTests.CALIBRATE_VARSWAP_PARAM_MODEL:
+    elif local == Locals.CALIBRATE_VARSWAP_PARAM_MODEL:
         btc_calibrated_params = calibrated_varswap_fit(option_chain)
         print(btc_calibrated_params)
 
@@ -91,7 +91,7 @@ def run_unit_test(unit_test: UnitTests):
                                                        params=btc_calibrated_params, historical_backbone_order=True)
         qis.save_fig(fig=fig, file_name='backbone_model_fit', local_path=local_path)
 
-    elif unit_test == UnitTests.COMPARE_MODEL_VOLS_TO_MC:
+    elif local == Locals.COMPARE_MODEL_VOLS_TO_MC:
         is_varswap = True
         if is_varswap:
             uniform_chain_data, fitted_params = mc_smile_inputs(option_chain)
@@ -116,11 +116,11 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.CALIBRATE_VARSWAP_PARAM_MODEL
+    local = Locals.CALIBRATE_VARSWAP_PARAM_MODEL
 
     is_run_all_tests = False
     if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
+        for local in Locals:
+            run_local(local=local)
     else:
-        run_unit_test(unit_test=unit_test)
+        run_local(local=local)

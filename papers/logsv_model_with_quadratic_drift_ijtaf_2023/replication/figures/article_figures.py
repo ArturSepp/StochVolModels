@@ -147,7 +147,7 @@ def plot_var_pdfs(params: LogSvParams,
         ax.set_xlabel(key[0], fontsize=fontsize)
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     FIGURE1_STEADY_STATE = 1
     FIGURE2_VOL_MOMENTS = 2
     FIGURE3_QVAR_EXP = 3
@@ -159,7 +159,7 @@ class UnitTests(Enum):
     FIGURE10_QVAR = 10
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
 
     local_path = lp.get_output_path()
 
@@ -171,10 +171,10 @@ def run_unit_test(unit_test: UnitTests):
 
     option_chain = None
     chain_cases = {
-        UnitTests.FIGURE6_JOINT_PDF,
-        UnitTests.FIGURE8_9_FITTED_MODEL,
+        Locals.FIGURE6_JOINT_PDF,
+        Locals.FIGURE8_9_FITTED_MODEL,
     }
-    if unit_test in chain_cases:
+    if local in chain_cases:
         option_chain = load_tardis_hourly_option_chain(
             ticker=ticker,
             value_time=value_time,
@@ -186,7 +186,7 @@ def run_unit_test(unit_test: UnitTests):
 
     # option_chain.print()
 
-    if unit_test == UnitTests.FIGURE1_STEADY_STATE:
+    if local == Locals.FIGURE1_STEADY_STATE:
 
         VOLVOL = 1.5
 
@@ -215,7 +215,7 @@ def run_unit_test(unit_test: UnitTests):
             plot.save_fig(fig=fig, local_path=local_path, file_name='figure1_steady_state')
             plot.save_fig(fig=fig, local_path=local_path, file_name='figure1_steady_state', extension='eps', dpi=600)
 
-    elif unit_test == UnitTests.FIGURE2_VOL_MOMENTS:
+    elif local == Locals.FIGURE2_VOL_MOMENTS:
 
         set_seed(37)
 
@@ -235,7 +235,7 @@ def run_unit_test(unit_test: UnitTests):
         plot.save_fig(fig=fig, local_path=local_path, file_name='figure2_vol_moments')
         plot.save_fig(fig=fig, local_path=local_path, file_name='figure2_vol_moments', extension='eps', dpi=600)
 
-    elif unit_test == UnitTests.FIGURE3_QVAR_EXP:
+    elif local == Locals.FIGURE3_QVAR_EXP:
 
         set_seed(FIGURE_SEED)
 
@@ -247,21 +247,21 @@ def run_unit_test(unit_test: UnitTests):
         plot.save_fig(fig=fig, local_path=local_path, file_name='figure3_qvar_exp')
         plot.save_fig(fig=fig, local_path=local_path, file_name='figure3_qvar_exp', extension='eps', dpi=600)
 
-    if unit_test == UnitTests.FIGURE4_FIRST_ORDER:
+    if local == Locals.FIGURE4_FIRST_ORDER:
         params = LogSvParams(sigma0=0.8327, theta=1.0139, kappa1=4.8606, kappa2=4.7938, beta=0.1985, volvol=2.3690)
         fig = osi.plot_ode_solutions(params=params, ttm=1.0, expansion_order=ExpansionOrder.FIRST,
                                      is_spot_measure=True)
         plot.save_fig(fig=fig, local_path=local_path, file_name="figure4_first_order")
         plot.save_fig(fig=fig, local_path=local_path, file_name="figure4_first_order", extension='eps', dpi=600)
 
-    elif unit_test == UnitTests.FIGURE5_SECOND_ORDER:
+    elif local == Locals.FIGURE5_SECOND_ORDER:
         params = LogSvParams(sigma0=0.8327, theta=1.0139, kappa1=4.8606, kappa2=4.7938, beta=0.1985, volvol=2.3690)
         fig = osi.plot_ode_solutions(params=params, ttm=1.0, expansion_order=ExpansionOrder.SECOND,
                                      is_spot_measure=True)
         plot.save_fig(fig=fig, local_path=local_path, file_name="figure5_second_order")
         plot.save_fig(fig=fig, local_path=local_path, file_name="figure5_second_order", extension='eps', dpi=600)
 
-    elif unit_test == UnitTests.FIGURE6_JOINT_PDF:
+    elif local == Locals.FIGURE6_JOINT_PDF:
         set_seed(FIGURE_SEED)
 
         params = figure6_params()
@@ -278,14 +278,14 @@ def run_unit_test(unit_test: UnitTests):
         plot.save_fig(fig=fig, local_path=local_path, file_name="figure6_joint_pdf")
         plot.save_fig(fig=fig, local_path=local_path, file_name="figure6_joint_pdf", extension='eps', dpi=600)
 
-    elif unit_test == UnitTests.FIGURE7_BTC_CALIBRATIONS:
+    elif local == Locals.FIGURE7_BTC_CALIBRATIONS:
         df = qis.load_df_from_excel(file_name='btc_calibration_w_fri_20231209_1504', local_path=lp.get_resource_path())
         # df = qis.load_df_from_excel(file_name='eth_calibration_w_fri_20231210_1124', local_path=lp.get_resource_path())
         fig = report_calibration_timeseries(df=df)
         plot.save_fig(fig=fig, local_path=local_path, file_name="figure7_btc_calibrations")
         plot.save_fig(fig=fig, local_path=local_path, file_name="figure7_btc_calibrations", extension='eps', dpi=600)
 
-    elif unit_test == UnitTests.FIGURE8_9_FITTED_MODEL:
+    elif local == Locals.FIGURE8_9_FITTED_MODEL:
         fig1, fig2 = plot_fitted_model(option_chain=option_chain,
                                        params=params)
 
@@ -294,7 +294,7 @@ def run_unit_test(unit_test: UnitTests):
         plot.save_fig(fig=fig2, local_path=local_path, file_name="figure9_btc_mc_comp")
         plot.save_fig(fig=fig2, local_path=local_path, file_name="figure9_btc_mc_comp", extension='eps', dpi=600)
 
-    elif unit_test == UnitTests.FIGURE10_QVAR:
+    elif local == Locals.FIGURE10_QVAR:
 
         set_seed(20)
         fig = plot_qvar_figure(params=params)
@@ -306,11 +306,11 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.FIGURE1_STEADY_STATE
+    local = Locals.FIGURE1_STEADY_STATE
 
     is_run_all_tests = False
     if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
+        for local in Locals:
+            run_local(local=local)
     else:
-        run_unit_test(unit_test=unit_test)
+        run_local(local=local)

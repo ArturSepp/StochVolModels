@@ -13,14 +13,14 @@ from stochvolmodels import (get_btc_test_chain_data,
 from papers.risk_premia_gmm.plot_gmm import plot_gmm_pdfs
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     GMM_FIT = 1
 
 
-def run_unit_test(unit_test: UnitTests) -> None:
-    """run the figure or check selected by unit_test."""
+def run_local(local: Locals) -> None:
+    """run the figure or check selected by local."""
 
-    if unit_test == UnitTests.GMM_FIT:
+    if local == Locals.GMM_FIT:
         # get test option chain data
         # option_chain = get_btc_test_chain_data()
         option_chain = get_spy_test_chain_data()
@@ -60,4 +60,4 @@ def run_unit_test(unit_test: UnitTests) -> None:
 
 if __name__ == '__main__':
 
-    run_unit_test(unit_test=UnitTests.GMM_FIT)
+    run_local(local=Locals.GMM_FIT)

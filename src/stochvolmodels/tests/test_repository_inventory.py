@@ -1,6 +1,6 @@
 """Regression checks for public file inventories beside ignored private research.
 
-Exercise the actual paper and dispatcher contracts in isolated repositories and
+Exercise the paper inventory contracts in isolated repositories and
 source archives, without reading or changing the maintainer's private files.
 """
 
@@ -13,13 +13,12 @@ from typing import Callable
 import pytest
 
 from stochvolmodels.tests import test_joss_evidence as joss
-from stochvolmodels.tests import test_module_layout as layout
 
 
 pytestmark = [
     pytest.mark.repository_only,
     pytest.mark.skipif(
-        layout.REPOSITORY_ROOT is None or not joss.PAPERS_README_PATH.is_file(),
+        not joss.PAPERS_README_PATH.is_file(),
         reason="repository inventory contracts are absent from installed wheels",
     ),
 ]
@@ -52,7 +51,6 @@ def _public_paper(root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     )
     monkeypatch.setattr(joss, "REPOSITORY_ROOT", root)
     monkeypatch.setattr(joss, "PAPERS_README_PATH", readme)
-    monkeypatch.setattr(layout, "REPOSITORY_ROOT", root)
 
 
 def _candidate(root: Path, visibility: str, content: str) -> None:
@@ -89,26 +87,6 @@ def test_paper_inventory_preserves_public_classification(
             joss.test_every_paper_directory_has_exactly_one_status_row(repository_files)
 
 
-@pytest.mark.parametrize("visibility", ["ignored", "untracked", "tracked_ignored"])
-def test_dispatcher_inventory_preserves_public_violations(
-    git_repository: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    repository_files: Callable[[Path, str], list[Path]],
-    visibility: str,
-) -> None:
-    """Do not parse ignored private code, but reject public legacy dispatchers."""
-    _public_paper(git_repository, monkeypatch)
-    content = "invalid private Python ?\n" if visibility == "ignored" else (
-        "def run_local_test():\n    pass\n"
-    )
-    _candidate(git_repository, visibility, content)
-    if visibility == "ignored":
-        layout.test_repository_plural_dispatchers_use_current_api(repository_files)
-    else:
-        with pytest.raises(AssertionError, match="retains the old plural dispatcher"):
-            layout.test_repository_plural_dispatchers_use_current_api(repository_files)
-
-
 def test_archive_inventory_checks_included_files(
     git_repository: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -122,12 +100,9 @@ def test_archive_inventory_checks_included_files(
     archive = git_repository / "source archive"
     _public_paper(archive, monkeypatch)
     joss.test_every_paper_directory_has_exactly_one_status_row(repository_files)
-    layout.test_repository_plural_dispatchers_use_current_api(repository_files)
-    _candidate(archive, "untracked", "def run_local_test():\n    pass\n")
+    _candidate(archive, "untracked", "Public synthetic note.\n")
     with pytest.raises(AssertionError):
         joss.test_every_paper_directory_has_exactly_one_status_row(repository_files)
-    with pytest.raises(AssertionError, match="retains the old plural dispatcher"):
-        layout.test_repository_plural_dispatchers_use_current_api(repository_files)
 
 
 def test_git_inventory_failure_does_not_scan_private_files(

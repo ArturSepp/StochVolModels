@@ -6,13 +6,13 @@ from stochvolmodels import TdistPricer, OptionChain
 from stochvolmodels import local_path as lp
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     SPY_FIT = 1
     GOLD_FIT = 2
     BTC_FIT = 3
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
 
     import seaborn as sns
     import qis as qis
@@ -20,11 +20,11 @@ def run_unit_test(unit_test: UnitTests):
 
     local_path = lp.get_output_path()
 
-    if unit_test == UnitTests.SPY_FIT:
+    if local == Locals.SPY_FIT:
         option_chain = chains.get_spy_test_chain_data()
-    elif unit_test == UnitTests.GOLD_FIT:
+    elif local == Locals.GOLD_FIT:
         option_chain = chains.get_gld_test_chain_data()
-    elif unit_test == UnitTests.BTC_FIT:
+    elif local == Locals.BTC_FIT:
         option_chain = chains.get_btc_test_chain_data()
 
     else:
@@ -44,17 +44,17 @@ def run_unit_test(unit_test: UnitTests):
         tdist_pricer.plot_model_ivols_vs_bid_ask(option_chain=option_chain0, params=params,
                                                  title=title, axs=[axs[idx]])
 
-    qis.save_fig(fig, file_name=f"{unit_test.name.lower()}", local_path=local_path)
+    qis.save_fig(fig, file_name=f"{local.name.lower()}", local_path=local_path)
     plt.show()
 
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.GOLD_FIT
+    local = Locals.GOLD_FIT
 
     is_run_all_tests = False
     if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
+        for local in Locals:
+            run_local(local=local)
     else:
-        run_unit_test(unit_test=unit_test)
+        run_local(local=local)

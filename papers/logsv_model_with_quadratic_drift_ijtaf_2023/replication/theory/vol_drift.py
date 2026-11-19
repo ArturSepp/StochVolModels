@@ -51,13 +51,13 @@ def plot_drift(params: Dict[str, LogSvParams] = DRIFT_PARAMS,
     plot.align_y_limits_axs(axs=axs)
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     PLOT_DRIFT = 1
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
 
-    if unit_test == UnitTests.PLOT_DRIFT:
+    if local == Locals.PLOT_DRIFT:
         with sns.axes_style('darkgrid'):
             fig, axs = plt.subplots(1, 2, figsize=(18, 6), tight_layout=True)
         plot_drift(axs=axs)
@@ -73,11 +73,11 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.PLOT_DRIFT
+    local = Locals.PLOT_DRIFT
 
     is_run_all_tests = False
     if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
+        for local in Locals:
+            run_local(local=local)
     else:
-        run_unit_test(unit_test=unit_test)
+        run_local(local=local)

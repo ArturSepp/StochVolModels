@@ -35,13 +35,13 @@ def plot_skews():
                                              params_dict=params_dict)
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     PLOT_SKEWS = 1
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
 
-    if unit_test == UnitTests.PLOT_SKEWS:
+    if local == Locals.PLOT_SKEWS:
         with sns.axes_style("darkgrid"):
             fig, axs = plt.subplots(3, 1, figsize=(10, 7))
         plot_skews()
@@ -51,11 +51,11 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.PLOT_SKEWS
+    local = Locals.PLOT_SKEWS
 
     is_run_all_tests = False
     if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
+        for local in Locals:
+            run_local(local=local)
     else:
-        run_unit_test(unit_test=unit_test)
+        run_local(local=local)

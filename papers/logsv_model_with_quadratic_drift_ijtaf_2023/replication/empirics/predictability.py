@@ -43,23 +43,23 @@ def plot_indicator_report(
     indicator.plot(ax=axes[2], title=indicator.name or 'normalized indicator')
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     INDICATOR = 1
     REPORT = 2
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
     Use for quick verification during development.
     """
 
-    if unit_test == UnitTests.INDICATOR:
+    if local == Locals.INDICATOR:
         price, skew, indicator = generate_indicator()
         hist.plot_histogram(indicator)
 
-    if unit_test == UnitTests.REPORT:
+    if local == Locals.REPORT:
         price, skew, indicator = generate_indicator()
         fig = plt.figure(figsize=(12, 12), constrained_layout=True)
         plot_indicator_report(price=price, factor=skew, indicator=indicator, fig=fig)
@@ -74,4 +74,4 @@ def run_unit_test(unit_test: UnitTests):
 
 
 if __name__ == '__main__':
-    run_unit_test(unit_test=UnitTests.REPORT)
+    run_local(local=Locals.REPORT)

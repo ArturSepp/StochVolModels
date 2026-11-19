@@ -121,16 +121,16 @@ def square_root_payoff_pricer_with_mgf_grid(log_mgf_grid: np.ndarray,
     return option_price
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     COMPUTE_MODEL_PRICES = 1
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
 
     # define model params
     params = LogSvParams(sigma0=0.4861785891939535, theta=0.6176006871606874, kappa1=1.955809653686808, kappa2=1.978367101612294, beta=-0.26916969112829325, volvol=3.265815229306317)
 
-    if unit_test == UnitTests.COMPUTE_MODEL_PRICES:
+    if local == Locals.COMPUTE_MODEL_PRICES:
         payoff = logsv_il_pricer(params=params,
                                  ttm=10.0/365.0,
                                  p1=2200.0,
@@ -144,11 +144,11 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.COMPUTE_MODEL_PRICES
+    local = Locals.COMPUTE_MODEL_PRICES
 
     is_run_all_tests = False
     if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
+        for local in Locals:
+            run_local(local=local)
     else:
-        run_unit_test(unit_test=unit_test)
+        run_local(local=local)

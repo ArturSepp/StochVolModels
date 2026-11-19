@@ -268,13 +268,13 @@ def detect_ode_explosion(params: LogSvParams,
     return is_explosion, pos_eigenvals
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     FIRST_ORDER = 1
     SECOND_ORDER = 2
     APPROXIMATION = 3
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
 
     # params = LogSvParams(sigma0=1.0, theta=1.0, kappa1=4.0, kappa2=4.0, beta=1.2, volvol=3.0)
     # params = LogSvParams(sigma0=0.5, theta=1.0, kappa1=4.0, kappa2=4.0, beta=1.0, volvol=1.0)
@@ -287,19 +287,19 @@ def run_unit_test(unit_test: UnitTests):
     is_spot_measure = True
 
     is_save = False
-    if unit_test == UnitTests.FIRST_ORDER:
+    if local == Locals.FIRST_ORDER:
         fig = plot_ode_solutions(params=params, ttm=ttm, expansion_order=ExpansionOrder.FIRST,
                                  is_spot_measure=is_spot_measure)
         if is_save:
             plot.save_fig(fig=fig, local_path=lp.get_output_path(), file_name="first_order_fig")
 
-    elif unit_test == UnitTests.SECOND_ORDER:
+    elif local == Locals.SECOND_ORDER:
         fig = plot_ode_solutions(params=params, ttm=ttm, expansion_order=ExpansionOrder.SECOND,
                                  is_spot_measure=is_spot_measure)
         if is_save:
             plot.save_fig(fig=fig, local_path=lp.get_output_path(), file_name="second_order_fig")
 
-    elif unit_test == UnitTests.APPROXIMATION:
+    elif local == Locals.APPROXIMATION:
         plot_approximate_solutions(phi=-0.5 + 1j,
                                    params=params, ttm=ttm, expansion_order=ExpansionOrder.SECOND)
 
@@ -308,11 +308,11 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.SECOND_ORDER
+    local = Locals.SECOND_ORDER
 
     is_run_all_tests = False
     if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
+        for local in Locals:
+            run_local(local=local)
     else:
-        run_unit_test(unit_test=unit_test)
+        run_local(local=local)

@@ -391,13 +391,13 @@ def calc_mc_vols(basis_type: str,
     return mc_prices, mc_vols, mc_vols_ups, mc_vols_downs
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     CALIBRATE_LOGSV_FUT = 6
     BENCHMARK_ANALYTIC_VS_MC_FUT = 12
 
 
-def run_unit_test(unit_test: UnitTests):
-    if unit_test == UnitTests.CALIBRATE_LOGSV_FUT:
+def run_local(local: Locals) -> None:
+    if local == Locals.CALIBRATE_LOGSV_FUT:
         futoption_chain_fit = get_futures_data()
         futoption_chain_fit, _ = refit_to_sabr(futoption_chain=futoption_chain_fit)
 
@@ -439,7 +439,7 @@ def run_unit_test(unit_test: UnitTests):
 
         # fig.savefig(f"..//draft//figures//fhjm//calibration_FHJM_futures.pdf")
 
-    elif unit_test == UnitTests.BENCHMARK_ANALYTIC_VS_MC_FUT:
+    elif local == Locals.BENCHMARK_ANALYTIC_VS_MC_FUT:
         mult = 1.0
         curr = "USD"
         for seed in [20]:
@@ -573,11 +573,11 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.BENCHMARK_ANALYTIC_VS_MC_FUT
+    local = Locals.BENCHMARK_ANALYTIC_VS_MC_FUT
 
     is_run_all_tests = False
     if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
+        for local in Locals:
+            run_local(local=local)
     else:
-        run_unit_test(unit_test=unit_test)
+        run_local(local=local)

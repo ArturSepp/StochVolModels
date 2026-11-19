@@ -243,12 +243,12 @@ def generate_figures_type3(asset_id: str = 'BTC',
     return figs
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     DATA = 1
     FIGURES_TYPE3 = 2
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
     """Run local tests for development and debugging purposes.
 
     These are integration tests that download real data and generate reports.
@@ -257,11 +257,11 @@ def run_unit_test(unit_test: UnitTests):
 
     set_fig_props()
 
-    if unit_test == UnitTests.DATA:
+    if local == Locals.DATA:
         realized_vols = fetch_yahoo_1h_prices()
         print(realized_vols)
 
-    elif unit_test == UnitTests.FIGURES_TYPE3:
+    elif local == Locals.FIGURES_TYPE3:
         is_single_fig = False
         figs = generate_figures_type3(asset_id='ETH',
                                       is_single_fig=is_single_fig)
@@ -275,4 +275,4 @@ def run_unit_test(unit_test: UnitTests):
 
 
 if __name__ == '__main__':
-    run_unit_test(unit_test=UnitTests.FIGURES_TYPE3)
+    run_local(local=Locals.FIGURES_TYPE3)

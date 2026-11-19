@@ -340,7 +340,7 @@ def final_figures(options_risk_premia: pd.Series,
     return fig1, fig2
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     FIT_GMM_MODEL = 1
     FIGURE1_RISK_PREMIA = 3
     FIGURE2_PLOT_PDFS = 2
@@ -351,7 +351,7 @@ class UnitTests(Enum):
     FINAL_FIGURES = 8
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
 
     local_path = lp.get_output_path()
 
@@ -368,18 +368,18 @@ def run_unit_test(unit_test: UnitTests):
     # value_time = pd.Timestamp('2024-01-11 10:00:00+00:00')
 
     single_chain_cases = {
-        UnitTests.FIT_GMM_MODEL,
-        UnitTests.FIGURE1_RISK_PREMIA,
-        UnitTests.FIGURE2_PLOT_PDFS,
+        Locals.FIT_GMM_MODEL,
+        Locals.FIGURE1_RISK_PREMIA,
+        Locals.FIGURE2_PLOT_PDFS,
     }
     full_history_cases = {
-        UnitTests.FIT_KAPPA,
-        UnitTests.FIGURE3_PLOT_ROLLING_KAPPA,
-        UnitTests.FIT_TIME_SERIES_RISK_PREMIA,
+        Locals.FIT_KAPPA,
+        Locals.FIGURE3_PLOT_ROLLING_KAPPA,
+        Locals.FIT_TIME_SERIES_RISK_PREMIA,
     }
     option_chain = None
     options_data_dfs = None
-    if unit_test in single_chain_cases:
+    if local in single_chain_cases:
         option_chain = load_tardis_hourly_option_chain(
             ticker=ticker,
             value_time=value_time,
@@ -388,13 +388,13 @@ def run_unit_test(unit_test: UnitTests):
         )
         if option_chain is None:
             raise RuntimeError(f'no Tardis option observation at or before {value_time}')
-    elif unit_test in full_history_cases:
+    elif local in full_history_cases:
         options_data_dfs = load_tardis_hourly_options_data(ticker=ticker)
 
     # option_chain.print()
     # print(option_chain0)
 
-    if unit_test == UnitTests.FIT_GMM_MODEL:
+    if local == Locals.FIT_GMM_MODEL:
         gmm_pricer = GmmPricer()
         for ids in option_chain.ids:
             option_chain0 = OptionChain.get_slices_as_chain(option_chain, ids=[ids])
@@ -403,7 +403,7 @@ def run_unit_test(unit_test: UnitTests):
             print(f"{ids}: {params}")
             plot_gmm_pdfs(params=params, option_chain0=option_chain0)
 
-    elif unit_test == UnitTests.FIGURE1_RISK_PREMIA:
+    elif local == Locals.FIGURE1_RISK_PREMIA:
         option_chain0 = OptionChain.get_slices_as_chain(option_chain, ids=[option_chain.ids[0]])
         calibrated_params = plot_calibrated_gmm_model_per_slice(option_chain=option_chain0,
                                                                 n_mixtures=4)
@@ -421,7 +421,7 @@ def run_unit_test(unit_test: UnitTests):
         # options_rp = compute_risk_premia(params=params, kappa=3.0)
         # print(f"options_rp={options_rp}")
 
-    elif unit_test == UnitTests.FIGURE2_PLOT_PDFS:
+    elif local == Locals.FIGURE2_PLOT_PDFS:
         gmm_pricer = GmmPricer()
         # 1m: 23Feb2024
         option_chain0 = OptionChain.get_slices_as_chain(option_chain, ids=[option_chain.ids[1]])
@@ -440,7 +440,7 @@ def run_unit_test(unit_test: UnitTests):
         qis.set_suptitle(fig=fig, title='3 state (top) and 4 state (bottom) GMM', fontsize=16)
         qis.save_fig(fig=fig, file_name='figure2_state_pdfs', local_path=local_path)
 
-    elif unit_test == UnitTests.FIT_KAPPA:
+    elif local == Locals.FIT_KAPPA:
         if options_data_dfs is None:
             raise RuntimeError('hourly Tardis options data was not loaded')
         prices = options_data_dfs.get_spot_data()['close']
@@ -449,7 +449,7 @@ def run_unit_test(unit_test: UnitTests):
         kappa = fit_kappa(returns=returns, span=30*24)
         print(kappa)
 
-    elif unit_test == UnitTests.FIGURE3_PLOT_ROLLING_KAPPA:
+    elif local == Locals.FIGURE3_PLOT_ROLLING_KAPPA:
         if options_data_dfs is None:
             raise RuntimeError('hourly Tardis options data was not loaded')
 
@@ -459,7 +459,7 @@ def run_unit_test(unit_test: UnitTests):
         qis.set_suptitle(fig=fig, title='Risk-preference lambda', fontsize=16)
         qis.save_fig(fig=fig, file_name='figure3_lambda_ts', local_path=local_path)
 
-    elif unit_test == UnitTests.FIT_TIME_SERIES_RISK_PREMIA:
+    elif local == Locals.FIT_TIME_SERIES_RISK_PREMIA:
         if options_data_dfs is None:
             raise RuntimeError('hourly Tardis options data was not loaded')
         time_period = qis.TimePeriod('28Feb2020', '02Mar2024', tz='UTC')
@@ -477,7 +477,7 @@ def run_unit_test(unit_test: UnitTests):
         qis.save_df_to_csv(df=risk_premias, file_name='btc_riskpremia_12m_4',
                            local_path=lp.get_resource_path())
 
-    elif unit_test == UnitTests.STRATEGY_ANALYSIS:
+    elif local == Locals.STRATEGY_ANALYSIS:
         options_risk_premia = qis.load_df_from_csv(file_name='btc_riskpremia_12m_3',
                                                    local_path=lp.get_resource_path())
         print(options_risk_premia)
@@ -494,7 +494,7 @@ def run_unit_test(unit_test: UnitTests):
                           strategy_nav=strategy_nav,
                           rp_bound=5.0)
 
-    elif unit_test == UnitTests.FINAL_FIGURES:
+    elif local == Locals.FINAL_FIGURES:
         options_risk_premia = qis.load_df_from_csv(file_name='btc_riskpremia_12m_3',
                                                    local_path=lp.get_resource_path())
         print(options_risk_premia)
@@ -518,11 +518,11 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.FINAL_FIGURES
+    local = Locals.FINAL_FIGURES
 
     is_run_all_tests = False
     if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
+        for local in Locals:
+            run_local(local=local)
     else:
-        run_unit_test(unit_test=unit_test)
+        run_local(local=local)

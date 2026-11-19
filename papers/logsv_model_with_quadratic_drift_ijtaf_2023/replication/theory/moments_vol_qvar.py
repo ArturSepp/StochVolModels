@@ -156,7 +156,7 @@ def plot_expected_vol_qvar(params: Dict[str, LogSvParams],
     ax.set_xlim((0.0, None))
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     VOL_MOMENTS_VS_MC = 1
     QVAR_VS_MC = 2
     JOINT_FIGURE = 3
@@ -164,12 +164,12 @@ class UnitTests(Enum):
     SINGLE_QVAR_FIGURE = 5
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
 
     set_seed(37) #33
     ttm = 2.0
 
-    if unit_test == UnitTests.VOL_MOMENTS_VS_MC:
+    if local == Locals.VOL_MOMENTS_VS_MC:
         params = LogSvParams(sigma0=1.5, theta=1.0, kappa1=4.0, kappa2=4.0, beta=0.0, volvol=1.0)
 
         with sns.axes_style('darkgrid'):
@@ -178,7 +178,7 @@ def run_unit_test(unit_test: UnitTests):
                                n_terms=4, n_terms_to_display=4,
                                ax=ax)
 
-    elif unit_test == UnitTests.QVAR_VS_MC:
+    elif local == Locals.QVAR_VS_MC:
         with sns.axes_style('darkgrid'):
             fig, axs = plt.subplots(1, 2, figsize=(18, 10), tight_layout=True)
             plot_qvar_vs_mc(params=(TEST_PARAMS | TEST_PARAMS2), ttm=ttm, is_vol=True,
@@ -186,7 +186,7 @@ def run_unit_test(unit_test: UnitTests):
             plot_qvar_vs_mc(params=(TEST_PARAMS | TEST_PARAMS2), ttm=ttm, is_vol=False,
                                    title='(B) Expected quadratic variance at time T', n_terms=4, ax=axs[1])
 
-    elif unit_test == UnitTests.JOINT_FIGURE:
+    elif local == Locals.JOINT_FIGURE:
         with sns.axes_style('darkgrid'):
             fig, axs = plt.subplots(1, 2, figsize=(18, 10), tight_layout=True)
             plot_expected_vol_qvar(params=(TEST_PARAMS | TEST_PARAMS2), ttm=ttm, is_vol=True,
@@ -198,7 +198,7 @@ def run_unit_test(unit_test: UnitTests):
         if is_save:
             plot.save_fig(fig=fig, local_path=lp.get_output_path(), file_name='vol_qvar_exp')
 
-    elif unit_test == UnitTests.JOINT_VOL_MOMENTS_VS_MC_FIGURE:
+    elif local == Locals.JOINT_VOL_MOMENTS_VS_MC_FIGURE:
         params = LogSvParams(sigma0=1.5, theta=1.0, kappa1=4.0, kappa2=4.0, beta=0.0, volvol=1.0)
 
         with sns.axes_style('darkgrid'):
@@ -216,7 +216,7 @@ def run_unit_test(unit_test: UnitTests):
         if is_save:
             plot.save_fig(fig=fig, local_path=lp.get_output_path(), file_name='vol_moments')
 
-    elif unit_test == UnitTests.SINGLE_QVAR_FIGURE:
+    elif local == Locals.SINGLE_QVAR_FIGURE:
         with sns.axes_style('darkgrid'):
             fig, ax = plt.subplots(1, 1, figsize=(18, 6), tight_layout=True)
             plot_qvar_vs_mc(params=(TEST_PARAMS | TEST_PARAMS2), ttm=ttm, is_vol=False,
@@ -231,11 +231,11 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.JOINT_VOL_MOMENTS_VS_MC_FIGURE
+    local = Locals.JOINT_VOL_MOMENTS_VS_MC_FIGURE
 
     is_run_all_tests = False
     if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
+        for local in Locals:
+            run_local(local=local)
     else:
-        run_unit_test(unit_test=unit_test)
+        run_local(local=local)

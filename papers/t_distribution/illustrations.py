@@ -148,26 +148,26 @@ def plot_tdist_ivols_vol(vols: List[float] = [0.2, 0.3, 0.4, 0.8],
                   ax=ax)
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     PLOT_IMPLIED_DRIFT_FORWARD_DEFAULTPROB = 1
     PLOT_IMPLIED_VOLS_VS_BSM_NORMAL = 2
     PLOT_IVOLS_NU = 3
     PLOT_IVOLS_VOL = 4
 
 
-def run_unit_test(unit_test: UnitTests):
+def run_local(local: Locals) -> None:
 
     local_path = lp.get_output_path()
 
-    if unit_test == UnitTests.PLOT_IMPLIED_DRIFT_FORWARD_DEFAULTPROB:
+    if local == Locals.PLOT_IMPLIED_DRIFT_FORWARD_DEFAULTPROB:
         fig = plot_implied_drift_forward_defaultp()
         qis.save_fig(fig=fig, file_name='mus', local_path=local_path)
 
-    elif unit_test == UnitTests.PLOT_IMPLIED_VOLS_VS_BSM_NORMAL:
+    elif local == Locals.PLOT_IMPLIED_VOLS_VS_BSM_NORMAL:
         plot_tdist_ivols_vs_bsm_normal(vol=0.5, nu=2.5)
         plot_tdist_ivols_vs_bsm_normal(vol=0.5, nu=5.0)
 
-    elif unit_test == UnitTests.PLOT_IVOLS_NU:
+    elif local == Locals.PLOT_IVOLS_NU:
         rf_rate = 0.0
         with sns.axes_style('darkgrid'):
             fig, axs = plt.subplots(1, 2, figsize=(14, 6), tight_layout=True)
@@ -176,7 +176,7 @@ def run_unit_test(unit_test: UnitTests):
             align_y_limits_axs(axs)
         qis.save_fig(fig=fig, file_name='vols_in_nu', local_path=local_path)
 
-    elif unit_test == UnitTests.PLOT_IVOLS_VOL:
+    elif local == Locals.PLOT_IVOLS_VOL:
         with sns.axes_style('darkgrid'):
             fig, axs = plt.subplots(1, 2, figsize=(14, 6), tight_layout=True)
             plot_tdist_ivols_vol(nu=2.5, ttm=5.0/252.0, ax=axs[0])
@@ -189,11 +189,11 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.PLOT_IVOLS_NU
+    local = Locals.PLOT_IVOLS_NU
 
     is_run_all_tests = False
     if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
+        for local in Locals:
+            run_local(local=local)
     else:
-        run_unit_test(unit_test=unit_test)
+        run_local(local=local)

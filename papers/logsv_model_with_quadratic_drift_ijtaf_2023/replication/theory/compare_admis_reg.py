@@ -106,18 +106,18 @@ def heston_exp_ou_combined(vartheta_min=0.5,
                   file_name='heston_exp_ou_combined')
 
 
-class UnitTests(Enum):
+class Locals(Enum):
     LOGNORMAL_SV_COMBINED = 1
     HESTON_EXP_OU_COMBINED = 2
 
 
-def run_unit_test(unit_test: UnitTests):
-    if unit_test == UnitTests.LOGNORMAL_SV_COMBINED:
+def run_local(local: Locals) -> None:
+    if local == Locals.LOGNORMAL_SV_COMBINED:
         lognormal_combined(vartheta_min=0.5,
                            vartheta_max=3.0,
                            kappa2s=[0.0, 1.0])
 
-    elif unit_test == UnitTests.HESTON_EXP_OU_COMBINED:
+    elif local == Locals.HESTON_EXP_OU_COMBINED:
         heston_exp_ou_combined(vartheta_min=0.5,
                                vartheta_max=3.0)
 
@@ -125,5 +125,5 @@ def run_unit_test(unit_test: UnitTests):
 
 
 if __name__ == '__main__':
-    unit_test = UnitTests.LOGNORMAL_SV_COMBINED
-    run_unit_test(unit_test=unit_test)
+    local = Locals.LOGNORMAL_SV_COMBINED
+    run_local(local=local)

@@ -106,7 +106,7 @@ def plot_mkt_model_joint_smile_MF(swaption_chains: Dict[str, SwOptionChain],
 
     return fig
 
-class UnitTests(Enum):
+class Locals(Enum):
     PLOT_MKT_MODEL = 5
     BENCHMARK_ANALYTIC_VS_MC = 8
     SWAP_APPROX = 9
@@ -327,8 +327,8 @@ def save_plot(location, filename, fig):
     except Exception as e:
         raise Exception(f"Could not save the figure at {full_path}: {e}")
 
-def run_unit_test(unit_test: UnitTests):
-    if unit_test == UnitTests.BENCHMARK_ANALYTIC_VS_MC:
+def run_local(local: Locals) -> None:
+    if local == Locals.BENCHMARK_ANALYTIC_VS_MC:
         curr = "USD"
         swaption_chain = get_swaption_data(curr)
         basis_type = "NELSON-SIEGEL"
@@ -358,7 +358,7 @@ def run_unit_test(unit_test: UnitTests):
             ax.set_xticklabels(['{:.0f}'.format(x * 10000, 2) for x in ax.get_xticks()])
             ax.set_yticklabels(['{:.0f}'.format(x * 10000, 2) for x in ax.get_yticks()])
 
-    elif unit_test == UnitTests.PLOT_MKT_MODEL:
+    elif local == Locals.PLOT_MKT_MODEL:
         curr = "USD"
         swaption_chain = get_swaption_data()
         basis_type = "NELSON-SIEGEL"
@@ -391,7 +391,7 @@ def run_unit_test(unit_test: UnitTests):
                                             x0=x0, y0=y0)
         # fig.savefig(f"..//draft//figures//fhjm//calibration_FHJM_swaptions.pdf")
 
-    elif unit_test == UnitTests.SWAP_APPROX:
+    elif local == Locals.SWAP_APPROX:
         curr = "USD"
         swaption_chain = get_swaption_data(curr)
         basis_type = "NELSON-SIEGEL"
@@ -446,12 +446,12 @@ def run_unit_test(unit_test: UnitTests):
 
 if __name__ == '__main__':
 
-    unit_test = UnitTests.SWAP_APPROX
+    local = Locals.SWAP_APPROX
 
 
     is_run_all_tests = False
     if is_run_all_tests:
-        for unit_test in UnitTests:
-            run_unit_test(unit_test=unit_test)
+        for local in Locals:
+            run_local(local=local)
     else:
-        run_unit_test(unit_test=unit_test)
+        run_local(local=local)

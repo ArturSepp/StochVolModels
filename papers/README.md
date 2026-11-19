@@ -73,10 +73,9 @@ python -m papers.robust_volatility_models_2026.replication.ssrn_2023.article_fig
 python examples/docs/app_robust_volatility_models.py
 ```
 
-The original replication modules use a `UnitTests` enum with a `run_unit_test(unit_test)` dispatcher under
-`if __name__ == '__main__':`. Select the figure by editing the enum member passed at the bottom of
-the file. The jump-risk-premia development modules instead use `Locals` and `run_local`,
-the same pattern as root `examples/`.
+Paper replication and development modules use a `Locals` enum with a `run_local(local=...)`
+dispatcher under `if __name__ == '__main__':`, the same pattern as root `examples/`.
+Select the figure by editing the enum member passed at the bottom of the file.
 
 ### Forward-variance vanilla PDE comparison
 

@@ -161,9 +161,8 @@ wheel, cross-platform quickstarts, documentation/doctests/link checks, and sched
   simulator; new models are expected to provide both so they can be cross-validated.
 - Dataclasses carry model parameters; enums carry model and option type selection.
 - Runnable examples sit behind an enum of cases plus a dispatcher called under
-  `if __name__ == '__main__':`. Package development runners and repository examples use
-  `Locals` / `run_local`. Paper development dispatchers use the same convention; original
-  replication modules may retain `UnitTests` / `run_unit_test`.
+  `if __name__ == '__main__':`. Package development runners, repository examples and paper
+  replication dispatchers use `Locals` and `run_local(local=...)`.
 - Runnable examples live under root `examples/`, are repository-only, and are excluded from the
   wheel. Stable user examples use the public API; advanced examples may use internals when labelled.
 - Regression tests use `pytest-regressions`; when output legitimately changes, update

@@ -172,7 +172,7 @@ implemented; inverse-measure coefficients are covered by the algebra checks.
 ## Historical figures and data-dependent experiments
 
 The figure dispatcher is callable through
-`replication.figures.article_figures.run_unit_test` and its `UnitTests` enum.
+`replication.figures.article_figures.run_local(local=...)` and its `Locals` enum.
 Its default module execution selects Figure 1:
 
 ```console
