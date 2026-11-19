@@ -15,7 +15,7 @@ from numba.typed import List
 import stochvolmodels.data.sample_option_chains as chains
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
-from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar
+from stochvolmodels.models.logsv.moments import compute_analytic_qvar
 from stochvolmodels.pricers.logsv_pricer import LOGSV_BTC_PARAMS, LogSVPricer
 from stochvolmodels.utils.config import VariableType
 from stochvolmodels.utils.funcs import compute_histogram_data

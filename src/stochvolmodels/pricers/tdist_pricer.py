@@ -8,10 +8,10 @@ from numba.typed import List
 from scipy.optimize import minimize
 
 # sv
-import stochvolmodels.fitters.tdist as td
+import stochvolmodels.models.tdist.distribution as td
+from stochvolmodels.pricers.tdist.analytics import compute_vanilla_price_tdist
 from stochvolmodels.utils.funcs import to_flat_np_array, timer
 from stochvolmodels.pricers.model_pricer import (
-    ModelParams,
     ModelPricer,
     validate_optimization_result,
 )
@@ -21,19 +21,7 @@ from stochvolmodels.utils.config import VariableType
 from stochvolmodels.data.option_chain import OptionChain, OptionSlice
 
 
-@dataclass
-class TdistParams(ModelParams):
-    """
-    parameters of the Student-t model: volatility, drift and degrees of freedom nu.
-
-    The centered arithmetic-return shock is Student-t with nu > 2 and variance
-    ``vol**2 * ttm``. The terminal asset is the positive part of spot times one plus
-    drift times maturity plus that shock, so the floor creates an atom at zero.
-    """
-    drift: float
-    vol: float
-    nu: float
-    ttm: float  # Parameters are fixed to this maturity, which is not calibrated.
+from stochvolmodels.models.tdist.params import TdistParams as TdistParams
 
 
 class TdistPricer(ModelPricer):
@@ -301,7 +289,7 @@ def tdist_vanilla_chain_pricer(vol: float,
         ttms, forwards, discfactors, strikes_ttms, optiontypes_ttms
     ):
         discount_rate = -np.log(discfactor) / ttm
-        option_prices_ttm = td.compute_vanilla_price_tdist(spot=forward*discfactor,
+        option_prices_ttm = compute_vanilla_price_tdist(spot=forward*discfactor,
                                                            strikes=strikes_ttm,
                                                            ttm=ttm,
                                                            vol=vol,

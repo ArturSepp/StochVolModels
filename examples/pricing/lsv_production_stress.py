@@ -12,7 +12,7 @@ import numpy as np
 
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.models.lsv import FixedLogForwardJump, LSVModel, LeverageSurface
-from stochvolmodels.models.lsv_simulation import LSVMonteCarloConfig
+from stochvolmodels.models.lsv.simulation import LSVMonteCarloConfig
 from stochvolmodels.pde_solvers import ADIConfig, ADIScheme, Grid1D, TensorGrid2D
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdePricer, LogSvPdeResult

@@ -232,6 +232,11 @@ strike 1.2, the downward-sloping smile of a negative volatility beta. A Monte Ca
 
 ## Implementation in stochvolmodels
 
+Canonical numerical modules are `models.logsv.params`, `models.logsv.affine_expansion`,
+`models.logsv.moments` and `models.logsv.simulation`. The capability adapter is
+`models.logsv.LogSvModel`; `pricers.logsv_pricer.LogSVPricer` retains chain pricing and
+calibration. Existing root and `pricers.logsv` imports remain compatible.
+
 | Name | Role |
 |---|---|
 | `LogSvParams` | The parameters of Eq. (3.12); a stable export. `kappa2=None` sets $\kappa_2 = \kappa_1 / \theta$. The properties `vartheta2`, `kappa` and `theta2` give $\vartheta^2$, $\kappa_1 + \kappa_2 \theta$ and $\theta^2$. |

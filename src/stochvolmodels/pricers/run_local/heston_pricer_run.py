@@ -18,8 +18,8 @@ from stochvolmodels.pricers.heston_pricer import (
     HestonParams,
     HestonPricer,
 )
-from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
-from stochvolmodels.pricers.logsv.vol_moments_ode import compute_analytic_qvar
+from stochvolmodels.models.logsv.params import LogSvParams
+from stochvolmodels.models.logsv.moments import compute_analytic_qvar
 from stochvolmodels.utils.config import VariableType
 
 

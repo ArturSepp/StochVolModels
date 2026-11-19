@@ -180,7 +180,7 @@ pandas = "pd"
 [tool.ruff.lint.per-file-ignores]
 # Experimental research modules retain dormant derivation variables and imports.
 "src/stochvolmodels/pricers/factor_hjm/**" = ["F401", "F841", "TID253"]
-"src/stochvolmodels/pricers/rough_logsv/split_simulation.py" = ["F401"]
+"src/stochvolmodels/models/rough_logsv/split_simulation.py" = ["F401"]
 # Dedicated optional-data leaf; it is not reachable from the package root.
 "src/stochvolmodels/data/fetch_option_chain.py" = ["TID253"]
 # Development runners are optional-extra entry points and are not imported by the package root.
@@ -196,6 +196,7 @@ exclude = [
     "src/stochvolmodels/tests",
     "src/stochvolmodels/pricers/factor_hjm",
     "src/stochvolmodels/pricers/rough_logsv",
+    "src/stochvolmodels/models/rough_logsv",
     "src/stochvolmodels/data/run_local",
     "src/stochvolmodels/fitters/run_local",
     "src/stochvolmodels/pricers/run_local",

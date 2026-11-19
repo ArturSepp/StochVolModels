@@ -135,10 +135,10 @@ from stochvolmodels.fitters.lsv_parametric import (
 )
 from stochvolmodels.models.local_vol import LocalVolFamily, LocalVolSurface
 from stochvolmodels.models.lsv import LSVModel
-from stochvolmodels.models.lsv_simulation import LSVMonteCarloConfig
+from stochvolmodels.models.lsv.simulation import LSVMonteCarloConfig
 from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
 from stochvolmodels.pricers.local_vol_pde_pricer import LocalVolPdePricer
-from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
+from stochvolmodels.models.logsv.params import LogSvParams
 from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdePricer
 from stochvolmodels.pricers.lsv_mc_pricer import LSVMonteCarloPricer
 ```

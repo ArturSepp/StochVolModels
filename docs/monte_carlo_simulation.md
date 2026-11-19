@@ -231,7 +231,7 @@ simulators are seeded by `stochvolmodels.utils.funcs.set_seed`. Run the example 
 
 ### Local stochastic volatility simulation
 
-The provisional `LSVMonteCarloEngine` in `stochvolmodels.models.lsv_simulation` uses
+The provisional `LSVMonteCarloEngine` in `stochvolmodels.models.lsv.simulation` uses
 its own `numpy.random.default_rng`, seeded through `LSVMonteCarloConfig(seed=...)`.
 Global NumPy seeding and `set_seed` do not control it. The engine supports leverage,
 backbone knots and compensated fixed jumps; its `steps_per_year` sets interval resolution.

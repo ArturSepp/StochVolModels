@@ -1,4 +1,9 @@
-"""Discounted path valuation with explicit measure and estimator conventions."""
+"""Path and density valuation with explicit measure and quadrature conventions.
+
+Path estimators retain their discounting and likelihood-weight conventions.
+Density valuation integrates European calls and puts from immutable grid states
+and reports mass, forward-moment and put-call parity diagnostics.
+"""
 
 from __future__ import annotations
 
@@ -7,15 +12,23 @@ from enum import Enum
 # Preserve accurate scalar sums when positive and negative path values cancel.
 from math import fsum  # noqa: TID251 -- NumPy/SciPy reductions do not guarantee fsum accuracy.
 from numbers import Real
+from typing import TYPE_CHECKING
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 from stochvolmodels.data.model_paths import ModelPaths
+from stochvolmodels.utils.config import CoordinateSystem
+from stochvolmodels.utils._arrays import readonly_float_array as _readonly_array
 from stochvolmodels.products import Payoff
 from stochvolmodels.products.payoffs import EuropeanOptionPayoff
 
+if TYPE_CHECKING:
+    from stochvolmodels.data.density import DensityState1D
+
 __all__ = (
+    "DensityPricer",
+    "DensityPricingResult",
     "LegacyAdditiveForwardRecenter",
     "PathEstimator",
     "PathValuationResult",
@@ -714,3 +727,149 @@ def value_paths_self_normalized(
         independent_group_ids=independent_group_ids,
         self_normalized=True,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class DensityPricingResult:
+    """Calls, puts, and density-consistent parity diagnostics for one strike slice."""
+
+    strikes: FloatArray
+    calls: FloatArray
+    puts: FloatArray
+    parity_residuals: FloatArray
+    mass: float
+    forward_moment: float
+    discount_factor: float
+
+    def __post_init__(self) -> None:
+        """Validate and normalize a newly constructed ``DensityPricingResult`` instance."""
+        strikes = _readonly_array(self.strikes, name="strikes", ndim=1)
+        calls = _readonly_array(self.calls, name="calls", ndim=1)
+        puts = _readonly_array(self.puts, name="puts", ndim=1)
+        residuals = _readonly_array(
+            self.parity_residuals, name="parity_residuals", ndim=1
+        )
+        if not (strikes.shape == calls.shape == puts.shape == residuals.shape):
+            raise ValueError("pricing result arrays must have the same shape")
+        object.__setattr__(self, "strikes", strikes)
+        object.__setattr__(self, "calls", calls)
+        object.__setattr__(self, "puts", puts)
+        object.__setattr__(self, "parity_residuals", residuals)
+        object.__setattr__(self, "mass", float(self.mass))
+        object.__setattr__(self, "forward_moment", float(self.forward_moment))
+        object.__setattr__(self, "discount_factor", float(self.discount_factor))
+
+
+@dataclass(frozen=True, slots=True)
+class DensityPricer:
+    """European-vanilla pricing adapter for a one-dimensional terminal density."""
+
+    state: DensityState1D
+    forward: float
+    discount_factor: float = 1.0
+
+    def __post_init__(self) -> None:
+        """Validate and normalize a newly constructed ``DensityPricer`` instance."""
+        # Path-only valuation must not load the PDE solver stack.
+        from stochvolmodels.data.density import DensityState1D
+
+        if not isinstance(self.state, DensityState1D):
+            raise TypeError("state must be a DensityState1D")
+        forward = float(self.forward)
+        discount = float(self.discount_factor)
+        if not np.isfinite(forward) or forward <= 0.0:
+            raise ValueError("forward must be finite and positive")
+        if not np.isfinite(discount) or discount <= 0.0:
+            raise ValueError("discount_factor must be finite and positive")
+        object.__setattr__(self, "forward", forward)
+        object.__setattr__(self, "discount_factor", discount)
+
+    @property
+    def underlying_nodes(self) -> FloatArray:
+        """Terminal underlying represented at each density node."""
+        if self.state.coordinate is CoordinateSystem.LOG_FORWARD:
+            return np.asarray(
+                self.forward * np.exp(self.state.grid.nodes), dtype=np.float64
+            )
+        return self.state.grid.nodes
+
+    def price_slice(self, strikes: ArrayLike) -> DensityPricingResult:
+        """Price calls and puts at arbitrary positive strikes."""
+        strike_array = _validated_strikes(strikes)
+        underlying = self.underlying_nodes
+        weighted_density = self.state.grid.quadrature_weights * self.state.values
+        calls = self.discount_factor * (
+            np.maximum(underlying[:, None] - strike_array[None, :], 0.0).T
+            @ weighted_density
+        )
+        puts = self.discount_factor * (
+            np.maximum(strike_array[None, :] - underlying[:, None], 0.0).T
+            @ weighted_density
+        )
+        mass = self.state.mass
+        forward_moment = self.state.grid.integrate(underlying * self.state.values)
+        parity_target = self.discount_factor * (
+            forward_moment - strike_array * mass
+        )
+        residuals = calls - puts - parity_target
+        return DensityPricingResult(
+            strikes=strike_array,
+            calls=calls,
+            puts=puts,
+            parity_residuals=residuals,
+            mass=mass,
+            forward_moment=forward_moment,
+            discount_factor=self.discount_factor,
+        )
+
+    def price_vanillas(
+        self, strikes: ArrayLike, option_types: ArrayLike
+    ) -> FloatArray:
+        """Price aligned call/put strikes using `C` and `P` option codes."""
+        result = self.price_slice(strikes)
+        types = np.asarray(option_types)
+        if types.shape != result.strikes.shape:
+            raise ValueError("option_types must have the same shape as strikes")
+        if np.any((types != "C") & (types != "P")):
+            raise ValueError("option_types entries must be 'C' or 'P'")
+        return np.where(types == "C", result.calls, result.puts)
+
+    def implied_volatilities(
+        self,
+        strikes: ArrayLike,
+        option_types: ArrayLike,
+        *,
+        ttm: float,
+    ) -> FloatArray:
+        """Convert density prices to current SVM Black implied volatilities."""
+        from vanilla_option_pricers import infer_bsm_implied_vol
+
+        maturity = float(ttm)
+        if not np.isfinite(maturity) or maturity <= 0.0:
+            raise ValueError("ttm must be finite and positive")
+        strike_array = _validated_strikes(strikes)
+        types = np.asarray(option_types)
+        prices = self.price_vanillas(strike_array, types)
+        implied = np.empty(strike_array.size, dtype=np.float64)
+        for index, (strike, option_type, price) in enumerate(
+            zip(strike_array, types, prices)
+        ):
+            implied[index] = infer_bsm_implied_vol(
+                forward=self.forward,
+                ttm=maturity,
+                strike=float(strike),
+                given_price=float(price),
+                discfactor=self.discount_factor,
+                optiontype=str(option_type),
+            )
+        return implied
+
+
+def _validated_strikes(values: ArrayLike) -> FloatArray:
+    """Return a finite positive one-dimensional strike array."""
+    strikes = np.array(values, dtype=np.float64, copy=True, order="C")
+    if strikes.ndim != 1:
+        raise ValueError("strikes must be one-dimensional")
+    if not np.all(np.isfinite(strikes)) or np.any(strikes <= 0.0):
+        raise ValueError("strikes must be finite and strictly positive")
+    return strikes

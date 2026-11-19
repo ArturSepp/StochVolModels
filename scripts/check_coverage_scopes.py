@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 from pathlib import Path
 
@@ -19,6 +20,21 @@ def _normalise(path: str) -> str:
     return "/" + path.replace("\\", "/").lstrip("/")
 
 
+def _definition_lines(source: Path, names: list[str]) -> set[int]:
+    """Select complete named definitions, failing if a scope entry is stale."""
+    selected = {}
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            if node.name in names:
+                start = min([node.lineno] + [d.lineno for d in node.decorator_list])
+                selected[node.name] = set(range(start, node.end_lineno + 1))
+    missing = set(names).difference(selected)
+    if missing:
+        raise ValueError(f"coverage definitions absent from {source}: {sorted(missing)}")
+    return set().union(*selected.values())
+
+
 def check_scopes(report_path: Path, config_path: Path) -> dict[str, float]:
     """Validate configured coverage scopes and return their measured percentages."""
     report = json.loads(report_path.read_text(encoding="utf-8"))
@@ -30,13 +46,30 @@ def check_scopes(report_path: Path, config_path: Path) -> dict[str, float]:
     }
 
     exclusions = tuple(config["stable"]["exclude_path_fragments"])
-    stable_summaries = [
-        payload["summary"]
-        for path, payload in report["files"].items()
-        if not any(fragment in _normalise(path) for fragment in exclusions)
-    ]
-    stable_covered = sum(summary["covered_lines"] for summary in stable_summaries)
-    stable_statements = sum(summary["num_statements"] for summary in stable_summaries)
+    definitions = config["stable"].get("exclude_definitions", {})
+    source_root = Path(__file__).resolve().parents[1] / "src" / "stochvolmodels"
+    excluded_lines = {
+        relative: _definition_lines(source_root / relative, names)
+        for relative, names in definitions.items()
+    }
+    stable_covered = stable_statements = 0
+    for path, payload in report["files"].items():
+        normalised = _normalise(path)
+        if any(fragment in normalised for fragment in exclusions):
+            continue
+        selected = set().union(*(
+            lines for relative, lines in excluded_lines.items()
+            if normalised.endswith("/stochvolmodels/" + relative)
+        ))
+        if selected:
+            excluded = selected | set(payload.get("excluded_lines", ()))
+            executed = set(payload["executed_lines"]).difference(excluded)
+            missing = set(payload["missing_lines"]).difference(excluded)
+            stable_covered += len(executed)
+            stable_statements += len(executed | missing)
+        else:
+            stable_covered += payload["summary"]["covered_lines"]
+            stable_statements += payload["summary"]["num_statements"]
     measured["stable"] = _percentage(stable_covered, stable_statements)
 
     failures = []

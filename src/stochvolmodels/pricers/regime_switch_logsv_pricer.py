@@ -16,27 +16,15 @@ from numba.typed import List
 from scipy.integrate import solve_ivp
 
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.models.regime_logsv import (
-    EquilibriumSolution,
-    Regime,
-    RegimeRiskPremiaScales,
-    RegimeSwitchLogSvParams,
-    _poly_derivative,
-    _poly_exp,
-    _poly_mul,
-    _poly_value,
-    _regime_difference,
-    _risk_neutral_drift_polynomial,
-    _sigma2_polynomial,
-    solve_regime_switch_equilibrium,
-)
-from stochvolmodels.models.regime_logsv_simulation import (
+from stochvolmodels.models.regime_logsv.equilibrium import EquilibriumSolution, _poly_derivative, _poly_exp, _poly_mul, _poly_value, _regime_difference, _risk_neutral_drift_polynomial, _sigma2_polynomial, solve_regime_switch_equilibrium
+from stochvolmodels.models.regime_logsv.params import Regime, RegimeRiskPremiaScales, RegimeSwitchLogSvParams
+from stochvolmodels.models.regime_logsv.simulation import (
     _initial_regime,
     _positive_int,
     _simulate_regime_interval,
     simulate_regime_switch_logsv_terminal,
 )
-from stochvolmodels.pricers.logsv.affine_expansion import ExpansionOrder
+from stochvolmodels.models.logsv.affine_expansion import ExpansionOrder
 from stochvolmodels.pricers.model_pricer import ModelPricer
 from stochvolmodels.utils import mgf_pricer as mgfp
 from stochvolmodels.utils.config import VariableType

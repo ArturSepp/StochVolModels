@@ -83,8 +83,8 @@ API_PAGE = "docs/api.md"
 # Dataclass fields and keyword arguments whose meaning is owned by one page each. The API page
 # lists them in one table per source under "## Parameter maps".
 PARAMETER_SOURCES = {
-    "LogSvParams": ("src/stochvolmodels/pricers/logsv/logsv_params.py", "LogSvParams", None),
-    "HestonParams": ("src/stochvolmodels/pricers/heston_pricer.py", "HestonParams", None),
+    "LogSvParams": ("src/stochvolmodels/models/logsv/params.py", "LogSvParams", None),
+    "HestonParams": ("src/stochvolmodels/models/heston/params.py", "HestonParams", None),
     "LogSVPricer.calibrate_model_params_to_chain": (
         "src/stochvolmodels/pricers/logsv_pricer.py",
         "LogSVPricer",

@@ -11,12 +11,12 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
-from stochvolmodels.pricers.logsv.vol_moments_ode import (
+from stochvolmodels.models.logsv.params import LogSvParams
+from stochvolmodels.fitters.logsv_backbone import fit_model_vol_backbone_to_varswaps
+from stochvolmodels.models.logsv.moments import (
     compute_expected_vol_t,
     compute_sqrt_qvar_t,
     compute_vol_moments_t,
-    fit_model_vol_backbone_to_varswaps,
 )
 from stochvolmodels.pricers.logsv_pricer import LogSVPricer
 from stochvolmodels.utils.funcs import set_seed

@@ -21,3 +21,10 @@ class VariableType(Enum):
     LOG_RETURN = 1  # with transform var PHI
     Q_VAR = 2  # with transform var PSI
     SIGMA = 3  # with trasform for THETA
+
+
+class CoordinateSystem(str, Enum):
+    """Surface axis: log(S/F) or absolute zero-carry asset level."""
+
+    LEVEL = "level"
+    LOG_FORWARD = "log_forward"

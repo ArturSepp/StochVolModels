@@ -7,7 +7,6 @@ legacy callers retain their seeded draw ordering and historical variance floor.
 """
 
 import numpy as np
-from dataclasses import dataclass
 from scipy.optimize import minimize
 from numba import njit
 from numba.typed import List
@@ -18,7 +17,6 @@ from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer
 from stochvolmodels.utils.config import VariableType
 from stochvolmodels.utils.mc_payoffs import compute_mc_vars_payoff
 from stochvolmodels.pricers.model_pricer import (
-    ModelParams,
     ModelPricer,
     validate_optimization_result,
 )
@@ -28,21 +26,7 @@ import stochvolmodels.utils.mgf_pricer as mgfp
 from stochvolmodels.data.option_chain import OptionChain
 
 
-@dataclass
-class HestonParams(ModelParams):
-    """
-    parameters of the Heston model.
-
-    Variance follows dv = kappa (theta - v) dt + volvol sqrt(v) dW, with rho the
-    return-variance correlation. The Feller condition 2 kappa theta >= volvol^2
-    keeps the variance away from zero; it is exposed as a calibration constraint
-    rather than enforced here.
-    """
-    v0: float = 0.04
-    theta: float = 0.04
-    kappa: float = 4.0
-    rho: float = -0.5
-    volvol: float = 0.4
+from stochvolmodels.models.heston.params import HestonParams as HestonParams
 
 
 BTC_HESTON_PARAMS = HestonParams(v0=0.8, theta=1.0, kappa=2.0, rho=0.0, volvol=2.0)
@@ -187,38 +171,7 @@ class HestonPricer(ModelPricer):
         return fit_params
 
 
-@njit(cache=False, fastmath=True)
-def compute_heston_mgf_grid(v0: float,
-                            theta: float,
-                            kappa: float,
-                            volvol: float,
-                            rho: float,
-                            ttm: float,
-                            phi_grid: np.ndarray,
-                            psi_grid: np.ndarray,
-                            a_t0: np.ndarray = None,
-                            b_t0: np.ndarray = None
-                            ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """
-    mgf solution for heston model
-    formula (14) in Sepp (2007), Variance swaps under no conditions, Risk
-    """
-    volvol2 = volvol*volvol
-    b1 = kappa + rho*volvol*phi_grid
-    b0 = 0.5*phi_grid*(phi_grid+1.0) - psi_grid
-    zeta = np.sqrt(b1*b1-2.0*b0*volvol2)
-    exp_zeta = np.exp(-zeta*ttm)
-    psi_p, psi_m = -b1 + zeta, b1 + zeta
-    if b_t0 is None:
-        c_p, c_m = psi_p / (2.0*zeta), psi_m / (2.0*zeta)
-    else:
-        c_p, c_m = (psi_p + volvol2*b_t0) / (2.0*zeta), (psi_m - volvol2*b_t0) / (2.0*zeta)
-    b_t1 = -(-psi_m*c_p*exp_zeta+psi_p*c_m) / (volvol2*(c_p*exp_zeta+c_m))
-    a_t1 = -(theta*kappa/volvol2) * (psi_p*ttm+2.0*np.log(c_p*exp_zeta+c_m))
-    if a_t0 is not None:
-        a_t1 = a_t1 + a_t0
-    log_mgf_grid = a_t1 + b_t1*v0
-    return log_mgf_grid, a_t1, b_t1
+from stochvolmodels.models.heston.kernels import compute_heston_mgf_grid as compute_heston_mgf_grid
 
 
 @njit(cache=False, fastmath=True)
@@ -382,35 +335,7 @@ def simulate_heston_x_vol_terminal(ttm: float,
     )
 
 
-@njit(cache=False, fastmath=True)
-def _simulate_heston_with_increments(
-    x0: np.ndarray,
-    var0: np.ndarray,
-    qvar0: np.ndarray,
-    theta: float,
-    kappa: float,
-    rho: float,
-    volvol: float,
-    dt: float,
-    w0: np.ndarray,
-    w1: np.ndarray,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Advance Heston states using supplied ``sqrt(dt)``-scaled Brownian increments.
-
-    The callers supply matching ``(n_steps, n_paths)`` matrices and path vectors.
-    No random draws occur here, allowing the path-model adapter to use a local RNG
-    while the legacy terminal simulator preserves its global Numba RNG contract.
-    """
-    rho_1 = np.sqrt(1.0-rho*rho)
-    for w0_, w1_ in zip(w0, w1):
-        sigma0 = np.sqrt(var0)
-        sigma0_2dt = var0 * dt
-        x0 = x0 - 0.5 * sigma0_2dt + sigma0 * w0_
-        qvar0 = qvar0 + sigma0_2dt
-        var0 = var0 + kappa*(theta - var0) * dt + sigma0*volvol*(rho*w0_+rho_1*w1_)
-        var0 = np.maximum(var0, 1e-4)
-
-    return x0, var0, qvar0
+from stochvolmodels.models.heston.kernels import _simulate_heston_with_increments as _simulate_heston_with_increments
 
 
 def v0_implied(v0: float, volvol: float, ttm: float):

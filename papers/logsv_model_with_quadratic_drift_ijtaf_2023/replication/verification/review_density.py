@@ -19,6 +19,13 @@ from scipy.interpolate import CubicSpline
 from stochvolmodels import LogSvParams, OptionChain
 from stochvolmodels.models import logsv_pde
 from stochvolmodels.models.logsv import LogSvModel
+from stochvolmodels.models.logsv import (
+    grids as logsv_grids,
+    kernel as logsv_kernel,
+    model as logsv_model,
+    moments as logsv_moments,
+    params as logsv_params,
+)
 from stochvolmodels.pde_solvers import (
     ADIConfig,
     ADIScheme,
@@ -64,6 +71,11 @@ def _source_hashes():
         logvol_pde,
         fourier,
         logsv_pde,
+        logsv_params,
+        logsv_grids,
+        logsv_kernel,
+        logsv_moments,
+        logsv_model,
         adi,
         operators_1d,
         operators_2d,
@@ -120,14 +132,20 @@ def _inputs(review, case):
         p.replace("\\", "/").rsplit("/", 1)[-1]: digest
         for p, digest in fit["source_sha256"].items()
     }
-    source_files = (
-        bundle / "run_pde.py",
-        Path(pde_calibration.__file__),
-        Path(logvol_pde.__file__),
-        Path(inspect.getsourcefile(LogSvParams)),
-    )
+    # Archive keys identify the frozen sources, independently of current filenames.
+    source_files = {
+        "run_pde.py": bundle / "run_pde.py",
+        "pde_calibration.py": Path(pde_calibration.__file__),
+        "logvol_pde.py": Path(logvol_pde.__file__),
+        "logsv_params.py": Path(inspect.getsourcefile(LogSvParams)),
+    }
     historical_sources = {
-        p.name: {"archived": originals[p.name], "current": _hash(p)} for p in source_files
+        name: {
+            "archived": originals[name],
+            "current": _hash(path),
+            "current_path": path.as_posix(),
+        }
+        for name, path in source_files.items()
     }
 
     # Match the original load_chain: sort by ttm and strike, divide strikes and

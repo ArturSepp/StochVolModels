@@ -6,8 +6,8 @@ Price a call under deterministic volatility with a seeded antithetic simulation.
 
 >>> from stochvolmodels.models.lsv import LSVModel
 >>> from stochvolmodels.pricers.lsv_mc_pricer import LSVMonteCarloPricer
->>> from stochvolmodels.models.lsv_simulation import LSVMonteCarloConfig
->>> from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
+>>> from stochvolmodels.models.lsv.simulation import LSVMonteCarloConfig
+>>> from stochvolmodels.models.logsv.params import LogSvParams
 >>> model = LSVModel.from_params(LogSvParams(sigma0=.2, theta=.2, beta=0., volvol=0.))
 >>> pricer = LSVMonteCarloPricer(config=LSVMonteCarloConfig(paths=8192, steps_per_year=24))
 >>> price, iv = pricer.price_vanilla(model, 0.25, 100., 100., "C")
@@ -27,7 +27,7 @@ from stochvolmodels.data.model_paths import ModelPaths
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.models.logsv import LogSvMeasure
 from stochvolmodels.models.lsv import LSVModel
-from stochvolmodels.models.lsv_simulation import LSVMonteCarloConfig, LSVMonteCarloEngine
+from stochvolmodels.models.lsv.simulation import LSVMonteCarloConfig, LSVMonteCarloEngine
 from stochvolmodels.pricers.model_pricer import ModelPricer
 from stochvolmodels.products.payoffs import _vanilla_payoff
 from stochvolmodels.utils.config import OptionType, VariableType

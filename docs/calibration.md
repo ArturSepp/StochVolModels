@@ -211,7 +211,7 @@ loadings of 0.981, 0.928, 0.938 and 0.869.
 | `LogSvParams` field `vol_backbone`, with `set_vol_backbone` and `get_vol_backbone_eta` | Backbone factors by maturity, used by the transform and the simulation |
 | `OptionChain.get_slice_varswap_strikes`, `get_chain_vegas` | Replicated variance-swap strikes and the vegas of the weights |
 
-The backbone fit is `fit_model_vol_backbone_to_varswaps` in `stochvolmodels.pricers.logsv.vol_moments_ode`,
+The backbone fit is `fit_model_vol_backbone_to_varswaps` in `stochvolmodels.fitters.logsv_backbone`,
 an internal function. Each objective evaluation prices the whole chain, so an analytic calibration of
 the bundled chain takes a few minutes; the Monte Carlo engines are slower. Record the chain, the
 starting point, the bounds, the constraint, the engine and, for Monte Carlo, the seed. Run the

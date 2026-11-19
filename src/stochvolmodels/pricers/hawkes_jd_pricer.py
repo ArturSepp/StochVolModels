@@ -19,16 +19,13 @@ positive and negative jump premia, and the Bitcoin option application.
 import numpy as np
 from scipy.optimize import minimize
 from numba.typed import List
-from typing import Tuple, Optional, Dict, Any
-from dataclasses import dataclass, asdict
-from scipy.integrate import solve_ivp
-from scipy.integrate._ivp.ivp import OdeResult
+from typing import Tuple
 
 # stochvolmodels pricers
 import stochvolmodels.utils.mgf_pricer as mgfp
 from stochvolmodels.utils.config import VariableType
 from stochvolmodels.utils.mc_payoffs import compute_mc_vars_payoff
-from stochvolmodels.pricers.model_pricer import ModelPricer, ModelParams
+from stochvolmodels.pricers.model_pricer import ModelPricer
 from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer
 
 # data
@@ -37,85 +34,7 @@ from stochvolmodels.data.option_chain import OptionChain
 MAX_PHI = 500
 
 
-@dataclass
-class HawkesJDParams(ModelParams):
-    """
-    parameters of 2-factor Hawkes Jump Diffusion
-    annualized params, close for BTC on daily frequency
-    """
-    mu: float = 0.0
-    sigma: float = 0.45
-    # jumps
-    shift_p: float = 0.06
-    mean_p: float = 0.03
-    shift_m: float = -0.06
-    mean_m: float = -0.03
-    # positive jumps intensity
-    lambda_p: float = 6.55
-    theta_p: float = 6.55
-    kappa_p: float = 22.29
-    beta1_p: float = 76.0
-    beta2_p: float = -67.58
-    # minus jumps intensity
-    lambda_m: float = 8.50
-    theta_m: float = 8.50
-    kappa_m: float = 29.0
-    beta1_m: float = 104.55
-    beta2_m: float = -109.6
-    risk_premia_gamma: float = None
-
-    def __post_init__(self):
-        """validate the jump and intensity parameters."""
-        self.compensator_p = np.exp(self.shift_p)/(1.0-self.mean_p) - 1.0
-        self.compensator_m = np.exp(self.shift_m)/(1.0-self.mean_m) - 1.0
-
-    def to_dict(self) -> Dict[str, Any]:
-        """return the parameters as a plain dict."""
-        return asdict(self)
-
-    def print(self) -> None:
-        """print the parameters, for interactive inspection."""
-        for k, v in self.to_dict().items():
-            print(f"{k}={v}")
-        print('condifions')
-        print(f"jump1={self.jump1_cond:0.4f} > 0")
-        print(f"jump2={self.jump2_cond:0.4f} > 0")
-
-    @property
-    def jump1_cond(self) -> float:
-        """
-        stationarity margin of the positive-jump intensity.
-
-        Returns kappa_p - beta1_p E[J_p] - beta2_p E[J_m]. The intensity is stationary
-        while this is positive: decay must outpace the excitation contributed by both
-        jump streams. Used as a calibration constraint, not enforced on construction.
-        """
-        return self.kappa_p-self.beta1_p*self.exp_jump_p-self.beta2_p*self.exp_jump_m
-
-    @property
-    def jump2_cond(self) -> float:
-        """stationarity margin of the negative-jump intensity, the mirror of jump1_cond."""
-        return self.kappa_m - self.beta2_m * self.exp_jump_m - self.beta1_m * self.exp_jump_p
-
-    @property
-    def exp_jump_p(self) -> float:
-        """expected positive jump size, shift_p + mean_p for a shifted exponential."""
-        return self.shift_p+self.mean_p
-
-    @property
-    def exp_jump_m(self) -> float:
-        """expected negative jump size, shift_m + mean_m."""
-        return self.shift_m+self.mean_m
-
-    @property
-    def jumps_var_m(self) -> float:
-        """second moment of the negative jump size, shift_m^2 + mean_m^2."""
-        return np.square(self.shift_m) + np.square(self.mean_m)
-
-    @property
-    def jumps_var_p(self) -> float:
-        """second moment of the positive jump size, shift_p^2 + mean_p^2."""
-        return np.square(self.shift_p) + np.square(self.mean_p)
+from stochvolmodels.models.hawkes_jd.params import HawkesJDParams as HawkesJDParams
 
 
 class HawkesJDPricer(ModelPricer):
@@ -515,129 +434,15 @@ def hawkesjd_forwards_under_risk_kernel(model_params: HawkesJDParams,
     return normalizers, gamma_forwards
 
 
-def compute_hawkes_a_mgf_grid(ttm: float,
-                              phi_grid: np.ndarray,
-                              model_params: HawkesJDParams,
-                              psi_grid: Optional[np.ndarray] = None,  # Q-var grid
-                              a_t0: Optional[np.ndarray] = None,
-                              is_stiff_solver: bool = False,
-                              **kwargs
-                              ) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    compute
-     1. solution a_t1 for ode A given a_t0
-     2. log mgf function: we save an exponent calulation when pricing options
-    mmg in x or QV as function of phi
-    ode_solution is computed per grid of phi
-    to do: numba implementation: need numba ode solvers
-    """
-
-    if a_t0 is None:
-        a_t0 = np.zeros((phi_grid.shape[0], 3), dtype=np.complex128)
-
-    a_t1 = solve_a_ode_grid(phi_grid=phi_grid,
-                            psi_grid=psi_grid,
-                            ttm=ttm,
-                            model_params=model_params,
-                            a_t0=a_t0,
-                            is_stiff_solver=is_stiff_solver)
-
-    log_mgf = a_t1[:, 0] + a_t1[:, 1]*model_params.lambda_p + a_t1[:, 2]*model_params.lambda_m
-    return a_t1, log_mgf
+from stochvolmodels.models.hawkes_jd.transforms import compute_hawkes_a_mgf_grid as compute_hawkes_a_mgf_grid
 
 
 # cannot use @njit(cache=False, fastmath=True) when using solve_ode_for_a with solve_ivp
-def solve_a_ode_grid(phi_grid: np.ndarray,  # x grid
-                     ttm: float,
-                     model_params: HawkesJDParams,
-                     psi_grid: Optional[np.ndarray] = None,  # Q-var grid
-                     a_t0: Optional[np.ndarray] = None,
-                     is_stiff_solver: bool = False
-                     ) -> np.ndarray:
-    """
-    solve ode for range phi
-    next: numba implementation to compute in range of phi
-    """
-    if a_t0 is None:
-        a_t0 = np.zeros((phi_grid.shape[0], 3), dtype=np.complex128)
-
-    if psi_grid is None:
-        psi_grid = np.zeros_like(phi_grid)
-
-    f = lambda phi, psi, a0_: solve_ode_for_a(ttm=ttm,
-                                              model_params=model_params,
-                                              phi=phi,
-                                              psi=psi,
-                                              a_t0=a0_,
-                                              is_stiff_solver=is_stiff_solver,
-                                              dense_output=False)
-
-    a_t1 = np.zeros((phi_grid.shape[0], 3), dtype=np.complex128)
-    for idx, (phi, psi) in enumerate(zip(phi_grid, psi_grid)):
-        a_t1[idx, :] = f(phi, psi, a_t0[idx, :]).y[:, -1]
-    return a_t1
+from stochvolmodels.models.hawkes_jd.transforms import solve_a_ode_grid as solve_a_ode_grid
 
 
 # cannot use @njit(cache=False, fastmath=True) when using solve_ode_for_a with solve_ivp
-def solve_ode_for_a(ttm: float,
-                    model_params: HawkesJDParams,
-                    phi: np.complex128,
-                    psi: np.complex128,
-                    a_t0: Optional[np.ndarray] = None,
-                    is_stiff_solver: bool = False,
-                    dense_output: bool = False
-                    ) -> OdeResult:
-    """
-    solve ode for given phi
-    next: numba implementation to compute in range of phi
-    """
-    def e_p(phi_: float):
-        """
-        moment generating function of the positive jump size at transform variable phi.
-
-        For a shifted exponential this is exp(-shift_p phi) / (1 + mean_p phi), which is
-        finite only for phi above -1 / mean_p.
-        """
-        return np.exp(-model_params.shift_p*phi_) / (1.0+model_params.mean_p*phi_)
-
-    def e_m(phi_: float):
-        """moment generating function of the negative jump size at transform variable phi."""
-        return np.exp(-model_params.shift_m*phi_) / (1.0+model_params.mean_m*phi_)
-
-    def func_rhs(t: float, #  dummy for ode solve
-                 a0: np.ndarray
-                 ) -> np.ndarray:
-        """
-        right-hand side of the Riccati ODEs for the MGF coefficients.
-
-        The jump terms enter through the jump-size MGFs evaluated at the transform
-        variable shifted by the intensity coefficients, which is what couples the two
-        streams.
-        """
-        rhs = np.zeros(3, dtype=np.complex128)
-
-        j_p = e_p(phi_=phi - model_params.beta1_p * a0[1] - model_params.beta1_m * a0[2]) - 1.0
-        j_m = e_m(phi_=phi - model_params.beta2_p * a0[1] - model_params.beta2_m * a0[2]) - 1.0
-
-        rhs[0] = model_params.kappa_p*model_params.theta_p*a0[1] + model_params.kappa_m*model_params.theta_m*a0[2] \
-                 + np.square(model_params.sigma)*(0.5*(phi+1.0)*phi-psi)
-        rhs[1] = j_p - model_params.kappa_p*a0[1] + model_params.compensator_p*phi
-        rhs[2] = j_m - model_params.kappa_m*a0[2] + model_params.compensator_m*phi
-        return rhs
-
-    if a_t0 is None:
-        a_t0 = np.zeros(3, dtype=np.complex128)
-
-    if is_stiff_solver:
-        ode_sol = solve_ivp(fun=func_rhs, t_span=(0.0, ttm), y0=a_t0, args=None,
-                            method='BDF',
-                            # jac=func_rhs_jac,
-                            dense_output=dense_output)
-    else:
-        ode_sol = solve_ivp(fun=func_rhs, t_span=(0.0, ttm), y0=a_t0, args=None,
-                            dense_output=dense_output)
-
-    return ode_sol
+from stochvolmodels.models.hawkes_jd.transforms import solve_ode_for_a as solve_ode_for_a
 
 
 #@njit(cache=False, fastmath=True)

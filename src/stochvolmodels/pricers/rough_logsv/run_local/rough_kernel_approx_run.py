@@ -1,34 +1,16 @@
+"""Compatibility entry point for the rough model's local development runner.
+
+Imports resolve to the canonical runner, preserving its globals and source path.
+Executing the former module path dispatches the canonical runner exactly once.
 """
-inspect the rough-kernel approximation nodes and weights as a function of the Hurst exponent
-"""
+if __name__ == "__main__":
+    import runpy
 
-# packages
-import numpy as np
-from enum import Enum
-# stochvolmodels
-from stochvolmodels import LogSvParams
+    runpy.run_module(
+        "stochvolmodels.models.rough_logsv.run_local.rough_kernel_approx_run", run_name="__main__"
+    )
+else:
+    import sys
+    from stochvolmodels.models.rough_logsv.run_local import rough_kernel_approx_run as _implementation
 
-
-class Locals(Enum):
-    KERNEL_APPROX_BY_HURST = 1
-
-
-def run_local(local: Locals) -> None:
-    """Run local tests for development and debugging purposes."""
-
-    if local == Locals.KERNEL_APPROX_BY_HURST:
-        ttm = 1.0
-        params0 = LogSvParams(
-            sigma0=1.32, theta=0.47, kappa1=4.0, kappa2=2.0, beta=0.45, volvol=0.83
-        )
-        for hurst in np.linspace(0.3, 0.5, 150):
-            params0.H = hurst
-            params0.approximate_kernel(T=ttm)
-            print(f" *** H={hurst} *** ")
-            print(params0.weights)
-            print(params0.nodes)
-
-
-if __name__ == '__main__':
-
-    run_local(local=Locals.KERNEL_APPROX_BY_HURST)
+    sys.modules[__name__] = _implementation

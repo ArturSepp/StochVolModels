@@ -9,10 +9,10 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from stochvolmodels.utils._arrays import readonly_float_array as _readonly_array
-from stochvolmodels.models.logsv import LogSvModel, _finite_float, _nonnegative_float
-from stochvolmodels.models.logsv_pde import _mma_coefficients
+from stochvolmodels.models.logsv.model import LogSvModel, _finite_float, _nonnegative_float
+from stochvolmodels.models.logsv.coefficients import _mma_coefficients
 from stochvolmodels.pde_solvers import Grid1D, PDE2DCoefficients, TensorGrid2D
-from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
+from stochvolmodels.models.logsv.params import LogSvParams
 
 FloatArray = NDArray[np.float64]
 

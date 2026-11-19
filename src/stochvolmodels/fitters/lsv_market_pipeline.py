@@ -5,7 +5,7 @@ Examples
 Replay three flat Black smiles and inspect the original-unit prices and acceptance checks.
 
 >>> from stochvolmodels.models.local_vol import LocalVolFamily
->>> from stochvolmodels.models.lsv_simulation import LSVMonteCarloConfig
+>>> from stochvolmodels.models.lsv.simulation import LSVMonteCarloConfig
 >>> from stochvolmodels.fitters.lsv_parametric import LSVParametricCalibrationConfig
 >>> from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
 >>> import numpy as np
@@ -13,7 +13,7 @@ Replay three flat Black smiles and inspect the original-unit prices and acceptan
 >>> from stochvolmodels.fitters.dupire import DupireRepairPolicy
 >>> from stochvolmodels.fitters.lsv_parametric import LSVParametricCalibrator
 >>> from stochvolmodels.fitters.lsv_market_pipeline import LSVMarketPipeline
->>> from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
+>>> from stochvolmodels.models.logsv.params import LogSvParams
 >>> from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdePricer
 >>> from stochvolmodels.pricers.lsv_mc_pricer import LSVMonteCarloPricer
 >>> t = np.array([0.1, 0.2, 0.3])
@@ -52,10 +52,10 @@ from stochvolmodels.fitters.lsv_parametric import (
 )
 from stochvolmodels.models.local_vol import LocalVolSurface
 from stochvolmodels.pde_solvers import Grid1D, PDEDiagnostics2D
-from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
+from stochvolmodels.models.logsv.params import LogSvParams
 from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdeExpiry, LogSvPdePricer, LogSvPdeResult
 from stochvolmodels.pricers.lsv_mc_pricer import LSVMonteCarloPricer, LSVMonteCarloResult
-from stochvolmodels.pricers.lsv_projection import _DEFAULT_LSV_STEPS
+from stochvolmodels.fitters.lsv_projection import _DEFAULT_LSV_STEPS
 
 FloatArray = NDArray[np.float64]
 

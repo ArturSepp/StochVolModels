@@ -82,13 +82,14 @@ not authorise adding those dependencies to core or importing them at package roo
 
 ```
 src/stochvolmodels/
-  pricers/           log-normal SV, Heston, Hawkes jump-diffusion, Gaussian mixture,
-                     Student-t; subpackages logsv/, factor_hjm/, rough_logsv/;
-                     source-adjacent run_local/ packages hold development runners
-  data/              option-chain containers; run_local/ holds development diagnostics
+  pricers/           concrete ModelPricer adapters and their calibration/plot methods;
+                     compatibility modules retain former numerical import paths;
+                     factor_hjm/ and development run_local/ remain here
+  data/              option chains, paths and immutable density states; run_local/ diagnostics
   fitters/           smile, Dupire, leverage and LSV market calibration; development diagnostics
-  models/            path dynamics, local volatility, LSV leverage and coefficient adapters
-  products/          payoff and monitoring conventions; valuation.py values ModelPaths
+  models/            parameters, transforms, simulation, moments, LSV propagation and
+                     coefficient adapters; rough_logsv/ owns rough numerical code
+  products/          payoff and monitoring conventions; valuation.py values paths and densities
   pde_solvers/       public generic grids, theta/ADI solvers, jump operators and diagnostics
   utils/             numerical utilities (Fourier transforms, quadrature, plotting)
   tests/             test modules (test_*.py) — inside the package
@@ -154,11 +155,12 @@ wheel, cross-platform quickstarts, documentation/doctests/link checks, and sched
   not import them. Every pytest-shaped file is an automated test and collects at least one test.
 - Line length 100 (`ruff`, configured rules `E`, `F`, `W`; CI gates correctness and import
   boundaries through `F`, `TID251`, `TID253`, and `ICN`).
-- Pricing kernels are `numba`-compiled (14 modules import numba): keep them array-based,
+- Many pricing and simulation kernels are `numba`-compiled: keep those kernels array-based,
   avoid pandas inside compiled code, and preserve the existing signature style. A
   mutable default such as `arr: np.ndarray = None` cannot be typed in nopython mode.
-- Each model provides both an analytic transform-based pricer and a Monte Carlo
-  simulator; new models are expected to provide both so they can be cross-validated.
+- Expose the path, transform or terminal-law capabilities that the model supports.
+  Cross-validate numerical results against independent analytical, PDE or Monte Carlo
+  references; do not invent a transform capability for models without one.
 - Dataclasses carry model parameters; enums carry model and option type selection.
 - Runnable examples sit behind an enum of cases plus a dispatcher called under
   `if __name__ == '__main__':`. Package development runners, repository examples and paper

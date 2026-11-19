@@ -140,6 +140,11 @@ different local optima. The Student-t law, whose skew is fixed by its two parame
 
 ## Implementation in stochvolmodels
 
+Parameters are defined in `models.gmm.GmmParams` and `models.tdist.params.TdistParams`.
+Student-t density helpers are in `models.tdist.distribution`; vanilla valuation and inversion
+are in `pricers.tdist.analytics`. `fitters.tdist` retains compatibility aliases. `GmmTerminalModel` and `TdistTerminalModel` remain in the pricer
+modules because their pricing capabilities call concrete pricers. Existing imports work.
+
 | Name | Role |
 |---|---|
 | `GmmParams` | States of the mixture; `compute_pdf` and `compute_state_pdfs` give the density of the log-return |

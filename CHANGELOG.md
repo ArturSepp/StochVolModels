@@ -56,6 +56,22 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Changed
 
+- Organize LogSV, Heston, LSV, regime LogSV, Hawkes, TGARCH and Student-t implementations
+  into model-family packages while preserving published imports and existing serialized model references.
+  Move variance-swap backbone calibration to `fitters.logsv_backbone` and Student-t vanilla
+  analytics to `pricers.tdist.analytics`; retain parameter convenience methods and numerical
+  regression conventions.
+
+- Separated model definitions and numerical kernels from concrete pricing adapters:
+  Heston, LogSV, rough-logSV, Gaussian-mixture, Student-t and Hawkes definitions now
+  have canonical modules under `models/`. LSV propagation is in `models.lsv.propagation`,
+  projection in `fitters.lsv_projection`, density states in `data.density`, and density
+  valuation in `valuation`. `CoordinateSystem` is shared through `utils.config`.
+  Existing root and module imports remain aliases, including experimental paths.
+  Pricing/calibration methods, numerical algorithms, random conventions and regression
+  baselines are preserved. New serialized objects use their canonical module paths;
+  existing serialized class references remain loadable.
+
 - `SplitOperator2D.build` caches the existing mixed-derivative bands for linear-work
   application, preserving nonuniform-grid formulas and the weighted-adjoint forward
   action. Prices and density diagnostics are checked against the former dense action

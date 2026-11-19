@@ -2,7 +2,7 @@
 
 The adapter preserves the legacy interval grid and MT19937 random ordering. It exposes the
 zero-drift price, volatility and integrated variance without changing the numerical kernel in
-``stochvolmodels.pricers.logsv_pricer``. Rough kernels and volatility backbones are deliberately
+``stochvolmodels.models.logsv.simulation``. Rough kernels and volatility backbones are deliberately
 outside this boundary.
 """
 
@@ -19,7 +19,7 @@ from numpy.typing import NDArray
 from stochvolmodels.data.model_paths import ModelPaths
 
 if TYPE_CHECKING:
-    from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
+    from stochvolmodels.models.logsv.params import LogSvParams
 
 __all__ = ("LogSvMeasure", "LogSvModel")
 
@@ -135,7 +135,7 @@ class LogSvModel:
 
     def __init__(self, params: LogSvParams) -> None:
         """Validate and snapshot a standard continuous ``LogSvParams`` payload."""
-        from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
+        from stochvolmodels.models.logsv.params import LogSvParams
 
         if not isinstance(params, LogSvParams):
             raise ValueError("params must be a LogSvParams instance")
@@ -158,7 +158,7 @@ class LogSvModel:
     @property
     def params(self) -> LogSvParams:
         """Return a fresh standard ``LogSvParams`` detached from this model's snapshot."""
-        from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
+        from stochvolmodels.models.logsv.params import LogSvParams
 
         return LogSvParams(
             sigma0=self._sigma0,
@@ -232,7 +232,7 @@ class LogSvModel:
 
         # These imports stay local so importing this public adapter does not eagerly import the
         # legacy pricing/calibration stack or compile its Numba simulation kernel.
-        from stochvolmodels.pricers.logsv_pricer import (
+        from stochvolmodels.models.logsv.simulation import (
             get_randoms_for_chain_valuation,
             simulate_logsv_x_vol_terminal,
         )
@@ -312,9 +312,7 @@ class LogSvModel:
             "nonfinite_asset_count": int(np.count_nonzero(~np.isfinite(assets))),
             "nonfinite_log_return_count": int(np.count_nonzero(~np.isfinite(log_returns))),
             "nonfinite_sigma_count": int(np.count_nonzero(~np.isfinite(sigmas))),
-            "nonfinite_qvar_count": int(
-                np.count_nonzero(~np.isfinite(quadratic_variances))
-            ),
+            "nonfinite_qvar_count": int(np.count_nonzero(~np.isfinite(quadratic_variances))),
             "asset_positive_infinity_count": int(np.count_nonzero(np.isposinf(assets))),
             "asset_underflow_count": int(np.count_nonzero(asset_levels == 0.0)),
             "nonpositive_sigma_count": int(np.count_nonzero(sigmas <= 0.0)),
@@ -348,3 +346,8 @@ class LogSvModel:
             provenance=provenance,
             diagnostics=diagnostics,
         )
+
+
+# Preserve the public serialization path when implementation modules move.
+LogSvModel.__module__ = "stochvolmodels.models.logsv"
+LogSvMeasure.__module__ = "stochvolmodels.models.logsv"

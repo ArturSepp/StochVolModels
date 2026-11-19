@@ -16,11 +16,7 @@ from stochvolmodels.pde_solvers.grids import Grid1D
 FloatArray = NDArray[np.float64]
 
 
-class CoordinateSystem(str, Enum):
-    """Surface axis: log(S/F) or absolute zero-carry asset level."""
-
-    LEVEL = "level"
-    LOG_FORWARD = "log_forward"
+from stochvolmodels.utils.config import CoordinateSystem as CoordinateSystem
 
 
 class LocalVolFamily(str, Enum):

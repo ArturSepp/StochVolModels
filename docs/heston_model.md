@@ -177,6 +177,11 @@ scale; (C) log-normal SV minus Heston implied volatility at three maturities, at
 
 ## Implementation in stochvolmodels
 
+`HestonParams` is defined in `stochvolmodels.models.heston`, alongside `HestonModel`.
+The affine transform and supplied-increment propagator live in `models.heston.kernels`;
+`pricers.heston_pricer.HestonPricer` retains pricing and calibration. Root exports and
+previous parameter/kernel imports remain aliases to the same objects.
+
 | Name | Role |
 |---|---|
 | `HestonParams` | Fields `v0`, `theta`, `kappa`, `rho`, `volvol`, as in the table above |

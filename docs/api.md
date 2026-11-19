@@ -24,6 +24,12 @@ Each section below is named after the page that explains its names. A page that 
 yet is named in italics. The API contract test resolves every stable name and fails if `__all__` or
 a stable docstring drifts; `scripts/check_docs.py` checks that each name sits under its owning page.
 
+Canonical parameter and numerical modules live under `stochvolmodels.models`;
+concrete option-chain adapters live under `stochvolmodels.pricers`. LSV projection is
+`stochvolmodels.fitters.lsv_projection`. Existing root exports and former module paths
+remain compatible. See [software design](software_design.md#layers) for the ownership map,
+retained calibration methods and compatibility limits.
+
 ## Installation and first result
 
 Explained in [Installation and first result](getting_started.md). The installed release string is
@@ -367,6 +373,8 @@ These provisional models, configurations, pricers, fitters and result records ar
 
 ### `models.logsv_pde`
 
+The canonical implementation is `models.logsv.coefficients`; this published path remains an alias.
+
 ```{eval-rst}
 .. automodule:: stochvolmodels.models.logsv_pde
    :members: LogSvPdeCoefficients, LogSvCoefficientProvider
@@ -383,19 +391,30 @@ These provisional models, configurations, pricers, fitters and result records ar
 
 ### `models.lsv_simulation`
 
+The canonical implementation is `models.lsv.simulation`; this published path remains an alias.
+
 ```{eval-rst}
 .. automodule:: stochvolmodels.models.lsv_simulation
    :members: LSVMonteCarloConfig, LSVMonteCarloEngine
    :member-order: bysource
 ```
 
-### `pricers.density_pricer`
+### Density states and valuation
 
 ```{eval-rst}
-.. automodule:: stochvolmodels.pricers.density_pricer
-   :members: DensityState1D, DensityState2D, DensityPricingResult, DensityPricer
+.. automodule:: stochvolmodels.data.density
+   :members: DensityState1D, DensityState2D
    :member-order: bysource
+
+.. autoclass:: stochvolmodels.valuation.DensityPricingResult
+   :members:
+
+.. autoclass:: stochvolmodels.valuation.DensityPricer
+   :members:
 ```
+
+Coordinate metadata uses `stochvolmodels.utils.config.CoordinateSystem`.
+The former `pricers.density_pricer` names remain aliases to these objects.
 
 ### `pricers.local_vol_pde_pricer`
 
@@ -413,10 +432,10 @@ These provisional models, configurations, pricers, fitters and result records ar
    :member-order: bysource
 ```
 
-### `pricers.lsv_projection`
+### `fitters.lsv_projection`
 
 ```{eval-rst}
-.. automodule:: stochvolmodels.pricers.lsv_projection
+.. automodule:: stochvolmodels.fitters.lsv_projection
    :members: LowDensityPolicy, LSVProjectionConfig, ConditionalMomentResult, project_conditional_variance, LeverageUpdateResult, recover_leverage_slice, LSVProjectionSlice, LSVRepricingSlice, SequentialLSVProjectionResult, SequentialLSVProjector
    :member-order: bysource
 ```
@@ -475,9 +494,9 @@ The provisional [finite-difference solvers](software_design.md#generic-finite-di
 are available as `stochvolmodels.pde_solvers.PDE1DSolver` and `PDE2DADISolver`.
 The same solver package exposes `TranslationJump` for additive or level-multiplicative
 jumps, including forward and backward translations, compound-Poisson steps and Strang splitting.
-`stochvolmodels.pricers.density_pricer.DensityPricer` prices calls and puts from a
+`stochvolmodels.valuation.DensityPricer` prices calls and puts from a
 `DensityState1D`. Use `DensityState2D.marginal_x_state()` for a joint density.
-`stochvolmodels.models.logsv_pde.LogSvCoefficientProvider` supplies the LogSV generator
+`stochvolmodels.models.logsv.coefficients.LogSvCoefficientProvider` supplies the LogSV generator
 in either the money-market or inverse measure and accepts a volatility backbone.
 The provisional `stochvolmodels.pricers.logsv_pde_pricer.LogSvPdePricer` uses the
 2D solver for ordinary European LogSV chains under the money-market measure.
@@ -495,7 +514,7 @@ bucket conventions, replay settings and measured accuracy. The provisional `stoc
 `DupireRecoverer.jump_adjusted` also returns a `DupireJumpAdjustment` on the result.
 See [fixed-jump Dupire inversion](software_design.md#fixed-jump-dupire-inversion).
 The provisional `stochvolmodels.models.lsv.LSVModel` binds LogSV dynamics to a
-`LeverageSurface`. The `stochvolmodels.pricers.lsv_projection` module provides
+`LeverageSurface`. The `stochvolmodels.fitters.lsv_projection` module provides
 `project_conditional_variance`, `recover_leverage_slice` and `SequentialLSVProjector`.
 Both leverage fitters accept `leverage_times` and `quote_chain`. Each `LSVRepricingSlice`
 in `result.repricing` contains the target and fitted premiums, Black IVs and signed errors
@@ -510,7 +529,7 @@ a bounded leverage formula to Black implied volatilities at each maturity. The r
 contains a priceable model, the parameter matrix and per-expiry fit diagnostics.
 See [parametric calibration](software_design.md#parametric-leverage-calibration).
 
-The provisional `stochvolmodels.models.lsv_simulation.LSVMonteCarloEngine` generates
+The provisional `stochvolmodels.models.lsv.simulation.LSVMonteCarloEngine` generates
 `ModelPaths` from a fitted `LSVModel`. The corresponding
 `stochvolmodels.pricers.lsv_mc_pricer.LSVMonteCarloPricer` prices ragged European
 chains and reports sampling uncertainty. See [LSV Monte Carlo](software_design.md#lsv-monte-carlo).
@@ -549,7 +568,7 @@ after validation across additional model implementations:
   path valuation with explicit measure, likelihood-weight, recentering, standard-error, and ESS
   policies.
 
-- `stochvolmodels.models.regime_logsv`, `stochvolmodels.models.regime_logsv_simulation`, and
+- `stochvolmodels.models.regime_logsv`, `stochvolmodels.models.regime_logsv.simulation`, and
   `stochvolmodels.pricers.regime_switch_logsv_pricer` provide the provisional regime-switching
   LogSV equilibrium, transform, Fourier, and independent Monte Carlo stack.
 
@@ -571,16 +590,16 @@ the calibration gate. These names are available through the experimental subpack
 the stable package-root export list.
 
 ```{eval-rst}
-.. autoclass:: stochvolmodels.pricers.rough_logsv.params.RoughLogSvParams
+.. autoclass:: stochvolmodels.models.rough_logsv.params.RoughLogSvParams
    :members:
 
-.. autoclass:: stochvolmodels.pricers.rough_logsv.params.RoughKernel
+.. autoclass:: stochvolmodels.models.rough_logsv.params.RoughKernel
    :members:
 
-.. autoclass:: stochvolmodels.pricers.rough_logsv.multilevel.RoughMCConfig
+.. autoclass:: stochvolmodels.models.rough_logsv.multilevel.RoughMCConfig
    :members:
 
-.. autoclass:: stochvolmodels.pricers.rough_logsv.multilevel.DiscretePdeControl
+.. autoclass:: stochvolmodels.models.rough_logsv.multilevel.DiscretePdeControl
    :members:
 
 .. autoclass:: stochvolmodels.pricers.rough_logsv_pricer.ClassicalPdeConfig

@@ -10,7 +10,7 @@ Fit a single flat leverage bucket and inspect its scale.
 ... )
 >>> from stochvolmodels.models.local_vol import LocalVolFamily, LocalVolSurface
 >>> from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
->>> from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
+>>> from stochvolmodels.models.logsv.params import LogSvParams
 >>> x = Grid1D.concentrated(-0.9, 0.9, 81, 0., 0.12)
 >>> grid = TensorGrid2D(x, Grid1D([0.1, 0.15, 0.2, 0.25, 0.3]))
 >>> params = LogSvParams(sigma0=0.2, theta=0.2, beta=0., volvol=0.)
@@ -49,8 +49,8 @@ from stochvolmodels.models.local_vol import (
 )
 from stochvolmodels.models.lsv import LSVModel, LeverageSurface
 from stochvolmodels.pde_solvers import ADIConfig, PDE2DADISolver, PDEState2D, TensorGrid2D
-from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
-from stochvolmodels.pricers.lsv_projection import (
+from stochvolmodels.models.logsv.params import LogSvParams
+from stochvolmodels.fitters.lsv_projection import (
     _DEFAULT_LSV_STEPS,
     _DEFAULT_NEGATIVE_MASS_TOLERANCE,
     _advance_lsv,

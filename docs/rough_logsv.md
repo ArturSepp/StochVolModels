@@ -8,7 +8,7 @@ myst:
 
 # Experimental rough-logSV pricing
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Author: [Artur Sepp](https://github.com/ArturSepp) / First recorded: [2026-11-18](https://github.com/ArturSepp/StochVolModels/commit/96fea18acc102468d0f80318529eca96aa3de106)*
 
 Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
@@ -17,6 +17,11 @@ Rough-logSV is an experimental standalone model, imported from
 `stochvolmodels.pricers.rough_logsv`. It uses `RoughLogSvParams` and `RoughLogSVPricer`;
 the classical `LogSVPricer` has no rough-mode switch. The installed implementation does
 not import paper scripts, private data or agent evidence.
+
+Parameters, kernel fitting, history simulation and numerical controls have their canonical
+home in `stochvolmodels.models.rough_logsv`. The compatibility facade above also exposes the
+concrete pricer; the model package itself does not import it. Existing experimental paths
+remain available without warnings, and numerical conventions are unchanged by this move.
 
 ## Model and conventions
 

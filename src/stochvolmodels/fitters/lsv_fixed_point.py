@@ -8,7 +8,7 @@ Calibrate two leverage buckets, inspect their iteration counts and price a put.
 >>> from stochvolmodels.fitters.lsv_fixed_point import LSVFixedPointCalibrator
 >>> from stochvolmodels.models.local_vol import LocalVolSurface
 >>> from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
->>> from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
+>>> from stochvolmodels.models.logsv.params import LogSvParams
 >>> from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdePricer
 >>> x = Grid1D.concentrated(-0.9, 0.9, 81, 0.0, 0.12)
 >>> grid = TensorGrid2D(x, Grid1D([0.10, 0.15, 0.20, 0.25, 0.30]))
@@ -36,8 +36,8 @@ from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.models.local_vol import LocalVolSurface
 from stochvolmodels.models.lsv import LSVModel
 from stochvolmodels.pde_solvers import ADIConfig, PDEState2D, TensorGrid2D
-from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
-from stochvolmodels.pricers.lsv_projection import (
+from stochvolmodels.models.logsv.params import LogSvParams
+from stochvolmodels.fitters.lsv_projection import (
     _DEFAULT_LSV_STEPS,
     LSVProjectionConfig,
     LSVProjectionSlice,

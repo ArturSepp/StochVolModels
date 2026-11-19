@@ -24,13 +24,14 @@ stability tiers; the [API reference](api.md) lists the names by the page that ex
 
 ```mermaid
 flowchart TB
-    N["pde_solvers: grids, coefficients, boundaries, evolution and diagnostics"]
-    M["models: dynamics, local volatility, leverage and jumps"]
+    N["pde_solvers: generic grids and evolution"]
+    M["models: parameters, transforms, simulation and coefficients"]
     R["products: payoffs and contract conventions"]
-    P["pricers: transform, PDE and Monte Carlo valuation"]
+    V["valuation: path estimators and density payoff reduction"]
+    P["pricers: concrete ModelPricer adapters"]
     F["fitters: Dupire, projection, leverage and market calibration"]
-    D["data: option chains and simulated paths"]
-    U["utils and vanilla-option-pricers: numerical and Black analytics"]
+    D["data: option chains, paths and density states"]
+    U["utils: shared conventions and numerical helpers"]
     F --> P
     F --> M
     F --> D
@@ -39,42 +40,68 @@ flowchart TB
     P --> R
     P --> D
     M --> N
-    M -->|legacy parameter type| P
+    M --> D
+    V --> D
+    V --> R
+    D --> N
     D --> U
-    P --> U
-    F --> U
 ```
 
-Arrows show imports between responsibilities in the PDE/LSV stack, rather than a strict
-acyclic dependency order. Solvers evolve arrays without knowing market quotes or payoffs.
-Models supply dynamics and coefficient adapters; products define payoffs; pricers evolve
-the law or simulate paths and apply forward and discount conventions. Fitters recover local
-volatility, project conditional variance or optimize leverage, and call pricers for validation.
-The market pipeline composes these operations and reports acceptance separately from convergence.
+Models own parameter definitions and model-specific transforms, simulation and propagation.
+Generic solvers evolve arrays without knowing a financial model, market quotes or payoffs.
+Products define contracts; pricers adapt a model to option-chain prices and implied volatilities.
+The existing `valuation.py` integrates payoffs from paths or density states. Fitters recover
+surfaces and parameters and use pricers for independent repricing and acceptance checks.
 
-Most imports in these implementation modules are eager. In particular, the model adapters
-reuse `LogSvParams` from `pricers.logsv.logsv_params`; that historical ownership is retained.
-The two repricing imports inside `lsv_projection` are deferred until their functions run.
-The separate path adapters defer some simulation kernels, and protocol annotations use
-`TYPE_CHECKING`; neither pattern describes all model imports. Package-root names resolve lazily
-through `__getattr__`, independently of imports within an accessed implementation module.
-Utilities mostly depend on one another; `utils.plots` also imports the package path helper.
+Canonical model implementations do not import pricers. Heston kernels remain lazy in its
+capability adapter. Rough parameters and numerical controls are lazy exports from
+`models.rough_logsv`; the concrete `RoughLogSVPricer` stays in `pricers.rough_logsv_pricer`.
+Package-root names retain their existing lazy mappings and compatibility surface.
 
-| Layer | Modules | Role |
+Substantial models are organized by family. Each package initializer exposes model and
+parameter definitions lazily; `params.py` owns parameterization and `model.py` implements
+capabilities where a model adapter exists. Model-specific moments, transforms, simulation,
+equilibrium calculations and coefficient adapters live beside those definitions. Small cohesive
+models remain single modules. Reusable discretization and linear algebra stay in `pde_solvers/`
+and existing utilities.
+
+For LogSV, `models.logsv.moments` owns volatility moments and expected quadratic variance;
+`fitters.logsv_backbone` owns calibration to variance-swap quotes. Existing `LogSvParams`
+methods delegate grid construction, moment-generator calculations and rough-kernel approximation
+to family modules, preserving their signatures and state updates. Published flat coefficient
+and simulation imports remain compatibility aliases; new code should use the family paths.
+
+| Layer | Canonical modules | Responsibility |
 |---|---|---|
-| Numerical solvers | `pde_solvers/` | Grids, theta and ADI evolution, jump operators, boundary conditions and raw density diagnostics |
-| Models | `models/local_vol.py`, `lsv.py`, `logsv_pde.py`, `lsv_simulation.py` and path adapters | Validated model snapshots, deterministic local volatility, leverage, coefficients and path dynamics |
-| Products and valuation | `products/`, `valuation.py` | Payoffs, monitoring conventions and valuation of `ModelPaths` with explicit measures and weights |
-| Pricers | `pricers/model_pricer.py`, transform pricers, `local_vol_pde_pricer.py`, `logsv_pde_pricer.py`, `lsv_projection.py`, `lsv_mc_pricer.py` | Quote-currency vanilla prices, conditional-variance propagation, simulations and pricing diagnostics |
-| Fitters | `fitters/dupire.py`, `lsv_fixed_point.py`, `lsv_parametric.py`, `lsv_market.py`, `lsv_market_pipeline.py`, smile fitters and adapters | Surface inversion and repair, leverage fitting, quote conversion, independent repricing and market acceptance |
-| Data | `data/option_chain.py`, `model_paths.py`, sample chains and optional loaders | Market and path containers; Black/Bachelier analytics delegated to `vanilla-option-pricers` |
-| Utilities | `utils/` | Enums, transform integration, time grids, array validation, random seeding, payoff aggregation and plotting |
-| Estimation | `estimation/` | OHLC variance estimators, volatility forecasting and walk-forward evaluation |
+| Numerical solvers | `pde_solvers/` | Generic grids, theta/ADI evolution, jump operators, boundaries and diagnostics |
+| Models | `models/base.py`, `heston/`, `logsv/`, `rough_logsv/`, `regime_logsv/`, `tgarch/`, `hawkes_jd/`, `tdist/`, `gmm.py` | Parameters, model-specific transforms, terminal laws, moments and simulation |
+| Coefficient adapters | `models/local_vol.py`, `models/logsv/coefficients.py`, `models/lsv/` | Local volatility, leverage, PDE coefficients and propagation under a supplied model |
+| Products and valuation | `products/`, `valuation.py` | Contract payoffs, path estimators and density integration |
+| Pricers | `pricers/model_pricer.py` and concrete pricer modules | Option-chain pricing, implied volatilities and existing calibration/plot entry points |
+| Fitters | `fitters/logsv_backbone.py`, `lsv_projection.py`, `dupire.py`, `lsv_fixed_point.py`, `lsv_parametric.py`, `lsv_market_pipeline.py` and smile fitters | Conditional-moment projection, surface inversion, calibration and acceptance |
+| Data | `data/option_chain.py`, `model_paths.py`, `density.py` | Quote, path and density payloads; density states may depend on generic grids |
+| Utilities | `utils/` | Shared enums, including `CoordinateSystem`, numerical integration, array validation and plotting |
+| Estimation | `estimation/` | Historical variance estimates, forecasts and point-in-time evaluation |
 
-Legacy transform pricers retain their calibration methods. The Student-t pricer imports its
-fitter, while the reviewed PDE pricers do not eagerly import fitters. LogSV parameters also
-import the rough-kernel module, and the regime-switching pricer imports regime model state.
-These compatibility edges explain why the diagram is an ownership map rather than an import ban.
+The separation retains deliberate exceptions. Calibration and plotting methods remain on
+`ModelPricer` and its adapters. `GmmTerminalModel` and `TdistTerminalModel` stay in their pricer
+modules because their pricing capabilities call concrete pricers. Student-t distribution
+mathematics lives in `models.tdist.distribution`; vanilla pricing and inversion live in
+`pricers.tdist.analytics`. Deep factor-HJM splitting and remaining
+chain/terminal simulation wrappers are deferred. The optional `data.fetch_option_chain` adapter
+still uses a fitter-side provider adapter. Development runners may compose models and pricers.
+
+Old parameter, numerical, LSV projection and density-pricer paths are compatibility modules or
+aliases to the canonical objects, without new warnings. Published family exports resolve
+existing serialized model references. `LogSvModel`
+retains its established public serialization identity; other moved definitions use their
+canonical implementation modules for new objects.
+A moved function resolves its globals in its canonical module, so code that patches private
+implementation globals must target that module. Existing calibration optimizer hooks remain
+in the pricer modules. The compatibility variance-swap fitter retains its patchable
+quadratic-variance hook and delegates the bootstrap to `fitters.logsv_backbone`. No kernel
+equations, numerical settings, random-stream conventions or regression fixtures change as
+part of this separation.
 
 ### Generic finite-difference solvers
 
@@ -545,12 +572,11 @@ space and time grids for the required premium accuracy.
 
 ### Model, pricer, product and data ownership
 
-The directory names reflect two stages of development. The original `pricers/` modules bundle
-parameters, stochastic dynamics, transforms, simulation, pricing and calibration. The later
-`models/` layer exposes reusable capabilities independently of an option chain. Heston's earlier
-absence from `models/` was an incomplete adapter migration; Heston pricing itself was supported.
-`models.heston.HestonModel` now exposes both `PathModel` and `TransformModel` while preserving
-the existing `HestonParams` and `HestonPricer` import paths.
+The model layer exposes reusable capabilities independently of an option chain.
+`models.heston` owns both `HestonParams` and the `HestonModel` path/transform adapter;
+`HestonPricer` supplies chain pricing and calibration. LogSV, rough-logSV, terminal-distribution
+and Hawkes parameters likewise have canonical model modules. Existing root and pricer imports
+remain compatible. See the ownership and retained exceptions in [Layers](#layers).
 
 Use the following ownership rules for new implementations:
 
@@ -729,9 +755,9 @@ The [API reference](api.md#provisional-and-experimental-surfaces) lists their en
 |---|---|---|---|
 | Generic finite-difference engine | Provisional | `pde_solvers/` | `PDE1DSolver`, `PDE2DADISolver`; [solver guide](pde_solvers.md) |
 | Deterministic local volatility and local stochastic volatility (LSV) | Provisional | Local-volatility/LSV modules in `models/`, `pricers/`, `fitters/` | `LocalVolSurface`, `LSVModel`, `LSVMarketPipeline`; [local-volatility and LSV guide](local_volatility_and_lsv.md) |
-| Regime-switching log-normal SV: two regimes with equilibrium risk premia and transition jumps | Provisional | `models/regime_logsv.py`, `models/regime_logsv_simulation.py`, `pricers/regime_switch_logsv_pricer.py` | `RegimeSwitchLogSvParams`, `solve_regime_switch_equilibrium`, `RegimeSwitchLogSVPricer` |
+| Regime-switching log-normal SV: two regimes with equilibrium risk premia and transition jumps | Provisional | `models/regime_logsv/`, `models/regime_logsv/simulation.py`, `pricers/regime_switch_logsv_pricer.py` | `RegimeSwitchLogSvParams`, `solve_regime_switch_equilibrium`, `RegimeSwitchLogSVPricer` |
 | Rough log-normal SV: complete factor history, conditional Monte Carlo and nonlinear PDE at H=1/2 | Experimental | `pricers/rough_logsv/`, `pricers/rough_logsv_pricer.py` | `RoughLogSvParams`, `RoughKernel`, `RoughLogSVPricer`; see [Experimental rough-logSV pricing](rough_logsv.md). Wider calibration remains gated. |
-| TGARCH: a discrete threshold-volatility recursion, not a discretisation of the log-normal SV model | Provisional | `models/tgarch.py` | `TgarchParams`, `TgarchModel.simulate_paths` |
+| TGARCH: a discrete threshold-volatility recursion, not a discretisation of the log-normal SV model | Provisional | `models/tgarch/` | `TgarchParams`, `TgarchModel.simulate_paths` |
 | Inverse-gamma normal terminal law: one maturity, a normal variance-mean mixture | Provisional | `models/inverse_gamma_normal.py` | `InverseGammaNormalTerminalModel` |
 | Estimation suite: OHLC variance estimators, realized-volatility targets, forecasting models | Documented with the provisional surfaces | `estimation/` | `estimate_ohlc_var`, `fit_volatility_forecaster`, `walk_forward_volatility_forecast` |
 

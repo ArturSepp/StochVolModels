@@ -12,14 +12,14 @@ import numpy as np
 from scipy.special import ndtr
 
 from stochvolmodels.pricers.model_pricer import ModelPricer
-from stochvolmodels.pricers.rough_logsv import _classical_pde
-from stochvolmodels.pricers.rough_logsv.multilevel import (
+from stochvolmodels.models.rough_logsv import _classical_pde
+from stochvolmodels.models.rough_logsv.multilevel import (
     DiscretePdeControl,
     RoughMCConfig,
     numerical_checks,
     sample_multilevel,
 )
-from stochvolmodels.pricers.rough_logsv.params import RoughKernel, RoughLogSvParams
+from stochvolmodels.models.rough_logsv.params import RoughKernel, RoughLogSvParams
 from stochvolmodels.utils.config import VariableType
 
 

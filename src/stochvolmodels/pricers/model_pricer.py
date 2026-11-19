@@ -17,7 +17,6 @@ import seaborn as sns
 from numba.typed import List
 from abc import ABC, abstractmethod
 from scipy import stats
-from dataclasses import dataclass, asdict
 from typing import Tuple, Optional, Dict
 
 from stochvolmodels.utils.config import VariableType
@@ -25,20 +24,7 @@ from stochvolmodels.data.option_chain import OptionChain, OptionSlice
 from stochvolmodels.utils import plots as plot
 
 
-@dataclass
-class ModelParams:
-    """
-    abstract container for the parameters of a pricing model.
-
-    Subclasses add the model parameters as dataclass fields and supply the
-    serialisation helpers the calibration and reporting layers call.
-    """
-    pass
-
-    @classmethod
-    def copy(cls, obj: ModelParams) -> ModelParams:
-        """return a deep copy of the parameters."""
-        return cls(**asdict(obj))
+from stochvolmodels.models.base import ModelParams as ModelParams
 
 
 class CalibrationError(RuntimeError):

@@ -13,7 +13,6 @@
       "/fitters/lsv_market_pipeline.py",
       "/fitters/lsv_parametric.py",
       "/models/local_vol.py",
-      "/models/lsv.py",
       "/models/lsv_simulation.py",
       "/pricers/density_pricer.py",
       "/pricers/lsv_mc_pricer.py",
@@ -24,7 +23,23 @@
       "/pricers/rough_logsv/",
       "/pricers/hawkes_jd_pricer.py",
       "/utils/plots.py",
-      "/utils/rate_core.py"
-    ]
+      "/utils/rate_core.py",
+      "/models/rough_logsv/",
+      "/fitters/lsv_projection.py",
+      "/data/density.py",
+      "/models/logsv/coefficients.py",
+      "/models/lsv/",
+      "/models/hawkes_jd/"
+    ],
+    "exclude_definitions": {
+      "valuation.py": [
+        "DensityPricingResult",
+        "DensityPricer",
+        "_validated_strikes"
+      ],
+      "utils/config.py": [
+        "CoordinateSystem"
+      ]
+    }
   }
 }

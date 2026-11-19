@@ -32,7 +32,7 @@ from stochvolmodels.pricers.factor_hjm.rate_evaluate import swap_rate, annuity, 
 from stochvolmodels.pricers.factor_hjm.rate_affine_expansion import compute_logsv_a_mgf_grid, UnderlyingType
 from stochvolmodels.pricers.factor_hjm.rate_logsv_params import RateLogSvParams, pw_const, get_default_swap_term_structure, MultiFactRateLogSvParams
 from vanilla_option_pricers import infer_normal_implied_vol, infer_normal_ivols_from_slice_prices
-from stochvolmodels.pricers.logsv.affine_expansion import ExpansionOrder, get_expansion_n
+from stochvolmodels.models.logsv.affine_expansion import ExpansionOrder, get_expansion_n
 from stochvolmodels.pricers.model_pricer import ModelPricer, ModelParams
 from stochvolmodels.data.option_chain import OptionChain, SwOptionChain, FutOptionChain
 from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer

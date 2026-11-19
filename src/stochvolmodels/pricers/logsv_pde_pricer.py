@@ -11,7 +11,7 @@ from scipy.stats import poisson
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.models.logsv import LogSvMeasure, LogSvModel
 from stochvolmodels.models.lsv import FixedLogForwardJump, LSVModel
-from stochvolmodels.models.logsv_pde import LogSvPdeCoefficients
+from stochvolmodels.models.logsv.coefficients import LogSvPdeCoefficients
 from stochvolmodels.pde_solvers import (
     ADIConfig,
     BoundaryMass2D,
@@ -24,8 +24,8 @@ from stochvolmodels.pde_solvers import (
     PDEState2D,
     TensorGrid2D,
 )
-from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
-from stochvolmodels.pricers.lsv_projection import _advance_lsv, _interval_time_grid, _step_counts
+from stochvolmodels.models.logsv.params import LogSvParams
+from stochvolmodels.models.lsv.propagation import _advance_lsv, _interval_time_grid, _step_counts
 from stochvolmodels.pricers.model_pricer import ModelPricer
 from stochvolmodels.products.payoffs import _vanilla_payoff
 from stochvolmodels.utils.config import OptionType, VariableType

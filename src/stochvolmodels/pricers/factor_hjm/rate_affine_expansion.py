@@ -20,7 +20,7 @@ module refer to that article.
 import numpy as np
 from enum import Enum
 from typing import Tuple, Optional, Dict, Union, Any
-from stochvolmodels.pricers.logsv.affine_expansion import ExpansionOrder, get_expansion_n
+from stochvolmodels.models.logsv.affine_expansion import ExpansionOrder, get_expansion_n
 from scipy.integrate import solve_ivp
 from scipy.integrate._ivp.ivp import OdeResult
 from scipy.interpolate import splrep, splev
