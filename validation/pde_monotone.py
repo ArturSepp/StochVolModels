@@ -16,7 +16,11 @@ At an axis endpoint freeze its normal dynamics and retain tangential dynamics,
 except at y=0 with exactly zero normal diffusion and covariance: retain inward
 drift b using the positive rate b/h to the first interior node. This preserves
 the first moment and adds a recorded second moment b*h, vanishing with spacing.
-Other endpoints retain the explicit absorbing-normal closure. No finite-state positive
+The optional upper-volatility reflection returns mass to the adjacent node at the same x.
+For last spacing h, physical normal variance a and drift b its rate is a/h²+max(-b,0)/h.
+There is no exterior transition. Tangential dynamics continue along the face, mixed jumps
+from the face are suppressed, and at an x corner only the vertical return remains.
+By default the upper face retains its absorbing-normal closure. No finite-state positive
 generator can retain nonzero variance and a zero-drift coordinate at its extreme.
 Optional exponential fitting preserves exp(x) for money-market log-forward models,
 with measured log-drift error. All other drift uses centered weights when positive,
@@ -42,6 +46,7 @@ class MonotoneConfig:
     fit_log_forward: bool = True
     reject_inflation: bool = False
     retain_zero_vol_drift: bool = True
+    reflect_upper_vol: bool = False
 
     def __post_init__(self):
         if (not isinstance(self.radii, tuple) or not self.radii
@@ -50,9 +55,11 @@ class MonotoneConfig:
             raise ValueError("radii must be increasing distinct integers between 1 and 32")
         if (not isinstance(self.fit_log_forward, bool)
                 or not isinstance(self.reject_inflation, bool)
-                or not isinstance(self.retain_zero_vol_drift, bool)):
+                or not isinstance(self.retain_zero_vol_drift, bool)
+                or not isinstance(self.reflect_upper_vol, bool)):
             raise TypeError(
-                "fit_log_forward, reject_inflation and retain_zero_vol_drift must be bools")
+                "fit_log_forward, reject_inflation, retain_zero_vol_drift and "
+                "reflect_upper_vol must be bools")
 
 
 def _weights(nodes, point):
@@ -208,6 +215,9 @@ class Monotone2DReference(Unsplit2DReference):
                     q[i, 1] = q.get((i, 1), 0.) + by/h
                     zero_vol_nodes += 1
                     zero_vol_added_variance[i, j] = by*h
+                elif spatial.reflect_upper_vol and j == ny-1:
+                    h = y[-1] - y[-2]
+                    q[i, j-1] = 2*coeff.variance_y[i, j]/h**2 + max(-coeff.drift_y[i, j], 0.)/h
                 mx = my = mxx = myy = mxy = 0.
                 total = 0.
                 for (a, b), rate in q.items():
@@ -259,6 +269,10 @@ class Monotone2DReference(Unsplit2DReference):
                  "max_absolute_moment_errors": {k: float(np.max(abs(v)))
                                                  for k, v in errors.items()}}
         errors["inflation_occupancy"] = inflation.astype(float)
+        if spatial.reflect_upper_vol:
+            stats["boundary_closure"] = (
+                "upper volatility reflected diffusion/inward drift; x normals absorbing; "
+                + ("lower volatility inward drift" if zero_vol_nodes else "lower normal absorbing"))
         errors["zero_vol_added_variance"] = zero_vol_added_variance
         return cls(grid, backward, forward, config, stats, moment_errors=errors)
 

@@ -160,12 +160,9 @@ def annualized_variance(times, second_moments, interval_eta):
     return np.r_[interval_eta[0] ** 2 * second_moments[0], np.cumsum(area) / times[1:]]
 
 
-def _expected_variance(params, times, nodes, upper):
+def _volatility_law(params, times, sigma, save_times):
+    """Evolve the Figure 3 level-space marginal on a caller-supplied grid."""
     # sigma evolves autonomously. Restrict the package's joint generator to f(sigma).
-    # Anchor sigma0 exactly so the initial second moment equals sigma0².
-    levels = np.r_[0.0, np.geomspace(0.04, upper, nodes - 1)]
-    levels[np.argmin(np.abs(levels - params.sigma0))] = params.sigma0
-    sigma = Grid1D(levels)
     joint = TensorGrid2D(Grid1D.uniform(-1.0, 1.0, 3), sigma)
     coeff = LogSvPdeCoefficients(LogSvModel(params)).evaluate(0.0, joint)
     marginal = PDE1DCoefficients(coeff.variance_y[0], coeff.drift_y[0], coeff.discount[0])
@@ -186,8 +183,17 @@ def _expected_variance(params, times, nodes, upper):
         *args,
         times[1:],
         start.values,
-        save_times=tuple(times[1:]),
+        save_times=save_times,
     )
+    return delta, start, law
+
+
+def _expected_variance(params, times, nodes, upper):
+    # Anchor sigma0 exactly so the initial second moment equals sigma0².
+    levels = np.r_[0.0, np.geomspace(0.04, upper, nodes - 1)]
+    levels[np.argmin(np.abs(levels - params.sigma0))] = params.sigma0
+    sigma = Grid1D(levels)
+    delta, start, law = _volatility_law(params, times, sigma, tuple(times[1:]))
     weights = sigma.quadrature_weights * sigma.nodes**2
     moments = np.r_[delta @ weights, [state.values @ weights for state in law.saved_states]]
     curve = annualized_variance(times, moments, params.get_vol_backbone_etas(times[1:]))
