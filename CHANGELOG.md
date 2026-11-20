@@ -6,6 +6,12 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Fixed
 
+- Experimental `validation.pde_monotone` retains inward drift at a degenerate
+  zero-volatility boundary using a positive transition rate. Diagnostics expose
+  its first-order added variance; the absorbing-boundary control remains available.
+  The research runner adds joint domain/space refinements for fixed models.
+  Other absorbing boundaries and production solver defaults are unchanged.
+
 - `fit_model_vol_backbone_to_varswaps` now takes the square root of incremental
   market/model variance at every expiry, matching each variance-swap quote within
   the moment approximation. Invalid variance increments are rejected. Verbose

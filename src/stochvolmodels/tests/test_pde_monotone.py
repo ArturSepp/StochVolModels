@@ -254,3 +254,100 @@ def test_factory_cannot_silently_leave_old_adi_dynamics(backend):
         _price_time_method(case, Variant("base", case.grid, case.steps), "be",
                            backend.UnsplitConfig(), adi=SCHEMES["douglas_1"],
                            operator_factory=backend.Monotone2DReference.from_split)
+
+
+def zero_vol_operator(h=.1, drift=.12, diffusion=0.):
+    """Pure deterministic volatility drift, with independent constant coefficients."""
+    grid = TensorGrid2D(Grid1D([-.4, 0., .4]), Grid1D(h*np.arange(9)))
+    coeff = PDE2DCoefficients.constant(grid.shape, 0., 0., diffusion, drift, 0., 0.)
+    pair = BoundaryPair1D.natural()
+    return SplitOperator2D.build(grid, coeff, BoundarySet2D(pair, pair))
+
+
+def test_zero_vol_boundary_retains_drift_and_reports_vanishing_variance(backend):
+    for h in (.2, .1, .05):
+        op = zero_vol_operator(h)
+        ref = backend.Monotone2DReference.from_split(op)
+        y = op.grid.y_mesh.ravel()
+        row = op.grid.y.size  # x=0, y=0
+        assert (ref.backward @ y)[row] == pytest.approx(.12, abs=1e-14)
+        assert (ref.backward @ y**2)[row] == pytest.approx(.12*h, abs=1e-14)
+        assert ref.statistics["zero_vol_boundary_nodes"] == op.grid.x.size
+        assert ref.statistics["max_zero_vol_added_variance"] == pytest.approx(.12*h)
+        assert ref.moment_errors["drift_y"].ravel()[row] == pytest.approx(0., abs=1e-14)
+        assert ref.moment_errors["variance_y"].ravel()[row] == pytest.approx(.12*h)
+        coo = ref.backward.tocoo()
+        assert np.min(coo.data[coo.row != coo.col], initial=0.) >= 0.
+        # Drift is retained at the x corners as well; upper-volatility closure is unchanged.
+        assert (ref.backward @ y)[0] == pytest.approx(.12)
+        assert ref.backward.getrow(row+op.grid.y.size-1).nnz == 0
+        old = backend.Monotone2DReference.from_split(
+            op, spatial=backend.MonotoneConfig(retain_zero_vol_drift=False))
+        assert old.backward.getrow(row).nnz == 0
+
+
+def test_zero_vol_escape_matches_independent_poisson_birth_law(backend):
+    op = zero_vol_operator()
+    ref = backend.Monotone2DReference.from_split(op)
+    initial = op.grid.project_delta(0., 0.)
+    t, rate = .4, .12/.1
+    expected = [np.exp(-rate*t)]
+    for k in range(1, op.grid.y.size-1):
+        expected.append(expected[-1]*rate*t/k)
+    expected.append(1.-sum(expected))  # Absorbing upper node collects the tail.
+    actual = ref.step(initial, PDEDirection.FORWARD, t, "expm").values
+    mass_y = np.sum(actual*op.grid.quadrature_weights, axis=0)
+    np.testing.assert_allclose(mass_y, expected, atol=3e-15, rtol=3e-13)
+    assert 0. < mass_y[0] < 1.
+    assert ref.grid.integrate(actual) == pytest.approx(1., abs=2e-14)
+    assert ref.grid.integrate(actual*np.exp(ref.grid.x_mesh)) == pytest.approx(1., abs=2e-14)
+    errors = []
+    for count in (200, 400):
+        be = initial
+        for _ in range(count):
+            be = ref.step(be, PDEDirection.FORWARD, t/count).values
+        # Repeated BE has an independent negative-binomial birth-count law.
+        q = rate*t/count
+        exact_be = [(1.+q)**(-count)]
+        for k in range(1, op.grid.y.size-1):
+            exact_be.append(exact_be[-1]*(count+k-1)/k*q/(1.+q))
+        exact_be.append(1.-sum(exact_be))
+        mass_be = np.sum(be*op.grid.quadrature_weights, axis=0)
+        np.testing.assert_allclose(mass_be, exact_be, atol=5e-14, rtol=5e-13)
+        errors.append(np.max(abs(mass_be-expected)))
+    assert errors[1] < .51*errors[0]
+
+
+def test_zero_vol_boundary_only_handles_degenerate_inward_drift(backend):
+    stationary = backend.Monotone2DReference.from_split(zero_vol_operator(drift=0.))
+    assert stationary.backward.nnz == 0
+    with pytest.raises(ValueError, match="outward drift"):
+        backend.Monotone2DReference.from_split(zero_vol_operator(drift=-.1))
+    with pytest.raises(TypeError, match="retain_zero_vol_drift"):
+        backend.MonotoneConfig(retain_zero_vol_drift=1)
+    nondegenerate = backend.Monotone2DReference.from_split(zero_vol_operator(diffusion=.1))
+    assert nondegenerate.statistics["zero_vol_boundary_nodes"] == 0
+    assert nondegenerate.backward.getrow(9).nnz == 0
+
+
+def test_zero_vol_runner_control_and_joint_axes_are_explicit(backend):
+    from validation import pde_positivity as runner
+    from validation.pde_startup import one_week_case
+
+    case = one_week_case()
+    case = replace(case, grid=TensorGrid2D(Grid1D.uniform(-.25, .25, 9),
+                                          Grid1D.uniform(0., .65, 7)), steps=(4,))
+    result = runner.investigate(case, variants=("base", "domain_4", "wide_space_coarse",
+                                               "wide_space_2", "reference"),
+                                step_factor=1, zero_boundary_control=True)
+    assert result["complete"] and result["fixed_inputs"]
+    assert not result["production_qualified"]
+    indexed = {(r["backend"], r["variant"]): r for r in result["runs"]}
+    old = indexed["positive_absorbing", "base"]
+    new = indexed["positive", "base"]
+    assert old["operators"][0]["zero_vol_boundary_nodes"] == 0
+    assert new["operators"][0]["zero_vol_boundary_nodes"] == 9
+    assert new["vs_absorbing"]["max_abs_bp"] > 0.
+    assert result["comparisons"]["positive_wide_space_first"] is not None
+    assert result["comparisons"]["positive_wide_space_last"] is not None
+    assert result["comparisons"]["positive_wide_time"] is not None

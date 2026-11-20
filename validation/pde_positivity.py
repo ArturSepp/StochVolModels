@@ -25,13 +25,14 @@ from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
 from validation.pde_monotone import Monotone2DReference, MonotoneConfig
 from validation.pde_qualification import (
     CASE_NAMES, ROOT, Variant, _fmt, _hash, _json_value, _metadata, _price_time_method,
+    _subdivide, _wide,
     density_checks, input_snapshot, load_case, make_variants, price_errors,
 )
 from validation.pde_startup import restore_case
 from validation.pde_unsplit import Unsplit2DReference, UnsplitConfig
 
 VARIANTS = ("base", "space_coarse", "time_2", "time_4", "domain_2", "domain_4", "space_2",
-            "space_3", "reference")
+            "space_3", "reference", "domain_8", "wide_space_coarse", "wide_space_2")
 
 
 def coarsen(case):
@@ -73,6 +74,8 @@ def measure(case, variant, backend, config, spatial, repeats):
         return {**record, "status": "skipped", "reason": reason}
     positive = backend.startswith("positive")
     selected = replace(spatial, fit_log_forward=backend != "positive_unfitted")
+    if backend == "positive_absorbing":
+        selected = replace(selected, retain_zero_vol_drift=False)
     factory = (partial(Monotone2DReference.from_split, spatial=selected) if positive else
                partial(centered_factory, tangential=backend == "centered_tangent"))
     try:
@@ -102,7 +105,8 @@ def measure(case, variant, backend, config, spatial, repeats):
 
 
 def investigate(case, *, variants=("base", "time_2", "time_4", "domain_2", "domain_4", "space_2"),
-                step_factor=4, repeats=1, config=None, spatial=None, progress=None):
+                step_factor=4, repeats=1, config=None, spatial=None, progress=None,
+                zero_boundary_control=False):
     """Compare identical fixed models; report unresolved axes without promotion claims."""
     if (not variants or len(set(variants)) != len(variants)
             or any(v not in VARIANTS for v in variants)):
@@ -110,6 +114,8 @@ def investigate(case, *, variants=("base", "time_2", "time_4", "domain_2", "doma
     for value in (step_factor, repeats):
         if isinstance(value, bool) or not isinstance(value, int) or value < 1:
             raise ValueError("step_factor and repeats must be positive integers")
+    if not isinstance(zero_boundary_control, bool):
+        raise TypeError("zero_boundary_control must be a bool")
     config = UnsplitConfig(max_nodes=40_000) if config is None else config
     spatial = MonotoneConfig() if spatial is None else spatial
     snapshot = input_snapshot(case)
@@ -118,9 +124,15 @@ def investigate(case, *, variants=("base", "time_2", "time_4", "domain_2", "doma
                   "negative_mass_limit": case.negative_mass_limit, "boundary_limit": .01,
                   "mass_limit": 1e-8, "forward_limit": .003, "transient_negative_limit": 1e-12,
                   "spatial": asdict(spatial), "linear": asdict(config),
-                  "step_factor": step_factor}, "runs": [], "production_qualified": False}
+                  "step_factor": step_factor, "zero_boundary_control": zero_boundary_control},
+              "runs": [], "production_qualified": False}
     indexed = {v.name: v for v in make_variants(case)}
     indexed["space_coarse"] = Variant("space_coarse", coarsen(case), case.steps, False)
+    wide = indexed["domain_4"].grid
+    indexed["domain_8"] = Variant("domain_8", _wide(case, 8), case.steps, False)
+    indexed["wide_space_coarse"] = Variant(
+        "wide_space_coarse", coarsen(replace(case, grid=wide)), case.steps, False)
+    indexed["wide_space_2"] = Variant("wide_space_2", _subdivide(wide, 2), case.steps, False)
     v = indexed[variants[0]]
     warm = measure(case, Variant(v.name, v.grid, tuple(step_factor*n for n in v.steps), False),
                    "positive", config, spatial, 1)
@@ -131,6 +143,8 @@ def investigate(case, *, variants=("base", "time_2", "time_4", "domain_2", "doma
         v = Variant(name, v.grid, tuple(step_factor*n for n in v.steps), False)
         backends = ("positive", "centered", "centered_tangent", "positive_unfitted") if name == (
             "base") else ("positive", "centered")
+        if zero_boundary_control:
+            backends += ("positive_absorbing",)
         for backend in backends:
             run = measure(case, v, backend, config, spatial, repeats)
             result["runs"].append(run)
@@ -141,14 +155,21 @@ def investigate(case, *, variants=("base", "time_2", "time_4", "domain_2", "doma
         ref = indexed.get(("centered", run["variant"]))
         if ref is not None and run["status"] == "ok":
             run["vs_centered"] = price_errors(case.chain, run["prices"], ref["prices"])
+        old = indexed.get(("positive_absorbing", run["variant"]))
+        if old is not None and run["status"] == "ok":
+            run["vs_absorbing"] = price_errors(case.chain, run["prices"], old["prices"])
     comparisons = {}
-    for backend in ("positive", "centered"):
+    for backend in ("positive", "centered", "positive_absorbing"):
         for axis, a, b in (("time_first", "base", "time_2"), ("time_last", "time_2", "time_4"),
                            ("domain_first", "base", "domain_2"),
                            ("domain_last", "domain_2", "domain_4"),
                            ("space_coarse", "space_coarse", "base"),
                            ("space_first", "base", "space_2"),
                            ("space_last", "space_2", "space_3"),
+                           ("domain_extended", "domain_4", "domain_8"),
+                           ("wide_space_first", "wide_space_coarse", "domain_4"),
+                           ("wide_space_last", "domain_4", "wide_space_2"),
+                           ("wide_time", "wide_space_2", "reference"),
                            ("joint", "domain_4", "reference")):
             first, last = indexed.get((backend, a)), indexed.get((backend, b))
             comparisons[f"{backend}_{axis}"] = None if first is None or last is None else (
@@ -177,7 +198,9 @@ def write_report(output, report):
              "with two initial BE half-steps. All grids use uniform time steps and the existing "
              "right-ended coefficient buckets. Price gaps are bp of discounted forward. "
              "Times include assembly, solves, diagnostics and IVs after an excluded warmup.", "",
-             "The prototype freezes normal dynamics at boundaries and retains tangential dynamics. "
+             "At degenerate zero volatility the prototype retains inward drift with rate b/h, "
+             "adding a measured variance b*h. Other normal dynamics remain absorbing. "
+             "The positive_absorbing control restores the previous zero-volatility closure. "
              "It widens a correlated ray to fit the full tensor's variance budgets. Any remaining "
              "diagonal diffusion inflation and drift fallback are explicit. Exponential fitting "
              "preserves the input forward moment, with measured log-drift error. "
@@ -225,6 +248,7 @@ def main(argv=None):
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--max-nodes", type=int, default=40_000)
     parser.add_argument("--radii", nargs="+", type=int, default=[1, 2, 4, 8])
+    parser.add_argument("--zero-boundary-control", action="store_true")
     args = parser.parse_args(argv)
     if args.output.exists():
         parser.error("output already exists; choose a new evidence directory")
@@ -252,7 +276,8 @@ def main(argv=None):
         case = restore_case(frozen[name]) if name in frozen else load_case(name)
         result = investigate(case, variants=tuple(args.variants), step_factor=args.step_factor,
                              repeats=args.repeats, config=UnsplitConfig(max_nodes=args.max_nodes),
-                             spatial=MonotoneConfig(radii=tuple(args.radii)), progress=progress)
+                             spatial=MonotoneConfig(radii=tuple(args.radii)), progress=progress,
+                             zero_boundary_control=args.zero_boundary_control)
         report["cases"].append(result)
         write_report(args.output, report)
     return 0 if all(c["complete"] for c in report["cases"]) else 2

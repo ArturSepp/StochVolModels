@@ -12,8 +12,11 @@ second moments from the axial budgets. Widen the ray until both budgets fit, or
 record explicit diagonal diffusion inflation at the configured radius limit.
 Interior cross covariance is retained, including both correlation signs.
 
-At an axis endpoint freeze its normal dynamics and retain tangential dynamics.
-This is an explicit absorbing-normal boundary closure. No finite-state positive
+At an axis endpoint freeze its normal dynamics and retain tangential dynamics,
+except at y=0 with exactly zero normal diffusion and covariance: retain inward
+drift b using the positive rate b/h to the first interior node. This preserves
+the first moment and adds a recorded second moment b*h, vanishing with spacing.
+Other endpoints retain the explicit absorbing-normal closure. No finite-state positive
 generator can retain nonzero variance and a zero-drift coordinate at its extreme.
 Optional exponential fitting preserves exp(x) for money-market log-forward models,
 with measured log-drift error. All other drift uses centered weights when positive,
@@ -38,6 +41,7 @@ class MonotoneConfig:
     radii: tuple[int, ...] = (1, 2, 4, 8)
     fit_log_forward: bool = True
     reject_inflation: bool = False
+    retain_zero_vol_drift: bool = True
 
     def __post_init__(self):
         if (not isinstance(self.radii, tuple) or not self.radii
@@ -45,8 +49,10 @@ class MonotoneConfig:
                 or list(self.radii) != sorted(set(self.radii)) or self.radii[-1] > 32):
             raise ValueError("radii must be increasing distinct integers between 1 and 32")
         if (not isinstance(self.fit_log_forward, bool)
-                or not isinstance(self.reject_inflation, bool)):
-            raise TypeError("fit_log_forward and reject_inflation must be bools")
+                or not isinstance(self.reject_inflation, bool)
+                or not isinstance(self.retain_zero_vol_drift, bool)):
+            raise TypeError(
+                "fit_log_forward, reject_inflation and retain_zero_vol_drift must be bools")
 
 
 def _weights(nodes, point):
@@ -132,17 +138,25 @@ class Monotone2DReference(Unsplit2DReference):
         radius_used = np.zeros(grid.shape, dtype=int)
         truncated = 0
         x_fallback = y_fallback = 0
+        zero_vol_nodes = 0
+        zero_vol_added_variance = np.zeros(grid.shape)
         max_covariance_error = 0.
         for i in range(nx):
             for j in range(ny):
                 vx, vy = 2*coeff.variance_x[i, j], 2*coeff.variance_y[i, j]
                 bx, by, c = coeff.drift_x[i, j], coeff.drift_y[i, j], coeff.covariance_xy[i, j]
                 interior_x, interior_y = 0 < i < nx-1, 0 < j < ny-1
-                # Freeze only normal dynamics at each boundary, including its covariance.
+                zero_vol = (spatial.retain_zero_vol_drift and j == 0 and y[0] == 0.
+                            and vy == 0. and c == 0.)
+                if zero_vol and by < 0:
+                    raise ValueError("outward drift at degenerate zero-volatility boundary")
+                # Keep the physical entrance drift at the degenerate zero-volatility boundary.
                 if not interior_x:
                     vx = bx = c = 0.
                 if not interior_y:
-                    vy = by = c = 0.
+                    vy = c = 0.
+                    if not zero_vol:
+                        by = 0.
                 q = {}
                 used_x = used_y = 0.
                 if c != 0:
@@ -189,6 +203,11 @@ class Monotone2DReference(Unsplit2DReference):
                     y_fallback += int(fallback)
                     q[i, j-1] = q.get((i, j-1), 0.) + qm
                     q[i, j+1] = q.get((i, j+1), 0.) + qp
+                elif zero_vol:
+                    h = y[1]-y[0]
+                    q[i, 1] = q.get((i, 1), 0.) + by/h
+                    zero_vol_nodes += 1
+                    zero_vol_added_variance[i, j] = by*h
                 mx = my = mxx = myy = mxy = 0.
                 total = 0.
                 for (a, b), rate in q.items():
@@ -232,10 +251,15 @@ class Monotone2DReference(Unsplit2DReference):
                  "boundary_shortened_rays": truncated,
                  "x_drift_fallback_nodes": x_fallback, "y_drift_fallback_nodes": y_fallback,
                  "fit_log_forward": spatial.fit_log_forward,
-                 "boundary_closure": "absorbing normal, evolving tangent",
+                 "retain_zero_vol_drift": spatial.retain_zero_vol_drift,
+                 "zero_vol_boundary_nodes": zero_vol_nodes,
+                 "max_zero_vol_added_variance": float(np.max(zero_vol_added_variance)),
+                 "boundary_closure": ("inward drift at degenerate y=0; other normals absorbing"
+                                      if zero_vol_nodes else "absorbing normal, evolving tangent"),
                  "max_absolute_moment_errors": {k: float(np.max(abs(v)))
                                                  for k, v in errors.items()}}
         errors["inflation_occupancy"] = inflation.astype(float)
+        errors["zero_vol_added_variance"] = zero_vol_added_variance
         return cls(grid, backward, forward, config, stats, moment_errors=errors)
 
     def step(self, values, direction, step_size, method="be"):
