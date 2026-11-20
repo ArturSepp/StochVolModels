@@ -28,6 +28,12 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Added
 
+- Experimental repository-only positive full-tensor stencil and frozen-model
+  investigation in `validation.pde_monotone` and `validation.pde_positivity`.
+  Reports expose covariance consistency, added diffusion, forward-moment fitting,
+  boundary closure, refinement and price/runtime tradeoffs. No density repair or
+  production-default change; the absorbing volatility boundary remains unqualified.
+
 - Repository-only `validation.pde_startup` compares the existing Douglas,
   Craig–Sneyd and Hundsdorfer–Verwer methods with uniform/quadratic time grids
   and optional full backward-Euler startup half-steps against refined unsplit

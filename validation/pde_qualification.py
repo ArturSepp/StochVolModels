@@ -314,7 +314,8 @@ def _price_unsplit(case, variant, method, config):
     return _price_time_method(case, variant, method, config)
 
 
-def _price_time_method(case, variant, method, config, *, adi=None, startup=False):
+def _price_time_method(case, variant, method, config, *, adi=None, startup=False,
+                       operator_factory=None):
     """Compare time integrators using identical buckets, point mass and valuation.
 
     With startup enabled, replace only the very first nominal step by two full
@@ -338,6 +339,9 @@ def _price_time_method(case, variant, method, config, *, adi=None, startup=False
         raise TypeError("adi must be an ADIConfig")
     if not isinstance(startup, bool):
         raise TypeError("startup must be a bool")
+    if operator_factory is not None and adi is not None:
+        raise ValueError("a spatial reference factory cannot be combined with ADI splitting")
+    factory = Unsplit2DReference.from_split if operator_factory is None else operator_factory
     if not (grid.x.nodes[0] < 0. < grid.x.nodes[-1]
             and 0. <= grid.y.nodes[0] < model.dynamics.params.sigma0 < grid.y.nodes[-1]):
         raise ValueError("initial (0, sigma0) must be interior, with nonnegative volatility")
@@ -356,7 +360,7 @@ def _price_time_method(case, variant, method, config, *, adi=None, startup=False
                 "monotonicity_tolerance": adi.monotonicity_tolerance}
             split = SplitOperator2D.build(
                 grid, model.continuous_coefficients(stop, grid), boundaries, **settings)
-            operator = (Unsplit2DReference.from_split(split, config)
+            operator = (factory(split, config)
                         if adi is None or (startup and start == 0.) else None)
             if operator is not None:
                 operators.append({"start": start, "end": float(stop),
@@ -384,6 +388,8 @@ def _price_time_method(case, variant, method, config, *, adi=None, startup=False
                                       integrator="be_startup" if damp else
                                       (method if adi is None else adi.scheme.value))
                     steps.append(diagnostic)
+                    if operator is not None and hasattr(operator, "spatial_diagnostics"):
+                        diagnostic["spatial"] = operator.spatial_diagnostics(state)
                     a = endpoint
             start = float(stop)
         marginal = DensityState2D(grid, state, end, CoordinateSystem.LOG_FORWARD).marginal_x_state()
