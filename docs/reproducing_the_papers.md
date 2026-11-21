@@ -100,7 +100,7 @@ new dataset; validate market conventions and residuals separately.
 | `inverse_options_qf_2023`, `unified_approach_for_hedging_il_df_2025` | code of published papers | generated inputs |
 | `robust_volatility_models_2026/replication/ssrn_2023` (local) | code of a working paper, with recorded parameters | public volatility indices and private Bitcoin data, downloaded or local |
 | `jump_risk_premia_clustered_jumps` | development code related to a working paper, not an exact replication | local cryptocurrency data and optional research dependencies |
-| `risk_premia_gmm`, `t_distribution`, `forward_var`, `barriers` | exploratory, no publication mapping asserted; not cited on this site | generated and local research inputs, depending on the script |
+| `t_distribution`, `forward_var`, `barriers` | exploratory, no publication mapping asserted; not cited on this site | generated and local research inputs, depending on the script |
 
 No JOSS acceptance claim depends on licensed data or a full paper rerun. The offline quickstart,
 synthetic option-chain examples, package tests, and built documentation are the reviewer gates.

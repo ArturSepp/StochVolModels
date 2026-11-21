@@ -32,7 +32,7 @@ pip install "option-chain-analytics[cboe]>=5.2.0" # local CBOE provider workflow
 ```
 
 The base `option-chain-analytics` package from `[research]` is needed by option-chain workflows in
-`risk_premia_gmm/`, `logsv_model_with_quadratic_drift_ijtaf_2023/`, and
+`logsv_model_with_quadratic_drift_ijtaf_2023/` and
 `jump_risk_premia_clustered_jumps/`.
 ## Papers
 
@@ -52,7 +52,6 @@ its compiled PDF and original figure assets, with the Python workflows under `re
 | `unified_approach_for_hedging_il_df_2025` | `run_logsv_for_il_payoff.py` | Unified Approach for Hedging Impermanent Loss of Liquidity Provision — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4887298) |
 | `inverse_options_qf_2023` | `compare_net_delta.py` | Valuation and Hedging of Cryptocurrency Inverse Options — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4606748) |
 | `jump_risk_premia_clustered_jumps` | `hawkes_estimator.py`, `risk_premia_calibration.py` | **Development code (not exact replication):** Jump risk premia in the presence of clustered jumps — [SSRN](https://ssrn.com/abstract=4735365) · [arXiv](https://arxiv.org/abs/2510.21297) |
-| `risk_premia_gmm` | `gmm_slides.py` | Exploratory Gaussian-mixture risk-premia analysis; no publication mapping is asserted |
 | `t_distribution` | `illustrations.py` | Exploratory Student-t distribution analysis; no publication mapping is asserted |
 | `forward_var` | `calibrate_forward_var.py` | Exploratory forward-variance calibration analysis; no publication mapping is asserted |
 | [`barrier_options_sv_wilmott_2022`](barrier_options_sv_wilmott_2022/README.md) | `replication/article_figures.py` | Lipton and Sepp (2022), Toward an efficient hybrid method for pricing barrier options on assets with stochastic volatility, *Wilmott* — [`paper/`](barrier_options_sv_wilmott_2022/paper/README.md) · [arXiv](https://arxiv.org/abs/2202.07849) |
@@ -211,8 +210,4 @@ strings with a trailing separator, matching `qis`; compose provider folders dire
 
 ## Known issues
 
-- The maintained entry points are the guarded scripts named in the table above. The archival
-  exploratory modules `risk_premia_gmm/{check_kernel,q_kernel,run_gmm_fit}.py` and
-  `t_distribution/mc_pricer_with_kernel.py` execute at module level and are not import-safe library
-  modules or JOSS reviewer workflows. `risk_premia_gmm/plot_gmm.py` only defines functions. These files remain research history,
-  outside the distributed package and outside the maintained workflow claim.
+- The archival `t_distribution/mc_pricer_with_kernel.py` executes at module level. Use the guarded entry points in the table above for replication.

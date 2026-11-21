@@ -145,3 +145,6 @@ dmypy.json
 # Local volatility-review manuscript and replication work.
 /papers/review_volatility_models/
 /papers/robust_volatility_models_2026/
+
+# Local option-implied risk-premia research.
+/papers/risk_premia_gmm/

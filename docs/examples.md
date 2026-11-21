@@ -201,7 +201,7 @@ extra, and several need local data. Their status and prerequisites are described
 | `inverse_options_qf_2023` | `compare_net_delta.py` | Supporting illustrations for the inverse-options paper |
 | `unified_approach_for_hedging_il_df_2025` | `replication/replicate_figures.py`, `replication/verify_replication.py` | Corrected author manuscript and theoretical replication (Digital Finance 2025) |
 | `jump_risk_premia_clustered_jumps` | `hawkes_estimator.py`, `risk_premia_calibration.py` | Development code related to a working paper |
-| `risk_premia_gmm`, `t_distribution`, `forward_var`, `barriers` | see the papers README | Exploratory; no publication mapping |
+| `t_distribution`, `forward_var`, `barriers` | see the papers README | Exploratory; no publication mapping |
 
 ## Running the examples
 
