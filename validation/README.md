@@ -10,6 +10,31 @@ excluded from wheels and source distributions. The installed implementation owns
 the numerical solvers, models and pricers; this directory owns experiments and
 historical comparisons.
 
+## Reproduce the adverse BTC and two-year stress decisions
+
+From the root of a clean source checkout with its dependencies installed, run
+
+```bash
+python -m validation.pde_portable --output qualification.json
+```
+
+The [frozen case](pde_portable_case.json) supplies the fitted BTC model, quote
+coordinates, sampling design and numerical reference values. The command rebuilds
+four grids, reruns all four PDE solves and generates 3.2 million antithetic pairs
+with coupled Brownian increments at 2,880 and 5,760 steps per year. It runs
+offline. Allow several GiB of free RAM and roughly two hours on a workstation.
+`--workers` adjusts Monte Carlo concurrency while preserving the random streams.
+
+The JSON report records all 49 BTC price changes from spatial level four to five
+in basis points of discounted forward (limit 1 bp). It also records all 24
+conditional-variance decisions across six log-forward bins at 0.25, 0.5, 1 and
+2 years, including PDE values, Monte Carlo estimates, standard errors and the
+paired time-step uncertainty. Each decision is recomputed and checked against
+its numerical reference. All four sets of density checks and five terminal vanilla
+controls must also pass for a successful exit. These qualifications apply to
+the frozen fits, grids and observables. Routine source tests exercise the grid
+construction, decision thresholds, coupled paths and covariance on small cases.
+
 ## Run a refinement study
 
 From an installed source checkout:

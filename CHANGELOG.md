@@ -34,6 +34,9 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Added
 
+- Added an offline [PDE qualification replay](validation/README.md#reproduce-the-adverse-btc-and-two-year-stress-decisions)
+  for all 49 adverse BTC quotes and all 24 two-year stress bin comparisons.
+
 - Experimental repository-only positive full-tensor stencil and frozen-model
   investigation in `validation.pde_monotone` and `validation.pde_positivity`.
   Reports expose covariance consistency, added diffusion, forward-moment fitting,
