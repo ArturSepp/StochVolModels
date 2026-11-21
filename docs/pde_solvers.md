@@ -16,7 +16,8 @@ Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/bl
 A partial differential equation (PDE) solver evolves a value function or a probability
 density on a finite grid. The provisional `stochvolmodels.pde_solvers` API provides
 one-dimensional theta stepping and two-dimensional alternating-direction implicit (ADI)
-stepping. This guide and its executable examples target the 2.18.8 development source.
+stepping. The package examples use APIs available in 2.18.8. The unsplit reference
+solver and positive spatial discretization described below are repository experiments.
 
 ## Overview
 
@@ -75,6 +76,24 @@ densities. Inspect total mass, negative mass, forward moment and boundary occupa
 together. `boundary_mass.absolute_total` counts the perimeter once, including corners.
 The optional density policy can reject a solve, and any renormalization is explicit.
 [Boundary and stepping contracts](software_design.md#generic-finite-difference-solvers)
+
+### Reference solvers and volatility boundaries
+
+To measure time-stepping error on a fixed spatial grid, the repository's unsplit reference
+assembles the full sparse generator, including the mixed derivative. Backward Euler and
+Crank–Nicolson advance this matrix directly. A matrix exponential provides a small-grid
+check. The startup experiment replaces the first nominal step from the point mass with
+two unsplit backward Euler half-steps, then resumes the selected integrator.
+
+To measure spatial error, the experimental positive generator uses nonnegative transition
+rates along interpolated directions to represent covariance. It records any extra axial
+diffusion needed at the stencil radius limit. At zero volatility, where normal diffusion
+vanishes, the inward transition has rate $b/h$ for inward drift $b$ and first cell width
+$h$. At the upper cap the default freezes motion normal to the face. Selecting
+`MonotoneConfig(reflect_upper_vol=True)` in `validation.pde_monotone` returns mass to the
+adjacent volatility node at the same log-forward. For last spacing $h$, volatility drift
+$b$ and instantaneous volatility variance $v=2a_y$, the return rate is
+$v/h^2+\max(-b,0)/h$. This control tests how much the finite cap affects the volatility law.
 
 ## Worked example
 
@@ -163,6 +182,19 @@ interpreter outside the checkout. The source remains runnable offline with core 
 [Canonical script](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/pde_solvers.py)
 · [Rendered solver API](api.md#finite-difference-pde-solvers)
 
+From a source checkout, run the independent volatility-moment reference on the bundled
+two-year stress case. It writes a numerical record and report to a new study directory.
+
+~~~console
+python -m validation.pde_volatility_moments --stage reference
+~~~
+
+The reference evolves cell probabilities in log volatility with zero flux at the outer
+faces and checks the result against the IJTAF solver in volatility levels. The later
+`attribution`, `boundaries`, `projection` and `audit` stages consume archived study
+records. A subsequent study used coupled Monte Carlo paths to check both fixed PDE grids.
+[Conditional-variance method and results](local_volatility_and_lsv.md#conditional-variance-by-log-forward-bin)
+
 ## Interpretation and limitations
 
 Finite-domain occupancy can bias prices even when mass and the forward moment look
@@ -175,6 +207,27 @@ measure. The generic generator also supports inverse-measure coefficients, while
 vanilla wrapper enforces its own contract. Inverse and quadratic-variance contracts use
 their dedicated package entry points. Small wing premiums can give unstable implied
 volatility errors, so retain premium errors and failed-inversion masks.
+
+### What the frozen grids establish
+
+In the two-year stress case, initial and mean volatility are 0.2, both mean-reversion
+coefficients are 0.5, the return-shock loading is −1 and orthogonal vol-of-vol is 1.5.
+The table gives the **unconditional variance of volatility** at two years. The two
+607 × 309 runs use identical nodes, a volatility cap of 22.6 and 512 time steps.
+
+| Method | Grid | Terminal variance of volatility |
+|---|---:|---:|
+| Independent log-volatility reference | 2,305 nodes | 0.091799 |
+| Positive generator, upper normal motion frozen | 607 × 309 | 0.099883 |
+| Positive generator, returning upper boundary | 607 × 309 | 0.091883 |
+| Returning boundary, refined in space and time | 727 × 446 | 0.091917 |
+
+The largest difference between the two returning grids over five vanilla calls was
+0.0890 basis points of discounted forward. In a separate adverse BTC fit, refining
+the grid from 599 × 353 to 733 × 427 at fixed domain and 1,680 time steps changed
+all 49 vanilla quotes by at most 0.510120 basis points. That figure measures successive
+spatial refinement for the fitted chain. Conditional moments require their own check
+against joint price–volatility observations.
 
 ## See also
 

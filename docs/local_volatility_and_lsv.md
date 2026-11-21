@@ -15,8 +15,9 @@ Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/bl
 
 Local volatility specifies return volatility as a deterministic function of time and
 asset level. Local stochastic volatility (LSV) multiplies a stochastic volatility process
-by a deterministic leverage function. These provisional module APIs and executable
-examples target the 2.18.8 development source.
+by a deterministic leverage function. The package examples use provisional APIs and the import paths
+in the current checkout. For version 2.18.8, run the examples from that tag. The
+conditional-variance study below uses experimental repository solvers.
 
 ## Overview
 
@@ -271,6 +272,40 @@ calibration law. Midpoint collocation estimates the moments halfway through the 
 repropagates the accepted row from the original bucket start. Report collocation, row dates,
 grid, time, density and independent-price checks when comparing either mode.
 [BTC calibration and production stress examples](examples.md)
+
+### Conditional variance by log-forward bin
+
+The installed `project_conditional_variance` function computes the conditional second
+moment of volatility at each log-forward node. To check a range of log-forward values
+$B$, integrate the volatility-squared numerator and the marginal probability over the
+same bin, then divide. A cell crossing a bin edge contributes in proportion to its
+overlap. This gives $\mathbb{E}[\sigma_t^2\mid X_t\in B]$, the bin average of
+instantaneous variance used here with unit return loading.
+[Conditional variance and leverage](software_design.md#conditional-variance-and-leverage)
+
+The frozen stress study used strike/forward ratios 0.82, 0.92, 1.00, 1.08 and 1.22 to
+define six bins including both tails, at 3, 6, 12 and 24 months. It compared the
+607 × 309 and 727 × 446 returning grids with Monte Carlo at 2,880 and 5,760 steps per
+year. For each Brownian factor, the coarse increment was the sum of the two fine
+increments over the same interval. Opposite shocks generated the antithetic partner.
+The 3.2 million independent pairs at each resolution supplied standard errors for both
+conditional estimates and their paired difference. [PDE boundary methods](pde_solvers.md#reference-solvers-and-volatility-boundaries)
+
+| Two-year lower tail, asset/forward below 0.82 | Conditional second moment |
+|---|---:|
+| Returning PDE | 0.480301 |
+| Refined PDE | 0.480452 |
+| Coarse Monte Carlo | 0.479602 |
+| Fine Monte Carlo | 0.479626 |
+
+This bin held 81.70% of the refined PDE's unconditional second moment. The fine Monte
+Carlo relative standard error was 0.580%. All 24 bin–expiry comparisons met the
+predeclared limits. Across all bins and expiries, the largest PDE grid change was
+0.340% (limit 2%), the largest Monte Carlo relative standard error was 0.893% (limit
+1%), and the largest coupled time-step change was 0.357% (limit 2%). Each PDE estimate
+also lay within four standard errors plus 2% of each Monte Carlo estimate. These
+results qualify bin averages for this model and these dates. Pointwise values used to
+fit leverage, or values on another calibrated model, require separate evidence.
 
 ## See also
 
