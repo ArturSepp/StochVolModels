@@ -34,13 +34,14 @@
     },
     {
       "title": "Jump risk premia in the presence of clustered jumps",
-      "status": "working paper/development code",
-      "identifier": "https://ssrn.com/abstract=4735365",
-      "repository_directory": "papers/jump_risk_premia_clustered_jumps",
+      "status": "accepted for publication in SIAM Journal on Financial Mathematics",
+      "status_as_of": "2026-11-23",
+      "identifier": "https://arxiv.org/abs/2510.21297",
+      "repository_directory": "papers/jump_risk_premia_clustered_jumps_sifin_2027",
       "software_surface": "advanced Hawkes jump-diffusion and research workflows",
-      "reproduction_class": "development code, explicitly not exact replication",
-      "input_status": "local cryptocurrency data and optional research dependencies",
-      "joss_role": "development context only; not a stable-core or exact-replication claim"
+      "reproduction_class": "Accepted author manuscript and supplied exhibits, with partial pricing, estimation and calibration code",
+      "input_status": "Pricing examples use generated inputs. Historical exhibits require market data and separate co-author workflows.",
+      "joss_role": "Research use of the advanced bivariate Hawkes pricer"
     }
   ],
   "unmapped_exploratory_directories": [

@@ -33,7 +33,7 @@ from validation.pde_reference.local_vol import (
     LocalVolSurface,
     ParametricLocalVolFormula,
 )
-from stochvolmodels.models.logsv_pde import LogSvCoefficientProvider
+from stochvolmodels.models.logsv.coefficients import LogSvCoefficientProvider
 from validation.pde_reference.lsv import LeverageSurface, LSVCoefficientProvider
 from stochvolmodels.pde_solvers.operators_1d import PDEDirection
 from stochvolmodels.pde_solvers.solver_1d import DensityPolicy

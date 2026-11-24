@@ -17,14 +17,14 @@ from stochvolmodels.pricers.rough_logsv import (
     RoughLogSvParams,
     RoughMCConfig,
 )
-from stochvolmodels.pricers.rough_logsv.history import (
+from stochvolmodels.models.rough_logsv.history import (
     conditional_payoffs,
     exact_linear_discrete_moments,
     prepare_history,
     raw_forward,
     simulate_history,
 )
-from stochvolmodels.pricers.rough_logsv.multilevel import (
+from stochvolmodels.models.rough_logsv.multilevel import (
     make_sobol,
     normal_block,
     numerical_checks,

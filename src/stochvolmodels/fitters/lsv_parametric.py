@@ -8,7 +8,7 @@ Fit a single flat leverage bucket and inspect its scale.
 >>> from stochvolmodels.fitters.lsv_parametric import (
 ...     ImpliedVolCalibrationTarget, LSVParametricCalibrationConfig, LSVParametricCalibrator,
 ... )
->>> from stochvolmodels.models.local_vol import LocalVolFamily, LocalVolSurface
+>>> from stochvolmodels.models.lsv.local_vol import LocalVolFamily, LocalVolSurface
 >>> from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
 >>> from stochvolmodels.models.logsv.params import LogSvParams
 >>> x = Grid1D.concentrated(-0.9, 0.9, 81, 0., 0.12)
@@ -39,7 +39,7 @@ from vanilla_option_pricers import (
 )
 
 from stochvolmodels.utils._arrays import readonly_float_array as _readonly_array
-from stochvolmodels.models.local_vol import (
+from stochvolmodels.models.lsv.local_vol import (
     CoordinateSystem,
     LocalVolFamily,
     LocalVolSurface,

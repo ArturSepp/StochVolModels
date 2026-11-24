@@ -17,7 +17,7 @@ import pandas as pd
 from scipy.interpolate import CubicSpline
 
 from stochvolmodels import LogSvParams, OptionChain
-from stochvolmodels.models import logsv_pde
+from stochvolmodels.models.logsv import coefficients
 from stochvolmodels.models.logsv import LogSvModel
 from stochvolmodels.models.logsv import (
     grids as logsv_grids,
@@ -70,7 +70,7 @@ def _source_hashes():
         pde_calibration,
         logvol_pde,
         fourier,
-        logsv_pde,
+        coefficients,
         logsv_params,
         logsv_grids,
         logsv_kernel,
@@ -226,7 +226,7 @@ def _valuation(chain, params, level):
         ADIConfig(scheme=ADIScheme.HUNDSDORFER_VERWER, theta=0.5 + np.sqrt(3) / 6)
     ).solve(
         grid,
-        logsv_pde.LogSvPdeCoefficients(LogSvModel(params)),
+        coefficients.LogSvPdeCoefficients(LogSvModel(params)),
         BoundarySet2D(natural, natural),
         PDEDirection.FORWARD,
         times,

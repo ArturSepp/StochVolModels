@@ -1,0 +1,5 @@
+/agents/*/
+!/agents/analyses/
+!/agents/studies/
+/private/
+/docs/

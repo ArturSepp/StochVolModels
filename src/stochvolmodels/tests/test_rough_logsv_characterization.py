@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
-from stochvolmodels.pricers.rough_logsv.rough_kernel import (
+from stochvolmodels.models.rough_logsv.rough_kernel import (
     Gaussian_interval,
     Gaussian_parameters,
     error_l1,
@@ -257,7 +257,7 @@ def test_rough_split_scheme_matches_exact_linear_drift_moments() -> None:
 @pytest.mark.parametrize("dtype", [np.float64, np.float32])
 def test_rough_benchmark_seeded_mode_matches_fixed_random_pricer(dtype) -> None:
     benchmark = pytest.importorskip(
-        "stochvolmodels.pricers.rough_logsv.run_local.rough_logsv_perf_run",
+        "examples.models.run_rough_logsv_perf",
         reason="Repository-only benchmark is excluded from the wheel")
     _rough_price_once = benchmark._rough_price_once
 
@@ -287,12 +287,12 @@ def test_rough_benchmark_seeded_mode_matches_fixed_random_pricer(dtype) -> None:
 def test_rough_benchmark_memory_sampling_is_optional(monkeypatch) -> None:
     import runpy
     import sys
-    rough_logsv_perf_run = pytest.importorskip(
-        "stochvolmodels.pricers.rough_logsv.run_local.rough_logsv_perf_run",
+    benchmark = pytest.importorskip(
+        "examples.models.run_rough_logsv_perf",
         reason="Repository-only benchmark is excluded from the wheel")
 
     monkeypatch.setitem(sys.modules, "psutil", None)
-    module = runpy.run_path(rough_logsv_perf_run.__file__)
+    module = runpy.run_path(benchmark.__file__)
     assert module["psutil"] is None
     assert module["_get_rss_kib"]() is None
     sampler = module["_RssSampler"](interval_sec=0.01)

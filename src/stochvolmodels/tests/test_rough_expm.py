@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from scipy.linalg import expm
 
-from stochvolmodels.pricers.rough_logsv.expm import _sinhc, expA_n2_numba
+from stochvolmodels.models.rough_logsv.expm import _sinhc, expA_n2_numba
 
 
 @pytest.mark.parametrize("z", [0.0, 1.0e-14, -1.0e-14, 1.0e-14j, 1.0e-14 * (1.0 + 1.0j)])

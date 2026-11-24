@@ -215,7 +215,7 @@ def test_jump_adjusted_diffusion_recovery_and_vanilla_roundtrip(size, record_pro
 
 def test_both_lsv_calibrators_receive_the_effective_bucket_variance():
     from stochvolmodels.fitters.lsv_fixed_point import LSVFixedPointCalibrator
-    from stochvolmodels.pricers.lsv_projection import SequentialLSVProjector
+    from stochvolmodels.fitters.lsv_projection import SequentialLSVProjector
 
     times = np.linspace(0.25, 0.75, 5)
     forwards, discounts = 100 * np.exp(0.06 * times), np.exp(-0.04 * times)

@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-import vanilla_option_pricers as bsm
+import vanilla_option_pricers as vop
 
 from stochvolmodels.utils.config import VariableType
 from stochvolmodels.utils.mgf_pricer import (
@@ -93,7 +93,7 @@ def test_fourier_vanilla_prices_match_delegated_bsm_reference() -> None:
         optiontypes,
         discfactor,
     )
-    expected = bsm.compute_bsm_vanilla_slice_prices(
+    expected = vop.compute_bsm_vanilla_slice_prices(
         ttm,
         forward,
         strikes,
@@ -119,7 +119,7 @@ def test_fourier_digitals_match_closed_form_and_strike_derivative() -> None:
     )
     expected = np.array(
         [
-            bsm.compute_bsm_digital_price(
+            vop.compute_bsm_digital_price(
                 forward, strike, ttm, vol, "C", discfactor
             )
             for strike in strikes
@@ -259,7 +259,7 @@ def test_inverse_measure_vanilla_and_positive_contour_digital_parities() -> None
     )
     expected = np.array(
         [
-            bsm.compute_bsm_digital_price(
+            vop.compute_bsm_digital_price(
                 forward, strike, ttm, vol, optiontype, discfactor
             )
             for strike, optiontype in zip(strikes, optiontypes)

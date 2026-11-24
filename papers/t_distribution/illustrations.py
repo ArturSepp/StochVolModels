@@ -11,9 +11,11 @@ from stochvolmodels import (compute_vanilla_price_tdist,
                             infer_bsm_ivols_from_slice_prices,
                             infer_normal_ivols_from_slice_prices)
 
-from stochvolmodels.fitters.tdist import (imply_drift_tdist,
-                                          compute_default_prob_tdist,
-                                          compute_forward_tdist)
+from stochvolmodels.models.tdist.distribution import (
+    imply_drift_tdist,
+    compute_default_prob_tdist,
+    compute_forward_tdist,
+)
 from stochvolmodels import local_path as lp
 
 

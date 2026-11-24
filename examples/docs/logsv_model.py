@@ -82,6 +82,34 @@ def first_slice() -> tuple:
     return params, strikes, optiontypes, prices, ivols
 
 
+def short_expiry_prices() -> np.ndarray:
+    """Price one- and seven-day LogSV slices on one frozen frequency grid."""
+    params = svm.LogSvParams(sigma0=0.28, theta=0.40, kappa1=2.0, kappa2=3.0,
+                             beta=-0.65, volvol=0.85)
+    chain = svm.OptionChain.get_uniform_chain(
+        ttms=np.array([1, 7]) / 365, ids=np.array(["1d", "7d"]),
+        forwards=np.array([100., 100.]), strikes=np.array([80., 100., 120.]),
+    )
+    return np.asarray(svm.LogSVPricer().price_chain(chain, params, fourier={"price_atol": 1e-6}))
+
+
+def reprice_prepared_chain():
+    """Reuse a grid for new strikes and explicitly refine a loose preparation."""
+    params = svm.LogSvParams(sigma0=.28, theta=.40, kappa1=2., kappa2=3., beta=-.65, volvol=.85)
+    def chain(strikes):
+        return svm.OptionChain.get_uniform_chain(ttms=np.array([1, 7]) / 365,
+            ids=np.array(["1d", "7d"]), forwards=np.array([100., 100.]), strikes=np.array(strikes))
+    seed, quotes = chain([80., 100., 120.]), chain([87., 95., 105., 113.])
+    grid = svm.LogSVPricer().prepare_fourier(seed, params, fourier={"price_atol": 1.})
+    grid.price_chain(quotes)
+    strict = {"price_atol": 1e-6}
+    try:
+        return grid.price_chain(quotes, fourier=strict)
+    except FloatingPointError:
+        refined = grid.refined_for(quotes, fourier=strict)
+        return refined.price_chain(quotes, fourier=strict)
+
+
 class Locals(Enum):
     """Cases of this script; each asserts the numbers the page quotes."""
     DRIFT = 1
@@ -89,6 +117,8 @@ class Locals(Enum):
     SIMULATED_DRIFT = 3
     TAILS = 4
     FIRST_SLICE = 5
+    SHORT_EXPIRIES = 6
+    PREPARED_GRID = 7
 
 
 def run_local(local: Locals) -> None:
@@ -105,6 +135,20 @@ def run_local(local: Locals) -> None:
         at_half = [drift(np.array([0.5]), drift_params(k))[0][0] for k in DRIFT_KAPPA2S]
         np.testing.assert_allclose(at_half, [2.0, 3.0, 4.0])
         print(at_two, at_half)
+
+    elif local == Locals.PREPARED_GRID:
+        prices = np.asarray(reprice_prepared_chain())
+        assert prices.shape == (2, 4) and np.isfinite(prices).all()
+        params = svm.LogSvParams(sigma0=.40, theta=.34, kappa1=2., kappa2=3., beta=-.4, volvol=.65)
+        quotes = svm.OptionChain.slice_to_chain(30 / 365, 100., np.array([100.]), np.array(["C"]))
+        grid = svm.LogSVPricer().prepare_fourier(quotes, params)
+        scenario = grid.refined_for(quotes, sigma0=.50, sensitivity_atol=1e-6)
+        np.testing.assert_allclose(scenario.price_chain(quotes, sigma0=.50)[0], [5.46643734], atol=1e-6)
+        risk_grid = scenario.refined_for(quotes, sigma0=.40, sensitivity_atol=1e-6)
+        np.testing.assert_allclose(risk_grid.sigma0_sensitivity(quotes)[0], [9.94015409], atol=1e-6)
+
+    elif local == Locals.SHORT_EXPIRIES:
+        np.testing.assert_allclose(short_expiry_prices()[0, 1], 0.58564723, rtol=0, atol=1e-6)
 
     elif local == Locals.MEASURE_CHANGE:
         kappa1, kappa2, theta, beta, volvol, lambda0, lambda1 = 2.0, 1.0, 0.5, -0.5, 1.0, 0.5, -0.3

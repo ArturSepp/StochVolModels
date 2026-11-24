@@ -230,7 +230,7 @@ def test_forward_variance_backbone_black(monkeypatch):
 
 def test_forward_variance_backbone_generator():
     from stochvolmodels import LogSvParams
-    from stochvolmodels.models.logsv_pde import _mma_coefficients
+    from stochvolmodels.models.logsv.coefficients import _mma_coefficients
     from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
 
     grid = TensorGrid2D(Grid1D.uniform(-1, 1, 3), Grid1D.uniform(0.0, 1.0, 5))
@@ -247,7 +247,6 @@ def test_forward_variance_backbone_generator():
 
 
 def test_forward_variance_paper_smile(monkeypatch):
-    pytest.importorskip("qis")
     monkeypatch.syspath_prepend(str(ROOT))
     from papers.forward_var import calibrate_forward_var as paper
     from papers.forward_var.verify_pde import compare_case, verify_case

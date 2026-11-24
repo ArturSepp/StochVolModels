@@ -13,8 +13,7 @@ from dataclasses import dataclass
 from typing import Tuple, Optional
 from numba.typed import List
 
-import vanilla_option_pricers as bachel
-import vanilla_option_pricers as bsm
+import vanilla_option_pricers as vop
 from stochvolmodels.utils.var_swap_pricer import compute_var_swap_strike
 from stochvolmodels.utils.rate_core import get_default_swap_term_structure, swap_rate
 
@@ -253,7 +252,7 @@ class OptionChain:
 
     def get_chain_deltas(self) -> List[np.ndarray]:
         """Black-Scholes deltas per slice, computed at the mid volatilities."""
-        deltas_ttms = bsm.compute_bsm_vanilla_deltas_ttms(ttms=self.ttms,
+        deltas_ttms = vop.compute_bsm_vanilla_deltas_ttms(ttms=self.ttms,
                                                           forwards=self.forwards,
                                                           strikes_ttms=self.strikes_ttms,
                                                           optiontypes_ttms=self.optiontypes_ttms,
@@ -271,7 +270,7 @@ class OptionChain:
             ttms = np.ones_like(self.ttms)
         else:
             ttms = self.ttms
-        vegas_ttms = bsm.compute_bsm_vegas_ttms(ttms=ttms,
+        vegas_ttms = vop.compute_bsm_vegas_ttms(ttms=ttms,
                                                 forwards=self.forwards,
                                                 strikes_ttms=self.strikes_ttms,
                                                 optiontypes_ttms=self.optiontypes_ttms,
@@ -349,7 +348,7 @@ class OptionChain:
         strikes = self.strikes_ttms
         if any(np.asarray(k).dtype != np.float64 for k in strikes):
             strikes = List(np.ascontiguousarray(k, dtype=np.float64) for k in strikes)
-        model_ivols = bsm.infer_bsm_ivols_from_model_chain_prices(ttms=self.ttms,
+        model_ivols = vop.infer_bsm_ivols_from_model_chain_prices(ttms=self.ttms,
                                                                   forwards=forwards,
                                                                   discfactors=self.discfactors,
                                                                   strikes_ttms=strikes,
@@ -430,7 +429,7 @@ class OptionChain:
         varswap_strikes = np.zeros_like(self.ttms)
         vols_ttms = self.get_mid_vols()
         for idx, ttm in enumerate(self.ttms):
-            mid_prices = bsm.compute_bsm_vanilla_slice_prices(ttm=ttm,
+            mid_prices = vop.compute_bsm_vanilla_slice_prices(ttm=ttm,
                                                               forward=self.forwards[idx],
                                                               strikes=self.strikes_ttms[idx],
                                                               vols=vols_ttms[idx],
@@ -690,7 +689,7 @@ class SwOptionChain:
                  idx_ttm, _ in enumerate(self.ttms_ids)] for idx_tenor, _ in enumerate(self.tenors_ids)]
 
     # def get_chain_deltas(self) -> List[np.ndarray]:
-    #     deltas_ttms = bsm.compute_bsm_deltas_ttms(ttms=self.ttms,
+    #     deltas_ttms = vop.compute_bsm_deltas_ttms(ttms=self.ttms,
     #                                               forwards=self.forwards,
     #                                               strikes_ttms=self.strikes_ttms,
     #                                               optiontypes_ttms=self.optiontypes_ttms,
@@ -705,7 +704,7 @@ class SwOptionChain:
             ttms = self.ttms
         vegas_chain = List()
         for idx_tenor, (forwards, strikes_ttms, mid_vols) in enumerate(zip(self.forwards, self.strikes_ttms, self.get_mid_vols())):
-            vegas_ttms = bachel.compute_normal_vegas_ttms(ttms=ttms,
+            vegas_ttms = vop.compute_normal_vegas_ttms(ttms=ttms,
                                                           forwards=forwards,
                                                           strikes_ttms=tuple(strikes_ttms),
                                                           optiontypes_ttms=self.optiontypes_ttms,
@@ -737,7 +736,7 @@ class SwOptionChain:
                     self.strikes_ttms[tenor_index][expiry_index].size,
                     nonnegative=True,
                 ))
-            model_ivols.append(bachel.infer_normal_ivols_from_chain_prices(
+            model_ivols.append(vop.infer_normal_ivols_from_chain_prices(
                 ttms=self.ttms,
                 forwards=self.forwards[tenor_index],
                 discfactors=np.ones_like(self.ttms, dtype=float),
@@ -891,7 +890,7 @@ class FutOptionChain:
 
     def get_chain_vegas(self) -> List[np.ndarray]:
         """Normal vegas aligned with every futures expiry and its strike slice."""
-        vegas_ttms = bachel.compute_normal_vegas_ttms(ttms=self.ttms,
+        vegas_ttms = vop.compute_normal_vegas_ttms(ttms=self.ttms,
                                                       forwards=self.forwards,
                                                       strikes_ttms=self.strikes_ttms,
                                                       optiontypes_ttms=self.optiontypes_ttms,

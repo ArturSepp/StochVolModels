@@ -14,7 +14,7 @@ import sys
 
 MODULES = (
     "pde_solvers",
-    "models.local_vol",
+    "models.lsv.local_vol",
     "models.logsv.coefficients",
     "models.lsv",
     "models.lsv.simulation",
@@ -25,7 +25,6 @@ MODULES = (
     "pricers.logsv_pde_pricer",
     "models.lsv.propagation",
     "fitters.lsv_projection",
-    "pricers.lsv_projection",
     "pricers.lsv_mc_pricer",
     "fitters.dupire",
     "fitters.lsv_fixed_point",

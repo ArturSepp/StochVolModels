@@ -641,6 +641,17 @@ def get_init_conditions_a(
     return a_t0
 
 
+def _state_basis(y: float, n_terms: int) -> np.ndarray:
+    """Powers of the initial volatility displacement for equations (4.16) and (4.24)."""
+    y = np.float64(y)
+    y2 = y * y
+    if n_terms == 3:
+        return np.array([1., y, y2], dtype=complex)
+    if n_terms == 5:
+        return np.array([1., y, y2, y2 * y, y2 * y2], dtype=complex)
+    raise ValueError("LogSV expansion requires three or five coefficients")
+
+
 def compute_logsv_a_mgf_grid(
     ttm: float,
     phi_grid: np.ndarray,
@@ -762,17 +773,9 @@ def compute_logsv_a_mgf_grid(
             vol_backbone_eta=vol_backbone_eta,
         )
 
-    y = sigma0 - theta
-    if expansion_order == ExpansionOrder.FIRST:
-        ys = np.array([1.0, y, y * y])  # params.v0 - params.theta
-    elif expansion_order == ExpansionOrder.SECOND:
-        y2 = y * y
-        ys = np.array([1.0, y, y2, y2 * y, y2 * y2])
-    else:
+    if expansion_order not in (ExpansionOrder.FIRST, ExpansionOrder.SECOND):
         raise NotImplementedError
-
-    ys = ys + 1j * 0.0  # simple way to convert to complex array
-    log_mgf = a_t1 @ ys
+    log_mgf = a_t1 @ _state_basis(sigma0 - theta, a_t1.shape[1])
     if not np.all(np.isfinite(a_t1)) or not np.all(np.isfinite(log_mgf)):
         raise FloatingPointError("LogSV expansion returned nonfinite coefficients or log MGF")
     return a_t1, log_mgf

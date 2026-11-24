@@ -15,7 +15,7 @@ from stochvolmodels.fitters.lsv_market_pipeline import LSVMarketPipeline
 from stochvolmodels.fitters.lsv_parametric import (
     ImpliedVolCalibrationTarget, LSVParametricCalibrationConfig, LSVParametricCalibrator,
 )
-from stochvolmodels.models.local_vol import LocalVolFamily, LocalVolSurface
+from stochvolmodels.models.lsv.local_vol import LocalVolFamily, LocalVolSurface
 from stochvolmodels.models.lsv import LSVModel
 from stochvolmodels.models.lsv.simulation import LSVMonteCarloConfig
 from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D

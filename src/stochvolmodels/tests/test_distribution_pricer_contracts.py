@@ -11,7 +11,8 @@ from scipy.stats import norm, t as student_t
 import stochvolmodels
 import stochvolmodels.pricers.gmm_pricer as gmm_module
 import stochvolmodels.pricers.tdist_pricer as tdist_module
-import stochvolmodels.fitters.tdist as tdist_fitter
+from stochvolmodels.models.tdist import distribution
+from stochvolmodels.pricers.tdist import analytics
 from stochvolmodels import (
     CalibrationError,
     GmmParams,
@@ -22,7 +23,7 @@ from stochvolmodels import (
     TdistPricer,
     compute_bsm_vanilla_price,
 )
-from stochvolmodels.fitters.tdist import imply_drift_tdist
+from stochvolmodels.models.tdist.distribution import imply_drift_tdist
 from stochvolmodels.models import (
     PathModel,
     TerminalDistributionModel,
@@ -939,7 +940,7 @@ def test_student_t_distribution_density_cdf_and_forward_identities() -> None:
     nu = 5.0
     ttm = 0.5
     rate = 0.02
-    scale = tdist_fitter.compute_upsilon.py_func(vol, ttm, nu)
+    scale = distribution.compute_upsilon.py_func(vol, ttm, nu)
     np.testing.assert_allclose(
         scale**2 * nu / (nu - 2.0),
         vol**2 * ttm,
@@ -947,24 +948,24 @@ def test_student_t_distribution_density_cdf_and_forward_identities() -> None:
         atol=1.0e-15,
     )
     with pytest.raises(ValueError, match="> 2"):
-        tdist_fitter.compute_upsilon.py_func(vol, ttm, 2.0)
+        distribution.compute_upsilon.py_func(vol, ttm, 2.0)
 
     grid = np.linspace(-8.0, 8.0, 100_001)
-    density = tdist_fitter.pdf_tdist(grid, mu=0.0, vol=vol, nu=nu, ttm=ttm)
-    cdf = tdist_fitter.cdf_tdist(grid, mu=0.0, vol=vol, nu=nu, ttm=ttm)
+    density = distribution.pdf_tdist(grid, mu=0.0, vol=vol, nu=nu, ttm=ttm)
+    cdf = distribution.cdf_tdist(grid, mu=0.0, vol=vol, nu=nu, ttm=ttm)
     np.testing.assert_allclose(np.trapezoid(density, grid), 1.0, atol=2.0e-8)
-    np.testing.assert_allclose(tdist_fitter.cdf_tdist(0.0, 0.0, vol, nu, ttm), 0.5)
+    np.testing.assert_allclose(distribution.cdf_tdist(0.0, 0.0, vol, nu, ttm), 0.5)
     assert np.all(np.diff(cdf) >= 0.0)
-    assert tdist_fitter.cum_mean_tdist(0.0, 0.0, vol, nu, ttm) < 0.0
+    assert distribution.cum_mean_tdist(0.0, 0.0, vol, nu, ttm) < 0.0
 
-    forward = tdist_fitter.compute_forward_tdist(
+    forward = distribution.compute_forward_tdist(
         spot=1.0,
         ttm=ttm,
         vol=vol,
         nu=nu,
         rf_rate=rate,
     )
-    default_probability = tdist_fitter.compute_default_prob_tdist(
+    default_probability = distribution.compute_default_prob_tdist(
         ttm=ttm,
         vol=vol,
         nu=nu,
@@ -982,8 +983,8 @@ def test_student_t_vector_pricing_and_implied_vol_round_trip() -> None:
     nu = 5.0
     strikes = np.array([0.9, 1.0, 1.1])
     optiontypes = np.array(["P", "C", "C"])
-    drift = tdist_fitter.imply_drift_tdist(rate, vol, nu, ttm)
-    prices = tdist_fitter.compute_vanilla_price_tdist(
+    drift = distribution.imply_drift_tdist(rate, vol, nu, ttm)
+    prices = analytics.compute_vanilla_price_tdist(
         spot=spot,
         strikes=strikes,
         ttm=ttm,
@@ -995,7 +996,7 @@ def test_student_t_vector_pricing_and_implied_vol_round_trip() -> None:
     )
     scalar_prices = np.array(
         [
-            tdist_fitter.compute_vanilla_price_tdist(
+            analytics.compute_vanilla_price_tdist(
                 spot=spot,
                 strikes=strike,
                 ttm=ttm,
@@ -1009,7 +1010,7 @@ def test_student_t_vector_pricing_and_implied_vol_round_trip() -> None:
             for strike, optiontype in zip(strikes, optiontypes)
         ]
     )
-    recovered = tdist_fitter.infer_tdist_implied_vols_from_model_slice_prices(
+    recovered = analytics.infer_tdist_implied_vols_from_model_slice_prices(
         ttm=ttm,
         spot=spot,
         strikes=strikes,
@@ -1021,7 +1022,7 @@ def test_student_t_vector_pricing_and_implied_vol_round_trip() -> None:
 
     np.testing.assert_allclose(scalar_prices, prices, rtol=0.0, atol=0.0)
     np.testing.assert_allclose(recovered, vol, rtol=0.0, atol=2.0e-10)
-    low_bound = tdist_fitter.infer_implied_vol_tdist(
+    low_bound = analytics.infer_implied_vol_tdist(
         spot=spot,
         ttm=ttm,
         strike=1.0,
@@ -1033,7 +1034,7 @@ def test_student_t_vector_pricing_and_implied_vol_round_trip() -> None:
     )
     assert np.isnan(low_bound)
     with pytest.raises(NotImplementedError, match="optiontype"):
-        tdist_fitter.compute_vanilla_price_tdist(
+        analytics.compute_vanilla_price_tdist(
             spot=spot,
             strikes=1.0,
             ttm=ttm,

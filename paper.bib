@@ -1,4 +1,7 @@
-% Bibliography for the StochVolModels JOSS submission.
+% Bibliography for the stochvolmodels JOSS submission (draft of 2026-11-22).
+% Model and method references: the first five entries are carried unchanged from the
+% repository paper.bib; the dependency entries are carried unchanged from the published
+% qis paper.bib (JOSS 11(126), 11400), which passed the editorial reference check.
 
 @article{karasinski2012beta,
   author  = {Karasinski, Piotr and Sepp, Artur},
@@ -18,6 +21,7 @@
   year    = {2023},
   doi     = {10.1142/S0219024924500031}
 }
+
 @article{heston1993,
   author  = {Heston, Steven L.},
   title   = {A closed-form solution for options with stochastic volatility with applications to bond and currency options},
@@ -40,6 +44,32 @@
   doi     = {10.21314/JCF.1999.043}
 }
 
+@book{lewis2000,
+  author    = {Lewis, Alan L.},
+  title     = {Option valuation under stochastic volatility},
+  publisher = {Finance Press},
+  year      = {2000}
+}
+
+@book{lipton2001,
+  author    = {Lipton, Alexander},
+  title     = {Mathematical methods for foreign exchange: {A} financial engineer's approach},
+  publisher = {World Scientific},
+  address   = {Singapore},
+  year      = {2001},
+  isbn      = {978-981-02-4615-0}
+}
+
+@article{lipton2002,
+  author  = {Lipton, Alexander},
+  title   = {The vol smile problem},
+  journal = {Risk},
+  volume  = {15},
+  number  = {2},
+  pages   = {61--65},
+  year    = {2002}
+}
+
 @article{sepp2025factorhjm,
   author  = {Sepp, Artur and Rakhmonov, Parviz},
   title   = {Stochastic volatility for factor Heath--Jarrow--Morton framework},
@@ -50,55 +80,267 @@
   doi     = {10.1007/s11147-025-09217-4}
 }
 
-@inproceedings{lam2015numba,
+@article{sepp2023rates,
+  author  = {Sepp, Artur and Rakhmonov, Parviz},
+  title   = {A robust stochastic volatility model for interest rates},
+  journal = {Risk},
+  year    = {2023},
+  month   = sep,
+  pages   = {1--6},
+  url     = {https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4315906},
+  note    = {SSRN 4315906}
+}
+
+% Checked on 2026-11-22 against the journal page (global-sci.org); the journal assigns no DOI.
+
+@article{inthout2010,
+  author  = {{in 't Hout}, K. J. and Foulon, S.},
+  title   = {{ADI} finite difference schemes for option pricing in the {Heston} model with
+             correlation},
+  journal = {International Journal of Numerical Analysis and Modeling},
+  volume  = {7},
+  number  = {2},
+  pages   = {303--320},
+  year    = {2010},
+  url     = {https://global-sci.com/ijnam/article/view/9955}
+}
+
+% Risk, January 1994 issue; no DOI.
+
+@article{dupire1994,
+  author  = {Dupire, Bruno},
+  title   = {Pricing with a smile},
+  journal = {Risk},
+  volume  = {7},
+  number  = {1},
+  pages   = {18--20},
+  year    = {1994}
+}
+
+% Supported papers. Volume, pages and DOI checked on 2026-11-21 against RePEc and arXiv,
+% or carried from docs/reproducing_the_papers.md where marked.
+
+@article{lucic2024inverse,
+  author  = {Lucic, Vladimir and Sepp, Artur},
+  title   = {Valuation and hedging of cryptocurrency inverse options},
+  journal = {Quantitative Finance},
+  volume  = {24},
+  number  = {7},
+  pages   = {851--869},
+  year    = {2024},
+  doi     = {10.1080/14697688.2024.2364804}
+}
+
+@article{lipton2025il,
+  author  = {Lipton, Alexander and Lucic, Vladimir and Sepp, Artur},
+  title   = {Unified approach for hedging impermanent loss of liquidity provision},
+  journal = {Digital Finance},
+  volume  = {7},
+  number  = {3},
+  pages   = {429--477},
+  year    = {2025},
+  doi     = {10.1007/s42521-025-00144-5}
+}
+
+% The author points to the arXiv record (2026-11-22), which carries no journal reference.
+% The DOI follows the arXiv DataCite scheme and refers to the preprint.
+
+@article{lipton2022barrier,
+  author  = {Lipton, Alexander and Sepp, Artur},
+  title   = {Toward an efficient hybrid method for pricing barrier options on assets with
+             stochastic volatility},
+  journal = {Wilmott},
+  year    = {2022},
+  note    = {DOI refers to the arXiv preprint},
+  doi     = {10.48550/arXiv.2202.07849},
+  url     = {https://arxiv.org/abs/2202.07849}
+}
+
+% SSRN identifier carried from docs/reproducing_the_papers.md.
+
+@unpublished{sepp2023robust,
+  author = {Sepp, Artur and Rakhmonov, Parviz},
+  type   = {Working paper},
+  title  = {What is a robust stochastic volatility model},
+  year   = {2023},
+  note   = {SSRN 4647027},
+  doi    = {10.2139/ssrn.4647027}
+}
+
+@article{liu2025jumps,
+  author  = {Liu, Francis and Packham, Natalie and Sepp, Artur},
+  title   = {Jump risk premia in the presence of clustered jumps},
+  journal = {SIAM Journal on Financial Mathematics},
+  year    = {forthcoming},
+  note    = {Accepted for publication. Preprint: arXiv:2510.21297 (2025)},
+  url     = {https://arxiv.org/abs/2510.21297}
+}
+
+@unpublished{sepp2026rough,
+  author = {Sepp, Artur and Rakhmonov, Parviz},
+  type   = {Working paper},
+  title  = {Rough log-normal stochastic volatility with quadratic drift: Second-moment
+            stability and the martingale property under positive correlation},
+  year   = {2026},
+  note   = {Draft of 18 November 2026}
+}
+
+% Independent work that cites the repository; arXiv record checked on 2026-11-21.
+
+@unpublished{brongers2026,
+  author        = {Brongers, Bram},
+  type          = {Working paper},
+  title         = {Improving swaption calibration in factor {HJM} stochastic volatility models:
+                   A first-order correction to frozen swap-rate loadings},
+  year          = {2026},
+  archiveprefix = {arXiv},
+  eprint        = {2608.29423},
+  note          = {arXiv:2608.29423},
+  doi           = {10.48550/arXiv.2608.29423}
+}
+
+% ---------------------------------------------------------------------------------------------
+% Core dependencies.
+
+@article{numpy,
+  author = {Harris, Charles R. and Millman, K. Jarrod and van der Walt, Stéfan J.
+            and Gommers, Ralf and Virtanen, Pauli and Cournapeau, David and Wieser, Eric
+            and Taylor, Julian and Berg, Sebastian and Smith, Nathaniel J. and Kern, Robert
+            and Picus, Matti and Hoyer, Stephan and van Kerkwijk, Marten H. and Brett, Matthew
+            and Haldane, Allan and Fernández del Río, Jaime and Wiebe, Mark and Peterson, Pearu
+            and Gérard-Marchant, Pierre and Sheppard, Kevin and Reddy, Tyler and Weckesser, Warren
+            and Abbasi, Hameer and Gohlke, Christoph and Oliphant, Travis E.},
+  title   = {Array programming with {NumPy}},
+  journal = {Nature},
+  year    = {2020},
+  volume  = {585},
+  number  = {7825},
+  pages   = {357--362},
+  doi     = {10.1038/s41586-020-2649-2}
+}
+
+@article{scipy,
+  author = {Virtanen, Pauli and Gommers, Ralf and Oliphant, Travis E. and Haberland, Matt
+            and Reddy, Tyler and Cournapeau, David and Burovski, Evgeni and Peterson, Pearu
+            and Weckesser, Warren and Bright, Jonathan and van der Walt, Stéfan J.
+            and Brett, Matthew and Wilson, Joshua and Millman, K. Jarrod and Mayorov, Nikolay
+            and Nelson, Andrew R. J. and Jones, Eric and Kern, Robert and Larson, Eric
+            and Carey, C J and Polat, İlhan and Feng, Yu and Moore, Eric W. and VanderPlas, Jake
+            and Laxalde, Denis and Perktold, Josef and Cimrman, Robert and Henriksen, Ian
+            and Quintero, E. A. and Harris, Charles R. and Archibald, Anne M.
+            and Ribeiro, Antônio H. and Pedregosa, Fabian and van Mulbregt, Paul
+            and {SciPy 1.0 Contributors}},
+  title   = {{SciPy} 1.0: Fundamental algorithms for scientific computing in {Python}},
+  journal = {Nature Methods},
+  year    = {2020},
+  volume  = {17},
+  number  = {3},
+  pages   = {261--272},
+  doi     = {10.1038/s41592-019-0686-2}
+}
+
+@inproceedings{pandas,
+  author    = {McKinney, Wes},
+  title     = {Data structures for statistical computing in {Python}},
+  booktitle = {Proceedings of the 9th {Python} in Science Conference},
+  editor    = {van der Walt, Stéfan and Millman, Jarrod},
+  year      = {2010},
+  pages     = {56--61},
+  doi       = {10.25080/Majora-92bf1922-00a}
+}
+
+@article{matplotlib,
+  author  = {Hunter, John D.},
+  title   = {{Matplotlib}: A {2D} graphics environment},
+  journal = {Computing in Science \& Engineering},
+  year    = {2007},
+  volume  = {9},
+  number  = {3},
+  pages   = {90--95},
+  doi     = {10.1109/MCSE.2007.55}
+}
+
+@article{seaborn,
+  author  = {Waskom, Michael L.},
+  title   = {{seaborn}: Statistical data visualization},
+  journal = {Journal of Open Source Software},
+  year    = {2021},
+  volume  = {6},
+  number  = {60},
+  pages   = {3021},
+  doi     = {10.21105/joss.03021}
+}
+
+@inproceedings{numba,
   author    = {Lam, Siu Kwan and Pitrou, Antoine and Seibert, Stanley},
-  title     = {Numba: a LLVM-based Python JIT compiler},
-  booktitle = {Proceedings of the Second Workshop on the LLVM Compiler Infrastructure in HPC},
+  title     = {{Numba}: A {LLVM}-based {Python} {JIT} compiler},
+  booktitle = {Proceedings of the Second Workshop on the {LLVM} Compiler Infrastructure in {HPC}},
+  publisher = {Association for Computing Machinery},
   year      = {2015},
   pages     = {1--6},
   doi       = {10.1145/2833157.2833162}
 }
 
-@article{harris2020numpy,
-  author  = {Harris, Charles R. and others},
-  title   = {Array programming with NumPy},
-  journal = {Nature},
-  volume  = {585},
-  pages   = {357--362},
-  year    = {2020},
-  doi     = {10.1038/s41586-020-2649-2}
-}
-
-@article{virtanen2020scipy,
-  author  = {Virtanen, Pauli and others},
-  title   = {SciPy 1.0: fundamental algorithms for scientific computing in Python},
-  journal = {Nature Methods},
-  volume  = {17},
-  pages   = {261--272},
-  year    = {2020},
-  doi     = {10.1038/s41592-019-0686-2}
-}
-
-@misc{quantlib,
-  author = {{QuantLib contributors}},
-  title  = {QuantLib: a free/open-source library for quantitative finance},
+@manual{oca,
+  author = {Sepp, Artur},
+  title  = {{option-chain-analytics}: Point-in-time option-chain containers, feed
+            normalisation, reconstruction, and queries for quantitative research},
   year   = {2026},
+  url    = {https://github.com/ArturSepp/OptionChainAnalytics},
+  note   = {Version 6.0.2}
+}
+
+% ---------------------------------------------------------------------------------------------
+% Software and primary documentation supporting the comparison.
+% Zenodo concept DOI from the QuantLib CITATION.cff, checked 2026-11-22.
+
+@manual{quantlib,
+  author = {{The QuantLib contributors}},
+  title  = {{QuantLib}: A free/open-source library for quantitative finance},
+  year   = {2026},
+  doi    = {10.5281/zenodo.1440997},
   url    = {https://www.quantlib.org/},
-  note   = {Accessed 2026-08-21}
+  note   = {Accessed 2026-11-22}
 }
 
-@misc{financepy,
-  author = {O'Kane, Dominic and contributors},
-  title  = {FinancePy: a Python finance library},
+@manual{financepy,
+  author = {O'Kane, Dominic and {FinancePy contributors}},
+  title  = {{FinancePy}: A {Python} finance library},
   year   = {2026},
-  url    = {https://github.com/FinancePy-Org/FinancePy},
-  note   = {Accessed 2026-08-21}
+  url    = {https://github.com/domokane/FinancePy},
+  note   = {Accessed 2026-11-21}
 }
 
-@misc{pyfeng,
+@manual{pyfeng,
   author = {Choi, Jaehyuk},
-  title  = {PyFENG: Python Financial Engineering},
+  title  = {{PyFENG}: {Python} financial engineering},
   year   = {2026},
   url    = {https://pyfeng.readthedocs.io/},
-  note   = {Accessed 2026-08-21}
+  note   = {Accessed 2026-11-21}
+}
+
+@manual{fypy,
+  author = {{fypy contributors}},
+  title  = {{fypy}: Vanilla and exotic option pricing library},
+  year   = {2026},
+  url    = {https://github.com/jkirkby3/fypy},
+  note   = {Accessed 2026-11-21}
+}
+
+@manual{quantflow,
+  author = {{quantflow contributors}},
+  title  = {{quantflow}: Documentation},
+  year   = {2026},
+  url    = {https://quantmind.github.io/quantflow/},
+  note   = {Accessed 2026-11-21}
+}
+
+% The repository is archived; documentation consulted on 2026-11-21.
+
+@manual{tfqf,
+  author = {{TF Quant Finance authors}},
+  title  = {{TF Quant Finance}: {TensorFlow}-based quant finance library},
+  year   = {2026},
+  url    = {https://github.com/google/tf-quant-finance},
+  note   = {Archived repository, accessed 2026-11-21}
 }

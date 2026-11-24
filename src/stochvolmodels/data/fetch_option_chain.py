@@ -1,10 +1,8 @@
 """
 fetch OptionChain data with live options data
 
-this module is not imported by ``src/stochvolmodels/__init__.py``: it needs two packages
-that are not core dependencies, ``qis`` and ``option-chain-analytics``. Both are installed by
-the [research] extra; install OptionChainAnalytics provider extras separately when required
-see https://pypi.org/project/option-chain-analytics
+These loaders use OptionChainAnalytics from the optional ``research`` extra.
+The core pricing package loads independently of the data providers.
 """
 
 import os
@@ -26,11 +24,9 @@ try:
         load_local_tardis_contract_ts_data,
         load_local_tardis_eod_options_data,
     )
-    from qis import TimePeriod
 except ImportError as error:
     raise ImportError(
-        "stochvolmodels.data.fetch_option_chain needs qis and option-chain-analytics: "
-        'pip install "stochvolmodels[research]" "option-chain-analytics[cboe]>=6.0.0"'
+        'Option-chain loaders require OptionChainAnalytics. Install "stochvolmodels[research]".'
     ) from error
 
 # stochvolmodels
@@ -385,7 +381,7 @@ def load_option_chain(options_data_dfs: OptionsDataDFs,
 
 
 def sample_option_chain_at_times(options_data_dfs: OptionsDataDFs,
-                                 time_period: TimePeriod,
+                                 time_period: object,
                                  freq: str = 'W-FRI',
                                  days_map: Dict[str, int] = {'1w': 7, '1m': 21},
                                  delta_bounds: Tuple[Optional[float], Optional[float]] = (
@@ -394,7 +390,7 @@ def sample_option_chain_at_times(options_data_dfs: OptionsDataDFs,
                                  ),
                                  hour_offset: int = 8
                                  ) -> Dict[pd.Timestamp, OptionChain]:
-    """Compatibility workflow using OCA-owned observation-frequency sampling."""
+    """Sample OCA observations, forwarding its time-period object unchanged."""
     warnings.warn(
         'frequency sampling is owned by OptionChainAnalytics.create_chain_timeseries; '
         'map its results with stochvolmodels.fitters.adapters.oca.option_chain_from_oca',
@@ -420,11 +416,11 @@ def sample_option_chain_at_times(options_data_dfs: OptionsDataDFs,
 
 
 def load_price_data(options_data_dfs: OptionsDataDFs,
-                    time_period: TimePeriod = None,
+                    time_period: object | None = None,
                     data: Literal['close', 'perp', 'funding_rate'] = 'close',
                     freq: Optional[str] = 'D'
                     ) -> pd.Series:
-    """Compatibility wrapper for OCA's chain-linked underlying-data loader."""
+    """Load OCA underlying data for its supplied time period or the full history."""
     warnings.warn(
         'load_price_data moved to OptionChainAnalytics chain data: '
         'options_data_dfs.load_price_data(...)',

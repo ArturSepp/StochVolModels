@@ -8,7 +8,7 @@ import pytest
 
 if not (
     Path(__file__).resolve().parents[3]
-    / "papers/risk_premia_gmm/replication/spx_tail_restrictions.py"
+    / "papers/risk_premia_gmm/agents/studies/spx_tail_restrictions.py"
 ).exists():
     pytest.skip("Repository-only SPX study absent", allow_module_level=True)
 from papers.risk_premia_gmm.replication import spx_feasibility as base

@@ -16,9 +16,9 @@ import scipy
 
 from ..empirical_20261029.synthetic.synthetic_observation_acf import (
     CHECK_LAGS, DPY, MAX_LAG, N_PATHS, SEED, SUBSTEPS, TAU, YEARS,
-    acf, generator, known_moment_acf_check, mc_observation, observation_map,
-    paired_step_check, sample_acfs, serializable, simulate, stationary_distribution,
+    acf, known_moment_acf_check, mc_observation, observation_map, sample_acfs, serializable,
 )
+from .stationary_checks import generator, paired_step_check, simulate, stationary_distribution
 
 BETA = 0.35  # Illustrated return-shock loading at the baseline clock.
 
@@ -31,7 +31,7 @@ def parameters(theta, kappa1, kappa2, v, clock=1.0):
 
 def main():
     out = Path(__file__).resolve().parent
-    fit = json.loads((out / 'vix_fit.json').read_text())
+    fit = json.loads((out / 'vix_profile.json').read_text())
     plt.rcParams.update({'font.size': 10, 'axes.spines.top': False, 'axes.spines.right': False,
                          'savefig.dpi': 180, 'figure.dpi': 120})
     lag_days = np.arange(MAX_LAG+1)
@@ -43,6 +43,7 @@ def main():
     eval_s = dist.ppf([.01, .1, .25, .5, .75, .9, .99])
     results = dict(seed=SEED, purpose='Synthetic observation experiment with dynamics fitted to VIX levels',
                    calibration_sample=fit['sample'], illustrative_beta=BETA,
+                   calibration_source='vix_profile.json',
                    baseline_parameters=p, tau_years=TAU, days_per_year=DPY,
                    n_paths=N_PATHS, substeps_per_observation=SUBSTEPS,
                    sample_years=YEARS, source_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),

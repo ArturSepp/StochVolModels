@@ -16,7 +16,7 @@ from typing import Callable, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
-import vanilla_option_pricers as bsm
+import vanilla_option_pricers as vop
 
 from stochvolmodels.fitters.diagnostics import DiagnosticReport
 
@@ -350,7 +350,7 @@ def diagnose_surface(
         variances.append(variance)
         prices = np.full(len(k), np.nan)
         for j in np.flatnonzero(valid):
-            prices[j] = bsm.compute_bsm_vanilla_price(
+            prices[j] = vop.compute_bsm_vanilla_price(
                 forward=forward,
                 strike=strikes[j],
                 ttm=ttm,

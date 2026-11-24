@@ -6,10 +6,9 @@ from stochvolmodels.data.sample_option_chains import get_oca_simulated_chain_dat
 
 pytestmark = pytest.mark.optional_integration
 
-qis = pytest.importorskip('qis')
 oca = pytest.importorskip('option_chain_analytics')
-fetch_option_chain = pytest.importorskip('stochvolmodels.data.fetch_option_chain')
-oca_adapter = pytest.importorskip('stochvolmodels.fitters.adapters.oca')
+from stochvolmodels.data import fetch_option_chain
+from stochvolmodels.fitters.adapters import oca as oca_adapter
 
 
 def test_oca_adapter_deduplicates_expiries_and_preserves_discounts() -> None:
@@ -169,7 +168,7 @@ def test_frequency_sampling_delegates_to_oca_reconstruction(monkeypatch) -> None
         'create_chain_timeseries',
         fake_create_chain_timeseries,
     )
-    time_period = qis.TimePeriod(value_time, value_time + pd.Timedelta(days=31))
+    time_period = options_data.get_start_end_date()
 
     with pytest.deprecated_call(match='frequency sampling is owned'):
         sampled = fetch_option_chain.sample_option_chain_at_times(

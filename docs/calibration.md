@@ -45,6 +45,7 @@ autocorrelation of volatility and fits the four remaining parameters to options.
 | `model_calibration_type` | Free parameters, `LogsvModelCalibrationType` | `PARAMS5` |
 | `constraints_type` | Martingale constraints, `ConstraintsType` | `UNCONSTRAINT` |
 | `calibration_engine` | `CalibrationEngine.ANALYTIC` or `MC` | `ANALYTIC` |
+| `use_analytic_gradient` | Automatically supply the IV-loss gradient for controlled analytic `PARAMS4` and `PARAMS5` fits. Set `False` for SLSQP finite differences. | `None` |
 | `nb_path`, `nb_steps`, `seed` | Monte Carlo engines only: paths, steps per year, seed of the fixed random numbers | 100,000; 360; 10 |
 
 Implied volatilities are Black-Scholes volatilities in decimals; the chain's conventions are on the
@@ -88,14 +89,84 @@ optimiser fails, returns non-finite values or a vector of the wrong length, or l
 
 ### Engines
 
-The analytic engine prices the chain by the [Fourier transform](european_option_pricing.md) of
-the [affine expansion](affine_expansion.md), on a grid fixed from the chain's first at-the-money
-volatility so that it does not move as $\sigma_0$ changes. The Monte Carlo engine draws its random
+The analytic engine prices the chain by Fourier inversion of the affine expansion. The
+historical fit fixes the frequency grid from the shortest market expiry and its ATM volatility.
+The controlled fit selects a common grid across the active quotes and preflight parameters,
+then freezes its nodes and weights for SLSQP. [Fixed Fourier grids](#fixed-fourier-grids)
+
+The Monte Carlo engine draws its random
 numbers once, with `get_randoms_for_chain_valuation` and the given `seed`, and reuses them at every
 evaluation, so the objective is a smooth function of the parameters
 ([Monte Carlo schemes](monte_carlo_simulation.md)). The former `ROUGH_MC` route now raises
 a migration error. Rough-logSV uses its [own experimental interface](rough_logsv.md); saved
 selected-case fits support pointwise replay, while wider calibration remains gated.
+
+### From coefficient sensitivities to the IV-loss gradient
+
+The controlled classical LogSV fit uses the second-order expansion under the
+money-market measure with a unit volatility backbone. At each Fourier frequency
+the five complex coefficients $A=(A_0,\ldots,A_4)$ start at zero. Write the
+coefficient ODE as $\dot A=f(A,p)$ for the vector of free parameters $p$.
+For each parameter that enters the dynamics the forward sensitivity $S_j$
+satisfies
+
+$$
+S_j(0)=0,\qquad
+\dot S_j=f_A(A,p)S_j+\partial_{p_j}f(A,p).
+$$
+
+Each component of $f$ is quadratic in $A$. If
+$f_k=A^\top Q_k A+L_k^\top A+H_k$ with symmetric $Q_k$, its derivative with
+respect to $A$ is the row $(2Q_k A+L_k)^\top$. For each frequency the implementation
+solves the pricing ODE once per maturity interval, replays its accepted Runge–Kutta
+stages for all tangent columns, and carries both $A$ and $S$ into the next interval.
+The sensitivities differentiate the coefficient flow on that time mesh. A bumped
+pricing solve can select slightly different time steps. [Coefficient equations](affine_expansion.md)
+
+Let $y=\sigma_0-\theta$, $b(y)=(1,y,y^2,y^3,y^4)^\top$ and
+$M=\exp(A^\top b)$ at the quote's expiry. The transform derivative is
+
+$$
+\partial_{p_j}M
+=M\left(S_j^\top b+A^\top b'(y) \partial_{p_j}y\right).
+$$
+
+Initial volatility enters only through $y$, giving $\partial_{\sigma_0}M=M A^\top b'$.
+For $\theta$ the moving expansion centre contributes $-M A^\top b'$ in addition
+to the coefficient sensitivity. Under PARAMS5, the source term in the tangent ODE
+also includes the dependence of $\kappa_2$ on $\theta$ and $\kappa_1$.
+[Five-parameter chain rule](#five-parameter-logsv-gradient)
+
+For active quote $i$, let $J_{ij}$ be the derivative of its **discounted premium**
+with respect to $p_j$. Write $u_\ell,\omega_\ell$ for the frequency nodes and
+integration weights frozen during the fit and $x_i=\log(F_i/K_i)$ for log-moneyness.
+On the money-market contour the price Jacobian is
+
+$$
+J_{ij}=-\frac{D_i\sqrt{F_i K_i}}{\pi}
+\sum_\ell\frac{\omega_\ell}{u_\ell^2+1/4}
+\Re\left[e^{-\mathrm{i}u_\ell x_i}\partial_{p_j}M(T_i,-1/2+\mathrm{i}u_\ell)\right].
+$$
+
+The minus sign comes from subtracting the capped payoff in both the call
+and put formulas. Their parity legs are constant at fixed forward, strike
+and discount. [Fourier inversion](european_option_pricing.md#the-capped-payoff-by-fourier-inversion)
+
+Let $r_i=\sigma_i^{model}-\sigma_i^{mid}$
+and let $\nu_i$ be discounted Black vega at the **model** IV and actual expiry.
+Implicit differentiation of the Black price gives
+
+$$
+\partial_{p_j}\sigma_i^{model}=\frac{J_{ij}}{\nu_i},
+\qquad
+\partial_{p_j}\mathrm{WMSE}=2\sum_i w_i r_i\frac{J_{ij}}{\nu_i}.
+$$
+
+The market weights $w_i$ stay fixed, including when unit-maturity vega weighting
+is selected. Small model vegas amplify premium errors in the IV gradient.
+An invalid intermediate IV, derivative or model vega returns the optimizer's
+finite penalty. A successful fit requires a valid gradient at the returned
+parameters and a separate premium check on a wider, finer grid.
 
 ### The variance-swap backbone
 
@@ -115,7 +186,7 @@ each target $A_i$ within the moment approximation. Non-finite or non-positive in
 are rejected instead of being replaced with unit loading. The loading after the final
 knot stays at its last value.
 
-Analytic calibration fixes both the cutoff and the node count from the shortest market
+The default analytic calibration fixes both the cutoff and the node count from the shortest market
 expiry and its ATM volatility throughout optimization. `vol_scaler` and `max_phi` allow
 explicit grids. Set `historical_backbone_order=True` to reproduce the forward-variance
 paper's analytic objective. The default values each payoff backward through calendar time.
@@ -212,10 +283,169 @@ loadings of 0.981, 0.928, 0.938 and 0.869.
 | `OptionChain.get_slice_varswap_strikes`, `get_chain_vegas` | Replicated variance-swap strikes and the vegas of the weights |
 
 The backbone fit is `fit_model_vol_backbone_to_varswaps` in `stochvolmodels.fitters.logsv_backbone`,
-an internal function. Each objective evaluation prices the whole chain, so an analytic calibration of
-the bundled chain takes a few minutes; the Monte Carlo engines are slower. Record the chain, the
+an internal function. Each objective evaluation prices the whole chain. Record the chain, the
 starting point, the bounds, the constraint, the engine and, for Monte Carlo, the seed. Run the
 example from a checkout with `python examples/docs/calibration.py`.
+
+### Fixed Fourier grids
+
+Pass `fourier={}` to `HestonPricer.calibrate_model_params_to_chain` or the analytic
+`LogSVPricer.calibrate_model_params_to_chain` to target an absolute error of `1e-6` in
+each option's discounted premium units. For example, `fourier={"price_atol": 0.01}`
+targets one cent for dollar-denominated premiums. The objective still fits implied
+volatilities using the selected quote weights. Missing market IVs and zero-weight quotes
+are excluded before planning. Omission or `fourier="legacy"` selects the historical fit.
+
+The preflight checks the starting parameters and feasible perturbations across all active
+expiries. It lowers free initial and long-run variance or volatility levels and stresses
+leverage and volatility of volatility within the model's fit bounds and constraints.
+All sampled scenarios contribute to one panel partition. This checks the sampled cases.
+SLSQP holds the nodes and weights fixed and evaluates fresh transforms at each trial.
+
+At the fitted parameters, validation extends the cutoff, bisects every panel, and
+checks resolution and tail decay again. Each active premium must agree within
+`price_atol + price_rtol * time_values`, using fixed quote scales in premium units.
+A finite miss starts one more fit from the fitted parameters on the refined grid.
+A second miss, an exhausted work limit, or a numerical failure at the returned parameters
+raises `CalibrationError`. LogSV retains its finite penalty for invalid intermediate trials.
+Enable INFO logging for `stochvolmodels.pricers._fourier_calibration` to record the
+sampled vectors, grid sizes and final premium differences. The
+[offline regression and Bitcoin cost comparison](../src/stochvolmodels/tests/test_fourier_calibration.py)
+exercises both calibrators. With SLSQP finite differences, the legacy and controlled
+LogSV `PARAMS4` fits on the 49-quote Bitcoin example both had an IV RMSE of
+1.371 volatility points. The maximum fitted-premium difference from a separately refined
+Gauss–Legendre inversion was USD `0.0012882` for legacy and USD `0.000000443` for controlled.
+At the default controlled tolerance of USD `0.000001`, the coefficient solver evaluated
+552,960 frequency and time-segment pairs, including one restart. Legacy evaluated 408,000.
+
+### Running the gradient fits
+
+With `import stochvolmodels as svm`, pass the chain, the starting parameters and
+either `svm.LogsvModelCalibrationType.PARAMS4` or `svm.LogsvModelCalibrationType.PARAMS5`
+to the example below. The return value is a fitted `LogSvParams` object. With a
+Fourier settings mapping such as `fourier={}`, both modes supply the analytic
+gradient to SLSQP by default. Pass `use_analytic_gradient=False` to use finite
+differences on the same grid. Explicit `True` requires a controlled analytic
+`PARAMS4` or `PARAMS5` fit. The analytic objective, martingale
+constraint and market-vega weights are the ones used in the Bitcoin comparisons.
+
+```python
+def fit_with_gradient(chain: svm.OptionChain, params0: svm.LogSvParams,
+                      mode: svm.LogsvModelCalibrationType) -> svm.LogSvParams:
+    return svm.LogSVPricer().calibrate_model_params_to_chain(
+        option_chain=chain, params0=params0, model_calibration_type=mode,
+        constraints_type=svm.ConstraintsType.MMA_MARTINGALE,
+        fourier={},
+    )
+```
+
+From the repository root, the first command runs both modes on a synthetic
+two-expiry smile. The second reproduces the four controlled 49-quote Bitcoin
+fits below, including individual-quote and scalar-loss central bumps at two
+step sizes. The slow comparison prints warm fit time, compilation time and
+optimizer evaluations separately.
+
+```console
+python -m pytest -q src/stochvolmodels/tests/test_docs_examples.py -k calibration-GRADIENT
+python -m pytest -s -m slow src/stochvolmodels/tests/test_fourier_calibration.py -k "bitcoin_calibration_cost_comparison and not legacy"
+```
+
+### Four-parameter LogSV gradient
+
+Pass `fourier={}` and
+`model_calibration_type=LogsvModelCalibrationType.PARAMS4` to fit
+$(\sigma_0,\theta,\beta,\varepsilon)$ with forward sensitivities. This calibration
+fixes both mean-reversion rates and uses the unit volatility backbone. The solver
+propagates the derivatives in $\theta$, $\beta$ and $\varepsilon$ along the
+accepted Runge–Kutta steps. It evaluates the $\sigma_0$ derivative directly from
+the expansion polynomial. The derivative in $\theta$ also includes the change of
+expansion centre $\sigma_0-\theta$.
+
+Each active option's price derivative is divided by its discounted Black vega at
+the model IV. The scalar objective retains the original market weights, constraints
+and active quotes. Its gradient differentiates the ODE flow on the accepted time
+mesh with the Fourier plan held fixed during each optimizer run. Trials with invalid
+gradients receive the existing penalty, and final validation checks both the
+gradient and independently repriced premiums.
+
+On the bundled 49-quote Bitcoin chain, both fits started from
+$(1.2,0.6,-0.5,1.0)$, used market-vega weights and imposed the MMA martingale
+constraint. The times below cover one run per method and include preflight, the
+refined-grid restart and final validation. Numba compilation and the separate
+Gauss–Legendre comparison are excluded.
+
+| Full-chain measurement | SLSQP finite differences | Forward sensitivities |
+|---|---:|---:|
+| Warm fit time | 922.7 s | 309.4 s |
+| Objective evaluations, first grid + restart | 101 + 5 | 21 + 1 |
+| Frequency and maturity pairs evaluated | 552,960 | 170,880 |
+| Vega-weighted squared IV loss | 0.000518911708 | 0.000518911708 |
+| IV RMSE in volatility points | 1.371069 | 1.371070 |
+| Maximum premium error against independent inversion, USD | 4.43e-7 | 4.43e-7 |
+
+The gradient fit was 2.98 times as fast in this comparison. Across the two fitted
+surfaces, the largest difference in independently repriced premiums was USD 0.002554.
+The largest parameter change was $3.34\times10^{-6}$ in the residual vol-of-vol.
+
+The central-bump check covers all 49 premiums and the weighted IV loss on the
+actual optimizer grids. With parameter steps $10^{-4}\max(1,|p_j|)$, the largest
+price-derivative discrepancy, scaled by the peak absolute sensitivity of its
+column, was 0.00737% at the start and 0.00697% at the fit. The largest absolute
+loss-gradient discrepancies were $6.10\times10^{-6}$ and $4.17\times10^{-8}$,
+respectively. The regression repeats the check at half the step size.
+[Reproduce the controlled and gradient fits](../src/stochvolmodels/tests/test_fourier_calibration.py).
+
+### Five-parameter LogSV gradient
+
+For `LogsvModelCalibrationType.PARAMS5`, pass `fourier={}` to fit
+$(\sigma_0,\theta,\kappa_1,\beta,\varepsilon)$ with forward sensitivities.
+At every trial the calibration sets $\kappa_2=\kappa_1/\theta$. For a discounted
+premium $P$, the two coupled columns of the Jacobian are
+
+$$
+\frac{dP}{d\theta}=\frac{\partial P}{\partial\theta}
+-\frac{\kappa_1}{\theta^2}\frac{\partial P}{\partial\kappa_2},
+\qquad
+\frac{dP}{d\kappa_1}=\frac{\partial P}{\partial\kappa_1}
++\frac{1}{\theta}\frac{\partial P}{\partial\kappa_2}.
+$$
+
+The partial derivatives on the right treat the two mean-reversion rates as independent.
+The coefficient tensors are at most quadratic along each of these tangent directions.
+Symmetric evaluations of the tensors therefore give their directional derivatives
+up to floating-point roundoff. The solver propagates the four ODE sensitivities together,
+so each frequency and maturity still needs one pricing solve.
+The initial-volatility derivative follows directly from the expansion polynomial.
+
+On the same 49 Bitcoin quotes, both five-parameter fits started from
+$(1.2,0.6,2.21,-0.5,1.0)$ with $\kappa_2=2.21/0.6$. They used the same weights,
+MMA martingale constraint and USD $10^{-6}$ premium tolerance. Each warm time
+covers one fit, including preflight, one grid restart and final validation.
+Compilation, the independent Gauss–Legendre inversion and the central bumps are
+outside the timed interval.
+
+| Full-chain measurement | SLSQP finite differences | Forward sensitivities |
+|---|---:|---:|
+| Warm fit time | 1,667.1 s | 402.4 s |
+| Objective evaluations, first grid + restart | 200 + 6 | 35 + 1 |
+| Frequency and maturity pairs evaluated | 996,000 | 232,200 |
+| Vega-weighted squared IV loss | 0.000380967025 | 0.000380967025 |
+| IV RMSE in volatility points | 1.097845 | 1.097848 |
+| Maximum premium error against independent inversion, USD | 4.27e-7 | 3.65e-7 |
+
+The gradient fit ran 4.14 times as fast. The fitted $\kappa_1$ was 3.74761
+with sensitivities and 3.74768 with finite differences. The largest difference
+between the two independently repriced fitted surfaces was USD 0.003563 per option.
+
+Central repricing used the 1,080-node starting grid and the 2,550-node fitted
+grid. For steps $10^{-4}\max(1,|p_j|)$, the worst price-Jacobian error across
+the five columns, scaled by each column's peak absolute sensitivity, was
+0.00585% at the start and 0.00238% at the fit. For $\kappa_1$ alone these
+errors were 0.00108% and 0.00173%. The largest absolute errors in the weighted-loss
+gradient were $3.74\times10^{-6}$ and $2.55\times10^{-8}$, respectively.
+The `params5-controlled` and `params5-gradient` cases reproduce the fits and
+the gradient case repeats the central bumps at half the step size.
+[Bitcoin calibration regression](../src/stochvolmodels/tests/test_fourier_calibration.py).
 
 ## Interpretation and limitations
 

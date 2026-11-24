@@ -22,19 +22,26 @@ Quadratic Drift, International Journal of Theoretical and Applied Finance 26(8),
 """
 # package
 import warnings
+from collections.abc import Mapping
+from copy import deepcopy
 from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
 from numba import njit
 from numba.typed import List
-from typing import Tuple, Optional
+from typing import Literal, Tuple, Optional
 from scipy.optimize import minimize
 from enum import Enum
 from functools import partial
 
 # stochvolmodels
 from stochvolmodels.utils.config import VariableType
+from stochvolmodels.utils import _fourier_quadrature as quadrature
+from stochvolmodels.pricers._prepared_logsv import PreparedLogSVGrid
+from stochvolmodels.pricers._fourier_calibration import (
+    FourierCalibration, validate_calibration_options,
+)
 import stochvolmodels.utils.mgf_pricer as mgfp
 from stochvolmodels.utils.mc_payoffs import compute_conditional_mc_payoff, compute_mc_vars_payoff
 from stochvolmodels.utils.funcs import (
@@ -46,6 +53,7 @@ from stochvolmodels.utils.funcs import (
 # stochvolmodels pricers
 from stochvolmodels.models.logsv.params import LogSvParams
 import stochvolmodels.models.logsv.affine_expansion as afe
+from stochvolmodels.models.logsv._calibration_sensitivities import calibration_transform_jacobian
 from stochvolmodels.pricers.model_pricer import (
     CalibrationError, ModelPricer, validate_optimization_result,
 )
@@ -362,11 +370,40 @@ class LogSVPricer(ModelPricer):
     volatilities under the martingale constraints of Theorem 3.7.
     """
 
-    # @timer
+    def prepare_fourier(self, option_chain: OptionChain, params: LogSvParams, *,
+                        fourier: Mapping | None = None, is_spot_measure: bool = True,
+                        expansion_order: ExpansionOrder = ExpansionOrder.SECOND,
+                        is_analytic: bool = False, is_stiff_solver: bool = False
+                        ) -> PreparedLogSVGrid:
+        """Prepare a reusable controlled grid for vanilla quotes at the supplied expiries.
+
+        Preparation fixes the measure, coefficient settings and calendar backbone.
+        The handle accepts initial-volatility scenarios and computes their premium
+        sensitivities. Its default state is a snapshot of params.sigma0.
+        """
+        if fourier is not None and not isinstance(fourier, Mapping):
+            raise ValueError("preparation requires a controlled Fourier settings mapping")
+        snapshot = deepcopy(params)
+        if snapshot.vol_backbone is not None:
+            snapshot.vol_backbone.index = snapshot.vol_backbone.index.copy(deep=True)
+        ttms = np.array(option_chain.ttms, dtype=float, copy=True)
+
+        def transform(phi):
+            zeros = np.zeros_like(phi)
+            return _chain_transforms(snapshot, ttms, phi, zeros, zeros,
+                                     expansion_order=expansion_order, is_analytic=is_analytic,
+                                     is_stiff_solver=is_stiff_solver, is_spot_measure=is_spot_measure,
+                                     return_coefficients=True)
+
+        return PreparedLogSVGrid._prepare(option_chain, transform, is_spot_measure,
+                                          {} if fourier is None else fourier, snapshot.sigma0,
+                                          snapshot.theta, afe.get_expansion_n(expansion_order))
+
     def price_chain(self,
                     option_chain: OptionChain,
                     params: LogSvParams,
                     is_spot_measure: bool = True,
+                    *, fourier: Mapping[str, object] | Literal["legacy"] | None = None,
                     **kwargs
                     ) -> List[np.ndarray]:
         """
@@ -375,6 +412,11 @@ class LogSVPricer(ModelPricer):
         Delegates to :func:`logsv_chain_pricer`. With ``is_spot_measure=True`` the
         chain is valued under the MMA measure by Eqs. (5.4) and (5.9); with False,
         under the inverse measure by Eqs. (5.13) and (5.16).
+
+        For European calls and puts, pass ``fourier={}`` to select one grid for the
+        whole chain at a default absolute discounted premium tolerance of 1e-6.
+        Each new frequency is propagated through the required expiries before the
+        final grid is frozen. Omission or ``fourier="legacy"`` selects the uniform grid.
         """
         model_prices = logsv_chain_pricer(params=params,
                                           ttms=option_chain.ttms,
@@ -383,6 +425,7 @@ class LogSVPricer(ModelPricer):
                                           strikes_ttms=option_chain.strikes_ttms,
                                           optiontypes_ttms=option_chain.optiontypes_ttms,
                                           is_spot_measure=is_spot_measure,
+                                          fourier=fourier,
                                           **kwargs)
         return model_prices
 
@@ -410,6 +453,8 @@ class LogSVPricer(ModelPricer):
         Tuple[List[np.ndarray], List[np.ndarray]]
             Model prices and their standard errors, one array per maturity slice.
         """
+        if quadrature.uses_controlled_fourier(kwargs.get("fourier")):
+            raise ValueError("controlled Fourier quadrature applies to analytic vanilla pricing")
         steps_per_year = 360 if nb_steps is None else nb_steps
         if (isinstance(steps_per_year, bool) or not isinstance(steps_per_year, (int, np.integer))
                 or steps_per_year < 1):
@@ -463,6 +508,9 @@ class LogSVPricer(ModelPricer):
                                         vol_scaler: float | None = None,
                                         max_phi: int | None = None,
                                         historical_backbone_order: bool = False,
+                                        *,
+                                        fourier: Mapping[str, object] | Literal["legacy"] | None = None,
+                                        use_analytic_gradient: bool | None = None,
                                         **kwargs
                                         ) -> LogSvParams:
         """
@@ -507,6 +555,14 @@ class LogSVPricer(ModelPricer):
             kernel. An explicit scaler alone retains the historical 1,000 nodes.
         historical_backbone_order : bool, default False
             Carry analytic coefficients forward in quoted expiry order for paper replays.
+        fourier : mapping or "legacy", optional
+            A mapping freezes an analytic grid for each fit and validates every active
+            premium independently. Omission or "legacy" selects historical calibration.
+        use_analytic_gradient : bool or None, default None
+            By default, controlled analytic PARAMS4 and PARAMS5 fits supply the IV-loss
+            gradient to SLSQP. Other fits use finite differences. False selects finite
+            differences explicitly. True requires a controlled analytic PARAMS4 or
+            PARAMS5 fit. PARAMS5 differentiates through kappa2 = kappa1 / theta.
 
         Returns
         -------
@@ -515,9 +571,24 @@ class LogSVPricer(ModelPricer):
             sigma0 = 0.41, theta = 0.38, beta = 0.50, epsilon = 3.06 for Bitcoin
             on 20 June 2023.
         """
+        controlled = quadrature.uses_controlled_fourier(fourier)
+        gradient_modes = (LogsvModelCalibrationType.PARAMS4, LogsvModelCalibrationType.PARAMS5)
+        gradient_supported = (controlled and calibration_engine == CalibrationEngine.ANALYTIC
+                              and model_calibration_type in gradient_modes)
+        if use_analytic_gradient is None:
+            use_analytic_gradient = gradient_supported
+        elif use_analytic_gradient and not gradient_supported:
+            raise ValueError("use_analytic_gradient requires controlled analytic PARAMS4 or PARAMS5 calibration")
+        if controlled:
+            validate_calibration_options(kwargs)
+            if calibration_engine != CalibrationEngine.ANALYTIC:
+                raise ValueError("controlled LogSV calibration requires the analytic engine")
+            if historical_backbone_order or vol_scaler is not None or max_phi is not None:
+                raise ValueError("controlled calibration conflicts with historical_backbone_order, "
+                                 "vol_scaler or max_phi")
         if calibration_engine == CalibrationEngine.ROUGH_MC:
             raise NotImplementedError('Use RoughLogSVPricer; wider rough calibration remains gated')
-        if vol_scaler is None:
+        if vol_scaler is None and not controlled:
             vol_scaler = self.set_vol_scaler(option_chain=option_chain)
             if max_phi is None:
                 max_phi = mgfp.get_phi_grid_size(vol_scaler)
@@ -552,18 +623,6 @@ class LogSVPricer(ModelPricer):
                 seed=seed,
             )
 
-        objective = _LogSvCalibrationObjective(
-            pricer=self,
-            option_chain=option_chain,
-            codec=codec,
-            market_vols=market_vols,
-            weights=weights,
-            calibration_engine=calibration_engine,
-            vol_scaler=vol_scaler,
-            random_inputs=random_inputs,
-            max_phi=max_phi,
-            historical_backbone_order=historical_backbone_order,
-        )
         constraints = _build_logsv_constraints(codec, constraints_type)
         options = {"disp": True, "ftol": 1e-8}
         optimizer_kwargs = {
@@ -575,6 +634,37 @@ class LogSVPricer(ModelPricer):
         if constraints is not None:
             optimizer_kwargs["constraints"] = constraints
 
+        if controlled:
+            def transforms(vector, ttms, phi):
+                params = codec.parse(vector)
+                zero = np.zeros_like(phi)
+                return _chain_transforms(params, ttms, phi, zero, zero)
+
+            def optimize(fun, start):
+                return minimize(fun, start, **optimizer_kwargs)
+
+            def jacobian(vector, ttms, phi):
+                return calibration_transform_jacobian(
+                    codec.parse(vector), ttms, phi,
+                    fit_kappa1=model_calibration_type == LogsvModelCalibrationType.PARAMS5,
+                )
+
+            if use_analytic_gradient:
+                optimizer_kwargs["jac"] = True
+            calibration = FourierCalibration(option_chain, market_vols, weights, fourier, transforms)
+            levels = [0, 1]
+            if model_calibration_type == LogsvModelCalibrationType.PARAMS_WITH_VARSWAP_FIT:
+                levels = []
+            fitted = calibration.fit(p0, bounds, constraints, levels, optimize, penalize_trials=True,
+                                     transform_jacobian=jacobian if use_analytic_gradient else None)
+            return codec.parse(fitted)
+
+        objective = _LogSvCalibrationObjective(
+            pricer=self, option_chain=option_chain, codec=codec, market_vols=market_vols,
+            weights=weights, calibration_engine=calibration_engine, vol_scaler=vol_scaler,
+            random_inputs=random_inputs, max_phi=max_phi,
+            historical_backbone_order=historical_backbone_order,
+        )
         try:
             result = minimize(objective, p0, **optimizer_kwargs)
             fitted_vector = validate_optimization_result(result, bounds)
@@ -726,7 +816,29 @@ def _backward_transform(solve, maturity, ends, etas, terminal=None):
         left = ends[i - 1] if i else 0.0
         terminal, log_mgf = solve(ttm=right - left, a_t0=terminal, vol_backbone_eta=etas[i])
         right = left
-    return log_mgf
+    return terminal, log_mgf
+
+
+def _chain_transforms(params, ttms, phi, psi, theta, *, expansion_order=ExpansionOrder.SECOND,
+                      is_analytic=False, is_stiff_solver=False, is_spot_measure=True,
+                      historical_backbone_order=False, return_coefficients=False):
+    """Yield transforms on supplied nodes with the calendar loading history of each expiry."""
+    ends, etas = _backbone_schedule(params, ttms[-1:])
+    solve = partial(
+        afe.compute_logsv_a_mgf_grid, phi_grid=phi, psi_grid=psi, theta_grid=theta,
+        expansion_order=expansion_order, is_analytic=is_analytic,
+        is_stiff_solver=is_stiff_solver, is_spot_measure=is_spot_measure, **params.to_dict(),
+    )
+    state = np.zeros((phi.size, afe.get_expansion_n(expansion_order)), dtype=np.complex128)
+    previous = 0.0
+    for ttm in ttms:
+        if historical_backbone_order or len(ends) == 1:
+            eta = params.get_vol_backbone_eta(ttm) if historical_backbone_order else etas[0]
+            state, values = solve(ttm=ttm - previous, a_t0=state, vol_backbone_eta=eta)
+        else:
+            state, values = _backward_transform(solve, ttm, ends, etas)
+        yield state if return_coefficients else values
+        previous = ttm
 
 
 def logsv_chain_pricer(params: LogSvParams,
@@ -743,14 +855,43 @@ def logsv_chain_pricer(params: LogSvParams,
                        vol_scaler: float = None,
                        max_phi: int | None = None,
                        historical_backbone_order: bool = False,
+                       *, fourier: Mapping[str, object] | Literal["legacy"] | None = None,
                        **kwargs
                        ) -> List[np.ndarray]:
     """
     Price each expiry under calendar-time return loadings. The historical mode carries
     coefficients in quoted expiry order, using only the loading at each observation.
     vol_scaler specifies the cutoff 5.6 / vol_scaler and max_phi the number of nodes.
+    A fourier settings mapping selects a preflight and a frozen chain-wide vanilla grid.
     """
-    # starting values
+    transforms = partial(_chain_transforms, params, ttms, expansion_order=expansion_order,
+                         is_analytic=is_analytic, is_stiff_solver=is_stiff_solver,
+                         is_spot_measure=is_spot_measure,
+                         historical_backbone_order=historical_backbone_order)
+
+    if quadrature.uses_controlled_fourier(fourier):
+        if variable_type != VariableType.LOG_RETURN:
+            raise ValueError("controlled LogSV pricing requires log-return vanillas")
+        if historical_backbone_order:
+            raise ValueError("historical_backbone_order requires legacy Fourier pricing")
+        if vol_scaler is not None or max_phi is not None:
+            raise ValueError("fourier conflicts with vol_scaler and max_phi grid overrides")
+        conflicts = kwargs.keys() & {"is_simpson", "real_phi", "phi_grid"}
+        if conflicts:
+            raise ValueError(f"fourier conflicts with legacy settings: {sorted(conflicts)}")
+
+        def sample_chain(phi):
+            zero = np.zeros_like(phi)
+            return transforms(phi, zero, zero)
+
+        settings = quadrature.vanilla_settings_by_expiry(fourier, strikes_ttms)
+        _, prices, _ = quadrature.integrate_vanilla_chain(
+            sample_chain, ttms=ttms, forwards=forwards, discfactors=discfactors,
+            strikes_ttms=strikes_ttms, optiontypes_ttms=optiontypes_ttms,
+            is_spot_measure=is_spot_measure, settings=settings,
+        )
+        return List(prices)
+
     if vol_scaler is None:  # for calibrations we fix one vol_scaler so the grid is not affected by v0
         vol_scaler = set_vol_scaler(sigma0=params.sigma0, ttm=np.min(ttms))
         if max_phi is None and variable_type == VariableType.LOG_RETURN:
@@ -767,24 +908,11 @@ def logsv_chain_pricer(params: LogSvParams,
                                                                  vol_scaler=vol_scaler,
                                                                  max_phi=max_phi)
 
-    ends, etas = _backbone_schedule(params, ttms[-1:])
-    solve = partial(
-        afe.compute_logsv_a_mgf_grid, phi_grid=phi_grid, psi_grid=psi_grid, theta_grid=theta_grid,
-        expansion_order=expansion_order, is_analytic=is_analytic, is_stiff_solver=is_stiff_solver,
-        is_spot_measure=is_spot_measure, **params.to_dict(),
-    )
-    a_t0 = np.zeros((phi_grid.shape[0], afe.get_expansion_n(expansion_order)), dtype=np.complex128)
-    ttm0 = 0.0
-
-    # outputs as numpy lists
     model_prices_ttms = List()
-    for ttm, forward, strikes_ttm, optiontypes_ttm, discfactor in zip(ttms, forwards, strikes_ttms, optiontypes_ttms, discfactors):
-        if historical_backbone_order or len(ends) == 1:
-            eta = params.get_vol_backbone_eta(ttm) if historical_backbone_order else etas[0]
-            a_t0, log_mgf_grid = solve(ttm=ttm - ttm0, a_t0=a_t0, vol_backbone_eta=eta)
-        else:
-            log_mgf_grid = _backward_transform(solve, ttm, ends, etas)
-
+    for log_mgf_grid, ttm, forward, strikes_ttm, optiontypes_ttm, discfactor in zip(
+        transforms(phi_grid, psi_grid, theta_grid), ttms, forwards, strikes_ttms,
+        optiontypes_ttms, discfactors,
+    ):
         if variable_type == VariableType.LOG_RETURN:
             option_prices = mgfp.vanilla_slice_pricer_with_mgf_grid(log_mgf_grid=log_mgf_grid,
                                                                     phi_grid=phi_grid,
@@ -808,8 +936,6 @@ def logsv_chain_pricer(params: LogSvParams,
             raise NotImplementedError
 
         model_prices_ttms.append(option_prices)
-        ttm0 = ttm
-
     return model_prices_ttms
 
 
@@ -846,7 +972,7 @@ def logsv_pdfs(params: LogSvParams,
         is_spot_measure=is_spot_measure, **params.to_dict(),
     )
     ends, etas = _backbone_schedule(params, np.array([ttm]))
-    log_mgf_grid = _backward_transform(solve, ttm, ends, etas, a_t0)
+    _, log_mgf_grid = _backward_transform(solve, ttm, ends, etas, a_t0)
 
     # outputs as numpy lists
     if variable_type == VariableType.LOG_RETURN:
@@ -1347,4 +1473,4 @@ def rough_logsv_mc_chain_pricer_split_step(ttms: np.ndarray,
                       f"fallback; prices are biased", UserWarning, stacklevel=2)
     return option_prices_ttm, option_std_ttm
 
-# Manual scenarios are available in ``stochvolmodels.pricers.run_local.logsv_pricer_run``.
+# Manual scenarios are available in ``examples.pricers.run_lognormal_sv_pricer``.

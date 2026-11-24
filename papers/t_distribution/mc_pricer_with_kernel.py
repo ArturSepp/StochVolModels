@@ -8,7 +8,7 @@ import qis as qis
 from numba import njit
 from enum import Enum
 
-from stochvolmodels.fitters.tdist import compute_upsilon
+from stochvolmodels.models.tdist.distribution import compute_upsilon
 from stochvolmodels import infer_bsm_ivols_from_slice_prices
 
 

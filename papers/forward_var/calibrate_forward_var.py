@@ -2,8 +2,6 @@
 import matplotlib.pyplot as plt
 from enum import Enum
 
-import qis
-
 # project
 import stochvolmodels as sv
 from stochvolmodels.pricers.logsv_pricer import LogSVPricer, LogsvModelCalibrationType
@@ -55,6 +53,7 @@ def mc_smile_inputs(option_chain):
 
 
 def run_local(local: Locals) -> None:
+    import qis
 
     set_seed(24)
 

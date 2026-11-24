@@ -6,16 +6,22 @@ private increment-driven simulator is shared with the path adapter in ``models.h
 legacy callers retain their seeded draw ordering and historical variance floor.
 """
 
+from collections.abc import Mapping
+from typing import Literal, Tuple
+
 import numpy as np
 from scipy.optimize import minimize
 from numba import njit
 from numba.typed import List
-from typing import Tuple
 
 # stochvolmodels
 from stochvolmodels.utils.funcs import to_flat_np_array, set_time_grid, timer
 from stochvolmodels.utils.config import VariableType
-from stochvolmodels.utils.mc_payoffs import compute_mc_vars_payoff
+from stochvolmodels.utils import _fourier_quadrature as quadrature
+from stochvolmodels.utils.mc_payoffs import compute_conditional_mc_payoff, compute_mc_vars_payoff
+from stochvolmodels.pricers._fourier_calibration import (
+    FourierCalibration, validate_calibration_options,
+)
 from stochvolmodels.pricers.model_pricer import (
     ModelPricer,
     validate_optimization_result,
@@ -26,10 +32,45 @@ import stochvolmodels.utils.mgf_pricer as mgfp
 from stochvolmodels.data.option_chain import OptionChain
 
 
+from stochvolmodels.models.heston.model import HestonModel
 from stochvolmodels.models.heston.params import HestonParams as HestonParams
 
 
 BTC_HESTON_PARAMS = HestonParams(v0=0.8, theta=1.0, kappa=2.0, rho=0.0, volvol=2.0)
+
+
+def _qe_paths(params, ttms, count, *, seed=None, steps_per_year=360, is_spot_measure=True):
+    """Run one zero-drift QE-M path set for all requested observations."""
+    if not is_spot_measure:
+        raise ValueError("Heston QE-M supports the money-market measure")
+    times = np.asarray(ttms, dtype=float)
+    if (times.ndim != 1 or not times.size or not np.isfinite(times).all()
+            or times[0] < 0 or np.any(np.diff(times) <= 0)):
+        raise ValueError("QE-M requires increasing nonnegative finite maturities")
+    observations = times if times[0] == 0.0 else np.r_[0.0, times]
+    if seed is None:
+        seed = int(np.random.SeedSequence().generate_state(1)[0])
+    return HestonModel(params).simulate_paths(
+        measure="Q_MMA", observation_times=observations, spot0=1., n_paths=count,
+        steps_per_year=steps_per_year, seed=seed, mc_scheme="qe_m",
+    )
+
+
+def _controlled_heston_chain(option_chain: OptionChain, params: HestonParams,
+                             fourier: Mapping[str, object]) -> List[np.ndarray]:
+    """Price each expiry from time zero on its own grid, sharing transforms across strikes."""
+    settings = quadrature.vanilla_settings_by_expiry(fourier, option_chain.strikes_ttms)
+    model = HestonModel(params)
+    prices_ttms = List()
+    for i, ttm in enumerate(option_chain.ttms):
+        _, prices, _ = quadrature.integrate_vanilla_slice(
+            lambda phi, maturity=ttm: model.log_mgf_grid(ttm=maturity, phi_grid=phi),
+            maturity=ttm, forward=option_chain.forwards[i], discfactor=option_chain.discfactors[i],
+            strikes=option_chain.strikes_ttms[i], optiontypes=option_chain.optiontypes_ttms[i],
+            **settings[i],
+        )
+        prices_ttms.append(prices)
+    return prices_ttms
 
 
 class HestonPricer(ModelPricer):
@@ -37,10 +78,46 @@ class HestonPricer(ModelPricer):
     """
     ModelPricer for the Heston model, valued by Fourier inversion of the analytic MGF.
     """
-    def price_chain(self, option_chain: OptionChain, params: HestonParams, **kwargs) -> np.ndarray:
+    def price_chain(self, option_chain: OptionChain, params: HestonParams, *,
+                    fourier: Mapping[str, object] | Literal["legacy"] | None = None,
+                    **kwargs) -> List[np.ndarray]:
+        """Price a Heston option chain by Fourier inversion.
+
+        Parameters
+        ----------
+        option_chain : OptionChain
+            Expiries, forwards, discounts, strikes and option types.
+        params : HestonParams
+            Initial variance and Heston dynamics under the money-market measure.
+        fourier : mapping or "legacy", optional
+            Omission or "legacy" selects the historical grid. A mapping selects adaptive
+            quadrature for ordinary calls and puts. An empty mapping targets 1e-6 in
+            discounted premium units. Supply ``price_atol`` and ``time_values`` as scalars,
+            strike vectors for one expiry or a sequence of strike vectors for a chain.
+            A positive ``price_rtol`` scales the supplied time values. Frequency range and
+            work controls are ``initial_cutoff``, ``max_cutoff``, ``max_nodes`` and
+            ``max_refinements``.
+
+        Returns
+        -------
+        List[np.ndarray]
+            Discounted premiums, one array per expiry in input strike order.
+
+        Raises
+        ------
+        FloatingPointError
+            Controlled quadrature exhausted a work limit or encountered a nonfinite integral.
+            The exception's ``diagnostics`` attribute records the work and error estimates.
         """
-        implementation of generic method price_chain using heston wrapper for heston chain
-        """
+        variable_type = kwargs.get("variable_type", VariableType.LOG_RETURN)
+        if quadrature.uses_controlled_fourier(fourier):
+            if variable_type != VariableType.LOG_RETURN or not kwargs.get("is_spot_measure", True):
+                raise ValueError("controlled Heston requires log returns under the spot measure")
+            legacy_controls = {"vol_scaler", "max_phi", "real_phi", "phi_grid", "is_simpson"}
+            conflicts = kwargs.keys() & legacy_controls
+            if conflicts:
+                raise ValueError(f"fourier conflicts with legacy settings: {sorted(conflicts)}")
+            return _controlled_heston_chain(option_chain, params, fourier)
         model_prices_ttms = heston_chain_pricer(v0=params.v0,
                                                 theta=params.theta,
                                                 kappa=params.kappa,
@@ -51,19 +128,49 @@ class HestonPricer(ModelPricer):
                                                 discfactors=option_chain.discfactors,
                                                 strikes_ttms=option_chain.strikes_ttms,
                                                 optiontypes_ttms=option_chain.optiontypes_ttms,
-                                                variable_type=kwargs.get(
-                                                    'variable_type', VariableType.LOG_RETURN
-                                                ))
+                                                variable_type=variable_type)
         return model_prices_ttms
 
     def model_mc_price_chain(self, option_chain: OptionChain, params: HestonParams,
                              nb_path: int = 100000,
                              variable_type: VariableType = VariableType.LOG_RETURN,
+                             *, mc_scheme: str = "euler",
                              **kwargs
                              ) -> (List[np.ndarray], List[np.ndarray]):
         """
-        implementation of usinf wrapper for heston_mc_chain_pricer
+        Price with historical Euler or opt-in QE-M for ordinary discounted calls and puts.
+
+        QE-M accepts seed and steps_per_year (default 360), simulates all expiries
+        on the same paths and returns raw sample means and independent-path standard errors.
         """
+        if quadrature.uses_controlled_fourier(kwargs.pop("fourier", None)):
+            raise ValueError("controlled Fourier quadrature applies to analytic vanilla pricing")
+        if mc_scheme == "qe_m":
+            if variable_type != VariableType.LOG_RETURN or nb_path < 2:
+                raise ValueError("QE-M chain pricing requires log returns and at least two paths")
+            rows = [quadrature._checked_quotes(f, d, k, types, True) for f, d, k, types in zip(
+                option_chain.forwards, option_chain.discfactors, option_chain.strikes_ttms,
+                option_chain.optiontypes_ttms, strict=True)]
+            if len(rows) != len(option_chain.ttms):
+                raise ValueError("supply one quote row per expiry")
+            paths = _qe_paths(params, option_chain.ttms, nb_path, **kwargs)
+            prices, errors = List(), List()
+            zero_variance = np.zeros(nb_path)
+            for t, f, d, (strikes, types) in zip(option_chain.ttms, option_chain.forwards,
+                                                 option_chain.discfactors, rows):
+                index = np.searchsorted(paths.observation_times, t)
+                # Zero residual variance selects the realized payoff with raw forwards.
+                means, ses = compute_conditional_mc_payoff(
+                    paths.states["log_zero_drift_return"][:, index], zero_variance,
+                    f, strikes, types, d,
+                )
+                if not (np.isfinite(means).all() and np.isfinite(ses).all()):
+                    raise FloatingPointError("nonfinite QE-M premium or sampling error")
+                prices.append(means)
+                errors.append(ses)
+            return prices, errors
+        if mc_scheme != "euler":
+            raise ValueError("mc_scheme must be 'euler' or 'qe_m'")
         return heston_mc_chain_pricer(v0=params.v0,
                                       theta=params.theta,
                                       kappa=params.kappa,
@@ -83,10 +190,23 @@ class HestonPricer(ModelPricer):
                                  ttm: float = 1.0,
                                  nb_path: int = 100000,
                                  x0: float = 0.0,
+                                 *, mc_scheme: str = "euler",
                                  **kwargs
                                  ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
-        """Return terminal log return, annualized variance and integrated variance."""
+        """Return terminal log return, annualized variance and integrated variance.
+
+        Opt-in QE-M accepts the same seed and steps_per_year as the chain simulator.
+        """
+        if mc_scheme == "qe_m":
+            if not np.isfinite(x0):
+                raise ValueError("initial log return must be finite")
+            paths = _qe_paths(params, [ttm], nb_path, **kwargs)
+            return (paths.states["log_zero_drift_return"][:, -1] + x0,
+                    paths.states["variance"][:, -1].copy(),
+                    paths.states["quadratic_variance"][:, -1].copy())
+        if mc_scheme != "euler":
+            raise ValueError("mc_scheme must be 'euler' or 'qe_m'")
         x0, var0, qvar0 = simulate_heston_x_vol_terminal(ttm=ttm,
                                                          x0=np.full(nb_path, x0, dtype=float),
                                                          var0=params.v0 * np.ones(nb_path),
@@ -104,12 +224,18 @@ class HestonPricer(ModelPricer):
                                         params0: HestonParams = None,
                                         is_vega_weighted: bool = True,
                                         is_unit_ttm_vega: bool = False,
+                                        *,
+                                        fourier: Mapping[str, object] | Literal["legacy"] | None = None,
                                         **kwargs) -> HestonParams:
+        """Fit the five Heston parameters to weighted market IVs under the Feller constraint.
+
+        A ``fourier`` settings mapping freezes a common grid before each optimizer
+        run and checks the fitted premiums on a wider, finer grid. Omission or
+        ``"legacy"`` selects the historical objective.
         """
-        implementation of model calibration interface
-        fit: (theta, kappa, rho, volvol)
-        v0 is inferred using atm_vol and approximation (todo)
-        """
+        controlled = quadrature.uses_controlled_fourier(fourier)
+        if controlled:
+            validate_calibration_options(kwargs)
         if params0 is not None:
             p0 = np.array([params0.v0, params0.theta, params0.kappa, params0.rho, params0.volvol])
         else:
@@ -152,23 +278,20 @@ class HestonPricer(ModelPricer):
         constraints = ({'type': 'ineq', 'fun': feller})
         options = {'disp': True, 'ftol': 1e-8}
 
-        if constraints is not None:
-            res = minimize(
-                objective,
-                p0,
-                args=None,
-                method='SLSQP',
-                constraints=constraints,
-                bounds=bounds,
-                options=options,
-            )
-        else:
-            res = minimize(objective, p0, args=None, method='SLSQP', bounds=bounds, options=options)
+        def optimize(fun, start):
+            return minimize(fun, start, args=None, method='SLSQP', constraints=constraints,
+                            bounds=bounds, options=options)
 
-        fit_params = parse_model_params(
-            pars=validate_optimization_result(res, bounds)
-        )
-        return fit_params
+        if controlled:
+            def transforms(vector, ttms, phi):
+                model = HestonModel(parse_model_params(vector))
+                return (model.log_mgf_grid(ttm=t, phi_grid=phi) for t in ttms)
+
+            calibration = FourierCalibration(option_chain, market_vols, weights, fourier, transforms)
+            fitted = calibration.fit(p0, bounds, constraints, [0, 1], optimize)
+        else:
+            fitted = validate_optimization_result(optimize(objective, p0), bounds)
+        return parse_model_params(fitted)
 
 
 from stochvolmodels.models.heston.kernels import compute_heston_mgf_grid as compute_heston_mgf_grid
@@ -347,4 +470,4 @@ def v0_implied(v0: float, volvol: float, ttm: float):
     return v0
 
 
-# Manual scenarios are available in ``stochvolmodels.pricers.run_local.heston_pricer_run``.
+# Manual scenarios are available in ``examples.pricers.run_heston_pricer``.

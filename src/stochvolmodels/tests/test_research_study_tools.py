@@ -25,11 +25,11 @@ pytestmark = pytest.mark.repository_only
 def research() -> Generator[ModuleType, None, None]:
     """Import the repository-only helpers without relying on the working directory."""
     root = next((p for p in Path(__file__).resolve().parents
-                 if (p / "examples/calibration/_research_study_tools.py").is_file()), None)
+                 if (p / "examples/fitters/_research_study_tools.py").is_file()), None)
     if root is None:
         pytest.skip("research study tools are repository-only")
     with pytest.MonkeyPatch.context() as patch:
-        patch.syspath_prepend(str(root / "examples/calibration"))
+        patch.syspath_prepend(str(root / "examples/fitters"))
         yield importlib.import_module("_research_study_tools")
 
 

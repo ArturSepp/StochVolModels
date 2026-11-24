@@ -135,7 +135,7 @@ def native_quote_reports() -> tuple[fitters.DiagnosticReport, fitters.Diagnostic
 def research_study_example() -> None:
     """Exercise portable research helpers with synthetic evidence and explicit design choices."""
     # These helpers are repository-only; restore the import path after loading them.
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "calibration"))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "fitters"))
     try:
         from _research_study_tools import (
             estimate_tolerance_cutoff, tolerance_rank, verify_artifact_hashes,

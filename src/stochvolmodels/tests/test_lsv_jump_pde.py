@@ -10,7 +10,7 @@ from vanilla_option_pricers import compute_bsm_vanilla_price
 
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.models.lsv import FixedLogForwardJump, LSVModel, LeverageSurface
-from stochvolmodels.models.lsv_simulation import LSVMonteCarloConfig
+from stochvolmodels.models.lsv.simulation import LSVMonteCarloConfig
 from stochvolmodels.pde_solvers import (
     ADIConfig,
     BoundaryPair1D,

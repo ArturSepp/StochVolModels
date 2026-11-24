@@ -10,30 +10,52 @@ excluded from wheels and source distributions. The installed implementation owns
 the numerical solvers, models and pricers; this directory owns experiments and
 historical comparisons.
 
-## Reproduce the adverse BTC and two-year stress decisions
+## Command index
 
-From the root of a clean source checkout with its dependencies installed, run
+Run these modules from the repository root after installing the core package.
+The solver examples and the small historical replay use generated inputs. Each
+historical BTC calibration uses a bundled option chain. Use fresh output
+directories for study reports.
+
+| Command | Inputs and runtime | Output and interpretation |
+|---|---|---|
+| `python -m examples.pde_solvers.run_theta_1d` | Small 1D grids, seconds | Forward Gaussian mass and moments, a backward ATM call with fixed endpoint values, and the integrated error against an analytic Poisson mixture. Each analytic comparison is asserted. |
+| `python -m examples.pde_solvers.run_adi_2d` | Synthetic correlated diffusion and two one-week smiles, seconds to minutes | Tensor-grid mass, variances and covariance, followed by coarse and fine Black and LogSV price errors in bp of discounted forward. |
+| `python -m validation.pde_qualification --cases high_vol_of_vol --repeats 1` | Frozen stress model and MC reference, minutes | `qualification.json` and `qualification.md` give the archive replay, changes with refinement and the actual qualification decision. Omit `--cases` for the slow full study. |
+| `python -m validation.pde_qualification --cases high_vol_of_vol --repeats 1 --unsplit-reference be cn expm` | Same frozen inputs, slow sparse solves | Adds backward Euler and Crank–Nicolson comparisons on the same spatial operator. The matrix exponential is available on small grids. Inspect the recorded node-budget skips and residuals. |
+| `python -m validation.pde_startup --cases one_week_negative --output agents/startup-study` | Generated one-week model, slow | `startup.json` and `startup.md` compare ADI schemes, time grids and initial damping against refined unsplit CN. Read the price and density gates for each method. |
+| `python -m validation.pde_positivity --cases high_vol_of_vol --output agents/positivity-study` | Frozen stress inputs, slow | `positivity.json` and `positivity.md` compare the generators in `pde_monotone.py` with the centered reference. Inspect negative mass, price and consistency diagnostics for each stencil. |
+| `python -m validation.pde_reference.run_cases` | Synthetic local volatility, seconds | The historical 1D solver generates calls and Dupire inversion recovers the known annual variance on 165 interior maturity/strike pairs, to within 0.0025. |
+| `python -m validation.pde_reference.run_cases --case btc-baseline` | Frozen BTC quotes, slow calibration and seeded MC | JSON reports the historical fit, PDE repricing, MC validation and market acceptance checks. The baseline is expected to pass. |
+| `python -m validation.pde_reference.run_cases --case btc-adverse` | Same quotes, adverse starting parameters, slow | JSON records the actual rejection and its failed checks. The command fails if the observed decision differs from the archived expectation. |
+| `python -m validation.pde_reference.run_cases --case stress` | Seven generated scenarios, slow PDE/MC comparisons | One JSON line per scenario gives its price gap, acceptance and failed checks. The narrow-grid case must detect the price discrepancy. |
+| `python -m validation.pde_volatility_moments --stage reference` | Two-year LogSV specification and Figure 3 reference, research run | The reference report checks volatility moments across coordinates. The same CLI exposes `attribution`, `boundaries`, `projection` and `audit` for the archived downstream studies. These use the corresponding saved reports and run directories. |
+| `python -m validation.pde_portable --workers 1 --output agents/portable-replay.json` | Bundled two-year and BTC specification, slow seeded simulation | Per-quote and per-bin JSON records which archived decisions reproduced and whether density and vanilla controls passed. |
+
+The historical calibration, simulation and repricing implementations share grids,
+finite-difference solvers, jump operators and density projection with the package.
+The Gaussian, Black and Poisson-mixture examples supply independent references for
+these shared calculations. [Historical comparison](pde_reference/README.md)
+
+### Saved BTC and ETH LogSV fits
+
+The following command uses the paper directory and the local evidence layout.
+The classical-only case needs the saved fits and quotes. The rough case also
+reads the local simulation checkpoints. The full replay can take several minutes.
 
 ```bash
-python -m validation.pde_portable --output qualification.json
+python -m validation.rough_logsv.benchmark --case all --paper-root papers/rough_volterra_lognormal_sv_model_2026 --evidence-root agents --output agents/rough-fit-replay
 ```
 
-The [frozen case](pde_portable_case.json) supplies the fitted BTC model, quote
-coordinates, sampling design and numerical reference values. The command rebuilds
-four grids, reruns all four PDE solves and generates 3.2 million antithetic pairs
-with coupled Brownian increments at 2,880 and 5,760 steps per year. It runs
-offline. Allow several GiB of free RAM and roughly two hours on a workstation.
-`--workers` adjusts Monte Carlo concurrency while preserving the random streams.
+- Under the paper root, `replication/results/calibration_robustness_2026-11-18/{btc_classical,btc_rough,eth}/` supplies the fit JSONs and matching quote CSVs.
+- Under the evidence root, `btc-fixed-h-20261118/` and `eth-fixed-h-20261118/` supply the control means, qualification matrices, finite kernels and archived `sources/history_engine.py`.
+- `btc-h030-precision-20261118/final_confirmation/` and `calibration-robustness-20261118/ETH/H030/confirmation/` supply `config.json`, completed `status.json` files with checkpoint hashes, the level/replicate `.npz` tapes and `forward_results.csv`.
 
-The JSON report records all 49 BTC price changes from spatial level four to five
-in basis points of discounted forward (limit 1 bp). It also records all 24
-conditional-variance decisions across six log-forward bins at 0.25, 0.5, 1 and
-2 years, including PDE values, Monte Carlo estimates, standard errors and the
-paired time-step uncertainty. Each decision is recomputed and checked against
-its numerical reference. All four sets of density checks and five terminal vanilla
-controls must also pass for a successful exit. These qualifications apply to
-the frozen fits, grids and observables. Routine source tests exercise the grid
-construction, decision thresholds, coupled paths and covariance on small cases.
+`benchmark.json` records the covered asset, Hurst exponent and quote count.
+For `--case all`, success requires four completed fixed fits, BTC and ETH at
+`H=0.5` and `H=0.3`. The command checks saved prices and, for the rough fits,
+checkpoint integrity, sampling diagnostics and raw forwards. Wider calibration
+remains gated. Use `--case classical` or `--case rough` to replay one pair.
 
 ## Run a refinement study
 
@@ -55,8 +77,8 @@ archived LSV propagation stresses, and the two-year volatility-boundary regressi
 BTC uses the bundled 21 October 2021 chain, with 49 original calls and puts across
 four maturities. Each BTC calibration runs once; its fitted model and leverage
 surface remain fixed across all grids. The stress models and Monte Carlo prices
-come from the existing [stress replay](../examples/pricing/lsv_production_stress.py)
-and [frozen fixture](../examples/pricing/lsv_production_stress_reference.json).
+come from the existing [stress replay](../examples/pricers/lsv_production_stress.py)
+and [frozen fixture](../examples/pricers/lsv_production_stress_reference.json).
 The two-year regression has no frozen independent price benchmark and therefore
 cannot receive a complete qualification decision.
 

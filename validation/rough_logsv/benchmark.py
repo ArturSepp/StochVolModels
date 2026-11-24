@@ -25,12 +25,12 @@ from stochvolmodels.pricers.rough_logsv import (
     RoughLogSvParams,
     RoughMCConfig,
 )
-from stochvolmodels.pricers.rough_logsv.history import (
+from stochvolmodels.models.rough_logsv.history import (
     prepare_history,
     raw_forward,
     simulate_history,
 )
-from stochvolmodels.pricers.rough_logsv.multilevel import (
+from stochvolmodels.models.rough_logsv.multilevel import (
     make_sobol,
     normal_block,
     numerical_checks,

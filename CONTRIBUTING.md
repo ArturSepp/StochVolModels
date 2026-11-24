@@ -122,11 +122,11 @@ synthetic research tests, including `test_research_study_tools.py`, do not requi
 data or output folders from an earlier study. Native quote-scale tests in
 `test_native_quote_diagnostics.py` exercise the core package without an optional data provider.
 
-Component development diagnostics live beside their implementation under the nearest
-`run_local/` package and end in `*_run.py`. Each exposes `Locals` and
-`run_local(local=...)`; invoke it explicitly, for example with
-`python -m stochvolmodels.pricers.run_local.heston_pricer_run`. Pytest modules remain in
-`src/stochvolmodels/tests/`, and distributions exclude development runners.
+Component development diagnostics live in `examples/<owning_package>/run_<subject>.py`.
+Each exposes `Locals` and `run_local(local=...)`. From the repository root, run
+`python -m examples.pricers.run_heston_pricer` to exercise the manual Heston cases.
+Pytest collects the automated tests in `src/stochvolmodels/tests/`. Keep direct QIS
+imports in checkout-only research examples and papers.
 
 Build and inspect an installed artifact with:
 
@@ -158,7 +158,8 @@ must remain exact integers. Preserve complex input types, integer conversions, t
 and overflow/domain handling when replacing an implementation.
 
 Ruff's `TID251` rule rejects `math` and `cmath` imports throughout `src/stochvolmodels`,
-including tests and development runners. An exception must be an explicit symbol import
+including its shipped tests. Use `vop` for module-qualified calls to `vanilla_option_pricers`.
+An exception must be an explicit symbol import
 with a line-level `noqa: TID251` and a concrete numerical or compilation reason. Do not
 add blanket file or directory exclusions. The current exceptions are:
 
@@ -175,7 +176,7 @@ implicit part of replacing an import.
 ## Fitter annotations and module headers
 
 Every function under `src/stochvolmodels/fitters/` requires argument and return annotations.
-This includes private helpers, nested optimizer callbacks, adapters and `run_local/` dispatchers.
+This includes private helpers, nested optimizer callbacks and adapters.
 Conventional instance/class receivers may omit `self`/`cls` annotations; collection and callable
 annotations must include their contained types or signatures.
 

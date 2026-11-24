@@ -231,6 +231,7 @@ against joint price–volatility observations.
 
 ## See also
 
+- The [solver and validation command index](https://github.com/ArturSepp/StochVolModels/blob/main/validation/README.md#command-index) lists the 1D and 2D examples and the longer refinement, startup, positivity and historical studies.
 - [Local volatility and LSV](local_volatility_and_lsv.md)
 - [Existing LogSV PDE pricing guide](software_design.md#logsv-vanilla-pde-valuation)
 - [Numerical accuracy and performance](numerical_accuracy_and_performance.md)

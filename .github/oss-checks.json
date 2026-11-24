@@ -99,9 +99,10 @@
         "Install uv and Python 3.12",
         "Build the wheel from the source distribution",
         "Assert wheel contents",
-        "Install core wheel and test tools in a clean environment",
-        "Run complete installed-package suite outside the checkout",
-        "Verify installed metadata and quickstart"
+        "Install the core wheel with plain pip",
+        "Verify core metadata and pricing outside the checkout",
+        "Run PDE examples against the installed core wheel",
+        "Run installed-package fast tests"
       ],
       "stack-policy": [
         "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
@@ -124,6 +125,7 @@
         "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
         "Install uv and Python",
         "Sync documentation environment",
+        "Verify package ownership guides against imports and lazy exports",
         "Build HTML with warnings as errors",
         "Run documentation examples",
         "Check documentation links"

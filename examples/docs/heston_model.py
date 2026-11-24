@@ -35,6 +35,16 @@ def heston_smile(params: svm.HestonParams, ttm: float = 0.5) -> np.ndarray:
                                                             params=params)[0]
 
 
+def controlled_wing_price() -> float:
+    """Ten-year call with forward 100, unit discount and a premium tolerance of 1e-6."""
+    params = svm.HestonParams(v0=0.04, theta=0.04, kappa=0.5, rho=-0.9, volvol=1.0)
+    price, _ = svm.HestonPricer().price_vanilla(
+        params=params, ttm=10.0, forward=100.0, strike=140.0, optiontype="C",
+        fourier={"price_atol": 1e-6},
+    )
+    return price
+
+
 def stationary_volatility(params: svm.HestonParams):
     """Stationary law of the variance, a gamma distribution, and the mean and sd of volatility."""
     shape = 2.0 * params.kappa * params.theta / params.volvol ** 2
@@ -89,6 +99,15 @@ def heston_model_example() -> tuple:
     return paths, phi, log_transform
 
 
+def qe_m_wing():
+    """Price the ten-year wing and return the standard error in premium units."""
+    p = svm.HestonParams(v0=.04, theta=.04, kappa=.5, rho=-.9, volvol=1.)
+    chain = svm.OptionChain.slice_to_chain(10., 100., np.array([140.]), np.array(["C"]))
+    prices, errors = svm.HestonPricer().model_mc_price_chain(
+        chain, p, mc_scheme="qe_m", nb_path=8192, steps_per_year=48, seed=917)
+    return prices[0][0], errors[0][0]
+
+
 class Locals(Enum):
     """Cases of this script; each asserts the numbers the page quotes."""
     SMILES_IN_RHO = 1
@@ -97,6 +116,8 @@ class Locals(Enum):
     MATCHED_SMILES = 4
     BITCOIN_FIT = 5
     MODEL_INTERFACE = 6
+    CONTROLLED_WING = 7
+    QE_M_WING = 8
 
 
 def run_local(local: Locals) -> None:
@@ -109,6 +130,13 @@ def run_local(local: Locals) -> None:
         assert np.all(np.diff(smiles[-0.5]) < 0.0) and np.all(np.diff(smiles[0.5]) > 0.0)
         np.testing.assert_allclose(100 * smiles[-0.5][[0, 6, -1]], [23.88, 19.37, 17.22], atol=0.01)
         np.testing.assert_allclose(100 * smiles[0.0][[0, 6]], [21.26, 19.55], atol=0.01)
+
+    elif local == Locals.QE_M_WING:
+        premium, error = qe_m_wing()
+        assert error < .05 and abs(premium - .29577444) < .012 + 4 * error
+
+    elif local == Locals.CONTROLLED_WING:
+        np.testing.assert_allclose(controlled_wing_price(), 0.29577444, rtol=0, atol=1e-6)
 
     elif local == Locals.MONTE_CARLO:
         params = svm.HestonParams(rho=-0.5, **BASE)

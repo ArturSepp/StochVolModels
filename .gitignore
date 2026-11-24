@@ -141,6 +141,8 @@ dmypy.json
 /papers/rough_volterra_lognormal_sv_model_2026
 /papers/il_hedging/agents
 /papers/sv_for_factor_hjm_rdr_2025/.private
+/papers/jump_risk_premia_clustered_jumps_sifin_2027/private/
+/papers/jump_risk_premia_clustered_jumps_sifin_2027/agents/
 
 # Local volatility-review manuscript and replication work.
 /papers/review_volatility_models/

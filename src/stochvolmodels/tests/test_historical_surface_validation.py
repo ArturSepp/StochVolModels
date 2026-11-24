@@ -10,7 +10,7 @@ import numpy as np
 from numba.typed import List
 import pandas as pd
 import pytest
-import vanilla_option_pricers as bsm
+import vanilla_option_pricers as vop
 
 from stochvolmodels import OptionChain
 
@@ -22,11 +22,11 @@ pytestmark = pytest.mark.repository_only
 def runner():
     """Load the advanced repository example; absent from installed wheels."""
     root = next((p for p in Path(__file__).resolve().parents
-                 if (p / "examples/calibration/validate_historical_surfaces.py").is_file()), None)
+                 if (p / "examples/fitters/validate_historical_surfaces.py").is_file()), None)
     if root is None:
         pytest.skip("historical validation runner is repository-only")
     with pytest.MonkeyPatch.context() as patch:
-        patch.syspath_prepend(str(root / "examples/calibration"))
+        patch.syspath_prepend(str(root / "examples/fitters"))
         yield importlib.import_module("validate_historical_surfaces")
 
 
@@ -38,7 +38,7 @@ def chain():
     strikes = [f * np.exp(k) for f in forwards]
     cps = [np.where(k < 0, "P", "C") for _ in times]
     ivs = [0.24 - 0.18 * k + 0.05 * k**2 for _ in times]
-    prices = [np.array([bsm.compute_bsm_vanilla_price(f, s, t, v, cp, d)
+    prices = [np.array([vop.compute_bsm_vanilla_price(f, s, t, v, cp, d)
                        for s, v, cp in zip(ss, vs, cc)])
               for t, f, d, ss, vs, cc in zip(times, forwards, discounts, strikes, ivs, cps)]
     return OptionChain(
@@ -61,7 +61,7 @@ def test_historical_prices_use_observed_forward_and_discount(runner, chain):
     start = 0
     for i, t in enumerate(target.ttms):
         ivs = quotes.model_iv.iloc[start:start + len(target.strikes_ttms[i])]
-        expected.extend(bsm.compute_bsm_vanilla_price(
+        expected.extend(vop.compute_bsm_vanilla_price(
             target.forwards[i], strike, t, vol, cp, target.discfactors[i],
         ) for strike, cp, vol in zip(target.strikes_ttms[i], target.optiontypes_ttms[i], ivs))
         start += len(ivs)
@@ -215,7 +215,7 @@ def test_training_shocks_preserve_inputs_spreads_and_black_units(runner, chain):
                                    chain.ask_ivs[i] - chain.bid_ivs[i], atol=1e-16)
         for vols, prices in ((changed.bid_ivs[i], changed.bid_prices[i]),
                              (changed.ask_ivs[i], changed.ask_prices[i])):
-            expected = [bsm.compute_bsm_vanilla_price(chain.forwards[i], k, chain.ttms[i],
+            expected = [vop.compute_bsm_vanilla_price(chain.forwards[i], k, chain.ttms[i],
                                                      v, cp, chain.discfactors[i])
                         for k, v, cp in zip(chain.strikes_ttms[i], vols,
                                            chain.optiontypes_ttms[i])]
@@ -340,7 +340,7 @@ def test_price_objective_handles_index_scale_and_narrow_spreads(runner, chain):
             chain.ttms, chain.forwards, chain.strikes_ttms, chain.discfactors)):
         k = np.log(strikes / forward)
         vol = np.sqrt(.045 + .05 * (-.4*k + np.sqrt(k*k + .14**2)))
-        prices = np.array([bsm.compute_bsm_vanilla_price(forward, s, t, v, cp, discount)
+        prices = np.array([vop.compute_bsm_vanilla_price(forward, s, t, v, cp, discount)
                            for s, v, cp in zip(strikes, vol, chain.optiontypes_ttms[i])])
         chain.bid_ivs[i][:], chain.ask_ivs[i][:] = vol-.002, vol+.002
         chain.bid_prices[i][:], chain.ask_prices[i][:] = prices-.01, prices+.01

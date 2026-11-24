@@ -28,8 +28,8 @@ implied volatilities.
 A model pricer in stochvolmodels returns prices and implied volatilities for a single option, a
 slice of strikes at one maturity, or a chain of slices. For the log-normal SV model the price is a
 Fourier integral of the MGF computed by the [affine expansion](affine_expansion.md); for the Heston
-model the MGF is in closed form. The integral is evaluated on a fixed grid of the transform
-variable, whose size is set by the volatility and the shortest maturity. Implied volatilities are
+model the MGF is in closed form. Both pricers offer a historical uniform grid and an
+opt-in grid that refines the integral to a discounted premium tolerance. Implied volatilities are
 Black-Scholes volatilities of the model prices under the chain's forwards and discount factors.
 
 ## Inputs, notation, and assumptions
@@ -85,14 +85,35 @@ integrand decays with the MGF.
 
 ### The integration grid
 
-The package evaluates the integral on $N = 1{,}000$ equally spaced points of $y \in [0, y_{max}]$,
-with $y_{max} = 5.6 / s$ and the grid scale $s = \sigma_0 \sqrt{\min(\tau_{min}, 1/24)}$, where
-$\tau_{min}$ is the shortest maturity of the chain. A short maturity or a low volatility widens the
-grid, because the MGF decays more slowly in $y$. The weights follow Simpson's pattern
-$1, 4, 2, 4, \ldots$; with an even number of points the last weight is 4 rather than 1, a historical
-choice kept so that regression baselines do not move, and immaterial because the integrand has
-decayed at $y_{max}$. The cost of a chain is one solve of the MGF on the grid up to the last
-maturity, Eq. (6.1), and one weighted sum per option, Eq. (6.2).
+The uniform LogSV vanilla grid has cutoff $U=5.6/s$, with
+$s=\sigma_0\sqrt{\min(\tau_{min},1/24)}$ when pricing uses the model's initial volatility.
+A short maturity or low volatility widens the grid. With automatically selected scale and
+node count, the pricer uses $\max(1000,1+\lceil U/0.10\rceil)$ equally spaced points.
+Supplying only `vol_scaler` selects the historical 1,000-point grid. `max_phi` sets the
+node count explicitly. The historical Simpson weights end in 4 for an even number of
+points. Adding points at a fixed cutoff improves resolution inside the interval.
+Extending the cutoff includes more of the tail.
+
+### Controlled resolution and tail checks
+
+Pass `fourier={}` to control the inversion error in discounted premium units. For
+quote $i$ the budget is $B_i=a_i+r t_i$, where $a_i$ is `price_atol`, $r$ is
+`price_rtol`, and $t_i$ is a fixed discounted time value supplied for a relative tolerance.
+The default budget is $10^{-6}$ per option. Each quote must pass both checks.
+
+| Check | Estimate in premium units | Refinement when the estimate exceeds $B_i/2$ |
+|---|---|---|
+| Panel resolution | Sum of absolute differences between the 15-point Kronrod and embedded 7-point Gauss estimates over all panels | Bisect the panel with the largest error relative to a quote's budget. |
+| Frequency tail | Larger of the two most recent outer bands' integrated absolute kernel masses, including the premium scale | Double the cutoff and sample the new band. |
+
+The absolute kernel mass removes cancellation from the strike phase. Each outer
+band contributes its full mass even after bisection. The two-band test is an empirical
+estimate of the unobserved tail. For Heston, each expiry has its own plan. For
+classical LogSV, all expiries and strikes share a plan so each new frequency can
+serve the whole chain. A work-limit failure reports the affected quote, cutoff
+and error estimates. LogSV's error budget covers inversion of the chosen finite
+expansion. [Heston settings](heston_model.md#controlled-fourier-pricing) ·
+[LogSV chain planning](logsv_model.md#frozen-fourier-grid-for-a-chain)
 
 ### Implied volatilities
 
@@ -142,17 +163,17 @@ Over 13 strikes within three standard deviations, the largest absolute error of 
 $1.3 \times 10^{-7}$ at one week and below $2 \times 10^{-10}$ at one month and one year. With 200
 points the error is between $5 \times 10^{-3}$ and $3 \times 10^{-2}$, and with 400 points between
 $5 \times 10^{-5}$ and $2 \times 10^{-3}$: the error falls by several orders of magnitude between 400
-and 1,000 points. At the default grid it hardly varies across strikes and is set by the grid
+and 1,000 points. On the example's 1,000-point grid it hardly varies across strikes and is set by the grid
 spacing $\Delta y$: it is within a factor of two of $e^{-\pi / (2 \Delta y)}$, the aliasing error of
 Simpson's rule near the pole of $1 / (y^2 + 1/4)$ at $y = i/2$. The one-week grid is wider, so its
 spacing is larger, 0.101 against 0.069 at one month and one year, whose grids are equal because the
 scale uses $\min(\tau, 1/24)$.
 
-[![Absolute errors of Fourier prices against Black-Scholes across strikes at the default grid, and the largest error falling steeply with the number of grid points.](images/fourier_vs_bsm.png)](images/fourier_vs_bsm.png)
+[![Absolute errors of Fourier prices against Black-Scholes across strikes on the 1,000-point grid, and the largest error falling steeply with the number of grid points.](images/fourier_vs_bsm.png)](images/fourier_vs_bsm.png)
 
 *Synthetic teaching exhibit. Fourier prices of the log-normal SV model with zero vol-of-vol and
 $\sigma_0 = \theta = 0.4$ against Black-Scholes prices at 40% volatility. (A) Absolute error over 25
-strikes within three standard deviations at the default grid of 1,000 points, floored at
+strikes within three standard deviations on the example's grid of 1,000 points, floored at
 $10^{-16}$ for the logarithmic axis. (B) Largest absolute error against the number of grid points.*
 
 The Black-Scholes and Bachelier analytics price single options and invert prices to volatilities:
@@ -191,9 +212,11 @@ The Black-Scholes and Bachelier functions are stable exports of stochvolmodels, 
 [vanilla-option-pricers](https://pypi.org/project/vanilla-option-pricers/) dependency. The
 transform-grid helpers `get_phi_grid` and `vanilla_slice_pricer_with_mgf_grid` are compatibility
 exports (see [stability tiers](option_chains_and_conventions.md#stability-tiers)), and the grid
-scale `set_vol_scaler` is a module function of `stochvolmodels.pricers.logsv_pricer`. For
-calibration, `LogSVPricer.set_vol_scaler` fixes the grid from the chain's first at-the-money
-volatility, so the grid does not move as the optimiser changes $\sigma_0$. Unknown option codes raise
+scale `set_vol_scaler` is a module function of `stochvolmodels.pricers.logsv_pricer`. In the
+default calibration, `LogSVPricer.set_vol_scaler` fixes the grid from the chain's first
+at-the-money volatility. Heston and LogSV also support
+[fixed Fourier grids with fitted-premium validation](calibration.md#fixed-fourier-grids).
+Unknown option codes raise
 `ValueError`, and the money-market-account pricer rejects the inverse codes. Run the example from a
 checkout with `python examples/docs/european_option_pricing.py`.
 
@@ -203,14 +226,14 @@ checkout with `python examples/docs/european_option_pricing.py`.
   $10^{-6}$ in price for the maturities above; the truncation of the MGF expansion is then the
   larger error, see the [affine expansion](affine_expansion.md#second-order-linear-terms). The next
   item is the exception.
-- **Low volatility at short maturities.** The grid has a fixed 1,000 points over $[0, 5.6 / s]$, so
+- **Low volatility at short maturities.** The historical example fixes 1,000 points over $[0, 5.6 / s]$, so
   its spacing grows as $s = \sigma_0 \sqrt{\min(\tau, 1/24)}$ falls, and with it the aliasing error.
   At 20% volatility and one week the spacing is 0.20, and the largest implied-volatility error over
   three standard deviations is 9.1 points; at 10% it is 42 points at one week and 11 points at one
   month. Passing `vol_scaler` at twice the default scale reduces the first to 0.9 points, but no
-  scale removes the error, and the number of points cannot be changed through the pricers. Check
-  such options against Monte Carlo.
-- **The grid follows the shortest maturity.** A chain whose shortest maturity is much shorter than
+  single scale controls both resolution and tail truncation. The controlled mode checks each
+  source of error separately.
+- **The uniform LogSV grid follows the shortest maturity.** A chain whose shortest maturity is much shorter than
   the others uses a wide grid for all of them; the cost is linear in the grid size.
 - **Wings.** Implied volatilities far from the money inherit a large relative price error and are
   set to `NaN` outside 1% to 500%.

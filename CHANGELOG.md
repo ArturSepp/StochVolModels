@@ -4,6 +4,69 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+**2.19.0.dev9 (2026-11-23), changed.** Controlled LogSV `PARAMS4` and
+`PARAMS5` calibration now supplies the analytic IV-loss gradient to SLSQP by
+default. Pass `use_analytic_gradient=False` to use finite differences.
+
+**2.19.0.dev8 (2026-11-23), added.** Controlled analytic LogSV `PARAMS5`
+calibration accepts `use_analytic_gradient=True`. Its five-parameter gradient
+includes the dependence of quadratic mean reversion on both theta and kappa1.
+
+**2.19.0.dev7 (2026-11-23), added.** Controlled analytic LogSV `PARAMS4`
+calibration accepts `use_analytic_gradient=True` to supply the weighted IV-loss
+gradient to SLSQP. It shares the primal ODE solution across the four derivatives
+and checks the fitted premiums on an independently refined grid.
+
+**2.19.0.dev6 (2026-11-23), added.** Prepared LogSV grids retain the expansion
+coefficients for initial-volatility scenarios. `price_chain` accepts `sigma0`,
+`sigma0_sensitivity` returns discounted premium sensitivity per unit of initial
+volatility, and `refined_for` can certify both on the same grid.
+
+**2.19.0.dev5 (2026-11-23), added.** `LogSVPricer.prepare_fourier` returns a
+`PreparedLogSVGrid` for solve-free, tolerance-checked quotes and explicit refinement.
+`HestonModel.simulate_paths`, `HestonPricer.simulate_terminal_values` and
+`HestonPricer.model_mc_price_chain` accept `mc_scheme="qe_m"` for Andersen's
+martingale-corrected quadratic-exponential simulation.
+
+**2.19.0.dev4 (2026-11-23), added.** Heston and classical LogSV analytic calibration
+accept `fourier={}`. Each SLSQP run uses one fixed grid. A separate wider, finer
+grid checks every active fitted premium. A tolerance miss triggers one refit.
+See [fixed-grid calibration](docs/calibration.md#fixed-fourier-grids).
+The [Fourier accuracy comparison](docs/numerical_accuracy_and_performance.md#fourier-modes-and-reference-prices)
+records both model defaults, Bitcoin fit costs and independent full-state LogSV checks.
+
+**2.19.0.dev3 (2026-11-23), added.** LogSV vanilla pricing accepts `fourier={}` under
+the money-market and inverse measures. It selects one frequency grid across all
+expiries and strikes and reuses the preflight transforms for final pricing.
+See the [short-expiry example](docs/logsv_model.md#frozen-fourier-grid-for-a-chain).
+
+**2.19.0.dev2 (2026-11-23), added.** Heston vanilla pricing accepts `fourier={}` to
+control integration error in discounted premium units. It refines the frequency grid
+and checks tail decay per expiry. In the ten-year example the 140-strike call is
+0.29577444. The default and explicit `fourier="legacy"` reproduce 0.22052944.
+See the [worked example](docs/heston_model.md#controlled-fourier-pricing).
+
+### Changed
+
+- Core installation is checked with plain pip against a wheel built from the source
+  distribution. The package ships the rough-LogSV regression baseline and example
+  settings file. The [module guides](src/stochvolmodels/README.md) and
+  [pricer extension tutorial](examples/pricers/run_add_model.py) live in the checkout.
+
+- Added runnable 1D theta and 2D ADI examples and a historical local-volatility and LSV
+  dispatcher. The [validation command index](validation/README.md#command-index) covers
+  the solver studies, archived stress decisions and fixed-fit BTC/ETH replays.
+
+- Pricing, fitting and provider examples live under `examples/pricers`, `examples/fitters`
+  and `examples/data`. Every concrete pricer has an offline default. Two new estimation
+  examples demonstrate realized volatility from OHLC bars and horizon-purged forecasting.
+  See [the command index](examples/README.md#offline-pricing-and-estimation).
+
+- Component development runners now live in `examples/{data,fitters,models,pricers}/run_*.py`.
+  Run them from the checkout, for example with `python -m examples.pricers.run_heston_pricer`.
+  The installed package forwards OCA time periods directly and has no direct QIS imports.
+  QIS remains available through the research extra for paper and example workflows.
+
 ### Fixed
 
 - Experimental `validation.pde_monotone` retains inward drift at a degenerate
@@ -22,6 +85,28 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Removed
 
+- Retired 15 deep import paths. The names below are relative to `stochvolmodels`.
+  Update imports and any monkeypatch targets using the same function or class name.
+
+  | Previous module | Import from |
+  |---|---|
+  | `fitters.tdist` (density, CDF, partial mean, drift, default probability, forward and `compute_upsilon`) | `models.tdist.distribution` |
+  | `fitters.tdist` (`compute_vanilla_price_tdist`, `infer_implied_vol_tdist`, `infer_tdist_implied_vols_from_model_slice_prices`) | `pricers.tdist.analytics` |
+  | `models.logsv_pde` | `models.logsv.coefficients` |
+  | `models.lsv_simulation` | `models.lsv.simulation` |
+  | `models.regime_logsv_simulation` | `models.regime_logsv.simulation` |
+  | `pricers.lsv_projection` (projection and leverage recovery) | `fitters.lsv_projection` |
+  | `pricers.lsv_projection` (private time-grid helpers `_interval_time_grid` and `_step_counts`) | `models.lsv.propagation` |
+  | `pricers.rough_logsv.<module>` for `multilevel`, `rough_kernel`, `params`, `kernel_fit`, `history`, `expm`, `_history_fast`, `_history`, `_constrained_kernel`, `_classical_pde` | Same module under `models.rough_logsv` |
+
+  The nine Student-t functions exported at the root and the seven names exported by
+  `stochvolmodels.pricers.rough_logsv` keep their public import spellings.
+  For a trusted pickle that names a retired module, load it in a checkout containing the
+  forwarding modules and canonical definitions (for example, revision `a3a4cd7`).
+  Write the object to a new file with `pickle.dump`, then load the copy after upgrading.
+  The packaged pricing fixture and the paper's rough-logSV NPZ results contain numeric arrays
+  and can be read directly.
+
 - Module-layout and dispatcher-naming contract tests. Numerical regressions,
   distribution inventories and private-file exclusion checks are retained.
 
@@ -34,8 +119,14 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Added
 
-- Added an offline [PDE qualification replay](validation/README.md#reproduce-the-adverse-btc-and-two-year-stress-decisions)
+- Added an offline [PDE qualification replay](validation/README.md#command-index)
   for all 49 adverse BTC quotes and all 24 two-year stress bin comparisons.
+
+- `stochvolmodels.pricers.inverse_gamma_pricer.InverseGammaNormalPricer` prices European
+  calls and puts on a chain with one expiry matching the inverse-gamma/normal law. The
+  shared slice and chain methods return the model's prices and Black implied volatilities.
+  Import the frozen parameters and terminal model from `stochvolmodels.models.inverse_gamma`.
+  The former `stochvolmodels.models.inverse_gamma_normal` path exports the same classes.
 
 - Experimental repository-only positive full-tensor stencil and frozen-model
   investigation in `validation.pde_monotone` and `validation.pde_positivity`.
@@ -56,6 +147,12 @@ Entries start at 1.2.0. For earlier releases see the git log.
   reports expose residuals, signed-density diagnostics and same-grid price gaps.
   Natural boundaries and continuous diffusions are supported; this is a time
   reference, not an independent spatial discretization or a positivity guarantee.
+
+- Rough-logSV analytics documentation referencing Sepp and Rakhmonov's 18 November
+  2026 working draft: linear conditional moments, stability and growth, quadratic
+  damping, martingale conditions, and experimental moment/kernel APIs. Distinguishes
+  paper results, continuous-time targets and discrete diagnostics; wider calibration,
+  strict positivity for singular kernels and the general converse remain open/gated.
 
 - Forward-variance model specification and calibration guide in
   `papers/forward_var/README.md`, including the loading bootstrap, current bounds,
@@ -78,6 +175,11 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ### Changed
 
+- `SplitOperator2D.build` caches the existing mixed-derivative bands for linear-work
+  application, preserving nonuniform-grid formulas and the weighted-adjoint forward
+  action. Prices and density diagnostics are checked against the former dense action
+  on frozen BTC and stress cases; public signatures and numerical policies are unchanged.
+
 - Organize LogSV, Heston, LSV, regime LogSV, Hawkes, TGARCH and Student-t implementations
   into model-family packages while preserving published imports and existing serialized model references.
   Move variance-swap backbone calibration to `fitters.logsv_backbone` and Student-t vanilla
@@ -94,15 +196,16 @@ Entries start at 1.2.0. For earlier releases see the git log.
   baselines are preserved. New serialized objects use their canonical module paths;
   existing serialized class references remain loadable.
 
-- `SplitOperator2D.build` caches the existing mixed-derivative bands for linear-work
-  application, preserving nonuniform-grid formulas and the weighted-adjoint forward
-  action. Prices and density diagnostics are checked against the former dense action
-  on frozen BTC and stress cases; public signatures and numerical policies are unchanged.
-
 - Paper dispatchers now use `Locals` and `run_local(local=...)`, consistently with
   package development runners and repository examples. Figure selections, numerical
   calculations and random seeds are unchanged. Research dispatchers have typed
   `local` arguments and return annotations; existing fetch/evaluate commands are retained.
+
+- The rough-logSV paper's BTC/ETH figure producers now replay saved fits
+  through the standalone PDE pricer and conditional estimator. Shared replay
+  checks bind parameters, quote conventions, controls and checkpoint hashes;
+  saved fits and all four Figure 1 variants reproduce unchanged. Wider
+  calibration remains gated.
 
 - The forward-variance paper calibration relaxes its volvol lower bound from 1.5
   to 0.2. Recalibration reduces the weighted IV objective by 22.72%; independent

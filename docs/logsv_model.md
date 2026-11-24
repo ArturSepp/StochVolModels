@@ -251,6 +251,102 @@ rough extension. The package works under the MMA measure and does not implement 
 parameterisation of Eq. (3.9); the canonical script does. Run it from a checkout with
 `python examples/docs/logsv_model.py`.
 
+### Frozen Fourier grid for a chain
+
+Pass `fourier={}` to select one frequency grid for every expiry and strike. The preflight
+uses the supplied model parameters, the chain's forwards and discounts, and each quote's
+premium tolerance. It tests panel resolution and the mass in the last two frequency bands.
+Extensions and subdivisions require coefficient solves only for new frequencies. With a
+constant return loading, each frequency continues from one expiry to the next. For a varying
+loading, each expiry uses its own backward propagation through the calendar knots. Final
+pricing reuses the stored transforms at the frozen nodes.
+
+```python
+def short_expiry_prices() -> np.ndarray:
+    """Price one- and seven-day LogSV slices on one frozen frequency grid."""
+    params = svm.LogSvParams(sigma0=0.28, theta=0.40, kappa1=2.0, kappa2=3.0,
+                             beta=-0.65, volvol=0.85)
+    chain = svm.OptionChain.get_uniform_chain(
+        ttms=np.array([1, 7]) / 365, ids=np.array(["1d", "7d"]),
+        forwards=np.array([100., 100.]), strikes=np.array([80., 100., 120.]),
+    )
+    return np.asarray(svm.LogSVPricer().price_chain(chain, params, fourier={"price_atol": 1e-6}))
+```
+
+The one-day at-the-money call is **0.58564723**. The default LogSV preflight starts with
+nine 15-node panels through frequency 128. The first panel ends at `initial_cutoff=0.5`.
+The other [tolerance and work settings](heston_model.md#controlled-fourier-pricing)
+match Heston's. Here `max_nodes` counts distinct frequencies across the chain. Each
+frequency can require several time-segment solves. Repricing at new parameters computes fresh
+transforms. Exhausting a work limit raises `FloatingPointError` with diagnostics.
+
+The option applies to `price_vanilla`, `price_slice`, `price_chain` and the chain
+implied-volatility helpers. Set `is_spot_measure=False` for the inverse measure.
+Omitting `fourier` or passing `"legacy"` selects the uniform grid. The premium tolerance
+controls numerical inversion of the selected affine expansion. Expansion error is a
+separate source of price error. During analytic calibration, a
+[fixed Fourier grid](calibration.md#fixed-fourier-grids) covers the optimizer run.
+The [full-state comparison](numerical_accuracy_and_performance.md#logsv-expansion-against-the-full-state-model)
+shows how the integration and model errors differ on the published SPY calls.
+
+### Repricing on a prepared grid
+
+`LogSVPricer.prepare_fourier(chain, params)` returns a `PreparedLogSVGrid` with three complex
+coefficients at first order or five at second order per active frequency and expiry
+(48 or 80 bytes). The handle owns its model settings, including the calendar backbone.
+Call `grid.price_chain(quotes)`
+to change strikes, forwards or discounts, or select a subset of those expiries. Each new
+quote repeats the resolution and tail checks with zero coefficient solves. A miss raises
+`FloatingPointError` with the affected strike and expiry. Call `grid.refined_for(quotes)`
+to retain the old samples and solve additional frequencies within the original work limits.
+Both handles can be used independently. New dynamics or maturities require fresh preparation.
+
+For $n_T$ prepared expiries, $n_u$ active frequencies and $n_A$ polynomial
+terms, the stored coefficient array has shape $(n_T,n_u,n_A)$ and occupies
+$16 n_T n_u n_A$ bytes, in addition to panel weights and quote metadata.
+The handle stores coefficients before evaluating the initial state. At each
+frequency, let $y=\sigma_0-\theta$ and $g(y)=\sum_{k=0}^{n_A-1}A_k y^k$.
+The two quantities used in pricing and state sensitivity are
+
+$$
+M(y)=e^{g(y)},\qquad
+\frac{\partial M}{\partial\sigma_0}=M(y)\sum_{k=1}^{n_A-1}k A_k y^{k-1}.
+$$
+
+A query evaluates the appropriate quantity on the saved nodes and applies
+the strike phases, discount and quadrature weights for the requested contracts.
+Each requested maturity must match a prepared expiry exactly. A refinement checks
+the union of previous and new quote requirements and charges newly sampled
+frequencies against the original work limits, including earlier discarded panels.
+Calibration at a new $\theta$, $\kappa_1$, $\kappa_2$, $\beta$ or $\varepsilon$
+recomputes the coefficients on its fixed grid. [Calibration sensitivities](calibration.md#from-coefficient-sensitivities-to-the-iv-loss-gradient)
+
+To move the initial volatility from 40% to 45%, call `grid.price_chain(quotes, sigma0=0.45)`.
+Only the final evaluation of the polynomial in $\sigma_0-\theta$ changes. The coefficients,
+calendar loadings, forwards and discounts can all be held fixed. Omitting `sigma0` uses the
+preparation state. Each scenario must pass the embedded quadrature and tail checks.
+
+`grid.sigma0_sensitivity(quotes, sigma0=0.45, atol=1e-6)` differentiates the transform
+analytically and checks the differentiated integral against its own absolute tolerance.
+The result is discounted premium per unit of initial volatility. Multiply by 0.01 for the
+first-order premium change per volatility point. For the 30-day ATM call in the runnable
+example, the sensitivity at 40% is 9.94015, or about 0.0994 premium units per point.
+After a missed check,
+`grid.refined_for(quotes, sigma0=0.45, sensitivity_atol=1e-6)` returns a handle checked for
+both premium and sensitivity at that state. Pass the same premium settings in `fourier` if
+the price query specified them. Both checks control Fourier integration of the chosen expansion.
+
+Supply quote controls in `fourier={...}` on either method. Scalar tolerances carry forward.
+Supply new strike-aligned tolerances or time values when the quote set changes. A preparation
+on the 1-day and 7-day example took 690 coefficient solves. Repricing strikes 87, 95, 105
+and 113 at both expiries took zero additional solves, versus 510 on a fresh controlled call.
+The two price arrays agreed within `4.7e-12` premium units. Over six successive
+interior strike sets, warm queries took 2.2–4.9 ms each. Preparation took 0.98 s
+and paid for itself on the second query in that run. A fresh controlled price
+took 0.62–1.01 s per strike set. The grid retained 43,200 bytes of coefficients.
+Compilation was measured separately.
+[Runnable prepare, query and refine example](../examples/docs/logsv_model.py)
+
 ## Interpretation and limitations
 
 - **Volatility beta and correlation.** $\beta$ is a loading, not a correlation: the correlation of

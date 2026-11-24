@@ -21,7 +21,7 @@ from stochvolmodels.models.regime_logsv import (
     evaluate_risk_neutral_state,
     solve_regime_switch_equilibrium,
 )
-from stochvolmodels.models.regime_logsv_simulation import (
+from stochvolmodels.models.regime_logsv.simulation import (
     simulate_regime_switch_logsv_terminal,
 )
 from stochvolmodels.pricers.regime_switch_logsv_pricer import (

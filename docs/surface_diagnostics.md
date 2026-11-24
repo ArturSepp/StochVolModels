@@ -21,7 +21,7 @@ The optional OCA adapter is an advanced module path, imported explicitly as desc
 
 The public diagnostics below work with existing fitters and pricers. SVI/SSVI benchmarks,
 wing refits, caller-supplied cutoff policies and combined research reports live under
-`examples/calibration/` in a source checkout; they are not public fitter exports or wheel
+`examples/fitters/` in a source checkout; they are not public fitter exports or wheel
 entry points. No market-calibrated quote-error law or automatic wing warning is installed.
 
 ## Select a diagnostic workflow
@@ -255,6 +255,8 @@ requires a new report; changes to calibration parameters cannot leave cached err
 
 ## Optional OCA provenance
 
+Run `python -m examples.fitters.oca_surface_diagnostics` with the research extra for an end-to-end synthetic example. The adapter selects three expiries from one reconstructed chain and returns `(chain, provenance)`. Its quotes table records each selected contract, quote ID and USD multiplier. The example calculates one model price and Black IV per retained strike in the returned order, then calls `diagnose_fit` with both arrays per expiry, `price_unit="USD per unit"` and the serialized provenance in report metadata. The default quote IDs are positional within this selection. For a native chain, the [core example](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/surface_diagnostics.py) passes aligned IDs and spread scales directly.
+
 Import `diagnostic_chain_from_oca` from
 `stochvolmodels.fitters.adapters.oca_diagnostics`. It returns a new SVM chain and a provenance
 report using the existing OCA adapter's selection. `price_conversion="quoted"` preserves quote
@@ -299,7 +301,7 @@ python -c "from examples.docs.surface_diagnostics import Locals, run_local; run_
 `RESEARCH_TOOLS` creates and removes a small temporary JSON artifact. It performs no refits
 and does not require archived study output. Its handwritten scores illustrate the API only.
 
-The [advanced OCA example](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/oca_surface_diagnostics.py)
+The [advanced OCA example](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/oca_surface_diagnostics.py)
 requires the research extra and OCA 5.3. It generates observations, injects stale/crossed/duplicate
 evidence, reconstructs a previous snapshot, converts prices, fits existing LogSV smiles and
 reports fit and surface diagnostics. It reconciles 31 original rows into 15 selected quotes
@@ -307,7 +309,7 @@ and 16 exclusions. A deliberately shifted fit has zero bid/ask price coverage. O
 100× quotation variants produce the same converted prices; contract size remains separate.
 
 ```console
-python examples/calibration/oca_surface_diagnostics.py
+python examples/fitters/oca_surface_diagnostics.py
 ```
 
 Maintainer Windows checkouts use the external interpreter and runtime setup prescribed by
@@ -316,11 +318,11 @@ metadata; a small fit error alone does not establish a valid density or calendar
 
 ## Portable research study helpers
 
-The repository-only [_svi_research_fixtures.py](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/_svi_research_fixtures.py)
-and [_research_study_tools.py](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/_research_study_tools.py)
+The repository-only [_svi_research_fixtures.py](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/_svi_research_fixtures.py)
+and [_research_study_tools.py](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/_research_study_tools.py)
 support deterministic challenges and read-only saved-evidence audits. They are not installed
 package exports or command-line programs. The canonical `RESEARCH_TOOLS` case locates
-`examples/calibration` relative to its own file before importing them; independent research
+`examples/fitters` relative to its own file before importing them; independent research
 scripts must likewise make that source directory importable.
 
 ### Paired synthetic quote fixtures
@@ -426,7 +428,7 @@ scoped consuming study.
 
 ## Research benchmark
 
-The repository-only [smile-fitter comparison](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/compare_smile_fitters.py)
+The repository-only [smile-fitter comparison](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/compare_smile_fitters.py)
 evaluates experimental raw stochastic volatility inspired (SVI) slices and constrained surface
 SVI (SSVI) alongside approximate LogSV, two-state Gaussian mixtures, full LogSV and Heston.
 The experimental implementations are outside the installed package and are not public fitter APIs.
@@ -434,7 +436,7 @@ Their formulae follow Gatheral and Jacquier, equations (3.1) and (4.1); the SSVI
 Theorems 4.1 and 4.2 on the fitted maturity interval. No maturity extrapolation is supplied.
 
 ```console
-python examples/calibration/compare_smile_fitters.py
+python examples/fitters/compare_smile_fitters.py
 ```
 
 The opt-in `raw_svi` candidate scales log-moneyness and variance using training observations and supplies
@@ -476,8 +478,8 @@ freezing the revised settings. Reusing either set for tuning removes its role as
 These synthetic cases do not replace historical-chain validation.
 
 ```console
-python examples/calibration/compare_smile_fitters.py --suite stability
-python examples/calibration/compare_smile_fitters.py --models raw_svi_legacy raw_svi
+python examples/fitters/compare_smile_fitters.py --suite stability
+python examples/fitters/compare_smile_fitters.py --models raw_svi_legacy raw_svi
 ```
 
 Use `--output` to select a fresh results directory and `--repeats` to change timing repetitions.
@@ -559,7 +561,7 @@ original-unit IV SSE retained. Held-out quotes never choose weights, domains or 
 This candidate supplies no public fitter API or automatic model-selection rule.
 
 ```console
-python examples/calibration/compare_smile_fitters.py --models raw_svi_constrained raw_svi_price
+python examples/fitters/compare_smile_fitters.py --models raw_svi_constrained raw_svi_price
 ```
 
 The separate `raw_svi_price_seeded` candidate adds a fourth price start from a constrained
@@ -579,7 +581,7 @@ This higher budget must be considered when comparing accuracy and runtime. The o
 price candidate, benchmark defaults, prediction domains and economic screen are unchanged.
 
 ```console
-python examples/calibration/compare_smile_fitters.py --models raw_svi_price raw_svi_price_seeded
+python examples/fitters/compare_smile_fitters.py --models raw_svi_price raw_svi_price_seeded
 ```
 
 The opt-in `raw_svi_price_regularized` candidate uses the same IV seed and four starts,
@@ -608,7 +610,7 @@ support. This remains a repository-only experiment; defaults and acceptance crit
 are unchanged.
 
 ```console
-python examples/calibration/compare_smile_fitters.py --models raw_svi_price_seeded raw_svi_price_regularized
+python examples/fitters/compare_smile_fitters.py --models raw_svi_price_seeded raw_svi_price_regularized
 ```
 
 The opt-in `raw_svi_shared_rho` candidate jointly fits all training expiries with one
@@ -628,7 +630,7 @@ calendar consistency or accurate prices. This candidate supplies no price prior 
 maturity interpolation and leaves the default models and acceptance screen unchanged.
 
 ```console
-python examples/calibration/compare_smile_fitters.py --models raw_svi_constrained raw_svi_shared_rho ssvi
+python examples/fitters/compare_smile_fitters.py --models raw_svi_constrained raw_svi_shared_rho ssvi
 ```
 
 The `wings` suite defaults to the original, bounded and constrained IV-objective SVI fitters
@@ -638,12 +640,12 @@ are development evidence for this study. The economic screen is unchanged; the c
 stays opt-in. Both runners archive their research source files beside the output hashes.
 
 ```console
-python examples/calibration/compare_smile_fitters.py --suite wings
+python examples/fitters/compare_smile_fitters.py --suite wings
 ```
 
 ## Historical validation
 
-The advanced [historical runner](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/validate_historical_surfaces.py)
+The advanced [historical runner](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/validate_historical_surfaces.py)
 compares approximate LogSV, two-state Gaussian mixtures, original raw SVI and SSVI on
 local SPX observations. Install the SVM research extra, OCA 5.3 or later and OCA's `cboe`
 extra. It requires an existing compatible `spx_options_oca.parquet` cache in the chosen
@@ -660,7 +662,7 @@ If the complete observed strike domain extends beyond that grid, evaluation is r
 the job retains fitted parameters and domain evidence and remains in attempted counts.
 
 ```console
-python examples/calibration/validate_historical_surfaces.py --input <local-cboe-directory> --output <fresh-private-results-directory>
+python examples/fitters/validate_historical_surfaces.py --input <local-cboe-directory> --output <fresh-private-results-directory>
 ```
 
 Without `--input`, the directory is `<RESOURCE_PATH>/cboe_options`. The default dates are
@@ -715,7 +717,7 @@ Passing that screen does not certify calendar consistency or unsampled strikes.
 
 Refit sensitivity measures how a fitted curve changes under a specified perturbation
 of its training quotes. The repository-only
-[wing reliability example](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/diagnose_wing_reliability.py)
+[wing reliability example](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/diagnose_wing_reliability.py)
 supports independent constrained and shared-rho raw SVI. It draws independent Gaussian
 shifts of standard deviation 0.0005 decimal IV, shifts both IV sides equally and
 reprices using the fixed training forwards and discounts. Every refit predicts on the
@@ -747,7 +749,7 @@ does not certify accuracy, arbitrage absence or support outside the declared dom
 
 ### Caller-frozen research policy
 
-The repository-only [`_wing_research_policy.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/_wing_research_policy.py) helper accepts a caller-frozen JSON
+The repository-only [`_wing_research_policy.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/_wing_research_policy.py) helper accepts a caller-frozen JSON
 artifact through `--research-policy`, with an explicit `--research-noise-assumption`
 declaration. It installs no cutoff. The artifact identifies calibration evidence,
 numerical source hashes and two exact symmetric strike half-widths, 0.20 and 0.40.
@@ -786,7 +788,7 @@ a separately evaluated policy; a validation result must not silently retune the 
 
 ### Combined research report
 
-The repository-only [combined research report](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/combined_research_diagnostics.py)
+The repository-only [combined research report](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/combined_research_diagnostics.py)
 joins selected OCA quote quality and parity, existing `diagnose_fit` metrics,
 evaluation-strike support and opt-in sensitivity as separate facets. It supplies
 no overall accuracy verdict. Source-row IDs, units, times and selected IV/price
@@ -833,10 +835,10 @@ and input artifacts alongside the report when freezing a study. Mismatched ident
 units or selected observations are rejected rather than joined approximately.
 
 ```console
-python examples/calibration/combined_research_diagnostics.py
-python examples/calibration/combined_research_diagnostics.py --saved-reliability reliability.json --price-unit "USD per unit" --spread-floor 0.01 --output replay-report
-python examples/calibration/diagnose_wing_reliability.py --model raw_svi_constrained --draws 16
-python examples/calibration/validate_historical_surfaces.py --models raw_svi_constrained --reliability-draws 16
+python examples/fitters/combined_research_diagnostics.py
+python examples/fitters/combined_research_diagnostics.py --saved-reliability reliability.json --price-unit "USD per unit" --spread-floor 0.01 --output replay-report
+python examples/fitters/diagnose_wing_reliability.py --model raw_svi_constrained --draws 16
+python examples/fitters/validate_historical_surfaces.py --models raw_svi_constrained --reliability-draws 16
 ```
 
 The wing reliability command runs a synthetic example on the core installation.
@@ -924,7 +926,7 @@ tails/dependence, native price admissibility or eligibility under that cutoff.
 ### Longitudinal diagnostic replay
 
 Longitudinal replay follows the same diagnostic scope across a frozen observation
-schedule. The repository-only `examples/calibration/replay_surface_diagnostics.py`
+schedule. The repository-only `examples/fitters/replay_surface_diagnostics.py`
 records observed recovery, repeated violations and unavailable evidence without
 fitting models or selecting thresholds. The example uses the core installation;
 serialized OCA reports require no provider connection or OCA import.
@@ -974,8 +976,8 @@ and its effective temporal state, so these guards do not erase the original evid
 Run the synthetic example or supply a frozen normalized manifest:
 
 ```console
-python examples/calibration/replay_surface_diagnostics.py
-python examples/calibration/replay_surface_diagnostics.py --manifest frozen-replay/manifest.json --output replay-output
+python examples/fitters/replay_surface_diagnostics.py
+python examples/fitters/replay_surface_diagnostics.py --manifest frozen-replay/manifest.json --output replay-output
 ```
 
 The version-1 manifest declares `panel_id`, aware `split_utc`, positive
@@ -1024,5 +1026,5 @@ an asynchronous counterpart, a repeated source record or a different expiry.
 - Jim Gatheral and Antoine Jacquier, *Arbitrage-free SVI volatility surfaces*, arXiv:1204.0646,
   revision 4 (2013). [Primary manuscript](https://arxiv.org/abs/1204.0646).
 - [VanillaOptionPricers software citation](https://github.com/ArturSepp/VanillaOptionPricers/blob/main/CITATION.cff).
-- [OCA software citation](https://github.com/ArturSepp/OptionChainAnalytics/blob/main/CITATION.cff), [combined report source](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/combined_research_diagnostics.py) and [longitudinal replay source](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/replay_surface_diagnostics.py).
+- [OCA software citation](https://github.com/ArturSepp/OptionChainAnalytics/blob/main/CITATION.cff), [combined report source](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/combined_research_diagnostics.py) and [longitudinal replay source](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/replay_surface_diagnostics.py).
 - [stochvolmodels software citation](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).

@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 import pytest
-import vanilla_option_pricers
+import vanilla_option_pricers as vop
 
 import stochvolmodels
 
@@ -22,6 +22,7 @@ STABLE_PUBLIC_API = (
     "HestonPricer",
     "LogSvParams",
     "LogSVPricer",
+    "PreparedLogSVGrid",
     "LogsvModelCalibrationType",
     "ConstraintsType",
     "CalibrationEngine",
@@ -66,6 +67,7 @@ EXPECTED_ROOT_NAMES = (
     "OptionChain",
     "OptionSlice",
     "OptionType",
+    "PreparedLogSVGrid",
     "TdistParams",
     "TdistPricer",
     "VariableType",
@@ -206,7 +208,33 @@ def test_vanilla_analytics_are_direct_dependency_reexports() -> None:
     prefixes = ("compute_bsm", "infer_bsm", "compute_normal", "infer_normal")
     names = [name for name in STABLE_PUBLIC_API if name.startswith(prefixes)]
     for name in names:
-        assert getattr(stochvolmodels, name) is getattr(vanilla_option_pricers, name)
+        assert getattr(stochvolmodels, name) is getattr(vop, name)
+
+
+def test_tdist_root_exports_resolve_to_their_implementations() -> None:
+    from stochvolmodels.models.tdist import distribution
+    from stochvolmodels.pricers.tdist import analytics
+
+    for name in (
+        "pdf_tdist", "cdf_tdist", "cum_mean_tdist", "imply_drift_tdist",
+        "compute_default_prob_tdist", "compute_forward_tdist",
+    ):
+        assert getattr(stochvolmodels, name) is getattr(distribution, name)
+    for name in (
+        "compute_vanilla_price_tdist", "infer_implied_vol_tdist",
+        "infer_tdist_implied_vols_from_model_slice_prices",
+    ):
+        assert getattr(stochvolmodels, name) is getattr(analytics, name)
+
+
+def test_rough_logsv_package_exports_resolve_to_their_implementations() -> None:
+    from stochvolmodels.models import rough_logsv as model
+    from stochvolmodels.pricers import rough_logsv, rough_logsv_pricer
+
+    for name in ("RoughLogSvParams", "RoughKernel", "RoughMCConfig", "DiscretePdeControl"):
+        assert getattr(rough_logsv, name) is getattr(model, name)
+    for name in ("RoughLogSVPricer", "RoughPricingResult", "ClassicalPdeConfig"):
+        assert getattr(rough_logsv, name) is getattr(rough_logsv_pricer, name)
 
 
 def test_root_names_remain_discoverable_and_resolvable() -> None:

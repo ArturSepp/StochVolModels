@@ -9,7 +9,7 @@ import runpy
 import numpy as np
 import pandas as pd
 import pytest
-import vanilla_option_pricers as bsm
+import vanilla_option_pricers as vop
 
 from stochvolmodels import fitters
 from stochvolmodels.data.sample_option_chains import get_oca_simulated_chain_data
@@ -37,7 +37,7 @@ def test_same_report_consumes_existing_model_outputs(pricer, params):
             prices.append(
                 np.array(
                     [
-                        bsm.compute_bsm_vanilla_price(
+                        vop.compute_bsm_vanilla_price(
                             forward=chain.forwards[i],
                             strike=strike,
                             ttm=ttm,
@@ -205,7 +205,7 @@ def test_oca_conversion_preserves_time_and_applies_multiplier_once():
 def test_full_oca_handoff_reconciles_every_source_row_and_fit():
     pytest.importorskip("option_chain_analytics.diagnostics")
     example = (
-        Path(__file__).resolve().parents[3] / "examples/calibration/oca_surface_diagnostics.py"
+        Path(__file__).resolve().parents[3] / "examples/fitters/oca_surface_diagnostics.py"
     )
     if not example.exists():
         pytest.skip("repository example is absent from installed wheel")

@@ -61,7 +61,6 @@ def test_paper_atm_floor_uses_volatility_units(monkeypatch, scale):
     root = Path(__file__).resolve().parents[3]
     if not (root / "papers/forward_var").is_dir():
         pytest.skip("requires the paper checkout")
-    pytest.importorskip("qis")
     monkeypatch.syspath_prepend(str(root))
     from papers.forward_var.calibrate_forward_var import varswap_fit
 

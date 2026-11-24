@@ -4,7 +4,7 @@ import numpy as np
 
 from stochvolmodels import LogSVPricer, LogSvParams
 from stochvolmodels.models.logsv import LogSvModel
-from stochvolmodels.models.logsv_pde import LogSvPdeCoefficients
+from stochvolmodels.models.logsv.coefficients import LogSvPdeCoefficients
 from stochvolmodels.pde_solvers import (
     ADIConfig,
     BoundaryPair1D,

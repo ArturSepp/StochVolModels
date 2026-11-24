@@ -4,7 +4,7 @@ from scipy.integrate import solve_ivp
 from scipy.special import gamma
 
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
-from stochvolmodels.pricers.rough_logsv.kernel_fit import (
+from stochvolmodels.models.rough_logsv.kernel_fit import (
     KernelRule,
     MomentKey,
     fit_kernel_to_moments,
@@ -15,7 +15,7 @@ from stochvolmodels.pricers.rough_logsv.kernel_fit import (
     max_weight_sum,
     moment_fitted_kernel,
 )
-from stochvolmodels.pricers.rough_logsv.rough_kernel import european_rule
+from stochvolmodels.models.rough_logsv.rough_kernel import european_rule
 
 
 def _mittag_leffler(alpha: float, beta: float, z: float, n_terms: int = 120) -> float:

@@ -6,7 +6,15 @@ import argparse
 import tarfile
 from pathlib import Path
 
-from check_wheel_contents import REQUIRED_RUNTIME_FILES, SOURCE_TEST_ROOT, check_pde_files
+from check_wheel_contents import (
+    REQUIRED_RUNTIME_FILES,
+    SOURCE_TEST_ROOT,
+    check_package_payload,
+    check_pde_files,
+    check_retired_forwarders,
+)
+
+PROJECT_FILES = {"CHANGELOG.md", "LICENSE.txt", "MANIFEST.in", "README.md", "pyproject.toml"}
 
 
 def check_sdist(sdist_path: Path) -> None:
@@ -25,20 +33,18 @@ def check_sdist(sdist_path: Path) -> None:
         "sdist contains an absolute, empty, or parent-traversing member"
     )
 
-    check_pde_files(member.removeprefix("src/") for member in payload if member.startswith("src/"))
-
-    forbidden_prefixes = (
-        "agents/",
-        "docs/",
-        "examples/",
-        "outputs/",
-        "papers/",
-        "resources/",
-        "validation/",
-        "volatility_book/",
-    )
-    forbidden = [member for member in payload if member.startswith(forbidden_prefixes)]
+    allowed_root_files = PROJECT_FILES | {"PKG-INFO", "setup.cfg"}
+    forbidden = [
+        member for member in payload
+        if member not in allowed_root_files
+        and not member.startswith(("src/stochvolmodels/", "src/stochvolmodels.egg-info/"))
+    ]
     assert not forbidden, f"repository-only files entered sdist: {forbidden[:10]}"
+
+    source_members = {member.removeprefix("src/") for member in payload if member.startswith("src/")}
+    check_pde_files(source_members)
+    check_package_payload(source_members)
+    check_retired_forwarders(source_members)
 
     development = [
         member for member in payload if "/run_local/" in member or member.endswith("_run.py")
@@ -48,12 +54,7 @@ def check_sdist(sdist_path: Path) -> None:
         "machine-local settings.yaml entered the sdist"
     )
 
-    required = {
-        "CHANGELOG.md",
-        "LICENSE.txt",
-        "MANIFEST.in",
-        "README.md",
-        "pyproject.toml",
+    required = PROJECT_FILES | {
         "src/stochvolmodels/settings.yaml.example",
         *(f"src/{member}" for member in REQUIRED_RUNTIME_FILES),
     }

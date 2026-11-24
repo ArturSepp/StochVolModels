@@ -12,12 +12,12 @@ from stochvolmodels.fitters.lsv_fixed_point import (
     LSVFixedPointCalibrator,
     LSVFixedPointConfig,
 )
-from stochvolmodels.models.local_vol import LocalVolSurface
+from stochvolmodels.models.lsv.local_vol import LocalVolSurface
 from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
 from stochvolmodels.pricers.local_vol_pde_pricer import LocalVolPdePricer
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdePricer
-from stochvolmodels.pricers.lsv_projection import LowDensityPolicy
+from stochvolmodels.fitters.lsv_projection import LowDensityPolicy
 from stochvolmodels.tests.test_lsv_projection import _archive_prices, _quotes
 
 
@@ -33,7 +33,7 @@ def _deterministic():
 @pytest.mark.parametrize("beta", [-0.5, 0.5])
 def test_correlated_default_fits_and_strict_density_limits(beta):
     from stochvolmodels.pricers.logsv_pde_pricer import _default_grid
-    from stochvolmodels.pricers.lsv_projection import SequentialLSVProjector
+    from stochvolmodels.fitters.lsv_projection import SequentialLSVProjector
 
     params = LogSvParams(sigma0=0.2, theta=0.2, kappa1=2.0, kappa2=2.0, beta=beta, volvol=0.8)
     chain = _quotes(np.array([0.1, 0.25, 0.5]))
@@ -105,7 +105,7 @@ def test_converged_candidate_density_and_black_repricing():
 
 @pytest.mark.parametrize("method", ["project", "calibrate"])
 def test_internal_midpoint_rows_and_independent_quote_repricing(method):
-    from stochvolmodels.pricers.lsv_projection import LSVProjectionConfig, SequentialLSVProjector
+    from stochvolmodels.fitters.lsv_projection import LSVProjectionConfig, SequentialLSVProjector
 
     grid, params, target = _deterministic()
     params = replace(params, vol_backbone=pd.Series([1.1, 0.95], index=[0.06, 0.2]))
@@ -156,7 +156,7 @@ def test_flat_target_preserves_fractional_premiums_on_integer_strikes():
 
 def test_sparse_midpoint_quote_uses_target_step_counts_and_skew_oracle():
     from stochvolmodels.data.option_chain import OptionChain
-    from stochvolmodels.pricers.lsv_projection import LSVProjectionConfig, SequentialLSVProjector
+    from stochvolmodels.fitters.lsv_projection import LSVProjectionConfig, SequentialLSVProjector
 
     grid, params, original = _deterministic()
     target = LocalVolSurface(original.times, grid.x, original.values * (1 + 0.1 * grid.x.nodes))
@@ -179,7 +179,7 @@ def test_sparse_midpoint_quote_uses_target_step_counts_and_skew_oracle():
 def test_refining_midpoint_rows_reduces_flat_smile_error(method):
     from stochvolmodels.data.option_chain import OptionChain
     from stochvolmodels.pricers.logsv_pde_pricer import _default_grid
-    from stochvolmodels.pricers.lsv_projection import LSVProjectionConfig, SequentialLSVProjector
+    from stochvolmodels.fitters.lsv_projection import LSVProjectionConfig, SequentialLSVProjector
 
     params = LogSvParams(sigma0=.2, theta=.2, kappa1=2., kappa2=2., beta=-.5, volvol=.8)
     times = np.array([.1, .25, .5])

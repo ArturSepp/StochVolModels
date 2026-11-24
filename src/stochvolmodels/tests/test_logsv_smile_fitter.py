@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import pytest
-import vanilla_option_pricers as bsm
+import vanilla_option_pricers as vop
 from scipy.integrate import quad
 
 from stochvolmodels.data.sample_option_chains import get_oca_simulated_chain_data
@@ -99,7 +99,7 @@ def test_generated_grid_prices_use_vanilla_option_pricers() -> None:
 
     strikes = forward * np.exp(grid)
     np.testing.assert_allclose(calls.to_numpy() - puts.to_numpy(), forward - strikes)
-    direct_calls = bsm.compute_bsm_vanilla_slice_prices(
+    direct_calls = vop.compute_bsm_vanilla_slice_prices(
         ttm=ttm,
         forward=forward,
         strikes=strikes,

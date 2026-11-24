@@ -5,35 +5,22 @@
 Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
 
-Code accompanying published papers and active long-form research. Ten directories contain
-figure or calibration workflows; `jump_risk_premia_clustered_jumps/` is explicitly
-retained as development code rather than an exact replication package. Nothing here is imported
-by `stochvolmodels`: the dependency runs one way, `papers` uses the package.
+The tracked directories below contain paper manuscripts, implementations and exploratory studies. The package supplies their analytics. Historical inputs and fit checkpoints are available through the local research checkout.
 
 ## Install
 
-`qis` is required by the established paper workflows. It is not a core dependency of
-`stochvolmodels`, so install the extra:
+Install the research extra for paper workflows that import `qis` or OptionChainAnalytics.
 
-```python
-pip install stochvolmodels[research]
+```console
+python -m pip install "stochvolmodels[research]"
 ```
 
-The established paper workflows commonly import `qis`. Only `unified_approach_for_hedging_il_df_2025` and `sv_for_factor_hjm_rdr_2025`
-run without it.
-
-The `research` extra installs OptionChainAnalytics. One further package is not covered by an
-extra; install it for the directories that need it. Install OCA provider extras only when a
-provider workflow requires them:
-
-```python
-pip install yfinance                              # Yahoo inputs for the SSRN and jump-risk-premia scripts
-pip install "option-chain-analytics[cboe]>=5.2.0" # local CBOE provider workflows
-```
+Dependencies vary by runner. Historical plots and calibration scripts commonly import `qis`. The generated-input IL and HJM workflows can run on the core stack. Yahoo-based scripts additionally require `yfinance`.
 
 The base `option-chain-analytics` package from `[research]` is needed by option-chain workflows in
 `logsv_model_with_quadratic_drift_ijtaf_2023/` and
-`jump_risk_premia_clustered_jumps/`.
+`jump_risk_premia_clustered_jumps_sifin_2027/`.
+
 ## Papers
 
 The IJTAF and RDR directories carry the article and its LaTeX source under `paper/`, so the equations the
@@ -48,16 +35,19 @@ its compiled PDF and original figure assets, with the Python workflows under `re
 |---|---|---|
 | `logsv_model_with_quadratic_drift_ijtaf_2023` | `replication/figures/article_figures.py` | Log-normal Stochastic Volatility Model with Quadratic Drift, *IJTAF* 26(8), 2450003 — [`paper/`](logsv_model_with_quadratic_drift_ijtaf_2023/paper) · [publisher](https://doi.org/10.1142/S0219024924500031) · [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2522425) |
 | `sv_for_factor_hjm_rdr_2025` | `calibration_fig_5_6_7.py`, `calibration_fig_8_9.py` | Stochastic volatility for factor Heath-Jarrow-Morton framework, *Review of Derivatives Research* 28:12 — [`paper/`](sv_for_factor_hjm_rdr_2025/paper) · [publisher](https://doi.org/10.1007/s11147-025-09217-4) · [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4646925) |
-| `robust_volatility_models_2026/replication/ssrn_2023` (local) | `article_figures.py` · [public source snapshot](https://github.com/ArturSepp/StochVolModels/tree/588193611f4fbf5595d60b198e34cb5c24826f8a/papers/volatility_models) | What Is a Robust Stochastic Volatility Model — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027) |
-| `unified_approach_for_hedging_il_df_2025` | `run_logsv_for_il_payoff.py` | Unified Approach for Hedging Impermanent Loss of Liquidity Provision — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4887298) |
+| [`robust_volatility_models_2026`](robust_volatility_models_2026/README.md) | [Author manuscript](robust_volatility_models_2026/paper/robust_volatility_models.pdf), `replication/ssrn_2023/article_figures.py` | Sepp and Rakhmonov, What Is a Robust Stochastic Volatility Model. Historical replication requires local inputs. [Original SSRN record](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027) |
+| `unified_approach_for_hedging_il_df_2025` | `replication/run_logsv_for_il_payoff.py` | Unified Approach for Hedging Impermanent Loss of Liquidity Provision — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4887298) |
 | `inverse_options_qf_2023` | `compare_net_delta.py` | Valuation and Hedging of Cryptocurrency Inverse Options — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4606748) |
-| `jump_risk_premia_clustered_jumps` | `hawkes_estimator.py`, `risk_premia_calibration.py` | **Development code (not exact replication):** Jump risk premia in the presence of clustered jumps — [SSRN](https://ssrn.com/abstract=4735365) · [arXiv](https://arxiv.org/abs/2510.21297) |
+| [`jump_risk_premia_clustered_jumps_sifin_2027`](jump_risk_premia_clustered_jumps_sifin_2027/README.md) | [Author manuscript](jump_risk_premia_clustered_jumps_sifin_2027/paper/hawkes.pdf), `replication/hawkes_estimator.py`, `replication/risk_premia_calibration.py` | Liu, Packham and Sepp, accepted in *SIAM Journal on Financial Mathematics*. SVM provides Hawkes pricing and related estimation code. Historical exhibits use local data and co-author workflows. [Preprint](https://arxiv.org/abs/2510.21297) |
 | `t_distribution` | `illustrations.py` | Exploratory Student-t distribution analysis; no publication mapping is asserted |
 | `forward_var` | `calibrate_forward_var.py` | Exploratory forward-variance calibration analysis; no publication mapping is asserted |
 | [`barrier_options_sv_wilmott_2022`](barrier_options_sv_wilmott_2022/README.md) | `replication/article_figures.py` | Lipton and Sepp (2022), Toward an efficient hybrid method for pricing barrier options on assets with stochastic volatility, *Wilmott* — [`paper/`](barrier_options_sv_wilmott_2022/paper/README.md) · [arXiv](https://arxiv.org/abs/2202.07849) |
+| `rough_volterra_lognormal_sv_model_2026` | [Author draft](rough_volterra_lognormal_sv_model_2026/paper/rough_volterra_lognormal.pdf), `replication/rough_logsv_table5_kernel.py` | The runner and kernel fixture rebuild the Table 5 kernel. Quote panels and fit checkpoints are local. |
+
+Sepp and Rakhmonov's robust-SV revision adds measure changes, martingality and cross-asset applications. Its exhibit staging script is `papers/robust_volatility_models_2026/replication/stage_manuscript.py`. Their rough-LogSV draft has a selected replay on 45 BTC and 39 ETH quotes at H = 0.30 and 0.50. It requires the authors' quote panels and checkpoints. [Replay scope](../docs/rough_logsv.md#replaying-selected-btceth-evidence)
 
 The Hawkes jump-diffusion pricer in `src/stochvolmodels/pricers/hawkes_jd_pricer.py` implements the
-bivariate self- and cross-exciting specification used by the new development-code directory.
+bivariate self- and cross-exciting specification used in the accepted SIFIN article.
 
 ## Running
 
@@ -65,7 +55,7 @@ Run from the repository root. Most original paper directories are implicit names
 so their intra-directory imports resolve only when the root is on `sys.path`:
 
 ```python
-# Local paper checkout, original SSRN parameter table
+# Original SSRN parameter table, with local historical inputs
 python -m papers.robust_volatility_models_2026.replication.ssrn_2023.article_figures
 
 # Public checkout, offline case study using the same recorded parameters
@@ -210,4 +200,4 @@ strings with a trailing separator, matching `qis`; compose provider folders dire
 
 ## Known issues
 
-- The archival `t_distribution/mc_pricer_with_kernel.py` executes at module level. Use the guarded entry points in the table above for replication.
+- The archived GMM exploratory scripts and `t_distribution/mc_pricer_with_kernel.py` include module-level calculations. For the maintained SPX feasibility command, use the guarded runner in the table above.

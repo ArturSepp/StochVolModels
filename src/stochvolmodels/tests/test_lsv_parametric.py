@@ -17,7 +17,7 @@ from stochvolmodels.fitters.lsv_parametric import (
     LSVParametricCalibrator,
     calibration_weights,
 )
-from stochvolmodels.models.local_vol import (
+from stochvolmodels.models.lsv.local_vol import (
     LocalVolFamily,
     LocalVolSurface,
     ParametricLocalVolFormula,
@@ -228,11 +228,11 @@ def test_fit_rejects_invalid_starts_and_failed_optimizers():
 def btc_replay(request):
     """Run the tracked market replay once per start, including in a clean checkout."""
     root = Path(__file__).resolve().parents[3]
-    if not (root / "examples/calibration").is_dir():
+    if not (root / "examples/fitters").is_dir():
         pytest.skip("the frozen market replay is repository-only")
     with pytest.MonkeyPatch.context() as mp:
         mp.syspath_prepend(str(root))
-        from examples.calibration.frozen_btc_lsv import replay_btc
+        from examples.fitters.frozen_btc_lsv import replay_btc
 
         adverse = request.param
         yield adverse, replay_btc(adverse=adverse), replay_btc

@@ -84,8 +84,8 @@ not authorise adding those dependencies to core or importing them at package roo
 src/stochvolmodels/
   pricers/           concrete ModelPricer adapters and their calibration/plot methods;
                      compatibility modules retain former numerical import paths;
-                     factor_hjm/ and development run_local/ remain here
-  data/              option chains, paths and immutable density states; run_local/ diagnostics
+                     factor_hjm/ holds the rates implementation
+  data/              option chains, paths and immutable density states
   fitters/           smile, Dupire, leverage and LSV market calibration; development diagnostics
   models/            parameters, transforms, simulation, moments, LSV propagation and
                      coefficient adapters; rough_logsv/ owns rough numerical code
@@ -93,7 +93,7 @@ src/stochvolmodels/
   pde_solvers/       public generic grids, theta/ADI solvers, jump operators and diagnostics
   utils/             numerical utilities (Fourier transforms, quadrature, plotting)
   tests/             test modules (test_*.py) — inside the package
-examples/            repository-only runnable examples, grouped by task
+examples/            repository-only runnable examples and component development runners
   docs/              canonical scripts excerpted by the documentation pages
 papers/              maintained paper replication code and historical study adapters
   <paper>/paper/     article PDF and LaTeX source, where available
@@ -114,9 +114,10 @@ wheel/sdist inventory checks when adding public modules. Agent evidence stays un
 `agents/`; private provider data and machine-local settings do not enter distributions.
 
 There is no top-level `tests/` directory. Automated tests live in
-`src/stochvolmodels/tests/`. Component development runners live beside their implementation in
-the nearest `run_local/<subject>_run.py`, expose `Locals` and `run_local(local=...)`, and are
-excluded from built distributions.
+`src/stochvolmodels/tests/`. Component development runners live in
+`examples/<owning_package>/run_<subject>.py` and expose `Locals` and `run_local(local=...)`.
+Tests importing checkout-only paper modules should check for the paper package before
+their first such import, so installed-wheel collection can skip the missing study.
 
 ## Commands
 
@@ -150,9 +151,11 @@ wheel, cross-platform quickstarts, documentation/doctests/link checks, and sched
   `scipy.special.comb(..., exact=True)`. See `CONTRIBUTING.md#numerical-imports`.
 - Test files are named `test_*.py` and live in `src/stochvolmodels/tests/`. Nothing named
   `test_*.py` sits anywhere else in the package.
-- Following OptimalPortfolios, component development dispatchers live in the nearest
-  `run_local/<module>_run.py` and use `Locals` plus `run_local(local=...)`. Production modules do
-  not import them. Every pytest-shaped file is an automated test and collects at least one test.
+- Keep component development dispatchers under `examples/data/`, `examples/estimation/`,
+  `examples/fitters/`, `examples/models/` or `examples/pricers/`. Run them from the checkout with
+  `python -m examples.<owning_package>.run_<subject>`. Every pytest-shaped file collects a test.
+- Keep direct QIS imports in checkout-only examples and papers. Use `vop` for qualified calls
+  to `vanilla_option_pricers` in the installed package and its tests.
 - Line length 100 (`ruff`, configured rules `E`, `F`, `W`; CI gates correctness and import
   boundaries through `F`, `TID251`, `TID253`, and `ICN`).
 - Many pricing and simulation kernels are `numba`-compiled: keep those kernels array-based,

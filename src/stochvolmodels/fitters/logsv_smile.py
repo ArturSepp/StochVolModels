@@ -13,7 +13,7 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-import vanilla_option_pricers as bsm
+import vanilla_option_pricers as vop
 from scipy.optimize import brenth, curve_fit
 from scipy.stats import norm
 
@@ -385,14 +385,14 @@ def generate_grid_option_prices_from_slice(
         fit_params[ATM_VOL] += vol_addon
     grid_vols = calc_logsv_ivols(log_strike_grid, **fit_params)
     strikes = p0_ref * np.exp(log_strike_grid)
-    calls = bsm.compute_bsm_vanilla_slice_prices(
+    calls = vop.compute_bsm_vanilla_slice_prices(
         ttm=ttm,
         forward=p0_ref,
         strikes=strikes,
         vols=grid_vols,
         optiontypes=np.full(strikes.shape, 'C'),
     )
-    puts = bsm.compute_bsm_vanilla_slice_prices(
+    puts = vop.compute_bsm_vanilla_slice_prices(
         ttm=ttm,
         forward=p0_ref,
         strikes=strikes,

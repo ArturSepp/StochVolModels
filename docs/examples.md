@@ -47,7 +47,7 @@ statistical inputs and saved-evidence checks. Neither case needs OCA or historic
 | [`docs/calibration.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/calibration.py) | [Calibration to implied volatilities](calibration.md) | Core, bundled Bitcoin chain; the refit case takes minutes |
 | [`docs/logsv_smile_fitter.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/logsv_smile_fitter.py) | [Approximate log-normal SV smile fitter](logsv_smile_fitter.md) | Core, generated chain |
 | [`docs/surface_diagnostics.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/surface_diagnostics.py) | [Fit and surface diagnostics](surface_diagnostics.md) | Core, synthetic chains |
-| [`calibration/oca_surface_diagnostics.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/oca_surface_diagnostics.py) | Advanced OCA-to-SVM diagnostic handoff | Research extra, OCA 5.3; synthetic only |
+| [`fitters/oca_surface_diagnostics.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/oca_surface_diagnostics.py) | Advanced OCA-to-SVM diagnostic handoff | Research extra, OCA 5.3; synthetic only |
 | [`docs/numerical_accuracy_and_performance.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/numerical_accuracy_and_performance.py) | [Numerical accuracy and performance](numerical_accuracy_and_performance.md) | Core; prints timings |
 | [`docs/app_bitcoin_options.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/app_bitcoin_options.py) | [Bitcoin options: MMA, inverse and QV valuation](app_bitcoin_options.md) | Core, bundled Bitcoin chain; the calibration case takes minutes |
 | [`docs/app_positive_and_negative_skews.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/app_positive_and_negative_skews.py) | [One model for equity, VIX, gold and leveraged-ETF skews](app_positive_and_negative_skews.md) | Core, five bundled chains; the VIX refit takes minutes |
@@ -70,11 +70,11 @@ certification. Calibration convergence and market acceptance are separate report
 |---|---|---|
 | [`docs/pde_solvers.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/pde_solvers.py) | Generic solvers and short-expiry LogSV refinement | Synthetic; [solver guide](pde_solvers.md) |
 | [`docs/local_volatility_and_lsv.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/local_volatility_and_lsv.py) | Sloped Dupire buckets, fitted leverage, correlated PDE/MC and acceptance | Synthetic; [LSV guide](local_volatility_and_lsv.md) |
-| [`calibration/frozen_btc_lsv.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/frozen_btc_lsv.py) | Baseline and adverse-start fits, original quotes and independent PDE/MC replay | Bundled BTC snapshot of 21 October 2021; slow calibration |
-| [`pricing/lsv_production_stress.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricing/lsv_production_stress.py) | Seven fixed-parameter scenarios, prices, density diagnostics and expected rejection decisions | Synthetic scenarios and a tracked frozen reference; slow simulation |
+| [`fitters/frozen_btc_lsv.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/frozen_btc_lsv.py) | Baseline and adverse-start fits, original quotes and independent PDE/MC replay | Bundled BTC snapshot of 21 October 2021; slow calibration |
+| [`pricers/lsv_production_stress.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricers/lsv_production_stress.py) | Seven fixed-parameter scenarios, prices, density diagnostics and expected rejection decisions | Synthetic scenarios and a tracked frozen reference; slow simulation |
 
-Run the two larger replays with `python -m examples.calibration.frozen_btc_lsv` and
-`python -m examples.pricing.lsv_production_stress`. The independent historical source in
+Run the two larger replays with `python -m examples.fitters.frozen_btc_lsv` and
+`python -m examples.pricers.lsv_production_stress`. The independent historical source in
 `validation/pde_reference/` is public and repository-only; `python -m pytest -m pde_reference`
 executes comparisons with it. For the guide scripts, run the corresponding file directly.
 
@@ -82,24 +82,25 @@ executes comparisons with it. For the guide scripts, run the corresponding file 
 
 | Script | What it shows | Data | Related page |
 |---|---|---|---|
-| [`pricing/run_heston.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricing/run_heston.py) | Heston smiles for three correlations | Core | [Heston](heston_model.md) |
-| [`pricing/run_heston_sv_pricer.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricing/run_heston_sv_pricer.py) | Heston pricing and calibration to the bundled Bitcoin chain | Core, compatibility names | [Heston](heston_model.md) |
-| [`pricing/run_bsm_mgf_pricer.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricing/run_bsm_mgf_pricer.py) | Black-Scholes prices through the transform pricer, under both measures | Core, internal transform API | [Fourier pricing of European options](european_option_pricing.md) |
-| [`pricing/plot_bsm_zero_dte_theta.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricing/plot_bsm_zero_dte_theta.py) | Time decay of zero-days-to-expiry options | Core | [Fourier pricing of European options](european_option_pricing.md) |
-| [`pricing/run_pricing_options_on_qvar.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricing/run_pricing_options_on_qvar.py) | Options on quadratic variance under LogSV and Heston against Monte Carlo | Core, sample chain | [Analytic versus Monte Carlo](analytic_vs_monte_carlo.md) |
-| [`pricing/run_qvar_analytics.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricing/run_qvar_analytics.py) | Quadratic-variance slice pricer against Monte Carlo | Core, internal API | [Analytic versus Monte Carlo](analytic_vs_monte_carlo.md) |
-| [`pricing/run_hawkes_pricer.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricing/run_hawkes_pricer.py) | Implied volatilities of the Hawkes jump-diffusion | Core, advanced names | [API reference](api.md) |
+| [`pricers/run_heston_pricer.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricers/run_heston_pricer.py) | Heston slice pricing, smiles for three correlations and calibration to the bundled Bitcoin chain | Core | [Heston](heston_model.md) |
+| [`pricers/run_lognormal_sv_pricer.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricers/run_lognormal_sv_pricer.py) | Classical LogSV prices, parameter sensitivities, fixed-random simulations and analytic calibration | Core, bundled Bitcoin chain; some cases take minutes | [Calibration](calibration.md) |
+| [`pricers/run_rough_logsv_pricer.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricers/run_rough_logsv_pricer.py) | Standalone rough pricer and optional legacy Monte Carlo comparisons | Core, generated or bundled inputs | [Monte Carlo simulation](monte_carlo_simulation.md) |
+| [`pricers/run_bsm_mgf_pricer.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricers/run_bsm_mgf_pricer.py) | Black-Scholes prices through the transform pricer, under both measures | Core, internal transform API | [Fourier pricing of European options](european_option_pricing.md) |
+| [`pricers/plot_bsm_zero_dte_theta.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricers/plot_bsm_zero_dte_theta.py) | Time decay of zero-days-to-expiry options | Core | [Fourier pricing of European options](european_option_pricing.md) |
+| [`pricers/run_qvar_analytics.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricers/run_qvar_analytics.py) | Options on quadratic variance under LogSV and Heston against Monte Carlo | Core, sample chain | [Analytic versus Monte Carlo](analytic_vs_monte_carlo.md) |
+| [`pricers/run_hawkes_jd_pricer.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricers/run_hawkes_jd_pricer.py) | Implied volatilities of the Hawkes jump-diffusion | Core, advanced names | [API reference](api.md) |
+
+The [repository example index](https://github.com/ArturSepp/StochVolModels/blob/main/examples/README.md#offline-pricing-and-estimation) lists every pricing and historical-estimation command, its data requirements and expected result.
 
 ## Calibration
 
 | Script | What it shows | Data | Related page |
 |---|---|---|---|
 | [`getting_started/quick_run_lognormal_sv_pricer.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/getting_started/quick_run_lognormal_sv_pricer.py) | LogSV smile plot and calibration | Core, bundled Bitcoin chain | [Calibration](calibration.md) |
-| [`calibration/run_lognormal_sv_pricer.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/run_lognormal_sv_pricer.py) | Prices, parameter sensitivities, Monte Carlo comparison, analytic and Monte Carlo calibration, rough Monte Carlo | Core, bundled Bitcoin chain; some cases take minutes | [Calibration](calibration.md) |
-| [`calibration/run_logsv_smile_fitter.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/run_logsv_smile_fitter.py) | Approximate LogSV smile fit | Core, bundled generated chain | [Calibration](calibration.md) |
-| [`calibration/run_oca_logsv_calibration.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/run_oca_logsv_calibration.py) | Conversion of OptionChainAnalytics data and LogSV calibration | `research` extra, generated quotes | [Calibration](calibration.md) |
-| [`calibration/load_cboe_option_chain.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/load_cboe_option_chain.py) | Loading a cached SPX or VIX chain | `research` extra, local CBOE cache | [Option chains](option_chains_and_conventions.md) |
-| [`calibration/run_spy_thetadata_month.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/run_spy_thetadata_month.py) | SPY smile fit and calibration over one month | `research` extra, local ThetaData cache | [Calibration](calibration.md) |
+| [`fitters/run_logsv_smile_fitter.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/run_logsv_smile_fitter.py) | Approximate LogSV smile fit | Core, bundled generated chain | [Calibration](calibration.md) |
+| [`fitters/run_oca_logsv_calibration.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/run_oca_logsv_calibration.py) | Conversion of OptionChainAnalytics data and LogSV calibration | `research` extra, generated quotes | [Calibration](calibration.md) |
+| [`data/load_cboe_option_chain.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/data/load_cboe_option_chain.py) | Loading a cached SPX or VIX chain | `research` extra, local CBOE cache | [Option chains](option_chains_and_conventions.md) |
+| [`data/run_spy_thetadata_month.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/data/run_spy_thetadata_month.py) | SPY smile fit and calibration over one month | `research` extra, local ThetaData cache | [Calibration](calibration.md) |
 
 ## Research diagnostics
 
@@ -110,14 +111,14 @@ contracts; historical studies require separately frozen inputs, conventions and 
 
 | Script | Data and dependencies | Evidence produced |
 |---|---|---|
-| [`calibration/compare_smile_fitters.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/compare_smile_fitters.py) | Core, frozen synthetic suite | Research SVI/SSVI and incumbent comparison; holdouts, optimizer failures and repeated timing |
-| [`calibration/diagnose_wing_reliability.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/diagnose_wing_reliability.py) | Core, synthetic training quotes; performs refits | Training-shock sensitivity with incomplete-draw and strike-support evidence |
-| [`calibration/combined_research_diagnostics.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/combined_research_diagnostics.py) | Core; synthetic outputs or saved reliability and optional serialized OCA sidecars | Separate quality, parity, fit, support and optional policy facets; no refit |
-| [`calibration/replay_surface_diagnostics.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/replay_surface_diagnostics.py) | Core; synthetic history or frozen manifest/observations | Persistent violations, unavailable slots, observed recovery and split censoring; no refit |
-| [`calibration/validate_historical_surfaces.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/calibration/validate_historical_surfaces.py) | Research extra and licensed local CBOE inputs | Historical fit, surface and opt-in sensitivity reports with exclusions retained |
+| [`fitters/compare_smile_fitters.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/compare_smile_fitters.py) | Core, frozen synthetic suite | Research SVI/SSVI and incumbent comparison; holdouts, optimizer failures and repeated timing |
+| [`fitters/diagnose_wing_reliability.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/diagnose_wing_reliability.py) | Core, synthetic training quotes; performs refits | Training-shock sensitivity with incomplete-draw and strike-support evidence |
+| [`fitters/combined_research_diagnostics.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/combined_research_diagnostics.py) | Core; synthetic outputs or saved reliability and optional serialized OCA sidecars | Separate quality, parity, fit, support and optional policy facets; no refit |
+| [`fitters/replay_surface_diagnostics.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/replay_surface_diagnostics.py) | Core; synthetic history or frozen manifest/observations | Persistent violations, unavailable slots, observed recovery and split censoring; no refit |
+| [`fitters/validate_historical_surfaces.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/validate_historical_surfaces.py) | Research extra and licensed local CBOE inputs | Historical fit, surface and opt-in sensitivity reports with exclusions retained |
 
 Two supporting modules make synthetic studies reproducible without private archives.
-[`_svi_research_fixtures.py`](../examples/calibration/_svi_research_fixtures.py) generates
+[`_svi_research_fixtures.py`](../examples/fitters/_svi_research_fixtures.py) generates
 48 observed datasets across four noise/distortion regimes and 12 optional hidden-wing
 alternatives. Each alternative shares its control's exact observations; paired truths must
 not be counted as independent calibration datasets. Regimes within a geometry also share
@@ -125,7 +126,7 @@ their random driver, so distinct observation IDs do not establish independence. 
 truth is kept separate from calibration inputs. These cases test diagnostic limitations,
 not market-noise validity.
 
-[`_research_study_tools.py`](../examples/calibration/_research_study_tools.py) selects
+[`_research_study_tools.py`](../examples/fitters/_research_study_tools.py) selects
 order-statistic tolerance limits for caller-supplied coverage and error probability, retaining
 missing scores and insufficient samples as unavailable. It also verifies explicit artifact
 manifests and independently reconstructs a saved single-slice wing score from all requested
@@ -157,8 +158,8 @@ before supplying a calibration cohort or a separately frozen manifest.
 The two saved-evidence runners can be tried without data credentials or calibration:
 
 ```console
-python examples/calibration/combined_research_diagnostics.py --output <new-output-directory>
-python examples/calibration/replay_surface_diagnostics.py --output <different-new-output-directory>
+python examples/fitters/combined_research_diagnostics.py --output <new-output-directory>
+python examples/fitters/replay_surface_diagnostics.py --output <different-new-output-directory>
 ```
 
 Use actual new directories in place of the angle-bracket placeholders. Output paths
@@ -177,8 +178,8 @@ an SVM empirical noise model or an automatic retrospective qualification option.
 
 | Script | What it shows | Data |
 |---|---|---|
-| [`options_time_series_data/plot_cboe_vol_time_series.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/options_time_series_data/plot_cboe_vol_time_series.py) | At-the-money volatility and 25-delta skew over time | `research` extra, local CBOE cache |
-| [`options_time_series_data/plot_vix_1m_atm_vol.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/options_time_series_data/plot_vix_1m_atm_vol.py) | Thirty-day constant-maturity VIX at-the-money volatility | Local partitioned VIX cache |
+| [`data/plot_cboe_vol_time_series.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/data/plot_cboe_vol_time_series.py) | At-the-money volatility and 25-delta skew over time | `research` extra, local CBOE cache |
+| [`data/plot_vix_1m_atm_vol.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/data/plot_vix_1m_atm_vol.py) | Thirty-day constant-maturity VIX at-the-money volatility | Local partitioned VIX cache |
 
 The [examples README](https://github.com/ArturSepp/StochVolModels/blob/main/examples/README.md)
 describes the four routes to an `OptionChain` (the bundled chain, OptionChainAnalytics data, and
@@ -200,8 +201,9 @@ extra, and several need local data. Their status and prerequisites are described
 | `robust_volatility_models_2026/replication/ssrn_2023` (local) | `article_figures.py` | [Original SSRN scripts](https://github.com/ArturSepp/StochVolModels/tree/588193611f4fbf5595d60b198e34cb5c24826f8a/papers/volatility_models) |
 | `inverse_options_qf_2023` | `compare_net_delta.py` | Supporting illustrations for the inverse-options paper |
 | `unified_approach_for_hedging_il_df_2025` | `replication/replicate_figures.py`, `replication/verify_replication.py` | Corrected author manuscript and theoretical replication (Digital Finance 2025) |
-| `jump_risk_premia_clustered_jumps` | `hawkes_estimator.py`, `risk_premia_calibration.py` | Development code related to a working paper |
-| `t_distribution`, `forward_var`, `barriers` | see the papers README | Exploratory; no publication mapping |
+| `jump_risk_premia_clustered_jumps_sifin_2027` | `replication/hawkes_estimator.py`, `replication/risk_premia_calibration.py` | Accepted SIFIN article. [Manuscript, replication scope and exploratory scripts](https://github.com/ArturSepp/StochVolModels/blob/main/papers/jump_risk_premia_clustered_jumps_sifin_2027/README.md) |
+| `barrier_options_sv_wilmott_2022` | `replication/article_figures.py` | Published barrier-options paper (*Wilmott*, 2022) |
+| `t_distribution`, `forward_var` | `illustrations.py`, `calibrate_forward_var.py` | Exploratory terminal-law and forward-variance examples |
 
 ## Running the examples
 

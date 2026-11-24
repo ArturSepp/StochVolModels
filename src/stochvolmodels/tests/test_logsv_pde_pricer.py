@@ -11,7 +11,7 @@ from scipy.special import ndtr
 
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.models.logsv import LogSvMeasure, LogSvModel
-from stochvolmodels.models.logsv_pde import LogSvPdeCoefficients
+from stochvolmodels.models.logsv.coefficients import LogSvPdeCoefficients
 from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdePricer

@@ -191,25 +191,28 @@ jobs:
         run: |
           uv run --no-project python scripts/check_sdist_contents.py dist/*.tar.gz
           uv run --no-project python scripts/check_wheel_contents.py dist/*.whl
-      - name: Install core wheel and test tools in a clean environment
+      - name: Install the core wheel with plain pip
         run: |
-          uv venv --python 3.12 "$RUNNER_TEMP/wheelcheck-venv"
-          uv pip install --python "$RUNNER_TEMP/wheelcheck-venv/bin/python" dist/*.whl pytest pytest-regressions
-      - name: Run complete installed-package suite outside the checkout
+          "$(uv python find 3.12)" -m venv "$RUNNER_TEMP/wheelcheck-venv"
+          "$RUNNER_TEMP/wheelcheck-venv/bin/python" -m pip install dist/*.whl
+          "$RUNNER_TEMP/wheelcheck-venv/bin/python" -m pip check
+      - name: Verify core metadata and pricing outside the checkout
         run: |
           mkdir -p "$RUNNER_TEMP/wheelcheck"
           cd "$RUNNER_TEMP/wheelcheck"
-          "$RUNNER_TEMP/wheelcheck-venv/bin/python" -m pytest --pyargs stochvolmodels -m "not slow" -q
+          "$RUNNER_TEMP/wheelcheck-venv/bin/python" -I -c "from importlib.util import find_spec; assert all(find_spec(name) is None for name in ('qis', 'option_chain_analytics'))"
+          "$RUNNER_TEMP/wheelcheck-venv/bin/python" -I -c "import importlib.metadata as m, stochvolmodels as s; assert s.__version__ == m.version('stochvolmodels')"
+          "$RUNNER_TEMP/wheelcheck-venv/bin/python" -I "$GITHUB_WORKSPACE/examples/getting_started/quickstart.py"
       - name: Run PDE examples against the installed core wheel
         run: |
           cd "$RUNNER_TEMP/wheelcheck"
           "$RUNNER_TEMP/wheelcheck-venv/bin/python" -I "$GITHUB_WORKSPACE/scripts/check_pde_examples.py" --installed "$GITHUB_WORKSPACE/examples/docs/pde_solvers.py" "$GITHUB_WORKSPACE/examples/docs/local_volatility_and_lsv.py"
 
-      - name: Verify installed metadata and quickstart
+      - name: Run installed-package fast tests
         run: |
           cd "$RUNNER_TEMP/wheelcheck"
-          "$RUNNER_TEMP/wheelcheck-venv/bin/python" -c "import importlib.metadata as m, stochvolmodels as s; assert s.__version__ == m.version('stochvolmodels')"
-          "$RUNNER_TEMP/wheelcheck-venv/bin/python" "$GITHUB_WORKSPACE/examples/getting_started/quickstart.py"
+          "$RUNNER_TEMP/wheelcheck-venv/bin/python" -m pip install pytest pytest-regressions
+          "$RUNNER_TEMP/wheelcheck-venv/bin/python" -I -m pytest --pyargs stochvolmodels -m "not slow" -q
 
   stack-policy:
     name: stack import boundaries

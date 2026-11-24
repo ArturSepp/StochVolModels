@@ -181,11 +181,13 @@ simulator `model_mc_price_chain` within three combined standard errors at every 
 
 ### The Heston scheme
 
-`HestonPricer.model_mc_price_chain` simulates the variance with an Euler step, floors it at
+`HestonPricer.model_mc_price_chain` defaults to an Euler variance step, floors it at
 $10^{-4}$ after each step, and accumulates the log-price and the QV with left-point increments, on
-360 steps per year; it takes no `nb_steps` argument.
+360 steps per year. For ordinary calls and puts, `mc_scheme="qe_m"` selects a nonnegative
+variance transition and a martingale-corrected log-price step. Set `steps_per_year` and
+`seed` on the QE-M pricer to reproduce a run. [QE-M benchmarks and conventions](heston_model.md#martingale-corrected-qe-simulation)
 
-The provisional `HestonModel.simulate_paths` adapter uses this same variance-floor scheme with
+The provisional `HestonModel.simulate_paths` adapter supports both schemes with
 explicit `steps_per_year` and a local seed. It returns named log-return, variance, volatility and
 integrated-variance states under `Q_MMA`, together with raw zero-drift asset levels. State values
 continue across observation intervals; a fresh call starts at the model's initial state. See the

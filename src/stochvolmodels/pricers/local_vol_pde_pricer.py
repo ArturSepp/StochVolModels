@@ -4,7 +4,7 @@ Examples
 --------
 Price a six-month call using two distinct volatility buckets.
 
->>> from stochvolmodels.models.local_vol import LocalVolSurface
+>>> from stochvolmodels.models.lsv.local_vol import LocalVolSurface
 >>> from stochvolmodels.pde_solvers import Grid1D
 >>> from stochvolmodels.pricers.local_vol_pde_pricer import LocalVolPdePricer
 >>> axis = Grid1D.uniform(-0.5, 0.5, 3)
@@ -21,7 +21,7 @@ import numpy as np
 from numba.typed import List
 
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.models.local_vol import (
+from stochvolmodels.models.lsv.local_vol import (
     CoordinateSystem,
     LocalVolCoefficientProvider1D,
     LocalVolSurface,

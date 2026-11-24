@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stochvolmodels"
-version = "2.19.0.dev1"
+version = "2.19.0.dev9"
 description = "Fourier-transform pricing, Monte Carlo validation, and calibration of European options under stochastic-volatility models in Python"
 readme = "README.md"
 license = "MIT"
@@ -122,13 +122,16 @@ exclude = [
     "docs*",
     "notebooks*",
     "resources*",
-    "stochvolmodels.run_local*",
-    "stochvolmodels.*.run_local*",
-    "stochvolmodels.*.*.run_local*",
 ]
 
+[tool.setuptools.exclude-package-data]
+"*" = ["README.md"]
+
 [tool.setuptools.package-data]
-stochvolmodels = ["tests/*/*.npz"]
+stochvolmodels = [
+    "settings.yaml.example",
+    "tests/test_rough_logsv_pricer_regression/test_rough_logsv_pricer_pricing_regression.npz",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["src/stochvolmodels/tests"]
@@ -176,6 +179,7 @@ banned-module-level-imports = [
 [tool.ruff.lint.flake8-import-conventions.aliases]
 numpy = "np"
 pandas = "pd"
+vanilla_option_pricers = "vop"
 
 [tool.ruff.lint.per-file-ignores]
 # Experimental research modules retain dormant derivation variables and imports.
@@ -183,8 +187,6 @@ pandas = "pd"
 "src/stochvolmodels/models/rough_logsv/split_simulation.py" = ["F401"]
 # Dedicated optional-data leaf; it is not reachable from the package root.
 "src/stochvolmodels/data/fetch_option_chain.py" = ["TID253"]
-# Development runners are optional-extra entry points and are not imported by the package root.
-"src/stochvolmodels/**/run_local/*_run.py" = ["TID253"]
 
 [tool.interrogate]
 fail-under = 100
@@ -197,17 +199,12 @@ exclude = [
     "src/stochvolmodels/pricers/factor_hjm",
     "src/stochvolmodels/pricers/rough_logsv",
     "src/stochvolmodels/models/rough_logsv",
-    "src/stochvolmodels/data/run_local",
-    "src/stochvolmodels/fitters/run_local",
-    "src/stochvolmodels/pricers/run_local",
-    "src/stochvolmodels/pricers/logsv/run_local",
-    "src/stochvolmodels/pricers/rough_logsv/run_local",
 ]
 
 [tool.coverage.run]
 source = ["stochvolmodels"]
 omit = [
-    "*/tests/*", "*/examples/*", "*/run_local/*", "*/.agents/*",
+    "*/tests/*", "*/examples/*", "*/.agents/*",
 ]
 
 [tool.coverage.report]

@@ -15,11 +15,11 @@ pytestmark = pytest.mark.repository_only
 @pytest.fixture(scope="module")
 def reliability():
     root = next((p for p in Path(__file__).resolve().parents
-                 if (p / "examples/calibration/compare_smile_fitters.py").is_file()), None)
+                 if (p / "examples/fitters/compare_smile_fitters.py").is_file()), None)
     if root is None:
         pytest.skip("wing reliability is repository-only")
     with pytest.MonkeyPatch.context() as patch:
-        patch.syspath_prepend(str(root / "examples/calibration"))
+        patch.syspath_prepend(str(root / "examples/fitters"))
         yield importlib.import_module("diagnose_wing_reliability")
 
 

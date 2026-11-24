@@ -24,7 +24,8 @@ a number, and records how long the main operations take on one machine.
 |---|---|---|---|
 | Truncation of the MGF expansion | Depends on parameters, maturity and strike; coefficient correction does not remove it, and higher order need not improve it | Compare with Monte Carlo or the independent replication PDE; reject failed coefficient solves | [Affine expansion](affine_expansion.md), [analytic versus Monte Carlo](analytic_vs_monte_carlo.md) |
 | Historical coefficient defects | Corrected in current source; replaying legacy coefficients changes the Bitcoin-fit one-year IVs by up to 1.4 volatility points | Independent generator checks; legacy replay is documentation-only | [Affine expansion](affine_expansion.md#second-order-linear-terms) |
-| Transform grid | Aliasing of order $e^{-\pi / (2 \Delta y)}$; below $10^{-6}$ in price at 40% volatility, but several volatility points when $\sigma_0 \sqrt{\tau}$ is small | `vol_scaler`, partly | [Fourier pricing](european_option_pricing.md#interpretation-and-limitations) |
+| Historical uniform transform grid | A short cutoff can truncate the tail. Spacing also affects the inversion kernel, particularly when $\sigma_0 \sqrt{\tau}$ is small. | Historical grid settings | [Fourier pricing](european_option_pricing.md#interpretation-and-limitations) |
+| Controlled Fourier inversion | Estimates panel resolution and tail mass per discounted premium. The finite LogSV expansion has a separate approximation error. | `fourier={"price_atol": 1e-6}` | [Heston settings](heston_model.md#controlled-fourier-pricing), [LogSV chain pricing](logsv_model.md#frozen-fourier-grid-for-a-chain) |
 | Implied-volatility inversion | Returns `NaN` outside 1% to 500%; magnifies small price errors where vega is small | Compare prices | [Fourier pricing](european_option_pricing.md#implied-volatilities) |
 | Monte Carlo sampling | Standard error falling as $1 / \sqrt{N}$ | `nb_path` | [Monte Carlo schemes](monte_carlo_simulation.md) |
 | Monte Carlo time step | Strong order about one for log-volatility and one half for the log-price; overflow for very large steps; short-dated wing and quadratic-variance prices are sensitive to step size | `nb_steps`, per year | [Monte Carlo schemes](monte_carlo_simulation.md), [QV options](quadratic_variance_options.md) |
@@ -48,13 +49,88 @@ replace them with conditional transformed-expectation estimates. Current ODE gua
 reported solver failure, incomplete horizons and nonfinite states; they cannot establish
 accuracy of a finite approximation that happens to return a finite price.
 
+## Fourier modes and reference prices
+
+Heston and classical LogSV use the historical grid when `fourier` is omitted or set to
+`"legacy"`. A mapping selects controlled quadrature. For a USD-denominated option,
+`fourier={"price_atol": 0.01}` targets one cent per discounted premium. An empty mapping
+targets `1e-6` in the same units. A positive `price_rtol` adds a fraction of the supplied
+discounted time value. Heston selects a grid per expiry. LogSV selects one grid for the chain,
+and both analytic calibrators freeze the grid during each optimizer run.
+
+| Comparison | Inputs and reference | Result |
+|---|---|---|
+| Historical Heston replay | Ten-year call, forward 100, strike 140, unit discount | Omitted and explicit legacy modes both give 0.22052944. Controlled gives 0.29577444. |
+| Heston inversion | Five parameter/maturity cases, four strikes each, independent probability integrals | Maximum absolute controlled premium difference was `1.64e-9` for a `1e-6` target. |
+| LogSV inversion | Three two-expiry chains, three strikes per expiry, wider Gauss–Legendre inversion of the same second-order expansion | Maximum absolute controlled premium difference was `2.67e-9`. The one-day at-the-money call was 0.58564723. |
+
+For the [published Heston inputs](heston_model.md#controlled-fourier-pricing), controlled
+pricing corrects a 25.4% shortfall in the wing. Changing the Heston default would also
+change historical prices, which requires separate approval of the numerical baselines.
+LogSV also keeps controlled pricing and calibration opt-in. On the bundled 49-quote Bitcoin
+`PARAMS4` fit with SLSQP finite differences, both grids produced an implied-volatility
+RMSE of 1.371 volatility points. The largest premium difference from independent
+inversion fell from USD 0.0012882 to USD 0.000000443.
+At the USD 0.000001 tolerance, the controlled fit used 552,960 frequency and time-segment
+solves, including one restart, compared with 408,000 for legacy. The two warm timing
+runs ranged from 16.4 to 23.4 minutes for controlled and 11.6 to 20.8 minutes for legacy
+under overlapping workloads. [Calibration example and benchmark](calibration.md#fixed-fourier-grids)
+
+For an explicit LogSV replay, pass the original `vol_scaler` and `max_phi` with
+`fourier="legacy"`. Historical backbone replays can also specify `historical_backbone_order`.
+Controlled pricing raises `FloatingPointError` with a diagnostic such as
+`cutoff budget exhausted` when the tail remains unresolved at the requested limit.
+The exception records the maturity, strike, cutoff, sample count and error estimates.
+Controlled calibration raises `CalibrationError` on an exhausted limit, a failed final
+transform or a second fitted-premium mismatch. [Work limits](heston_model.md#controlled-fourier-pricing)
+
+### Choosing a pricing or calibration method
+
+| Task | Public entry point | Numerical detail |
+|---|---|---|
+| Price a Heston or classical LogSV vanilla chain to a premium tolerance | `price_chain(..., fourier={})` | [Panel resolution and tail estimates](european_option_pricing.md#controlled-resolution-and-tail-checks) |
+| Requote classical LogSV at prepared expiries, or change initial volatility | `LogSVPricer.prepare_fourier`, then `grid.price_chain` or `grid.sigma0_sensitivity` | [Stored coefficients, sensitivity units and refinement](logsv_model.md#repricing-on-a-prepared-grid) |
+| Fit classical LogSV `PARAMS4` or `PARAMS5` to implied volatilities | `calibrate_model_params_to_chain(..., fourier={})` | [Tangent equations and model vega](calibration.md#from-coefficient-sensitivities-to-the-iv-loss-gradient) · [PARAMS4 benchmark](calibration.md#four-parameter-logsv-gradient) · [PARAMS5 benchmark](calibration.md#five-parameter-logsv-gradient) |
+| Simulate Heston forward and variance paths | `HestonModel.simulate_paths(..., mc_scheme="qe_m")` | [Variance branches and conditional martingale correction](heston_model.md#martingale-corrected-qe-simulation) |
+
+### LogSV expansion against the full-state model
+
+The IJTAF verification compares the money-market measure, flat-backbone model with a
+state-grid PDE and independent Monte Carlo simulation. The table gives maximum absolute
+differences across strikes of 95%, 100% and 105% of forward. One basis point (bp) is
+`0.0001` of the unit forward, and the discount factor is one. MC standard errors use
+four independent scrambled Sobol samples of 32,768 paths each. The runner also compares
+512 with 256 time steps and refines the PDE grid. [Paper verification and parameters](https://github.com/ArturSepp/StochVolModels/blob/main/papers/logsv_model_with_quadratic_drift_ijtaf_2023/README.md)
+
+| Case | Paper expansion vs PDE (bp) | PDE vs MC (bp) | Largest MC standard error (bp) |
+|---|---:|---:|---:|
+| SPY, 12 days | 0.00737 | 0.00040 | 0.00046 |
+| SPY, 93 days | 0.36451 | 0.02102 | 0.00923 |
+| Bitcoin, one month | 0.12409 | 0.01169 | 0.01717 |
+| Stressed SPX, about 43 days | 19.13464 | 0.00128 | 0.00567 |
+
+The stressed at-the-money call has a 19.13 bp expansion discrepancy even with the paper's
+tightly solved coefficients and independent inversion. The controlled premium tolerance
+applies to the integral of the chosen expansion. On the 12-day SPY at-the-money call, the
+public pricer gives 0.016652118 on the legacy grid and 0.016651787 on the controlled grid.
+The full-state PDE gives 0.016651050 and Monte Carlo gives 0.016651021, with a scramble
+standard error of 0.00028 bp of forward. Across the three strikes the controlled premiums
+differed by at most `1.36e-11` from the paper's 48-point Gauss–Legendre panel rule through
+frequency 2,048 using identical coefficient settings, and by `7.37e-7` from the full-state
+PDE. To reproduce the full-state checks and compare both public pricing modes on the 12-day
+SPY calls, run these commands from a source checkout with `src` on the Python path.
+
+```console
+python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.run_checks --output agents/fourier-logsv-verification.json
+python -m examples.docs.numerical_accuracy_and_performance --fourier-report agents/fourier-logsv-verification.json
+```
+
 ## Performance
 
 The core uses NumPy, SciPy and Numba. The first call in a process compiles Numba kernels, so time a
-warm call separately from the first. The transform pricer integrates the coefficient system with
-`scipy.integrate.solve_ivp` once per point of the 1,000-point transform grid, from zero to the last
-maturity of the chain, so the cost of a slice hardly depends on the number of strikes, and a chain
-costs about as much as its longest maturity.
+warm call separately from the first. The September 2026 measurements below used the historical
+1,000-point LogSV grid. All strikes at an expiry share coefficient solves. For a flat
+backbone those coefficients can continue to the next expiry on the same nodes.
 
 One run of [`examples/docs/numerical_accuracy_and_performance.py`](../examples/docs/numerical_accuracy_and_performance.py)
 on 27 September 2026, on an Intel Core Ultra 7 265 with 20 threads and 31 GB of memory, Windows 11,

@@ -20,7 +20,7 @@ from stochvolmodels.pde_solvers.coefficients import PDE2DCoefficients
 from stochvolmodels.pricers.density_pricer import CoordinateSystem, DensityState2D
 from stochvolmodels.pde_solvers.grids import Grid1D, TensorGrid2D
 from validation.pde_reference.local_vol import LocalVolSurface
-from stochvolmodels.models.logsv_pde import LogSvCoefficientProvider
+from stochvolmodels.models.logsv.coefficients import LogSvCoefficientProvider
 from stochvolmodels.pde_solvers.operators_1d import PDEDirection
 from stochvolmodels.pde_solvers.solver_1d import DensityPolicy
 from stochvolmodels.pde_solvers.solver_2d import PDE2DADISolver, PDEDiagnostics2D

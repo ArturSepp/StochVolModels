@@ -192,14 +192,22 @@ def vanilla_slice_pricer_with_mgf_grid(log_mgf_grid: np.ndarray,
                                        is_spot_measure: bool = True,
                                        is_simpson: bool = True
                                        ) -> np.ndarray:
-    """
-    generic function for pricing vanilla options on the spot given the mgf grid
-    mgf in x is function defined on log-price transform phi grids
-    transform variable is phi_grid = real_phi + i*p
-    grid can be non-uniform
-    """
-    p = np.imag(phi_grid)
+    """Price vanilla options with the historical Fourier-grid weights."""
     dp = _compute_legacy_pricer_weights(var_grid=phi_grid, is_simpson=is_simpson)
+    return _vanilla_slice_with_weights(
+        log_mgf_grid, phi_grid, dp, forward, strikes, optiontypes, discfactor, is_spot_measure,
+        legacy_sum=True,
+    )
+
+
+@njit(cache=False, fastmath=True)
+def _vanilla_slice_with_weights(
+    log_mgf_grid: np.ndarray, phi_grid: np.ndarray, dp: np.ndarray,
+    forward: float, strikes: np.ndarray, optiontypes: np.ndarray,
+    discfactor: float, is_spot_measure: bool, legacy_sum: bool = False,
+) -> np.ndarray:
+    """Invert the vanilla payoff with integration weights aligned to the supplied contour."""
+    p = np.imag(phi_grid)
 
     if np.all(np.equal(np.abs(np.real(phi_grid)), 0.5)):  # optimized for phi = +/-0.5 + i*p
         p_payoff = (dp / np.pi) / (p * p + 0.25) + 1j * 0.0  # add zero complex part for numba
@@ -212,8 +220,8 @@ def vanilla_slice_pricer_with_mgf_grid(log_mgf_grid: np.ndarray,
     log_strikes = np.log(forward/strikes)
     option_prices = np.zeros_like(log_strikes)
     for idx, (x, strike, type_) in enumerate(zip(log_strikes, strikes, optiontypes)):
-        # compute sum using trapesoidal rule
-        capped_option_price = np.nansum(np.real(p_payoff*np.exp(-x * phi_grid + log_mgf_grid)))
+        terms = np.real(p_payoff*np.exp(-x * phi_grid + log_mgf_grid))
+        capped_option_price = np.nansum(terms) if legacy_sum else np.sum(terms)
         if is_spot_measure:
             if type_ == 'C':
                 option_prices[idx] = discfactor*(forward - strike * capped_option_price)

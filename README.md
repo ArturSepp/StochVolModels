@@ -99,7 +99,7 @@ re-exported from `stochvolmodels`; for strategy backtesting and reporting, use
 
 Install using
 ```bash
-pip install stochvolmodels
+python -m pip install stochvolmodels
 ```
 Upgrade using
 ```bash
@@ -120,7 +120,7 @@ Core dependencies:
 - `matplotlib >= 3.8.0`
 - `seaborn >= 0.13.0`
 
-Version 2.19.0.dev1 requires Python 3.11.5 or newer. Versions 2.6.0 through 2.18.7 required
+Version 2.19.0.dev9 requires Python 3.11.5 or newer. Versions 2.6.0 through 2.18.7 required
 Python 3.11 or newer. Python 3.12 is the development and primary CI interpreter.
 Published version 2.5.0 retains its original Python 3.10 requirement.
 
@@ -128,14 +128,14 @@ Optional extras:
 
 | Extra | Installs | Needed for |
 |---|---|---|
-| `research` | `qis >= 5.11.0`, `option-chain-analytics[cboe] >= 6.0.0` | option-chain calibration, local Parquet data, and scripts in `papers/` |
+| `research` | `mpmath >= 1.3.0`, `qis >= 5.11.0`, `option-chain-analytics[cboe] >= 6.0.0` | option-chain calibration, local Parquet data, and scripts in `papers/` |
 | `visualization` | `plotly >= 5.0.0` | interactive figures |
 | `numerical` | `scikit-learn >= 1.3.0`, `statsmodels >= 0.14.2` | statistical fits |
 | `jupyter` | `jupyter`, `notebook`, `jupyterlab`, `ipykernel`, `ipywidgets` | notebooks |
 
 Install an extra using
 ```bash
-pip install stochvolmodels[research]
+python -m pip install "stochvolmodels[research]"
 ```
 The library itself imports none of these: `import stochvolmodels` needs the core dependencies only.
 Pinned contributor lint and audit tools live in PEP 735 groups and are installed with `uv`; see
@@ -178,11 +178,15 @@ risk premia under clustered jumps.
 | Paper | Implemented analytics | Where |
 |---|---|---|
 | Sepp, A. and Rakhmonov, P. (2023), *Log-normal Stochastic Volatility Model with Quadratic Drift*, [IJTAF 26(8)](https://www.worldscientific.com/doi/10.1142/S0219024924500031) | The LogSV model: moment-generating-function Fourier pricing, Monte Carlo dynamics, martingale constraints and calibration; the paper figures and equation-mapped analysis | `pricers/logsv_pricer.py`, [`papers/logsv_model_with_quadratic_drift_ijtaf_2023`](papers/logsv_model_with_quadratic_drift_ijtaf_2023), [LogSV model](docs/logsv_model.md) |
-| Sepp, A. and Rakhmonov, P. (2023), *What is a robust stochastic volatility model*, [SSRN 4647027](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027) | Model comparison analytics of the robustness study | [original SSRN scripts](https://github.com/ArturSepp/StochVolModels/tree/588193611f4fbf5595d60b198e34cb5c24826f8a/papers/volatility_models), [robust volatility models](docs/app_robust_volatility_models.md) |
+| Sepp, A. and Rakhmonov, P. (2023), *What is a robust stochastic volatility model* (SSRN revision 29 February 2024), [SSRN 4647027](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027) | Recorded model comparisons and original 2023 scripts. The local revision of 17 November 2026 uses licensed and private inputs | [original SSRN scripts](https://github.com/ArturSepp/StochVolModels/tree/588193611f4fbf5595d60b198e34cb5c24826f8a/papers/volatility_models), [robust volatility models](docs/app_robust_volatility_models.md) |
 | Lucic, V. and Sepp, A. (2024), *Valuation and Hedging of Cryptocurrency Inverse Options*, [Quantitative Finance 24(7), 851–869](https://www.tandfonline.com/doi/full/10.1080/14697688.2024.2364804) | Inverse-option valuation and hedging, with the Bitcoin chain calibration | [`papers/inverse_options_qf_2023`](papers/inverse_options_qf_2023), [inverse options](docs/inverse_options.md), [Bitcoin options](docs/app_bitcoin_options.md) |
 | Lipton, A., Lucic, V. and Sepp, A. (2025), *Unified approach for hedging impermanent loss of liquidity provision*, [Digital Finance 7, 429-477](https://link.springer.com/article/10.1007/s42521-025-00144-5) | Impermanent-loss hedging analytics | [`papers/unified_approach_for_hedging_il_df_2025`](papers/unified_approach_for_hedging_il_df_2025), [impermanent-loss hedging](docs/app_impermanent_loss_hedging.md) |
-| Sepp, A. and Rakhmonov, P. (2025), *Stochastic Volatility for Factor Heath-Jarrow-Morton Framework*, [Review of Derivatives Research 28(3), 12](https://doi.org/10.1007/s11147-025-09217-4) (preprint [SSRN 4646925](https://ssrn.com/abstract=4646925)) | Factor HJM stochastic-volatility pricing (experimental research surface) | [`papers/sv_for_factor_hjm_rdr_2025`](papers/sv_for_factor_hjm_rdr_2025), [factor HJM](docs/factor_hjm_stochastic_volatility.md) |
-| Liu, F., Packham, N. and Sepp, A., *Jump risk premia in the presence of clustered jumps*, [SSRN 4735365](https://ssrn.com/abstract=4735365) | Related development code (not an exact replication package), with the Tardis hourly and EOD chain conventions | [`papers/jump_risk_premia_clustered_jumps`](papers/jump_risk_premia_clustered_jumps), [Hawkes jump-diffusion](docs/hawkes_jump_diffusion.md) |
+| Sepp, A. and Rakhmonov, P. (2025), *Stochastic Volatility for Factor Heath-Jarrow-Morton Framework*, [Review of Derivatives Research 28, article 12](https://doi.org/10.1007/s11147-025-09217-4) (preprint [SSRN 4646925](https://ssrn.com/abstract=4646925)) | Factor HJM stochastic-volatility pricing (experimental research surface) | [`papers/sv_for_factor_hjm_rdr_2025`](papers/sv_for_factor_hjm_rdr_2025), [factor HJM](docs/factor_hjm_stochastic_volatility.md) |
+| Liu, F., Packham, N. and Sepp, A., *Jump risk premia in the presence of clustered jumps*, accepted in *SIAM Journal on Financial Mathematics* ([preprint](https://arxiv.org/abs/2510.21297)) | Bivariate Hawkes option valuation and related estimation and calibration | [Author manuscript](papers/jump_risk_premia_clustered_jumps_sifin_2027/paper/hawkes.pdf), [replication scope](papers/jump_risk_premia_clustered_jumps_sifin_2027/README.md), [Hawkes model](docs/hawkes_jump_diffusion.md) |
+| Lipton, A. and Sepp, A. (2022), *Toward an efficient hybrid method for pricing barrier options on assets with stochastic volatility*, *Wilmott* | Conditional heat-potential and Monte Carlo comparisons on generated paths | [Figure runner and author-source inventory](papers/barrier_options_sv_wilmott_2022/README.md) |
+| Sepp, A. and Rakhmonov, P., *Rough Log-normal Stochastic Volatility with Quadratic Drift*, local working draft, 18 November 2026 | Selected saved-fit replay on 45 BTC and 39 ETH quotes at H = 0.30 and 0.50. Requires local quotes and checkpoints | [Replay instructions and evidence limits](docs/rough_logsv.md#replaying-selected-btceth-evidence) |
+
+The [replication index](docs/reproducing_the_papers.md) records the data each study needs. The GMM risk-premia study and its SPX panels are local. The GMM pricer provides an offline example of the underlying pricing law. [Gaussian-mixture pricer](examples/pricers/run_gmm_pricer.py)
 
 ## Overview
 
@@ -197,9 +201,12 @@ StochVolModels/
 │       └── tests/                # shipped pytest suite and regression data
 ├── examples/                     # repository-only runnable workflows
 │   ├── getting_started/
-│   ├── pricing/
-│   ├── calibration/
-│   └── options_time_series_data/
+│   ├── docs/
+│   ├── pricers/
+│   ├── fitters/
+│   ├── models/
+│   ├── estimation/
+│   └── data/
 ├── papers/                       # paper replications and labelled development code
 ├── docs/                         # documentation sources and figures
 └── README.md
@@ -224,22 +231,28 @@ and slice pricing (`price_vanilla`, `price_slice`), model implied vols from chai
 |---|---|---|---|
 | Karasinski-Sepp log-normal SV with quadratic drift | $dS_t = r(t) S_t dt + \sigma_t S_t dW^{(0)}_t$, $d\sigma_t = (\kappa_1 + \kappa_2 \sigma_t)(\theta - \sigma_t) dt + \beta \sigma_t dW^{(0)}_t + \varepsilon \sigma_t dW^{(1)}_t$, $dI_t = \sigma^2_t dt$, with uncorrelated $W^{(0)}, W^{(1)}$, volatility beta $\beta \in \mathbb{R}$, volatility of residual volatility $\varepsilon > 0$ and $\vartheta^2 = \beta^2 + \varepsilon^2$ | `LogSVPricer`, `LogSvParams` in `src/stochvolmodels/pricers/logsv_pricer.py` | [LogSV model](docs/logsv_model.md) · [`examples/docs/logsv_model.py`](examples/docs/logsv_model.py) |
 | Heston SV | $dS_t = r(t) S_t dt + \sqrt{V_t} S_t dW^{(S)}_t$, $dV_t = \kappa(\theta - V_t) dt + \vartheta \sqrt{V_t} dW^{(V)}_t$, with correlation $\rho$ between $W^{(S)}$ and $W^{(V)}$ | `HestonPricer`, `HestonParams` in `src/stochvolmodels/pricers/heston_pricer.py` | [Heston model](docs/heston_model.md) · [`examples/docs/heston_model.py`](examples/docs/heston_model.py) |
-| Approximate LogSV smile fitter | three-parameter smile illustration for one slice; not a substitute for calibrating the full term-structure model | `fit_logsv_ivols`, `calc_logsv_ivols` in `stochvolmodels.fitters` | [LogSV smile fitter](docs/logsv_smile_fitter.md) · [`run_logsv_smile_fitter.py`](examples/calibration/run_logsv_smile_fitter.py) |
+| Approximate LogSV smile fitter | three-parameter smile illustration for one slice; not a substitute for calibrating the full term-structure model | `fit_logsv_ivols`, `calc_logsv_ivols` in `stochvolmodels.fitters` | [LogSV smile fitter](docs/logsv_smile_fitter.md) · [`run_logsv_smile_fitter.py`](examples/fitters/run_logsv_smile_fitter.py) |
 
 ### Analytics at a glance
 
-| Area | What the package computes |
-|---|---|
-| Analytic pricing | European vanilla prices and implied vols from closed-form moment generating functions by Fourier transform; single options, slices and chains with uniform strikes |
-| Monte Carlo | Model-dynamics simulation, chain pricing from simulated paths, Monte Carlo implied vols with confidence bounds, analytic-versus-MC comparison plots |
-| Calibration | Constrained calibration to an option chain with `ConstraintsType` martingale conditions, bid/ask comparison plots; [fit and surface diagnostics](docs/surface_diagnostics.md) with bid/ask residuals, strike and calendar consistency, and comparisons at common tenors |
-| Option data | `OptionChain` from the bundled OCA-simulated chain (`get_oca_simulated_chain_data()`, no credentials), any normalised OCA panel (`load_option_chain()`), or local CBOE, ThetaData EOD and Tardis hourly/EOD caches; see [option chains and conventions](docs/option_chains_and_conventions.md) |
-| Provisional direct-import surface | `ModelPaths`, `PathModel`, `TransformModel` (first implementations `LogSvModel`, `TgarchModel`); `TerminalDistributionModel`, `TerminalSmileModel` (`TdistTerminalModel`, `GmmTerminalModel`, `InverseGammaNormalTerminalModel`); `EuropeanOptionPayoff`, `IntegratedVarianceOptionPayoff`, `value_paths`, `value_paths_self_normalized`; regime-switching LogSV equilibrium, transform, Fourier, Monte Carlo and risk-premium attribution analytics — shipped and documented in the [API guide](https://stochvolmodels.readthedocs.io/en/latest/api.html) but outside `__all__` until their contracts are stabilised across another dynamic model |
-| Experimental research surfaces | Rough-LogSV Monte Carlo and Factor HJM: characterised pricing paths are tested, deep imports under `stochvolmodels.pricers.rough_logsv` and `stochvolmodels.pricers.factor_hjm` may evolve between minor releases; the legacy `Gaussian_interval` quadrature raises `ImportError` without `orthopy`/`quadpy`, the incomplete rough-Heston kernel raises `NotImplementedError` |
+A **model** specifies parameters and the supported dynamics, transform or terminal law. A **payoff** describes a contract's observations, cash flow and settlement units. A **pricer** combines a model, contract and valuation method to produce a premium or the instrument's documented quote. For example, the factor HJM adapters return annual normal implied volatility for swaptions and futures options. The examples multiply the absolute rate quote by 10,000 to display bp per square-root year.
 
-The names listed by `stochvolmodels.__all__` are the stable high-level API. Historical
-package-root names remain available lazily for compatibility, but names not in `__all__` should
-be treated as advanced interfaces.
+`OptionChain` holds market observations by expiry. A path-dependent contract implements `products.Payoff`, and `valuation.py` discounts path cash flows or integrates a terminal density. `ModelPricer.price_chain` is the common pricing entry point. Fitters consume market quotes, historical estimators consume observed time series, and PDE solvers propagate supplied coefficients and boundary conditions. [Package ownership and module maps](src/stochvolmodels/README.md)
+
+| Analytical question | Runnable checkout example | Guide |
+|---|---|---|
+| How do I price or calibrate a classical LogSV smile? | [LogSV model](examples/docs/logsv_model.py) | [LogSV dynamics and transform](docs/logsv_model.md) |
+| How do Heston prices compare across strikes? | [Heston pricer](examples/pricers/run_heston_pricer.py) | [Heston model](docs/heston_model.md) |
+| How do I check the experimental rough-LogSV pricer in the constant-volatility limit? | [Rough LogSV pricer](examples/pricers/run_rough_logsv_pricer.py) | [Rough LogSV and scope of replay](docs/rough_logsv.md) |
+| How do I price an ATM option under two volatility regimes? | [Regime-switching LogSV](examples/pricers/run_regime_switch_logsv_pricer.py) | [Regime model modules](src/stochvolmodels/models/regime_logsv/README.md) |
+| How do I propagate a density or value a local-vol or LSV vanilla? | [Local volatility and LSV](examples/docs/local_volatility_and_lsv.py) | [Generators, PDE pricing and leverage calibration](docs/local_volatility_and_lsv.md) |
+| Which contracts can a GMM, Student-t or inverse-gamma terminal law value? | [GMM and Student-t](examples/docs/terminal_distribution_models.py) · [inverse-gamma](examples/pricers/run_inverse_gamma_pricer.py) | [Terminal distributions](docs/terminal_distribution_models.md) |
+| How far is a fitted price or IV from its market quote? | [Native quote and fit reports](examples/docs/surface_diagnostics.py) | [Fit diagnostics](docs/surface_diagnostics.md) |
+| Which OCA contracts and price units produced those residuals? | [Synthetic OCA reconstruction and fit](examples/fitters/oca_surface_diagnostics.py) | [OCA provenance handoff](docs/surface_diagnostics.md#optional-oca-provenance) |
+| How do I forecast realized volatility from historical prices? | [Walk-forward forecast](examples/estimation/run_volatility_forecast.py) | [Forecast horizons, features and targets](src/stochvolmodels/estimation/forecasting/README.md) |
+| How do I add a model and check its pricer? | [Constant-volatility tutorial](examples/pricers/run_add_model.py) | [Pricer interface](docs/software_design.md#the-pricer-interface) |
+
+The package root lists its stable names in `stochvolmodels.__all__`. Model capabilities, path valuation and PDE interfaces are provisional direct imports. Rough LogSV and factor HJM are experimental. The [stability guide](docs/software_design.md#stability-tiers-and-exports) describes historical aliases and each tier's import contract.
 
 ## Five-minute quickstart
 
@@ -294,7 +307,7 @@ The first call normally takes seconds because Numba compiles the numerical kerne
 
 ### Highlighted examples
 
-**Computing model prices and vols** ([`examples/calibration/run_lognormal_sv_pricer.py`](examples/calibration/run_lognormal_sv_pricer.py)):
+**Computing model prices and vols** ([`examples/pricers/run_lognormal_sv_pricer.py`](examples/pricers/run_lognormal_sv_pricer.py)):
 
 ```python
 import numpy as np
@@ -349,7 +362,7 @@ The full fitted-surface and analytic-versus-Monte-Carlo figures are generated by
 workflow in [`papers/logsv_model_with_quadratic_drift_ijtaf_2023`](papers/logsv_model_with_quadratic_drift_ijtaf_2023)
 and are not committed as build artifacts.
 
-**Heston slices across correlations** ([`examples/pricing/run_heston.py`](examples/pricing/run_heston.py)):
+**Heston slices across correlations** ([`examples/pricers/run_heston_pricer.py`](examples/pricers/run_heston_pricer.py)):
 
 ```python
 import numpy as np
@@ -393,10 +406,10 @@ analytic model calibration.
 
 | Data route | Local data needed | SVM entry point | Example |
 |---|---|---|---|
-| Bundled OCA-generated chain | No | `get_oca_simulated_chain_data()` | [`run_logsv_smile_fitter.py`](examples/calibration/run_logsv_smile_fitter.py) |
-| Any normalised OCA panel | No for OCA's simulator | `load_option_chain()` | [`run_oca_logsv_calibration.py`](examples/calibration/run_oca_logsv_calibration.py) |
-| OCA CBOE cache | Yes | `load_cboe_option_chain()` | [`load_cboe_option_chain.py`](examples/calibration/load_cboe_option_chain.py) |
-| OCA ThetaData EOD cache | Yes | `load_thetadata_option_chain()` | [`run_spy_thetadata_month.py`](examples/calibration/run_spy_thetadata_month.py) |
+| Bundled OCA-generated chain | No | `get_oca_simulated_chain_data()` | [`run_logsv_smile_fitter.py`](examples/fitters/run_logsv_smile_fitter.py) |
+| Any normalised OCA panel | No for OCA's simulator | `load_option_chain()` | [`run_oca_logsv_calibration.py`](examples/fitters/run_oca_logsv_calibration.py) |
+| OCA CBOE cache | Yes | `load_cboe_option_chain()` | [`load_cboe_option_chain.py`](examples/data/load_cboe_option_chain.py) |
+| OCA ThetaData EOD cache | Yes | `load_thetadata_option_chain()` | [`run_spy_thetadata_month.py`](examples/data/run_spy_thetadata_month.py) |
 | OCA Tardis hourly archive | Yes | `load_tardis_hourly_option_chain()` | clustered-jump paper workflows |
 | OCA Tardis 08:00 UTC EOD cache | Yes | `load_tardis_eod_option_chain()` | clustered-jump chain calibration |
 
@@ -405,11 +418,12 @@ normalisation, and caches; SVM receives only the strikes, option types, forwards
 bid/ask quotes required for an illustration or calibration. The cached routes need
 `pip install "stochvolmodels[research]"` and `RESOURCE_PATH` in the local settings file; the
 [examples guide](examples/README.md) describes each loader and the cache layout, and
-[`papers/jump_risk_premia_clustered_jumps/README.md`](papers/jump_risk_premia_clustered_jumps/README.md)
+[`papers/jump_risk_premia_clustered_jumps_sifin_2027/README.md`](papers/jump_risk_premia_clustered_jumps_sifin_2027/README.md)
 sets the script-by-script Tardis hourly-versus-EOD data policy. The
 [`examples/docs/`](examples/docs/) scripts are the canonical scripts of the documentation
-articles, and [`examples/pricing/`](examples/pricing/) holds the Heston, Hawkes, quadratic
-variance and BSM transform runners.
+articles. Each concrete pricer has an offline example under [`examples/pricers/`](examples/pricers/).
+The [example index](examples/README.md#offline-pricing-and-estimation) also gives the commands
+for OHLC variance estimation and walk-forward volatility forecasting.
 
 ### From method to implementation
 
@@ -420,7 +434,7 @@ variance and BSM transform runners.
 | Martingale conditions and skews | `ConstraintsType` | [martingale conditions and skews](docs/martingale_conditions_and_skews.md) · [`martingale_conditions_and_skews.py`](examples/docs/martingale_conditions_and_skews.py) |
 | Calibration to a chain | `calibrate_model_params_to_chain` | [calibration](docs/calibration.md) · [`calibration.py`](examples/docs/calibration.py) |
 | Inverse options (Quantitative Finance paper) | inverse-option payoff branches | [inverse options](docs/inverse_options.md) · [`inverse_options.py`](examples/docs/inverse_options.py) |
-| Quadratic variance options | `examples/pricing` QVAR runners | [quadratic variance options](docs/quadratic_variance_options.md) · [`quadratic_variance_options.py`](examples/docs/quadratic_variance_options.py) |
+| Quadratic variance options | `examples/pricers` QVAR runners | [quadratic variance options](docs/quadratic_variance_options.md) · [`quadratic_variance_options.py`](examples/docs/quadratic_variance_options.py) |
 | Reproducing the papers | `papers/` | [reproducing the papers](docs/reproducing_the_papers.md) |
 
 ## Testing
@@ -474,7 +488,7 @@ package in your research, please cite the software and the relevant papers:
   title={StochVolModels: Python Implementation of Stochastic Volatility Models},
   author={Sepp, Artur},
   year={2026},
-  version={2.19.0.dev1},
+  version={2.19.0.dev9},
   url={https://github.com/ArturSepp/StochVolModels},
   note={Python package for pricing analytics and Monte Carlo simulations}
 }
@@ -489,11 +503,11 @@ year={2023},
 url={https://www.worldscientific.com/doi/epdf/10.1142/S0219024924500031}
 }
 
-@article{sepprakhmonov2023b,
+@misc{sepprakhmonov2023b,
 title={What is a robust stochastic volatility model},
 author={Sepp, Artur and Rakhmonov, Parviz},
 year={2023},
-note={Working paper},
+note={SSRN working paper, revised 29 February 2024},
 url={https://ssrn.com/abstract=4647027}
 }
 
@@ -512,12 +526,45 @@ url={https://www.tandfonline.com/doi/full/10.1080/14697688.2024.2364804}
 title={Stochastic volatility for factor Heath-Jarrow-Morton framework},
 author={Sepp, Artur and Rakhmonov, Parviz},
 volume={28},
-number={3},
 pages={12},
 year={2025},
 journal={Review of Derivatives Research},
 doi={10.1007/s11147-025-09217-4},
 note={Preprint: https://ssrn.com/abstract=4646925}
+}
+
+@article{liptonlucicsepp2025,
+  author={Lipton, Alexander and Lucic, Vladimir and Sepp, Artur},
+  title={Unified approach for hedging impermanent loss of liquidity provision},
+  journal={Digital Finance}, volume={7}, pages={429--477}, year={2025},
+  doi={10.1007/s42521-025-00144-5}
+}
+
+@article{liupackhamsepp2025,
+  author  = {Liu, Francis and Packham, Natalie and Sepp, Artur},
+  title   = {Jump risk premia in the presence of clustered jumps},
+  journal = {SIAM Journal on Financial Mathematics},
+  year    = {forthcoming},
+  note    = {Accepted for publication. Preprint: arXiv:2510.21297 (2025)},
+  url     = {https://arxiv.org/abs/2510.21297}
+}
+
+@article{liptonsepp2022barriers,
+  author={Lipton, Alexander and Sepp, Artur},
+  title={Toward an efficient hybrid method for pricing barrier options on assets with stochastic volatility},
+  journal={Wilmott}, year={2022}, url={https://arxiv.org/abs/2202.07849}
+}
+
+@unpublished{sepprakhmonov2026robust,
+  author={Sepp, Artur and Rakhmonov, Parviz},
+  title={What Is a Robust Stochastic Volatility Model? Measure Changes, Martingality and Cross-Asset Applications},
+  year={2026}, note={Authors' local revision, 17 November}
+}
+
+@unpublished{sepprakhmonov2026rough,
+  author={Sepp, Artur and Rakhmonov, Parviz},
+  title={Rough Log-normal Stochastic Volatility with Quadratic Drift: Second-moment stability and the martingale property under positive correlation},
+  year={2026}, note={Authors' local working draft, 18 November}
 }
 ```
 

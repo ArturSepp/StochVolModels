@@ -16,8 +16,8 @@ from stochvolmodels.fitters.lsv_parametric import (
     LSVParametricCalibrationConfig,
     LSVParametricCalibrator,
 )
-from stochvolmodels.models.local_vol import LocalVolFamily
-from stochvolmodels.models.lsv_simulation import LSVMonteCarloConfig
+from stochvolmodels.models.lsv.local_vol import LocalVolFamily
+from stochvolmodels.models.lsv.simulation import LSVMonteCarloConfig
 from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdePricer

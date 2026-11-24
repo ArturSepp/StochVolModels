@@ -27,6 +27,7 @@ def checker(tmp_path, monkeypatch):
 def make_wheel(tmp_path, checker, *, omit=False, extra=False):
     """Create a minimal archive containing the independently enumerated files."""
     names = set(checker.REQUIRED_RUNTIME_FILES)
+    names.add("stochvolmodels/settings.yaml.example")
     names.update(f"stochvolmodels/tests/test_feature_{index}.py" for index in range(34))
     names.add(
         "stochvolmodels/tests/test_rough_logsv_pricer_regression/"
@@ -59,7 +60,14 @@ def test_unexpected_test_module_is_rejected(tmp_path, checker):
 
 @pytest.mark.parametrize("name, message", [
     ("validation/pde_reference/fixture.json", "unexpected wheel roots"),
+    ("stochvolmodels/README.md", "checkout documentation entered"),
+    ("stochvolmodels/fitters/adapters/README.md", "checkout documentation entered"),
     ("stochvolmodels/pde_solvers/research.py", "PDE file inventory differs"),
+    ("stochvolmodels/data/options.parquet", "package data inventory differs"),
+    ("stochvolmodels/settings.yaml", "package data inventory differs"),
+    ("stochvolmodels/fitters/run_fit.py", "checkout-only files entered"),
+    ("stochvolmodels/validation/reference.py", "checkout-only files entered"),
+    ("stochvolmodels/models/lsv_simulation.py", "retired forwarding modules"),
 ])
 def test_repository_only_files_are_rejected(tmp_path, checker, name, message):
     wheel = make_wheel(tmp_path, checker)

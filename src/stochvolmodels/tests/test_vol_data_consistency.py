@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-import vanilla_option_pricers as vanilla
+import vanilla_option_pricers as vop
 
 from stochvolmodels.data.option_chain import FutOptionChain, OptionChain, SwOptionChain
 
@@ -26,7 +26,7 @@ def _normal_cube() -> SwOptionChain:
 
 def _normal_cube_prices(chain: SwOptionChain) -> list[list[np.ndarray]]:
     """Price calls in units of their annuity, matching the rates pricer convention."""
-    return [[vanilla.compute_normal_slice_prices(
+    return [[vop.compute_normal_slice_prices(
         ttm=ttm, forward=chain.forwards[i][j], strikes=chain.strikes_ttms[i][j],
         vols=chain.bid_ivs[i][j], optiontypes=chain.optiontypes_ttms[j], discfactor=1.0,
     ) for j, ttm in enumerate(chain.ttms)] for i in range(len(chain.tenors))]
@@ -62,8 +62,8 @@ def test_forward_normalization_preserves_price_quotes_and_black_vols() -> None:
     bid_vols, ask_vols = np.full(3, 0.19), np.full(3, 0.21)
     price_kwargs = dict(ttm=0.5, forward=100.0, strikes=strikes,
                         optiontypes=optiontypes, discfactor=0.98)
-    bid = vanilla.compute_bsm_vanilla_slice_prices(vols=bid_vols, **price_kwargs)
-    ask = vanilla.compute_bsm_vanilla_slice_prices(vols=ask_vols, **price_kwargs)
+    bid = vop.compute_bsm_vanilla_slice_prices(vols=bid_vols, **price_kwargs)
+    ask = vop.compute_bsm_vanilla_slice_prices(vols=ask_vols, **price_kwargs)
     chain = OptionChain(
         ttms=np.array([0.5]), forwards=np.array([100.0]), strikes_ttms=(strikes,),
         optiontypes_ttms=(optiontypes,), ids=np.array(["6m"]), discfactors=np.array([0.98]),

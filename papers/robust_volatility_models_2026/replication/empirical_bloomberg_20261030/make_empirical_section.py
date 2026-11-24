@@ -367,7 +367,7 @@ so its bias values do not quantify the bias of these empirical estimates.
 # longer an exhibit of the main text.
 # Generate the current synthetic exhibit from the full-precision VIX fit.
 bundle = ROOT / 'vix_fit_20261123'
-fit = json.loads((bundle / 'vix_fit.json').read_text())
+fit = json.loads((bundle / 'vix_profile.json').read_text())
 study = json.loads((bundle / 'synthetic_results.json').read_text())
 params = fit['fitted']
 method = fit['method']
@@ -376,23 +376,28 @@ assert all(study['baseline_parameters'][key] == value for key, value in params.i
 obs = study['observation_summary']
 beta = study['illustrative_beta']
 rounded = ','.join(f'{params[key]:.4f}' for key in ('theta', 'kappa1', 'kappa2', 'v'))
-bound_notes = []
-for key, symbol in (('kappa1', r'\kappa_1'), ('kappa2', r'\kappa_2')):
-    for bound, label in zip(method['kappa_bounds'], ('lower', 'upper')):
-        if abs(params[key] - bound) < 1e-6:
-            bound_notes.append(rf'The estimate of ${symbol}$ reaches its {label} search bound of ${bound:g}$.')
+local_speed = params['kappa1'] + params['kappa2']*params['theta']
+gamma_case, inverse_gamma_case = fit['full']['profile'][0], fit['full']['profile'][-1]
+assert gamma_case['share'] == 0 and inverse_gamma_case['share'] == 1
+assert params['kappa1'] == 0 and gamma_case['histogram_sse'] > inverse_gamma_case['histogram_sse']
 m.add(rf'''\subsection{{Synthetic observation maps and finite-sample persistence}}
 \label{{sec:synthetic-observation-acf}}
 % [AI-DRAFT BEGIN: updated VIX calibration and synthetic results. Author pass pending.]
 We fit the quadratic-drift model to {fit['sample']['n']:,} daily Bloomberg VIX closes
 from January 2000 through October 2026 (Table~\ref{{tab:empirical-data}}).
-For each pair $(\kappa_1,\kappa_2)$, we choose $\theta$ and total volatility of volatility $v$
-by matching the stationary log-volatility density to a {method['histogram_bins']}-bin histogram of $\log(\mathrm{{VIX}}/100)$.
-We then choose $(\kappa_1,\kappa_2)$ by matching daily VIX level
-autocorrelations at lags 1 to {method['acf_lags'][1]}. Both steps minimise sums of squared errors.
-For each pair we average the model autocorrelations over {method['paths']:,} ten-year paths with common random shocks.
+For each relative contribution of the two drift terms, we fit the stationary
+log-volatility density to a {method['histogram_bins']}-bin histogram of $\log(\mathrm{{VIX}}/100)$ by least squares.
+We select the drift mix and its speed by matching daily VIX level autocorrelations
+at lags 1 to {method['acf_lags'][1]}, with equal weight on each squared error.
+We average model autocorrelations over {method['paths']:,} ten-year paths using common random shocks.
+The search includes both stationary boundary laws of Proposition~\ref{{prop:stationary}}.
+
 The fitted index coefficients are $(\theta,\kappa_1,\kappa_2,v)=({rounded})$.
-{' '.join(bound_notes)}''')
+The autocorrelation criterion selects the Gamma boundary, $\kappa_1=0$.
+Its drift is $\kappa_2\sigma(\theta-\sigma)$, with local mean-reversion speed
+$\kappa_2\theta={local_speed:.2f}$ per year at $\sigma=\theta$.
+The inverse-Gamma boundary fits the histogram more closely. The choice of boundary
+therefore depends on which feature of VIX we match.''')
 m.add(rf'''We use these coefficients for the latent state in a synthetic observation experiment.
 The two Brownian loadings enter the index dynamics only through $v^2=\beta^2+\varepsilon^2$. We choose $\beta={beta:g}$
 for illustration and set the residual loading to $\sqrt{{v^2-\beta^2}}$.
@@ -415,7 +420,7 @@ holding $\theta$ fixed and multiplying $\beta$ by $\sqrt{c}$.
 This preserves the latent invariant distribution while replacing its
 population autocorrelation $\rho(h)$ by $\rho(ch)$.
 We recompute the fixed-maturity observation map for each clock.
-For each regime, 400 independent paths start from the invariant GIG distribution.
+For each regime, 400 independent paths start from the fitted invariant Gamma distribution.
 We record 252 observations per model year with four positive splitting steps per observation.
 The sample ACF uses the full-sample mean. At lag $h$ we divide the cross-product
 sum by $N-h$ and the sum of squared deviations by $N$.

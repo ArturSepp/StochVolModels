@@ -10,13 +10,9 @@ include pyproject.toml
 # Include all Python source files
 recursive-include src/stochvolmodels *.py
 
-# Source-adjacent development runners are checkout-only.
-prune src/stochvolmodels/run_local
-prune src/stochvolmodels/*/run_local
-prune src/stochvolmodels/*/*/run_local
-
-# Include regression baselines and other data files that the package needs
-recursive-include src/stochvolmodels *.npz *.yml *.yaml *.json *.txt *.md
+# Ship the numerical baseline and configuration template used by installed callers.
+include src/stochvolmodels/tests/test_rough_logsv_pricer_regression/test_rough_logsv_pricer_pricing_regression.npz
+recursive-exclude src/stochvolmodels README.md
 include src/stochvolmodels/settings.yaml.example
 exclude src/stochvolmodels/settings.yaml
 

@@ -18,7 +18,7 @@ from enum import Enum
 from typing import Dict, Tuple
 from numba.typed import List
 
-import vanilla_option_pricers as bachel
+import vanilla_option_pricers as vop
 from stochvolmodels.pricers.factor_hjm.rate_logsv_params import MultiFactRateLogSvParams
 from stochvolmodels.utils.rate_core import get_default_swap_term_structure
 from stochvolmodels.pricers.factor_hjm.rate_logsv_pricer import simulate_logsv_MF, Measure
@@ -177,19 +177,19 @@ def calc_mc_vols(basis_type: str,
         option_up = option_mean + std_factor * option_std
         option_down = np.maximum(option_mean - std_factor * option_std, 0.0)
 
-        mc_ivols_mid = bachel.infer_normal_ivols_from_chain_prices(ttms=ttms,
+        mc_ivols_mid = vop.infer_normal_ivols_from_chain_prices(ttms=ttms,
                                                                    forwards=forwards[idx_tenor],
                                                                    discfactors=np.ones_like(ttms),
                                                                    strikes_ttms=[strikes_ttm],
                                                                    optiontypes_ttms=[optiontypes],
                                                                    model_prices_ttms=[option_mean])
-        mc_ivols_up = bachel.infer_normal_ivols_from_chain_prices(ttms=ttms,
+        mc_ivols_up = vop.infer_normal_ivols_from_chain_prices(ttms=ttms,
                                                                   forwards=forwards[idx_tenor],
                                                                   discfactors=np.ones_like(ttms),
                                                                   strikes_ttms=[strikes_ttm],
                                                                   optiontypes_ttms=[optiontypes],
                                                                   model_prices_ttms=[option_up])
-        mc_ivols_down = bachel.infer_normal_ivols_from_chain_prices(ttms=ttms,
+        mc_ivols_down = vop.infer_normal_ivols_from_chain_prices(ttms=ttms,
                                                                     forwards=forwards[idx_tenor],
                                                                     discfactors=np.ones_like(ttms),
                                                                     strikes_ttms=[strikes_ttm],

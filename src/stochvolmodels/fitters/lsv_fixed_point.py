@@ -6,7 +6,7 @@ Calibrate two leverage buckets, inspect their iteration counts and price a put.
 
 >>> import numpy as np
 >>> from stochvolmodels.fitters.lsv_fixed_point import LSVFixedPointCalibrator
->>> from stochvolmodels.models.local_vol import LocalVolSurface
+>>> from stochvolmodels.models.lsv.local_vol import LocalVolSurface
 >>> from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
 >>> from stochvolmodels.models.logsv.params import LogSvParams
 >>> from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdePricer
@@ -33,7 +33,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.models.local_vol import LocalVolSurface
+from stochvolmodels.models.lsv.local_vol import LocalVolSurface
 from stochvolmodels.models.lsv import LSVModel
 from stochvolmodels.pde_solvers import ADIConfig, PDEState2D, TensorGrid2D
 from stochvolmodels.models.logsv.params import LogSvParams

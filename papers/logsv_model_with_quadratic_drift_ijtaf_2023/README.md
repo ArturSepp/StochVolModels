@@ -12,26 +12,64 @@ Drift*, International Journal of Theoretical and Applied Finance **26**(8),
 The volume is dated 2023; the article appeared in 2024. The earliest README was
 recorded under `my_papers/logsv_model_wtih_quadratic_drift/README.md`.
 
-## Corrected manuscript and erratum
+## Published formulas and code corrections
 
-The [source and detailed errata](paper/README.md) distinguish corrections to the
-published article from implementation defects. The [corrected author PDF,
-29 October 2026](paper/lognormal_stoch_vol_final_corrected_20261029.pdf) is separate
-from the [unchanged journal PDF](paper/log-normal-stochastic-volatility-model-with-quadratic-drift.pdf).
+The pricing formulas of the published article are correct. The coefficient
+systems (4.17) and (4.25) of the
+[journal PDF](paper/log-normal-stochastic-volatility-model-with-quadratic-drift.pdf)
+agree with an independent symbolic derivation in every entry except two printed
+symbols. Equation (4.17) prints $\vartheta$ for $\vartheta^2$ in the linear
+coefficient of $A^{(2)}$. Equation (4.25) prints $q$ for $\theta$ in the
+coefficient that multiplies $A^{(3)}$ in the equation for $A^{(2)}$. The code
+never contained either misprint. The pricing formulas therefore need no journal
+erratum. The comparison was made on 23 November 2026 against the journal PDF
+and is recorded in
+`papers/robust_volatility_models_2026/agents/logsv-ijtaf-2023-errata-check-2026-11-23.md`.
 
-- Printed coefficient symbols, the transformed remainder equation and its
-  conditional error estimate have been corrected. The moment proofs and the
-  conditional continuation argument have been repaired and qualified.
-- The code now matches the published coefficient matrix: the degree-four
-  diffusion term is $6(\beta^2+\epsilon^2)$, and the inverse-measure linear terms
-  include $3\lambda$ and $4\lambda$. These were implementation errors; those
-  entries were already correct in the journal article.
+### Code change log
+
+The defects were in the code and not in the article. Release 2.6.1 of
+`stochvolmodels` (31 October 2026) corrects them, and
+[CHANGELOG.md](../../CHANGELOG.md) records the release.
+
+Three linear coefficients of the second-order system differed from equation
+(4.25). The releases checked between 1.0.1 (15 December 2022) and 2.6.0
+(22 October 2026) all carry the entries in the middle column.
+
+| Code entry | Releases up to 2.6.0 | Release 2.6.1 and equation (4.25) |
+|---|---|---|
+| `L[2, 3]` | $3(2\theta\vartheta^2-\theta^2\beta\Phi)$ | $3(2\theta\vartheta^2+\lambda^{(p)}-\theta^2\beta\Phi)$ |
+| `L[3, 4]` | $4(3\theta\vartheta^2-\theta^2\beta\Phi)$ | $4(3\theta\vartheta^2+\lambda^{(p)}-\theta^2\beta\Phi)$ |
+| `L[4, 4]` | $2(\vartheta^2-2\kappa^{(p)}-4\theta\beta\Phi)$ | $2(3\vartheta^2-2\kappa^{(p)}-4\theta\beta\Phi)$ |
+
+The entries use the notation of the article with a unit volatility backbone
+and $\vartheta^2=\beta^2+\epsilon^2$. The term $\lambda^{(p)}$ equals
+$\beta\theta^2$ under the inverse measure and zero under the money-market
+measure. The first two entries therefore change prices under the inverse
+measure only. The third entry changes the degree-four coefficient under both
+measures. For `L[2, 3]` the right column shows equation (4.25) with the misprint
+$q$ replaced by $\theta$.
+
+Release 2.6.1 also changes the following code of this paper.
+
 - The stationary-moment helper now uses the paper's $(q/b)^{r/2}$ scale and
   the inverse-gamma limit when quadratic mean reversion is zero.
 - Failed or incomplete coefficient integration is rejected. Calibration
   reports invalid trials and revalues the final parameters before acceptance. A
   successfully integrated finite expansion can still be inaccurate: numerical validation is
   required for the parameters and maturities being used.
+
+### Corrected author source
+
+The [corrected author PDF,
+29 October 2026](paper/lognormal_stoch_vol_final_corrected_20261029.pdf) is separate
+from the unchanged journal PDF. Its source corrects the two printed symbols and
+rewrites the transformed remainder equation with its error estimate, the moment
+proofs and the conditional continuation argument. The
+[list of printed misprints and proof-level defects](paper/README.md) gives the
+published location of each item. None of the items enters a pricing formula.
+The check of 23 November 2026 confirmed each item against the journal PDF.
+The check did not cover the replacement proofs in the corrected source.
 
 The corrected PDF retains the original author figure assets and historical
 calibration numbers, explicitly labelled as historical. Rebuilding this PDF
@@ -207,7 +245,7 @@ published PDF, install TeX packages or recalibrate models.
 
 ## See also
 
-- [Detailed published-version errata](paper/README.md)
+- [Printed misprints and proof-level defects of the published text](paper/README.md)
 - [Finite expansion methodology and implementation](../../docs/affine_expansion.md)
 - [Numerical accuracy and performance](../../docs/numerical_accuracy_and_performance.md)
 - [Current BTC diagnostics and remaining approximation bias](../../docs/app_bitcoin_options.md)

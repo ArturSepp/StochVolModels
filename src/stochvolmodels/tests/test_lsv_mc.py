@@ -9,7 +9,7 @@ from vanilla_option_pricers import compute_bsm_vanilla_price
 
 from stochvolmodels.data.option_chain import OptionChain
 from stochvolmodels.models.lsv import FixedLogForwardJump, LSVModel, LeverageSurface
-from stochvolmodels.models.lsv_simulation import LSVMonteCarloConfig, LSVMonteCarloEngine
+from stochvolmodels.models.lsv.simulation import LSVMonteCarloConfig, LSVMonteCarloEngine
 from stochvolmodels.pde_solvers import Grid1D
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdePricer

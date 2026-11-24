@@ -9,7 +9,7 @@ from stochvolmodels.pricers.logsv_pricer import (
     get_randoms_for_rough_vol_chain_valuation,
     rough_logsv_mc_chain_pricer_split_step,
 )
-from stochvolmodels.pricers.rough_logsv.kernel_fit import MomentKey, markov_moment_targets
+from stochvolmodels.models.rough_logsv.kernel_fit import MomentKey, markov_moment_targets
 from stochvolmodels.pricers.rough_logsv.split_simulation import simulate_split_step
 from stochvolmodels.utils.mc_payoffs import compute_conditional_mc_payoff, compute_mc_vars_payoff
 

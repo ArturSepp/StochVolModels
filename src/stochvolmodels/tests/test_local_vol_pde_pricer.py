@@ -8,7 +8,7 @@ from numba.typed import List
 from scipy.special import ndtr
 
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.models.local_vol import (
+from stochvolmodels.models.lsv.local_vol import (
     CoordinateSystem,
     LocalVolCoefficientProvider1D,
     LocalVolFamily,

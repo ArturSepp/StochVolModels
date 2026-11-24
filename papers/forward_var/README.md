@@ -81,7 +81,7 @@ $$
 Here the instantaneous return volatility is $\eta(t)\sigma_t$. The loading does not multiply
 the volatility-factor drift or diffusion. It multiplies return variance by its square and
 return-volatility covariance linearly. The coefficients can be checked directly in the
-[LogSV PDE implementation](../../src/stochvolmodels/models/logsv_pde.py).
+[LogSV PDE implementation](../../src/stochvolmodels/models/logsv/coefficients.py).
 
 Total volatility-of-volatility and instantaneous return-volatility correlation are
 

@@ -47,7 +47,7 @@ from validation.pde_reference.local_vol import (
     LocalVolParameterCodec,
     LocalVolSurface,
 )
-from stochvolmodels.models.logsv_pde import LogSvCoefficientProvider
+from stochvolmodels.models.logsv.coefficients import LogSvCoefficientProvider
 from validation.pde_reference.lsv import LSVCoefficientProvider
 from validation.pde_reference.lsv_mc import (
     LSVMonteCarloConfig,

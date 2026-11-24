@@ -6,7 +6,6 @@ import pytest
 
 pytestmark = pytest.mark.optional_integration
 
-pytest.importorskip('qis')
 generate_simulated_options_data = pytest.importorskip(
     'option_chain_analytics'
 ).generate_simulated_options_data

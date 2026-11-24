@@ -3,7 +3,7 @@ from itertools import permutations
 import numpy as np
 import pandas as pd
 import pytest
-import vanilla_option_pricers as bsm
+import vanilla_option_pricers as vop
 from numba.typed import List
 
 from stochvolmodels.data.option_chain import FutOptionChain, OptionChain, OptionSlice, SwOptionChain
@@ -248,7 +248,7 @@ def test_option_chain_price_ivol_round_trip_and_calibration_view() -> None:
     assert len(target) == 2
 
     prices = List(
-        bsm.compute_bsm_vanilla_slice_prices(
+        vop.compute_bsm_vanilla_slice_prices(
             ttm=ttm,
             forward=forward,
             strikes=strikes,

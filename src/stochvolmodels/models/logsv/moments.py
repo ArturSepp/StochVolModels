@@ -9,7 +9,7 @@ system is solved by matrix exponentiation in Eq. (3.49), and integrated over
 [0, tau] in Eq. (3.54) to give the expected quadratic variance of Eq. (3.53).
 
 Manual scenarios are available in
-``stochvolmodels.pricers.logsv.run_local.vol_moments_ode_run``.
+``examples.models.run_vol_moments_ode``.
 
 Reference
 ---------

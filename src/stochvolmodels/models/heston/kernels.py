@@ -1,11 +1,12 @@
-"""Heston affine transform and variance propagation with supplied Brownian increments.
+"""Heston affine transform and path propagation with supplied random draws.
 
-The transform retains the Sepp (2007) variance-swap solution and the simulator
-retains the existing Euler variance floor. Pricing and random-tape ownership
-remain with the calling model or pricer; these kernels do not calibrate quotes.
+The transform uses the Sepp (2007) variance-swap solution. Historical Euler uses
+scaled increments. Andersen QE-M uses independent standard normals. The caller
+owns the random stream and applies payoffs to the simulated states.
 """
 
 from typing import Tuple
+from math import erfc  # noqa: TID251 -- Numba scalar survival probability in the QE-M kernel.
 
 import numpy as np
 from numba import njit
@@ -75,3 +76,72 @@ def _simulate_heston_with_increments(
         var0 = np.maximum(var0, 1e-4)
 
     return x0, var0, qvar0
+
+
+@njit(cache=False)
+def _qe_m_step(x, variance, integrated, theta, kappa, rho, xi, dt, z_var, z_spot):
+    """Advance paths in-place using two independent standard-normal vectors.
+
+    Andersen (2008), sections 3.2 and 4.3.2. The QE variance transition matches
+    the CIR first two moments. The log-forward increment subtracts the branch's
+    log exponential moment, including the atom at zero. Equal endpoint weights
+    approximate integrated variance. At zero vol-of-vol its integral is exact.
+    """
+    decay = np.exp(-kappa * dt)
+    loss = -np.expm1(-kappa * dt)
+    duration = dt if kappa == 0.0 else loss / kappa
+    kdt = kappa * dt
+    drift_duration = (dt * kdt * (0.5 - kdt / 6.0 + kdt*kdt / 24.0)
+                      if kdt < 1e-5 else dt - duration)
+    # B = xi * A for Andersen's exponential moment. Scaling avoids 1/xi
+    # cancellation near the deterministic limit in the quadratic branch.
+    bcoef = rho * (1.0 + 0.5 * kappa * dt) - 0.25 * rho**2 * dt * xi
+    for j in range(variance.size):
+        v = variance[j]
+        mean = v * decay + theta * loss
+        if xi == 0.0 or mean == 0.0:
+            next_v = mean
+            area = v * duration + theta * drift_duration
+            increment = -0.5 * area + np.sqrt(area) * z_spot[j]
+        else:
+            sd_over_xi = np.sqrt(duration * (v * decay + 0.5 * theta * loss))
+            sd_ratio = xi * sd_over_xi / mean
+            if sd_ratio <= np.sqrt(1.5):
+                psi = sd_ratio**2
+                root_a_over_xi = sd_over_xi / np.sqrt(2 * mean * (1 + np.sqrt(1 - psi / 2)))
+                root_a = xi * root_a_over_xi
+                center = np.sqrt(max(0.0, mean - root_a**2))
+                z = z_var[j]
+                next_v = (center + root_a * z)**2
+                scaled = bcoef * root_a_over_xi
+                twice_a_A = 2.0 * root_a * scaled
+                if twice_a_A >= 1.0:
+                    raise FloatingPointError("QE-M quadratic exponential moment diverges (V, dt)", v, dt)
+                # A(V'-m) and log E[exp(A(V'-m))], evaluated in centered form.
+                tilt = scaled * (2.0 * center * z + root_a * (z*z - 1.0))
+                tilt += 0.5 * (np.log1p(-twice_a_A) + twice_a_A)
+                tilt -= 2.0 * (center * scaled)**2 / (1.0 - twice_a_A)
+            else:
+                # beta = 2 / (m + s²/m) stays finite near the absorbing boundary
+                # even when s²/m² would overflow.
+                variance_over_mean = xi**2 * duration * ((v * decay + 0.5 * theta * loss) / mean)
+                rate = 2.0 / (mean + variance_over_mean)
+                if not np.isfinite(rate) or rate <= 0.0:
+                    raise FloatingPointError("invalid QE-M mixture rate (V, dt)", v, dt)
+                positive = rate * mean
+                relative = bcoef / (xi * rate)
+                if relative >= 1.0:
+                    raise FloatingPointError("QE-M mixture exponential moment diverges (V, dt)", v, dt)
+                survival = 0.5 * erfc(z_var[j] / np.sqrt(2.0))
+                next_v = 0.0
+                if survival < positive:
+                    next_v = (np.log(positive) - np.log(survival)) / rate
+                tilt = bcoef * next_v / xi - np.log1p(positive * relative / (1.0 - relative))
+            area = 0.5 * dt * (v + next_v)
+            residual = (1.0 - rho**2) * area
+            increment = tilt - 0.5 * residual + np.sqrt(residual) * z_spot[j]
+        x[j] += increment
+        integrated[j] += area
+        variance[j] = next_v
+        if not (np.isfinite(x[j]) and np.isfinite(next_v) and np.isfinite(integrated[j])):
+            raise FloatingPointError("nonfinite QE-M transition (V, dt)", v, dt)

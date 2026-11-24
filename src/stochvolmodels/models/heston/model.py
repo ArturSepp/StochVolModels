@@ -2,11 +2,10 @@
 
 Parameter-bound Heston transforms and paths for the provisional model interface.
 
-The transform and Euler updates reuse the maintained Heston pricing kernels. Paths
-describe a zero-drift asset under the money-market-account measure, with time in years,
-instantaneous annualized variance, annualized volatility and cumulative integrated
-variance recorded separately. The historical Euler variance floor is preserved at 1e-4;
-this adapter does not introduce a new discretization or calibrate market quotes.
+Paths describe a zero-drift asset under the money-market-account measure, with time
+in years, instantaneous annualized variance, annualized volatility and cumulative
+integrated variance recorded separately. Historical Euler uses a 1e-4 variance
+floor. Optional QE-M uses the nonnegative quadratic-exponential transition.
 """
 
 from __future__ import annotations
@@ -222,6 +221,7 @@ class HestonModel:
         n_paths: int,
         steps_per_year: int,
         seed: int,
+        mc_scheme: str = "euler",
     ) -> ModelPaths:
         """Simulate zero-drift Heston paths using local, reproducible random draws.
 
@@ -230,7 +230,8 @@ class HestonModel:
         measure
             ``Q_MMA``; inverse and physical measures are unsupported.
         observation_times
-            Finite strictly increasing times in years, beginning at zero.
+            Finite strictly increasing times in years, beginning at zero. QE-M also
+            accepts the initial observation alone for an expiry at time zero.
         spot0
             Positive initial level of the zero-drift asset (no forward carry).
         n_paths, steps_per_year
@@ -238,6 +239,8 @@ class HestonModel:
             the legacy rule ``int(interval * steps_per_year) + 1``.
         seed
             Integer in ``[0, 2**32 - 1]`` for a local NumPy ``RandomState``.
+        mc_scheme
+            Historical Euler or ``"qe_m"`` for Andersen's martingale-corrected QE scheme.
 
         Returns
         -------
@@ -247,6 +250,8 @@ class HestonModel:
             forward recentering belong to the valuation layer. The observation
             partition affects both the integration grid and the draw ordering.
         """
+        if mc_scheme not in ("euler", "qe_m"):
+            raise ValueError("mc_scheme must be 'euler' or 'qe_m'")
         if measure != "Q_MMA":
             raise ValueError("HestonModel supports only measure='Q_MMA'")
         if (
@@ -255,7 +260,7 @@ class HestonModel:
         ):
             raise ValueError("observation_times must be a real numeric NumPy array")
         times = np.array(observation_times, dtype=np.float64, copy=True)
-        if times.ndim != 1 or times.size < 2 or not np.isfinite(times).all():
+        if times.ndim != 1 or times.size < (1 if mc_scheme == "qe_m" else 2) or not np.isfinite(times).all():
             raise ValueError("observation_times must be a finite one-dimensional grid")
         if times[0] != 0.0 or np.any(np.diff(times) <= 0.0):
             raise ValueError("observation_times must begin at zero and strictly increase")
@@ -268,7 +273,7 @@ class HestonModel:
         if seed_value >= 2**32:
             raise ValueError("seed must be in [0, 2**32 - 1]")
 
-        from stochvolmodels.models.heston.kernels import _simulate_heston_with_increments
+        from stochvolmodels.models.heston.kernels import _qe_m_step, _simulate_heston_with_increments
         from stochvolmodels.utils.funcs import set_time_grid
 
         rng = np.random.RandomState(seed_value)
@@ -279,20 +284,19 @@ class HestonModel:
         interval_dts: list[float] = []
         for index, interval in enumerate(np.diff(times), start=1):
             steps, dt, _ = set_time_grid(float(interval), density)
-            w0 = np.sqrt(dt) * rng.normal(size=(steps, count))
-            w1 = np.sqrt(dt) * rng.normal(size=(steps, count))
-            x, variance, qvar = _simulate_heston_with_increments(
-                returns[:, index - 1].copy(),
-                variances[:, index - 1].copy(),
-                integrated[:, index - 1].copy(),
-                self._theta,
-                self._kappa,
-                self._rho,
-                self._volvol,
-                dt,
-                w0,
-                w1,
-            )
+            x, variance, qvar = (state[:, index - 1].copy()
+                                 for state in (returns, variances, integrated))
+            if mc_scheme == "qe_m":
+                for _ in range(steps):
+                    z_var, z_spot = rng.standard_normal((2, count))
+                    _qe_m_step(x, variance, qvar, self._theta, self._kappa, self._rho,
+                               self._volvol, dt, z_var, z_spot)
+            else:
+                w0 = np.sqrt(dt) * rng.normal(size=(steps, count))
+                w1 = np.sqrt(dt) * rng.normal(size=(steps, count))
+                x, variance, qvar = _simulate_heston_with_increments(
+                    x, variance, qvar, self._theta, self._kappa, self._rho, self._volvol, dt, w0, w1,
+                )
             returns[:, index], variances[:, index], integrated[:, index] = x, variance, qvar
             interval_steps.append(int(steps))
             interval_dts.append(float(dt))
@@ -306,6 +310,9 @@ class HestonModel:
             | np.any(~np.isfinite(variances) | (variances < 0.0), axis=1)
             | np.any(~np.isfinite(integrated) | (integrated < 0.0), axis=1)
         )
+        if mc_scheme == "qe_m" and np.any(failed):
+            raise FloatingPointError("nonfinite or nonpositive Heston QE-M path value")
+        qe = mc_scheme == "qe_m"
         return ModelPaths(
             observation_times=_readonly(times),
             assets=_readonly(assets),
@@ -313,7 +320,8 @@ class HestonModel:
             sampling_measure="Q_MMA",
             target_measure="Q_MMA",
             numeraire="money_market_account",
-            scheme="heston_euler_variance_floor_1e-4_left_qvar_v1",
+            scheme=("heston_qe_m_trapezoidal_qvar_v1" if qe
+                    else "heston_euler_variance_floor_1e-4_left_qvar_v1"),
             states={
                 "log_zero_drift_return": _readonly(returns),
                 "variance": _readonly(variances),
@@ -333,10 +341,11 @@ class HestonModel:
                 "seed": seed_value,
                 "generator": "numpy.random.RandomState",
                 "bit_generator": "MT19937",
-                "draw_ordering": "per_interval_W0_matrix_then_W1_matrix_row_major",
-                "normal_convention": "scaled_Brownian_increments",
+                "draw_ordering": ("per_step_variance_then_orthogonal_spot" if qe
+                                  else "per_interval_W0_matrix_then_W1_matrix_row_major"),
+                "normal_convention": "standard_normals" if qe else "scaled_Brownian_increments",
                 "observation_partition_dependent": True,
-                "variance_floor": 1e-4,
+                "variance_floor": 0.0 if qe else 1e-4,
                 "numpy_version": np.__version__,
             },
             diagnostics={

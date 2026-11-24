@@ -17,13 +17,13 @@ __all__ = (
 )
 
 _MODULES = {
-    "RoughLogSvParams": "stochvolmodels.pricers.rough_logsv.params",
-    "RoughKernel": "stochvolmodels.pricers.rough_logsv.params",
+    "RoughLogSvParams": "stochvolmodels.models.rough_logsv.params",
+    "RoughKernel": "stochvolmodels.models.rough_logsv.params",
     "RoughLogSVPricer": "stochvolmodels.pricers.rough_logsv_pricer",
     "RoughPricingResult": "stochvolmodels.pricers.rough_logsv_pricer",
     "ClassicalPdeConfig": "stochvolmodels.pricers.rough_logsv_pricer",
-    "RoughMCConfig": "stochvolmodels.pricers.rough_logsv.multilevel",
-    "DiscretePdeControl": "stochvolmodels.pricers.rough_logsv.multilevel",
+    "RoughMCConfig": "stochvolmodels.models.rough_logsv.multilevel",
+    "DiscretePdeControl": "stochvolmodels.models.rough_logsv.multilevel",
 }
 
 

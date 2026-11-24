@@ -4,7 +4,7 @@ Examples
 --------
 Replay three flat Black smiles and inspect the original-unit prices and acceptance checks.
 
->>> from stochvolmodels.models.local_vol import LocalVolFamily
+>>> from stochvolmodels.models.lsv.local_vol import LocalVolFamily
 >>> from stochvolmodels.models.lsv.simulation import LSVMonteCarloConfig
 >>> from stochvolmodels.fitters.lsv_parametric import LSVParametricCalibrationConfig
 >>> from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
@@ -50,7 +50,7 @@ from stochvolmodels.fitters.lsv_parametric import (
     LSVParametricCalibrationResult,
     LSVParametricCalibrator,
 )
-from stochvolmodels.models.local_vol import LocalVolSurface
+from stochvolmodels.models.lsv.local_vol import LocalVolSurface
 from stochvolmodels.pde_solvers import Grid1D, PDEDiagnostics2D
 from stochvolmodels.models.logsv.params import LogSvParams
 from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdeExpiry, LogSvPdePricer, LogSvPdeResult

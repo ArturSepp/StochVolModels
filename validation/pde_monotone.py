@@ -16,11 +16,8 @@ At an axis endpoint freeze its normal dynamics and retain tangential dynamics,
 except at y=0 with exactly zero normal diffusion and covariance: retain inward
 drift b using the positive rate b/h to the first interior node. This preserves
 the first moment and adds a recorded second moment b*h, vanishing with spacing.
-The optional upper-volatility reflection returns mass to the adjacent node at the same x.
-For last spacing h, physical normal variance a and drift b its rate is a/h²+max(-b,0)/h.
-There is no exterior transition. Tangential dynamics continue along the face, mixed jumps
-from the face are suppressed, and at an x corner only the vertical return remains.
-By default the upper face retains its absorbing-normal closure. No finite-state positive
+The optional upper-volatility return uses the adjacent inward node for reflected
+diffusion and inward drift. Other endpoints retain the absorbing-normal closure. No finite-state positive
 generator can retain nonzero variance and a zero-drift coordinate at its extreme.
 Optional exponential fitting preserves exp(x) for money-market log-forward models,
 with measured log-drift error. All other drift uses centered weights when positive,
@@ -58,8 +55,7 @@ class MonotoneConfig:
                 or not isinstance(self.retain_zero_vol_drift, bool)
                 or not isinstance(self.reflect_upper_vol, bool)):
             raise TypeError(
-                "fit_log_forward, reject_inflation, retain_zero_vol_drift and "
-                "reflect_upper_vol must be bools")
+                "fit_log_forward, reject_inflation, retain_zero_vol_drift and reflect_upper_vol must be bools")
 
 
 def _weights(nodes, point):
@@ -215,8 +211,8 @@ class Monotone2DReference(Unsplit2DReference):
                     q[i, 1] = q.get((i, 1), 0.) + by/h
                     zero_vol_nodes += 1
                     zero_vol_added_variance[i, j] = by*h
-                elif spatial.reflect_upper_vol and j == ny-1:
-                    h = y[-1] - y[-2]
+                elif j == ny-1 and spatial.reflect_upper_vol:
+                    h = y[j]-y[j-1]
                     q[i, j-1] = 2*coeff.variance_y[i, j]/h**2 + max(-coeff.drift_y[i, j], 0.)/h
                 mx = my = mxx = myy = mxy = 0.
                 total = 0.
@@ -262,17 +258,18 @@ class Monotone2DReference(Unsplit2DReference):
                  "x_drift_fallback_nodes": x_fallback, "y_drift_fallback_nodes": y_fallback,
                  "fit_log_forward": spatial.fit_log_forward,
                  "retain_zero_vol_drift": spatial.retain_zero_vol_drift,
+                 "reflect_upper_vol": spatial.reflect_upper_vol,
                  "zero_vol_boundary_nodes": zero_vol_nodes,
                  "max_zero_vol_added_variance": float(np.max(zero_vol_added_variance)),
                  "boundary_closure": ("inward drift at degenerate y=0; other normals absorbing"
                                       if zero_vol_nodes else "absorbing normal, evolving tangent"),
                  "max_absolute_moment_errors": {k: float(np.max(abs(v)))
                                                  for k, v in errors.items()}}
-        errors["inflation_occupancy"] = inflation.astype(float)
         if spatial.reflect_upper_vol:
-            stats["boundary_closure"] = (
-                "upper volatility reflected diffusion/inward drift; x normals absorbing; "
-                + ("lower volatility inward drift" if zero_vol_nodes else "lower normal absorbing"))
+            stats["boundary_closure"] = ("upper volatility returns inward; " +
+                                         ("lower volatility retains entrance drift" if zero_vol_nodes
+                                          else "other normals absorbing"))
+        errors["inflation_occupancy"] = inflation.astype(float)
         errors["zero_vol_added_variance"] = zero_vol_added_variance
         return cls(grid, backward, forward, config, stats, moment_errors=errors)
 

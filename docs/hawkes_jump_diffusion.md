@@ -199,7 +199,7 @@ in the slow test lane.
 
 - Hawkes, A. G. (1971). Spectra of some self-exciting and mutually exciting point processes.
   *Biometrika* 58(1), 83-90. [DOI 10.1093/biomet/58.1.83](https://doi.org/10.1093/biomet/58.1.83).
-- Liu, F., Packham, N. and Sepp, A. (2025). Jump risk premia in the presence of clustered jumps.
-  arXiv 2510.21297, first posted on SSRN (4735365) in 2024.
+- Liu, F., Packham, N. and Sepp, A. Jump risk premia in the presence of clustered jumps.
+  Accepted for publication in the *SIAM Journal on Financial Mathematics*. The 2025 preprint is arXiv 2510.21297.
   [DOI 10.48550/arXiv.2510.21297](https://doi.org/10.48550/arXiv.2510.21297).
 - [stochvolmodels software citation](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).

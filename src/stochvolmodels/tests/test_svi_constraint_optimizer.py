@@ -13,11 +13,11 @@ pytestmark = pytest.mark.repository_only
 @pytest.fixture(scope="module")
 def wing():
     root = next((p for p in Path(__file__).resolve().parents
-                 if (p/'examples/calibration/_svi_wing_benchmark.py').is_file()), None)
+                 if (p/'examples/fitters/_svi_wing_benchmark.py').is_file()), None)
     if root is None:
         pytest.skip("constrained raw SVI is repository-only")
     with pytest.MonkeyPatch.context() as patch:
-        patch.syspath_prepend(str(root/'examples/calibration'))
+        patch.syspath_prepend(str(root/'examples/fitters'))
         yield importlib.import_module("_svi_wing_benchmark")
 
 

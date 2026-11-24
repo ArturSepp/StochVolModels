@@ -21,7 +21,7 @@ from stochvolmodels.pricers.density_pricer import (
     DensityPricer,
     DensityState2D,
 )
-from stochvolmodels.models.logsv_pde import LogSvCoefficientProvider
+from stochvolmodels.models.logsv.coefficients import LogSvCoefficientProvider
 from stochvolmodels.pde_solvers.solver_2d import PDE2DADISolver
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 from stochvolmodels.pricers.logsv_pricer import (

@@ -199,7 +199,7 @@
       "example": "examples/docs/local_volatility_and_lsv.py"
     },
     "docs/rough_logsv.md": {
-      "form": "utility",
+      "form": "methodology",
       "status": "review"
     }
   },
@@ -216,7 +216,8 @@
     ],
     "docs/logsv_model.md": [
       "LogSvParams",
-      "LogSVPricer"
+      "LogSVPricer",
+      "PreparedLogSVGrid"
     ],
     "docs/volatility_distribution_and_moments.md": [
       "compute_analytic_qvar"
@@ -326,7 +327,9 @@
         "seed",
         "vol_scaler",
         "max_phi",
-        "historical_backbone_order"
+        "historical_backbone_order",
+        "fourier",
+        "use_analytic_gradient"
       ]
     }
   },
@@ -342,7 +345,9 @@
       "retired_strings": [
         "Rakhmonov (2024)",
         "Rakhmonov, P. (2024)"
-      ]
+      ],
+      "entry_point": "papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/figures/article_figures.py",
+      "replication": "Fourier, moment and simulation figures use generated grids and bundled snapshots. Empirical time series require local data."
     },
     "rdr_2025": {
       "title": "Stochastic Volatility for Factor Heath-Jarrow-Morton Framework",
@@ -354,7 +359,9 @@
       "source": "papers/sv_for_factor_hjm_rdr_2025/paper",
       "retired_strings": [
         "28(3)"
-      ]
+      ],
+      "entry_point": "papers/sv_for_factor_hjm_rdr_2025/calibration_fig_5_6_7.py",
+      "replication": "Swaption and SOFR workflows use recorded inputs. Treasury history for Figure 4 is downloaded separately."
     },
     "qf_2024": {
       "title": "Valuation and hedging of cryptocurrency inverse options",
@@ -362,15 +369,21 @@
       "year": "2024",
       "venue": "Quantitative Finance 24(7), 851-869",
       "doi": "10.1080/14697688.2024.2364804",
-      "status": "published; title, author order (Lucic, Sepp), volume, issue and pages verified against Crossref on 2026-09-27"
+      "status": "published; title, author order (Lucic, Sepp), volume, issue and pages verified against Crossref on 2026-09-27",
+      "entry_point": "papers/inverse_options_qf_2023/compare_net_delta.py",
+      "replication": "Generated hedging comparison using qis. A numbered figure for this script is unconfirmed."
     },
     "ssrn_4647027": {
       "title": "What is a robust stochastic volatility model",
       "authors": "Sepp, A. and Rakhmonov, P.",
       "year": "2023",
       "venue": "SSRN 4647027",
-      "status": "verified against Crossref on 2026-09-27: posted content (SSRN), 2023, DOI 10.2139/ssrn.4647027; no journal version found; the text is not in the repository",
-      "doi": "10.2139/ssrn.4647027"
+      "status": "SSRN working paper posted 27 December 2023, revised 29 February 2024. The public source snapshot preserves the original scripts.",
+      "doi": "10.2139/ssrn.4647027",
+      "version_date": "2024-02-29",
+      "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027",
+      "entry_point": "examples/docs/app_robust_volatility_models.py",
+      "replication": "Offline recorded-parameter case study. Original empirical scripts need index histories and private BTC data."
     },
     "ssrn_4887298": {
       "title": "Unified approach for hedging impermanent loss of liquidity provision",
@@ -382,15 +395,63 @@
       "source": "papers/unified_approach_for_hedging_il_df_2025/paper",
       "retired_strings": [
         "Sepp, A., Lipton, A. and Lucic, V."
-      ]
+      ],
+      "entry_point": "papers/unified_approach_for_hedging_il_df_2025/replication/run_logsv_for_il_payoff.py",
+      "replication": "Theoretical IL payoffs and hedges use generated inputs. Historical empirical results are outside the independent checks."
     },
     "ssrn_4735365": {
       "title": "Jump risk premia in the presence of clustered jumps",
       "authors": "Liu, F., Packham, N. and Sepp, A.",
       "year": "2025",
-      "venue": "SSRN 4735365; arXiv 2510.21297",
-      "status": "verified on 2026-09-27: arXiv 2510.21297 v1 of 24 October 2025 (abstract page and API) and Crossref record of SSRN 4735365 (posted 2024, same title, authors and abstract); working paper, no journal version",
-      "doi": "10.48550/arXiv.2510.21297"
+      "venue": "SIAM Journal on Financial Mathematics (accepted); 2025 preprint arXiv 2510.21297",
+      "status": "Acceptance confirmed by the author on 23 November 2026. The DOI identifies the preprint.",
+      "doi": "10.48550/arXiv.2510.21297",
+      "entry_point": "papers/jump_risk_premia_clustered_jumps_sifin_2027/replication/hawkes_estimator.py",
+      "replication": "Hawkes pricing and related calibration and estimation. Historical inputs and separate co-author code are needed to regenerate empirical exhibits."
+    },
+    "rough_logsv_2026": {
+      "title": "Rough Log-normal Stochastic Volatility with Quadratic Drift: Second-moment stability and the martingale property under positive correlation",
+      "authors": "Sepp, A. and Rakhmonov, P.",
+      "year": "2026",
+      "version_date": "2026-11-18",
+      "status": "authors' local working draft; title, authors, date and named results checked against the supplied manuscript; no journal publication, public preprint URL or DOI asserted",
+      "source": "papers/rough_volterra_lognormal_sv_model_2026/paper/rough_volterra_lognormal.tex",
+      "documentation_scope": "explicit author request to reference this draft in package analytics documentation; does not reclassify other Tier 2 sources; draft and local evidence are not bundled or displayed",
+      "entry_point": "papers/rough_volterra_lognormal_sv_model_2026/replication/rough_logsv_btc_eth_figure.py",
+      "replication": "Local selected BTC and ETH quote panels and fixed-H checkpoints are required for the saved-fit replay."
+    },
+    "barrier_2022": {
+      "title": "Toward an efficient hybrid method for pricing barrier options on assets with stochastic volatility",
+      "authors": "Lipton, A. and Sepp, A.",
+      "year": "2022",
+      "venue": "Wilmott",
+      "url": "https://arxiv.org/abs/2202.07849",
+      "status": "Published. The checkout carries the author manuscript, historical figure workflows and independent numerical checks.",
+      "entry_point": "papers/barrier_options_sv_wilmott_2022/replication/article_figures.py",
+      "replication": "Conditional barrier valuation using generated paths. The local author manuscript and archived figures have separate provenance."
+    },
+    "robust_sv_local_2026": {
+      "title": "What Is a Robust Stochastic Volatility Model? Measure Changes, Martingality and Cross-Asset Applications",
+      "authors": "Sepp, A. and Rakhmonov, P.",
+      "year": "2026",
+      "version_date": "2026-11-17",
+      "status": "Local author revision of SSRN 4647027. Manuscript and empirical exhibit inputs are held in the research checkout.",
+      "entry_point": "papers/robust_volatility_models_2026/replication/stage_manuscript.py",
+      "replication": "Local exhibit staging. Empirical workflows depend on licensed and private inputs."
+    }
+  },
+  "exploratory_studies": {
+    "risk_premia_gmm": {
+      "entry_point": "papers/risk_premia_gmm/replication/spx_feasibility.py",
+      "scope": "Local SPX mixture calibration and physical tilting experiments. Supply an SPX panel and an output directory. No standalone publication identified."
+    },
+    "forward_var": {
+      "entry_point": "papers/forward_var/calibrate_forward_var.py",
+      "scope": "Forward-variance calibration and PDE comparison from a recorded option chain."
+    },
+    "t_distribution": {
+      "entry_point": "papers/t_distribution/illustrations.py",
+      "scope": "Student-t terminal-law illustrations on generated inputs. Separate market fits require market data."
     }
   }
 }

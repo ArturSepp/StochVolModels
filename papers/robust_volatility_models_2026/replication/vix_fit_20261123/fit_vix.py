@@ -14,7 +14,6 @@ from scipy.fft import irfft, next_fast_len, rfft
 from scipy.optimize import least_squares
 
 from stochvolmodels.pricers.logsv_pricer import simulate_vol_paths
-from ..ssrn_2023.ss_distribution_fit import fit_distribution_log_sv_fixed_kappa
 
 
 OUT = Path(__file__).resolve().parent
@@ -63,6 +62,8 @@ def model_acf(parameters, increments):
 
 
 def main():
+    from ..ssrn_2023.ss_distribution_fit import fit_distribution_log_sv_fixed_kappa
+
     metadata = json.loads((BLOOMBERG / "input_manifest.json").read_text())["series"]["VIX"]
     source = BLOOMBERG / "inputs" / metadata["file"]
     digest = hashlib.sha256(source.read_bytes()).hexdigest()

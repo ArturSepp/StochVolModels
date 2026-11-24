@@ -1,0 +1,16 @@
+# stochvolmodels.products
+
+*Author: [Artur Sepp](https://github.com/ArturSepp)*
+
+Implemented in [StochVolModels](https://github.com/ArturSepp/StochVolModels). Software citation [CITATION.cff](../../../CITATION.cff).
+
+Define cash flows from simulated observations, including European options and integrated variance. Valuation supplies the pricing measure and discount convention.
+
+[Parent package guide](../README.md).
+
+Read each row as importer → imported SVM module. Names are relative to stochvolmodels. Lazy marks on-demand imports and export lookups, typing marks type-checking edges. The last column gives directly used optional packages, test tools or checkout namespaces. A dash means none.
+
+| Module | Analytics | Direct SVM imports | Example or test | Optional or checkout |
+|---|---|---|---|---|
+| [`__init__.py`](__init__.py) | Define cash flows from simulated observations, including European options and integrated variance. | [`data.model_paths`](../data/model_paths.py) | [test_path_valuation.py](../tests/test_path_valuation.py) | — |
+| [`payoffs.py`](payoffs.py) | Concrete pathwise payoffs for European and variance options. | [`data.model_paths`](../data/model_paths.py), [`utils.config`](../utils/config.py) | [test_heston_model.py](../tests/test_heston_model.py) | — |

@@ -14,15 +14,16 @@ myst:
 Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
 
-The package implements the models of two published articles, whose PDF and LaTeX source are in the
-repository, and supports four further papers. This page lists them with the documentation pages
-that rest on each, shows which published figures the site regenerates from repository code, gives
-the commands that replicate them, and records the known issues of the paper directories.
+The repository includes article manuscripts and research code for published and accepted papers,
+including the bivariate Hawkes model in the accepted SIFIN article. Its experimental rough-logSV implementation
+also accompanies an authors' working draft, identified separately below. This page maps the
+papers to documentation, describes figure replication, and records data prerequisites
+and the known issues of the paper directories.
 
 ## The papers
 
-Every reference below was checked against its publisher, Crossref or arXiv record; the working
-papers are cited as such.
+The table links publisher, Crossref or arXiv records. The authors confirmed the SIFIN acceptance on 23 November 2026. The local authors' draft below has a separate
+provenance record.
 
 | Paper | Status | In the repository | Documentation pages |
 |---|---|---|---|
@@ -30,11 +31,46 @@ papers are cited as such.
 | Sepp and Rakhmonov (2025), Stochastic volatility for factor Heath-Jarrow-Morton framework, *Review of Derivatives Research* 28, article 12, [DOI 10.1007/s11147-025-09217-4](https://doi.org/10.1007/s11147-025-09217-4) | Published, exclusive licence to Springer | PDF and LaTeX in `papers/sv_for_factor_hjm_rdr_2025/paper/`; figure code in that directory | [Factor HJM rates](factor_hjm_stochastic_volatility.md), [USD swaptions and SOFR options](app_swaptions_and_sofr_options.md) |
 | Lucic and Sepp (2024), Valuation and hedging of cryptocurrency inverse options, *Quantitative Finance* 24(7), 851-869, [DOI 10.1080/14697688.2024.2364804](https://doi.org/10.1080/14697688.2024.2364804) | Published | Code in `../papers/inverse_options_qf_2023/` | [Inverse options](inverse_options.md) |
 | Lipton, Lucic and Sepp (2025), Unified approach for hedging impermanent loss of liquidity provision, *Digital Finance* 7(3), 429-477, [DOI 10.1007/s42521-025-00144-5](https://doi.org/10.1007/s42521-025-00144-5) | Published | Code in `papers/unified_approach_for_hedging_il_df_2025/` | [Impermanent loss hedging](app_impermanent_loss_hedging.md) |
-| Liu, Packham and Sepp (2025), Jump risk premia in the presence of clustered jumps, arXiv 2510.21297, first posted on SSRN (4735365) in 2024, [DOI 10.48550/arXiv.2510.21297](https://doi.org/10.48550/arXiv.2510.21297) | Working paper | Development code in `papers/jump_risk_premia_clustered_jumps/` | [Clustered jumps](hawkes_jump_diffusion.md) |
-| Sepp and Rakhmonov (2023), What is a robust stochastic volatility model, SSRN 4647027, [DOI 10.2139/ssrn.4647027](https://doi.org/10.2139/ssrn.4647027) | Working paper; text not in the repository | [Original SSRN code and recorded parameters](https://github.com/ArturSepp/StochVolModels/tree/588193611f4fbf5595d60b198e34cb5c24826f8a/papers/volatility_models) | [Robust SV models](app_robust_volatility_models.md) |
+| Liu, Packham and Sepp, *Jump risk premia in the presence of clustered jumps*, accepted in *SIAM Journal on Financial Mathematics*. [2024 SSRN preprint](https://ssrn.com/abstract=4735365) and [2025 arXiv preprint](https://doi.org/10.48550/arXiv.2510.21297) | Accepted for publication | [Author manuscript and replication scope](https://github.com/ArturSepp/StochVolModels/blob/main/papers/jump_risk_premia_clustered_jumps_sifin_2027/README.md) | [Clustered jumps](hawkes_jump_diffusion.md) |
+| Sepp and Rakhmonov (2023), What is a robust stochastic volatility model, SSRN 4647027, [DOI 10.2139/ssrn.4647027](https://doi.org/10.2139/ssrn.4647027) | SSRN working paper, revised 29 February 2024 | [Original SSRN code and recorded parameters](https://github.com/ArturSepp/StochVolModels/tree/588193611f4fbf5595d60b198e34cb5c24826f8a/papers/volatility_models) | [Robust SV models](app_robust_volatility_models.md) |
+
+Lipton and Sepp (2022), *Toward an efficient hybrid method for pricing barrier options on assets with stochastic volatility* (*Wilmott*), combine conditional heat potentials and Monte Carlo. The tracked checkout carries the author manuscript, figure runner and generated-input comparisons. [Public preprint](https://arxiv.org/abs/2202.07849)
+
+The separate local revision by Sepp and Rakhmonov, *What Is a Robust Stochastic Volatility Model? Measure Changes, Martingality and Cross-Asset Applications*, is dated **17 November 2026** on its title page. Its local `replication/stage_manuscript.py` assembles exhibits for the revised study. The public snapshot above preserves the original SSRN scripts. Run their offline recorded-parameter example with `python -m examples.docs.app_robust_volatility_models`. Empirical comparisons require separately sourced volatility histories.
 
 Articles cite the two published papers by section and by the equation numbers of their PDF; the
 LaTeX sources number some equations differently, as each `paper/README.md` explains.
+In the IJTAF journal PDF, (2.1)–(2.2) appear on page 5 and the affine-expansion systems
+(4.17) and (4.25) on pages 29 and 32. In the RDR journal PDF, factor dynamics (9),
+drift freezing (37), the first-order expansion (108) and the simulation scheme (124)
+appear on pages 6, 12, 30 and 36, respectively.
+
+## Rough-logSV authors' working draft
+
+Sepp and Rakhmonov (2026), *Rough Log-normal Stochastic Volatility with Quadratic Drift:
+Second-moment stability and the martingale property under positive correlation*,
+working draft dated **18 November 2026**, is the research reference for the
+[experimental rough-logSV guide](rough_logsv.md). This is an authors' local draft,
+not a verified journal publication or public preprint record. Its title, authors,
+date and named results were checked against
+`papers/rough_volterra_lognormal_sv_model_2026/paper/rough_volterra_lognormal.tex`.
+No public URL or DOI is assigned in this documentation.
+
+The guide separates the draft's exact linear-drift moment equations, stability
+criterion, nonlinear time-averaged bound and sufficient martingale condition from
+the package's numerical algorithms. Strict positivity for singular kernels and the
+general martingale converse remain open. The classical published IJTAF paper is a
+separate reference; its equation numbers must not be used for the rough draft.
+
+The local `replication/` folder contains the theoretical exhibits and the BTC/ETH
+figure producers. The latter use the standalone package pricer and estimator to
+replay the saved fixed $H$ fits: 45 BTC and 39 ETH quotes, three maturities per asset,
+at $H=0.30$ and $H=0.50$. See the guide's
+[replay instructions](rough_logsv.md#replaying-selected-btceth-evidence).
+The source draft, local input quotes and frozen checkpoint bundles are not wheel
+dependencies or public documentation exhibits. Reproduction needs those local
+prerequisites; a successful saved-fit replay does not qualify new calibration.
+$H=0.20$ and wider calibration remain gated.
 
 ## Published figures on this site
 
@@ -99,8 +135,9 @@ new dataset; validate market conventions and residuals separately.
 | `sv_for_factor_hjm_rdr_2025` | published-paper implementation of an experimental package surface | hard-coded swaption and SOFR option data; online US Treasury data for Fig. 4 |
 | `inverse_options_qf_2023`, `unified_approach_for_hedging_il_df_2025` | code of published papers | generated inputs |
 | `robust_volatility_models_2026/replication/ssrn_2023` (local) | code of a working paper, with recorded parameters | public volatility indices and private Bitcoin data, downloaded or local |
-| `jump_risk_premia_clustered_jumps` | development code related to a working paper, not an exact replication | local cryptocurrency data and optional research dependencies |
-| `t_distribution`, `forward_var`, `barriers` | exploratory, no publication mapping asserted; not cited on this site | generated and local research inputs, depending on the script |
+| `jump_risk_premia_clustered_jumps_sifin_2027` | Accepted manuscript, Hawkes option pricer and selected estimation and calibration workflows | historical BTC data and separate co-author code for empirical results |
+| `barrier_options_sv_wilmott_2022` | Published conditional barrier pricing. Run `replication/article_figures.py` from its documented module path | generated model paths, author manuscript and archived figures |
+| `t_distribution`, `forward_var` | Exploratory terminal-law illustrations and forward-variance calibration. Entry points are `illustrations.py` and `calibrate_forward_var.py` | generated or recorded inputs according to the runner |
 
 No JOSS acceptance claim depends on licensed data or a full paper rerun. The offline quickstart,
 synthetic option-chain examples, package tests, and built documentation are the reviewer gates.
@@ -115,6 +152,9 @@ the pages that use the code describe their verification and workarounds.
   $(q/b)^{r/2}$, including the inverse-gamma limit at zero quadratic mean reversion.
   The `--quick` verification entry point checks orders zero through four against independent
   density quadrature at non-unit scales and checks divergent inverse-gamma moments.
+  The full verification also reports expansion prices, PDE refinement and Monte Carlo
+  uncertainty for four vanilla cases. The [Fourier comparison](numerical_accuracy_and_performance.md#logsv-expansion-against-the-full-state-model)
+  reproduces the report and compares the public pricer at the same inputs.
   This scale correction does not change the standardized skewness and kurtosis of Fig. 1.
   The docstring of `replication/calibration/calibrations.py`
   refers to figures and a table that the published article does not contain; the
@@ -134,7 +174,7 @@ the pages that use the code describe their verification and workarounds.
 - **`unified_approach_for_hedging_il_df_2025`.** The corrected author manuscript and theoretical
   replication include independent payoff, quadrature and delta checks. See the paper README for
   their scope; these checks do not revalidate historical empirical results.
-- **`jump_risk_premia_clustered_jumps`.** Most scripts need Tardis or Deribit data and `qis`;
+- **`jump_risk_premia_clustered_jumps_sifin_2027`.** Most scripts need Tardis or Deribit data and `qis`;
   `hawkes_estimator.py` uses `beta1_m` where the negative intensity needs `beta2_m`.
 
 ## See also

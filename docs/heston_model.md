@@ -78,9 +78,49 @@ $$
 B(\tau) = \frac{\psi_- c_+ e^{-\zeta \tau} - \psi_+ c_-}{\vartheta^2 \left( c_+ e^{-\zeta \tau} + c_- \right)} , \qquad A(\tau) = -\frac{\kappa \theta}{\vartheta^2} \left( \psi_+ \tau + 2 \ln \left( c_+ e^{-\zeta \tau} + c_- \right) \right) .
 $$
 
-Options are priced by Fourier inversion of this MGF, as in
-[Fourier pricing](european_option_pricing.md); for a chain the coefficients are carried from one
-maturity to the next.
+The default pricer inverts this MGF on a uniform grid and carries the coefficients from
+one expiry to the next. See [Fourier pricing](european_option_pricing.md).
+
+### Controlled Fourier pricing
+
+Pass `fourier={}` to `price_vanilla`, `price_slice`, `price_chain`,
+`compute_chain_prices_with_vols` or `compute_model_ivols_for_chain` for ordinary European
+calls and puts. At each expiry, the pricer evaluates the transform from time zero and shares
+each batch of frequencies across all strikes. It bisects panels to resolve the integral and
+extends the cutoff until two successive outer frequency bands have sufficiently small mass.
+The tail check estimates truncation error. The default absolute target is one millionth
+of a unit of discounted premium per option.
+
+```python
+def controlled_wing_price() -> float:
+    """Ten-year call with forward 100, unit discount and a premium tolerance of 1e-6."""
+    params = svm.HestonParams(v0=0.04, theta=0.04, kappa=0.5, rho=-0.9, volvol=1.0)
+    price, _ = svm.HestonPricer().price_vanilla(
+        params=params, ttm=10.0, forward=100.0, strike=140.0, optiontype="C",
+        fourier={"price_atol": 1e-6},
+    )
+    return price
+```
+
+This call returns **0.29577444**. Omitting `fourier` or selecting `fourier="legacy"`
+gives **0.22052944** on the historical grid. The [runnable example](../examples/docs/heston_model.py)
+uses the same model parameters for the controlled price.
+
+| Setting in `fourier` | Default | Meaning |
+|---|---:|---|
+| `price_atol` | `1e-6` | Positive absolute tolerance in discounted premium units. |
+| `price_rtol` | `0` | Adds `price_rtol * time_values` to the absolute tolerance of each quote. |
+| `time_values` | `None` | Fixed, nonnegative discounted time values supplied by the caller when `price_rtol > 0`. |
+| `initial_cutoff`, `max_cutoff` | `1`, `16384` | Initial frequency range and upper limit for its doubling. |
+| `max_nodes`, `max_refinements` | `32767`, `512` | Per-expiry limits on sampled frequencies and panel bisections. |
+
+`price_atol` and `time_values` accept a scalar, a strike-aligned vector for one expiry, or
+one vector per expiry in chain order. If a work limit is reached, the pricer raises
+`FloatingPointError`. Its `diagnostics` attribute records the maturity, affected strike,
+cutoff, work counts, estimated panel error and estimated tail mass. The analytic calibrator
+also supports [fixed Fourier grids](calibration.md#fixed-fourier-grids).
+The [reference comparison](numerical_accuracy_and_performance.md#fourier-modes-and-reference-prices)
+records the accuracy and default decision across five Heston fixtures.
 
 ### Feller condition and stationary law
 
@@ -93,7 +133,7 @@ one the law is exponential, with its mode at zero variance.
 
 `HestonPricer.calibrate_model_params_to_chain` fits all five parameters by sequential least squares
 to implied volatilities weighted by vegas normalised within each maturity, with bounds and the
-Feller condition as an inequality constraint. `model_mc_price_chain` simulates 360 Euler steps a
+Feller condition as an inequality constraint. By default, `model_mc_price_chain` uses 360 Euler steps a
 year and floors the variance at $10^{-4}$ after each step (see
 [Monte Carlo simulation](monte_carlo_simulation.md#the-heston-scheme)).
 
@@ -186,7 +226,7 @@ previous parameter/kernel imports remain aliases to the same objects.
 |---|---|
 | `HestonParams` | Fields `v0`, `theta`, `kappa`, `rho`, `volvol`, as in the table above |
 | `HestonPricer.price_chain`, `compute_model_ivols_for_chain` | Prices and implied volatilities from the closed-form MGF |
-| `HestonPricer.model_mc_price_chain`, `simulate_terminal_values` | Euler simulation, 360 steps a year; the numba generator is seeded by `stochvolmodels.utils.funcs.set_seed` |
+| `HestonPricer.model_mc_price_chain`, `simulate_terminal_values` | Euler by default, with the historical Numba seed. Select QE-M with `mc_scheme="qe_m"` and pass `seed` and `steps_per_year` for reproducible paths. |
 | `HestonPricer.calibrate_model_params_to_chain` | Fit of all five parameters with the Feller constraint |
 | `BTC_HESTON_PARAMS` | Preset used as a starting point for Bitcoin chains (compatibility tier) |
 
@@ -264,6 +304,59 @@ zero vol-of-variance use exact limiting formulas. Ordinary grids reuse the exist
 transform; cancellation and repeated-root cases use an adaptive Riccati solve. These numerical
 branches do not extend the model's moment-existence domain.
 
+### Martingale-corrected QE simulation
+
+`mc_scheme="qe_m"` selects Andersen's quadratic-exponential variance step and
+martingale-corrected log-price update on the Heston path, terminal and chain interfaces.
+The scheme matches the first two conditional CIR moments. At high conditional dispersion
+the variance transition includes an atom at zero. Integrated variance uses equal endpoint
+weights, with the exact integral for deterministic variance. If the conditional exponential
+moment does not exist, the step raises `FloatingPointError` with its starting variance and
+step size. Increasing `steps_per_year` reduces the step size.
+[Andersen, sections 3.2 and 4.3.2](https://www.maths.univ-evry.fr/pages_perso/crepey/Finance/andersen%20vol%20sto.pdf)
+
+For a step of length $h$ starting at variance $v$, write $\xi$ for `volvol`,
+$d=e^{-\kappa h}$ and $u=(1-d)/\kappa$, with $u=h$ at $\kappa=0$. The
+conditional mean and variance used by the transition are
+
+$$
+m=vd+\theta(1-d),\qquad
+s^2=\xi^2 u\left(vd+\frac{\theta(1-d)}{2}\right).
+$$
+
+For $m>0$ and $\xi>0$, the ratio $\psi=s^2/m^2$ selects the draw of next-step
+variance $V'$. When $\psi\le 1.5$, set
+$a=m\psi/[2(1+\sqrt{1-\psi/2})]$ and draw
+$V'=(\sqrt{m-a}+\sqrt{a}Z_v)^2$ with $Z_v$ standard normal. When $\psi>1.5$,
+the probability of a positive draw is $q=2/(1+\psi)$. Conditional on that
+event, $V'$ is exponential with rate $\lambda=q/m$. The remaining probability
+$1-q$ is assigned to zero. Both branches have mean $m$ and variance $s^2$.
+
+The spot step uses the variance integral $I=h(v+V')/2$, the residual variance
+$R=(1-\rho^2)I$, and an independent standard normal $Z_x$. For
+$c=\rho(1+\kappa h/2)/\xi-\rho^2 h/4$, the log-forward increment is
+
+$$
+\Delta X=cV'-\log\mathrm{E}\left[e^{cV'}\mid v\right]
+-\frac{R}{2}+\sqrt{R}Z_x .
+$$
+
+Integrating over $Z_x$ and then $V'$ gives
+$\mathrm{E}[e^{\Delta X}\mid v]=1$. The quadratic branch requires $2ac<1$,
+and the exponential branch requires $c<\lambda$. For $\xi=0$, the variance
+evolves deterministically, its integral is $vu+\theta(h-u)$, and the log-forward
+increment has mean $-I/2$ and variance $I$ with that exact integral.
+
+QE-M supports ordinary calls and puts under the money-market measure. Its chain premiums
+are discounted raw payoff means, with standard errors across independent paths. The model
+streams two normal vectors per step and records the RNG convention in `ModelPaths`.
+At forward 100 and strike 140 in the ten-year stress case above, 65,536 paths in 32 seeded
+batches at 48 steps per year gave 0.2920 with a batch standard error of 0.0107. The
+independent probability-integral price was 0.29577444. The floored Euler paths at the
+same resolution gave a raw call premium of 11.0624 with a batch standard error of 0.0934.
+These numbers are specific to the severe variance-boundary case.
+[Runnable QE-M example](../examples/docs/heston_model.py)
+
 ## Interpretation and limitations
 
 - **A fit is not the test.** The Heston refit has smaller residuals than the historical LogSV
@@ -276,10 +369,9 @@ branches do not extend the model's moment-existence domain.
   moments.
 - **Constant parameters.** The package's Heston model has no term structure of parameters; each
   chain is fitted with one set.
-- **Simulation.** The variance is floored at $10^{-4}$ rather than truncated at zero; with the Feller
-  condition failing, the floor is reached often and biases the simulation. `HestonPricer` uses
-  its fixed step convention; the provisional `HestonModel` exposes `steps_per_year` while
-  preserving the same variance floor.
+- **Simulation.** Historical Euler simulation floors variance at $10^{-4}$. When the Feller
+  condition fails, repeated visits to the floor can bias the simulated law. QE-M allows zero
+  variance. Check time-step convergence as well as the reported Monte Carlo sampling error.
 - **Calibration interface.** The docstring of `calibrate_model_params_to_chain` says that `v0` is
   inferred from the at-the-money volatility; the code fits it with the other four parameters.
 

@@ -7,8 +7,8 @@ Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/bl
 
 This folder preserves the published article by Artur Sepp and Parviz Rakhmonov
 and the corrected author source. The changes dated 29 October 2026 distinguish
-paper errata from implementation defects and make the scope of the finite
-transform approximation explicit.
+printed misprints and proof-level defects of the article from implementation
+defects and make the scope of the finite transform approximation explicit.
 
 | File | Status |
 |---|---|
@@ -23,7 +23,7 @@ and Applied Finance **26**(8), 2450003,
 [DOI: 10.1142/S0219024924500031](https://doi.org/10.1142/S0219024924500031).
 The journal volume is dated 2023; the article appeared in 2024.
 
-## Errata relative to the published version
+## Printed misprints and proof-level defects of the published version
 
 All equation numbers in this table refer to the **published PDF**.
 
@@ -72,7 +72,7 @@ with its stated mesh, boundary and simulation tolerances. See the
 The original source uses sequential equation numbering, whereas the journal PDF
 numbers equations by section. The corrected source retains its labels and
 sequential-numbering convention; replacement appendix proofs can change later
-numbers. Code citations and the errata above therefore use published PDF numbers,
+numbers. Code citations and the list above therefore use published PDF numbers,
 not the regenerated source numbering.
 
 The bibliography is inline. Compile the corrected source with its historical

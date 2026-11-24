@@ -43,7 +43,8 @@ tests marked `optional_integration`. The separate
 checks the optional adapter without market credentials.
 
 The wheel includes the package's automated test modules, including native quote diagnostics.
-Repository examples, documentation, paper sources and component `run_local/` runners are excluded.
+Component development runners live under `examples/`, alongside the other checkout-only examples.
+The distribution also excludes documentation and paper sources.
 Tests marked `repository_only` skip when their required repository assets are absent; the marker
 does not remove those test modules from the wheel. The wheel-content check compares the shipped
 test-module inventory with the source inventory, and the installed test run happens outside the

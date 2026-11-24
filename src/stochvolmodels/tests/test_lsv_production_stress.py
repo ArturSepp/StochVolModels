@@ -25,11 +25,11 @@ SCENARIOS = (
 def example():
     """Import the tracked runner only when the corresponding source checkout is available."""
     root = Path(__file__).resolve().parents[3]
-    if not (root / "examples/pricing").is_dir():
+    if not (root / "examples/pricers").is_dir():
         pytest.skip("the production stress example is repository-only")
     with pytest.MonkeyPatch.context() as mp:
         mp.syspath_prepend(str(root))
-        yield import_module("examples.pricing.lsv_production_stress")
+        yield import_module("examples.pricers.lsv_production_stress")
 
 
 @pytest.fixture(scope="module")

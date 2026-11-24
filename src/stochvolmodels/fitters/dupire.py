@@ -33,7 +33,7 @@ from scipy.special import ndtr
 from scipy.stats import poisson
 
 from stochvolmodels.utils._arrays import readonly_float_array as _readonly_array
-from stochvolmodels.models.local_vol import LocalVolSurface
+from stochvolmodels.models.lsv.local_vol import LocalVolSurface
 from stochvolmodels.models.lsv import FixedLogForwardJump
 from stochvolmodels.pde_solvers import BoundaryPair1D, Grid1D, PDE1DCoefficients, PDEDirection
 from stochvolmodels.pde_solvers.operators_1d import Operator1D

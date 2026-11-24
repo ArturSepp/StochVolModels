@@ -24,7 +24,7 @@ from time import perf_counter
 
 import numpy as np
 
-from examples.pricing.lsv_production_stress import (
+from examples.pricers.lsv_production_stress import (
     MC_CONFIG, STRIKES, production_lsv_stress_scenarios,
 )
 from stochvolmodels.data.option_chain import OptionChain
@@ -35,7 +35,7 @@ from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdePricer
 from validation.pde_unsplit import Unsplit2DReference, UnsplitConfig, density_diagnostics
 
 ROOT = Path(__file__).resolve().parents[1]
-STRESS_FIXTURE = ROOT / "examples/pricing/lsv_production_stress_reference.json"
+STRESS_FIXTURE = ROOT / "examples/pricers/lsv_production_stress_reference.json"
 CASE_NAMES = ("btc_baseline", "btc_adverse", *(s.name for s in
               production_lsv_stress_scenarios()), "two_year_volatility")
 
@@ -123,7 +123,7 @@ def load_case(name: str) -> QualificationCase:
     if name not in CASE_NAMES:
         raise ValueError(f"unknown case: {name}")
     if name.startswith("btc_"):
-        from examples.calibration.frozen_btc_lsv import replay_btc
+        from examples.fitters.frozen_btc_lsv import replay_btc
         from stochvolmodels.data.sample_option_chains import get_btc_test_chain_data
 
         adverse = name == "btc_adverse"
@@ -143,7 +143,7 @@ def load_case(name: str) -> QualificationCase:
             tuple(r.pde_prices for r in replay.original), expected, 2e-5,
             {"fitted_parameters": replay.calibration.parameter_values,
              "market_spread_coverage": replay.acceptance.market_spread_coverage,
-             "source": "examples/calibration/frozen_btc_lsv.py",
+             "source": "examples/fitters/frozen_btc_lsv.py",
              "note": "Fit once from frozen inputs; no fit inside refinement or PDE timings."},
         )
     if name == "two_year_volatility":
@@ -330,7 +330,7 @@ def _price_time_method(case, variant, method, config, *, adi=None, startup=False
     from stochvolmodels.pricers.density_pricer import (
         CoordinateSystem, DensityPricer, DensityState2D,
     )
-    from stochvolmodels.pricers.lsv_projection import _interval_time_grid, _step_counts
+    from stochvolmodels.models.lsv.propagation import _interval_time_grid, _step_counts
 
     grid, model, chain = variant.grid, case.model, case.chain
     if model.jump is not None:
@@ -679,8 +679,8 @@ def _metadata(args) -> dict:
                               check=False).stdout.strip()
     paths = list((ROOT / "src/stochvolmodels").rglob("*.py"))
     paths += [Path(__file__), ROOT / "validation/pde_unsplit.py",
-              STRESS_FIXTURE, ROOT / "examples/calibration/frozen_btc_lsv.py",
-              ROOT / "examples/pricing/lsv_production_stress.py"]
+              STRESS_FIXTURE, ROOT / "examples/fitters/frozen_btc_lsv.py",
+              ROOT / "examples/pricers/lsv_production_stress.py"]
     return {"created_utc": datetime.now(timezone.utc).isoformat(), "arguments": vars(args),
             "git_head": git("rev-parse", "HEAD"), "git_status": git("status", "--porcelain"),
             "python": platform.python_version(), "platform": platform.platform(),

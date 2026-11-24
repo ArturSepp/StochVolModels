@@ -8,13 +8,13 @@ import pytest
 from numba.typed import List
 
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.models.local_vol import LocalVolSurface
+from stochvolmodels.models.lsv.local_vol import LocalVolSurface
 from stochvolmodels.models.lsv import LSVModel, LeverageExtrapolation, LeverageSurface
 from stochvolmodels.pde_solvers import ADIConfig, CoefficientEvaluation, Grid1D, TensorGrid2D
 from stochvolmodels.pricers.local_vol_pde_pricer import LocalVolPdePricer
 from stochvolmodels.pricers.logsv.logsv_params import LogSvParams
 from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdePricer
-from stochvolmodels.pricers.lsv_projection import (
+from stochvolmodels.fitters.lsv_projection import (
     LSVProjectionConfig,
     LowDensityPolicy,
     SequentialLSVProjector,

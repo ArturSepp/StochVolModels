@@ -15,11 +15,11 @@ pytestmark = pytest.mark.repository_only
 def benchmark():
     """The benchmark is deliberately absent from installed wheels."""
     root = next((p for p in Path(__file__).resolve().parents
-                 if (p / "examples/calibration/compare_smile_fitters.py").is_file()), None)
+                 if (p / "examples/fitters/compare_smile_fitters.py").is_file()), None)
     if root is None:
         pytest.skip("research benchmark is repository-only")
     with pytest.MonkeyPatch.context() as patch:
-        patch.syspath_prepend(str(root / "examples/calibration"))
+        patch.syspath_prepend(str(root / "examples/fitters"))
         yield (importlib.import_module("compare_smile_fitters"),
                importlib.import_module("_svi_benchmark"))
 
@@ -414,7 +414,7 @@ def test_wing_study_quotes_match_frozen_protocol(benchmark):
 
 def test_price_objective_and_gradient_against_independent_vip(benchmark):
     """Different parameter mapping and VIP prices verify all five gradient columns."""
-    import vanilla_option_pricers as vip
+    import vanilla_option_pricers as vop
 
     wing = importlib.import_module("_svi_wing_benchmark")
     k = np.linspace(-0.16, 0.18, 9)
@@ -422,7 +422,7 @@ def test_price_objective_and_gradient_against_independent_vip(benchmark):
     t, vol, forward, discount = 0.3, 0.28, 3456.0, 1.014
     cp = np.where(k < 0, "P", "C")
     strikes = forward * np.exp(k)
-    midpoint = np.array([vip.compute_bsm_vanilla_price(forward, s, t, 0.29, c, discount)
+    midpoint = np.array([vop.compute_bsm_vanilla_price(forward, s, t, 0.29, c, discount)
                          for s, c in zip(strikes, cp)])
     half = np.array([0.0, .02, .1, .2, .4, .3, .15, .08, .04])
     quotes = dict(forward=forward, discount=discount, optiontypes=cp,
@@ -434,7 +434,7 @@ def test_price_objective_and_gradient_against_independent_vip(benchmark):
         variance = minimum + b*(rho*x + np.sqrt(x*x+sigma*sigma)
                                 - sigma*np.sqrt(1-rho*rho))
         ivs = vol*np.sqrt(variance)
-        prices = np.array([vip.compute_bsm_vanilla_price(forward, s, t, v, c, discount)
+        prices = np.array([vop.compute_bsm_vanilla_price(forward, s, t, v, c, discount)
                            for s, v, c in zip(strikes, ivs, cp)])
         return np.mean(((prices-midpoint)/np.maximum(half, .01))**2)
 
@@ -587,7 +587,7 @@ def test_price_seed_requires_prices_and_handles_flat_iv_limit(benchmark):
 @pytest.mark.parametrize("iv_anchor", [False, True])
 def test_seeded_price_recovers_independent_stress_smile(benchmark, ttm, iv_anchor):
     """A high-volatility skew at index scale is checked with independent VIP premiums."""
-    import vanilla_option_pricers as vip
+    import vanilla_option_pricers as vop
 
     bench, _ = benchmark
     wing = importlib.import_module("_svi_wing_benchmark")
@@ -595,7 +595,7 @@ def test_seeded_price_recovers_independent_stress_smile(benchmark, ttm, iv_ancho
     iv = np.sqrt(.30**2+.8*(-.7*k+np.sqrt(k*k+.15**2)))
     cp = np.where(k < 0, "P", "C")
     strikes = forward*np.exp(k)
-    mid = np.array([vip.compute_bsm_vanilla_price(forward, s, ttm, v, c, discount)
+    mid = np.array([vop.compute_bsm_vanilla_price(forward, s, ttm, v, c, discount)
                     for s, v, c in zip(strikes, iv, cp)])
     half = .03*mid
     quotes = dict(forward=forward, discount=discount, optiontypes=cp,
@@ -604,7 +604,7 @@ def test_seeded_price_recovers_independent_stress_smile(benchmark, ttm, iv_ancho
                                              iv_seed=True, iv_anchor=iv_anchor)
     x = k-p.m
     fitted_iv = np.sqrt((p.a+p.b*(p.rho*x+np.sqrt(x*x+p.sigma**2)))/ttm)
-    premium = np.array([vip.compute_bsm_vanilla_price(forward, s, ttm, v, c, discount)
+    premium = np.array([vop.compute_bsm_vanilla_price(forward, s, ttm, v, c, discount)
                         for s, v, c in zip(strikes, fitted_iv, cp)])
     loss = np.mean(((premium-mid)/np.maximum(half, .01))**2)
     assert loss < 1e-7

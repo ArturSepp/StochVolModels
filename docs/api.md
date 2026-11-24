@@ -26,8 +26,7 @@ a stable docstring drifts; `scripts/check_docs.py` checks that each name sits un
 
 Canonical parameter and numerical modules live under `stochvolmodels.models`;
 concrete option-chain adapters live under `stochvolmodels.pricers`. LSV projection is
-`stochvolmodels.fitters.lsv_projection`. Existing root exports and former module paths
-remain compatible. See [software design](software_design.md#layers) for the ownership map,
+`stochvolmodels.fitters.lsv_projection`. See [software design](software_design.md#layers) for the ownership map,
 retained calibration methods and compatibility limits.
 
 ## Installation and first result
@@ -56,13 +55,18 @@ Explained in [Option chains, notation and conventions](option_chains_and_convent
 ## Log-normal stochastic volatility model with quadratic drift
 
 Explained in [Log-normal stochastic volatility model with quadratic drift](logsv_model.md).
+The analytic vanilla and implied-volatility methods accept
+[frozen Fourier grid settings](logsv_model.md#frozen-fourier-grid-for-a-chain).
 
 ```{eval-rst}
 .. autoclass:: stochvolmodels.LogSvParams
    :members:
 
 .. autoclass:: stochvolmodels.LogSVPricer
-   :members: price_vanilla, price_slice, price_chain, compute_chain_prices_with_vols, model_mc_price_chain, calibrate_model_params_to_chain
+   :members: price_vanilla, price_slice, price_chain, prepare_fourier, compute_chain_prices_with_vols, compute_model_ivols_for_chain, model_mc_price_chain, calibrate_model_params_to_chain
+
+.. autoclass:: stochvolmodels.PreparedLogSVGrid
+   :members: price_chain, sigma0_sensitivity, refined_for
 ```
 
 ## Steady-state distribution, moments and expected quadratic variance
@@ -174,13 +178,15 @@ explained with the martingale conditions above.
 ## The Heston model as a benchmark
 
 Explained in [The Heston model as a benchmark](heston_model.md).
+The analytic vanilla and implied-volatility methods accept the
+[controlled Fourier pricing settings](heston_model.md#controlled-fourier-pricing).
 
 ```{eval-rst}
 .. autoclass:: stochvolmodels.HestonParams
    :members:
 
 .. autoclass:: stochvolmodels.HestonPricer
-   :members: price_vanilla, price_slice, price_chain, compute_chain_prices_with_vols, model_mc_price_chain, calibrate_model_params_to_chain
+   :members: price_vanilla, price_slice, price_chain, compute_chain_prices_with_vols, compute_model_ivols_for_chain, model_mc_price_chain, calibrate_model_params_to_chain
 ```
 
 ## Jump-diffusion with clustered jumps
@@ -363,20 +369,18 @@ The provisional types and functions below are explained in [Finite-difference PD
 
 These provisional models, configurations, pricers, fitters and result records are explained in [Local volatility and local stochastic volatility](local_volatility_and_lsv.md).
 
-### `models.local_vol`
+### `models.lsv.local_vol`
 
 ```{eval-rst}
-.. automodule:: stochvolmodels.models.local_vol
+.. automodule:: stochvolmodels.models.lsv.local_vol
    :members: CoordinateSystem, LocalVolFamily, ParametricLocalVolSlice, ParametricLocalVolFormula, LocalVolSurface, LocalVolCoefficientProvider1D
    :member-order: bysource
 ```
 
-### `models.logsv_pde`
-
-The canonical implementation is `models.logsv.coefficients`; this published path remains an alias.
+### `models.logsv.coefficients`
 
 ```{eval-rst}
-.. automodule:: stochvolmodels.models.logsv_pde
+.. automodule:: stochvolmodels.models.logsv.coefficients
    :members: LogSvPdeCoefficients, LogSvCoefficientProvider
    :member-order: bysource
 ```
@@ -389,12 +393,10 @@ The canonical implementation is `models.logsv.coefficients`; this published path
    :member-order: bysource
 ```
 
-### `models.lsv_simulation`
-
-The canonical implementation is `models.lsv.simulation`; this published path remains an alias.
+### `models.lsv.simulation`
 
 ```{eval-rst}
-.. automodule:: stochvolmodels.models.lsv_simulation
+.. automodule:: stochvolmodels.models.lsv.simulation
    :members: LSVMonteCarloConfig, LSVMonteCarloEngine
    :member-order: bysource
 ```
@@ -503,7 +505,7 @@ The provisional `stochvolmodels.pricers.logsv_pde_pricer.LogSvPdePricer` uses th
 The detailed 1D and 2D pricer results expose `expiry.boundary_mass` for each maturity.
 `Grid1D.boundary_mass(density)` and `TensorGrid2D.boundary_mass(density)` return the
 same `BoundaryMass1D` and `BoundaryMass2D` diagnostics from supplied densities.
-The provisional `stochvolmodels.models.local_vol.LocalVolSurface` supplies deterministic
+The provisional `stochvolmodels.models.lsv.local_vol.LocalVolSurface` supplies deterministic
 volatility to `stochvolmodels.pricers.local_vol_pde_pricer.LocalVolPdePricer`.
 The pricer uses a Rannacher start followed by Crank–Nicolson in each interval. A numeric `theta`
 selects a fixed scheme, and `price_chain_detailed(...).steps` reports every substep.
@@ -561,7 +563,12 @@ after validation across additional model implementations:
   one-maturity laws and smiles separately from path models. Implementations are
   `stochvolmodels.pricers.tdist_pricer.TdistTerminalModel`,
   `stochvolmodels.pricers.gmm_pricer.GmmTerminalModel`, and
-  `stochvolmodels.models.inverse_gamma_normal.InverseGammaNormalTerminalModel`.
+  `stochvolmodels.models.inverse_gamma.InverseGammaNormalTerminalModel`.
+  For an option chain, import `InverseGammaNormalPricer` from
+  `stochvolmodels.pricers.inverse_gamma_pricer` and pass `InverseGammaNormalParams`
+  from `stochvolmodels.models.inverse_gamma`. The chain must have one expiry equal to
+  `params.ttm`. The pricer's `compute_chain_prices_with_vols` method returns discounted European
+  call and put prices in quote currency and annualized Black implied volatilities.
 
 - `stochvolmodels.products.payoffs` provides `EuropeanOptionPayoff` and
   `IntegratedVarianceOptionPayoff`. `stochvolmodels.valuation` provides raw and self-normalized
@@ -583,11 +590,15 @@ standalone interface documented below; the second is explained in
 `stochvolmodels.pricers.analytic.bsm` and `stochvolmodels.pricers.analytic.bachelier` paths are not
 compatibility facades in 2.0.
 
-### Experimental rough-logSV pricing
+### Research rough-logSV pricing
 
-The [rough-logSV guide](rough_logsv.md) explains units, explicit kernel/control inputs and
-the calibration gate. These names are available through the experimental subpackage, not
-the stable package-root export list.
+The [rough-logSV guide](rough_logsv.md) explains the model, the working paper's
+moment/stability and martingale results, explicit kernel/control inputs, and the
+calibration gate. These are experimental subpackage and direct-module APIs, not
+stable package-root exports. Linear continuous-time moment targets, exact discrete
+moments and nonlinear option estimates are distinct computations.
+
+#### Model and pricing configuration
 
 ```{eval-rst}
 .. autoclass:: stochvolmodels.models.rough_logsv.params.RoughLogSvParams
@@ -610,6 +621,45 @@ the stable package-root export list.
 
 .. autoclass:: stochvolmodels.pricers.rough_logsv_pricer.RoughLogSVPricer
    :members: price_chain, price_chain_result, model_mc_price_chain, calibrate_model_params_to_chain
+```
+
+#### Linear-drift moment and kernel analytics
+
+The moment helpers apply only to linear drift. Fractional targets are numerical
+product-integration estimates; finite-kernel targets solve the continuous-time moment
+system by a matrix exponential. Fitting a kernel to these targets is not market
+calibration. `stochvolmodels.models.rough_logsv.kernel_fit.fit_kernel_to_moments`
+returns sorted nodes and matching weights; inspect achieved moment errors before
+accepting a fitted kernel. See [the analytics map](rough_logsv.md#analytics-entry-points) for units
+and scope, and [the paper reference](rough_logsv.md#references) for the current title.
+
+```{eval-rst}
+.. autoclass:: stochvolmodels.models.rough_logsv.kernel_fit.MomentKey
+   :members:
+
+.. autofunction:: stochvolmodels.models.rough_logsv.kernel_fit.fractional_moment_targets
+
+.. autofunction:: stochvolmodels.models.rough_logsv.kernel_fit.markov_moment_targets
+
+.. autofunction:: stochvolmodels.models.rough_logsv.kernel_fit.kernel_mass_errors
+```
+
+#### Full-history and conditional estimators
+
+`exact_linear_discrete_moments` checks the chosen discrete scheme under the ordinary
+measure; it is not a fractional continuous-time reference. Half-tilted option states
+must not be passed to the ordinary-measure raw-forward estimator.
+
+```{eval-rst}
+.. autofunction:: stochvolmodels.models.rough_logsv.history.prepare_history
+
+.. autofunction:: stochvolmodels.models.rough_logsv.history.simulate_history
+
+.. autofunction:: stochvolmodels.models.rough_logsv.history.exact_linear_discrete_moments
+
+.. autofunction:: stochvolmodels.models.rough_logsv.history.conditional_payoffs
+
+.. autofunction:: stochvolmodels.models.rough_logsv.history.raw_forward
 ```
 
 ### Heston path and transform adapter
@@ -723,3 +773,5 @@ one page.
 | `vol_scaler` | `None` | Fixed analytic cutoff scaler, inferred from the first market ATM slice by default | [Calibration to implied volatilities](calibration.md) |
 | `max_phi` | `None` | Number of analytic frequency nodes, fixed throughout the fit | [Calibration to implied volatilities](calibration.md) |
 | `historical_backbone_order` | `False` | Use the forward-variance paper’s increasing-expiry transform order | [Calibration to implied volatilities](calibration.md) |
+| `fourier` | `None` | A settings mapping selects a fixed optimizer grid and independent fitted-premium validation | [Calibration to implied volatilities](calibration.md) |
+| `use_analytic_gradient` | `None` | Automatically supply the weighted IV-loss gradient for controlled analytic `PARAMS4` and `PARAMS5` fits. Pass `False` for finite differences. | [Calibration to implied volatilities](calibration.md) |

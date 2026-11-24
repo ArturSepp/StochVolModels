@@ -2,8 +2,8 @@
 import numpy as np
 import pytest
 
-from stochvolmodels.pricers.rough_logsv import _constrained_kernel as constrained
-from stochvolmodels.pricers.rough_logsv.kernel_fit import MomentKey
+from stochvolmodels.models.rough_logsv import _constrained_kernel as constrained
+from stochvolmodels.models.rough_logsv.kernel_fit import MomentKey
 
 
 @pytest.mark.parametrize('n,cap', [(3, 10.0), (6, 14.0), (9, 18.0)])

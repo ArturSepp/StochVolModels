@@ -8,7 +8,7 @@ from numba import njit
 from numba.typed import List
 from scipy.optimize import minimize, minimize_scalar
 
-import vanilla_option_pricers as bsm
+import vanilla_option_pricers as vop
 from stochvolmodels.data.option_chain import OptionChain, OptionSlice
 from stochvolmodels.pricers.model_pricer import (
     CalibrationError,
@@ -463,7 +463,7 @@ def compute_gmm_vanilla_price(gmm_weights: np.ndarray,
     for gmm_weight, gmm_mu, gmm_vol in zip(gmm_weights, gmm_mus, gmm_vols):
         forward_i = forward*np.exp((gmm_mu+0.5*gmm_vol*gmm_vol)*ttm)
         # forward is vol-adjusted
-        price_i = bsm.compute_bsm_vanilla_price(forward=forward_i,
+        price_i = vop.compute_bsm_vanilla_price(forward=forward_i,
                                                 strike=strike,
                                                 ttm=ttm,
                                                 vol=gmm_vol,
@@ -538,4 +538,4 @@ def gmm_vanilla_chain_pricer(gmm_weights: np.ndarray,
     return model_prices_ttms
 
 
-# Manual scenarios are available in ``stochvolmodels.pricers.run_local.gmm_pricer_run``.
+# Manual scenarios are available in ``examples.pricers.run_gmm_pricer``.

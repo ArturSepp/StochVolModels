@@ -130,6 +130,29 @@ def test_every_shipped_test_shaped_module_is_automated_and_collectable(package_m
     assert empty == [], f"test-shaped modules with no pytest test: {empty}"
 
 
+def test_package_has_no_direct_qis_imports(package_modules: list[Path]) -> None:
+    """A source-only runner or an optional test must not bring QIS into the wheel."""
+    violations = []
+    for path in package_modules:
+        tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.level == 0:
+                names = [node.module]
+            elif isinstance(node, ast.Call) and node.args:
+                name = ast.unparse(node.func).rsplit(".", 1)[-1]
+                arg = node.args[0]
+                if name not in {"__import__", "import_module", "importorskip"}:
+                    continue
+                names = [arg.value] if isinstance(arg, ast.Constant) else []
+            else:
+                continue
+            if any(isinstance(n, str) and n.split(".", 1)[0] == "qis" for n in names):
+                violations.append(f"{path.name}:{node.lineno}")
+    assert not violations, f"Direct QIS imports in stochvolmodels: {violations}"
+
+
 def test_core_root_import_does_not_load_optional_or_research_modules() -> None:
     """The public root remains lazy with respect to every optional integration."""
     script = """

@@ -30,6 +30,8 @@ jobs:
           python-version: "3.12"
       - name: Sync documentation environment
         run: uv sync --locked --extra docs
+      - name: Verify package ownership guides against imports and lazy exports
+        run: uv run --no-sync python scripts/check_package_guides.py
       - name: Run provisional PDE module examples in empty namespaces
         run: uv run --no-sync python scripts/check_pde_examples.py
 

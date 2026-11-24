@@ -5,7 +5,7 @@ Examples
 Recover a leverage surface from two flat local volatility buckets and price a call.
 
 >>> import numpy as np
->>> from stochvolmodels.models.local_vol import LocalVolSurface
+>>> from stochvolmodels.models.lsv.local_vol import LocalVolSurface
 >>> from stochvolmodels.pde_solvers import Grid1D, TensorGrid2D
 >>> from stochvolmodels.models.logsv.params import LogSvParams
 >>> from stochvolmodels.pricers.logsv_pde_pricer import LogSvPdePricer
@@ -33,18 +33,14 @@ from numpy.typing import ArrayLike, NDArray
 from vanilla_option_pricers import compute_bsm_vanilla_slice_prices
 
 from stochvolmodels.data.option_chain import OptionChain
-from stochvolmodels.models.local_vol import CoordinateSystem, LocalVolSurface
+from stochvolmodels.models.lsv.local_vol import CoordinateSystem, LocalVolSurface
 from stochvolmodels.models.lsv import LSVModel, LeverageSurface
 from stochvolmodels.pde_solvers import (
     ADIConfig,
-    BoundaryPair1D as BoundaryPair1D,
-    BoundarySet2D as BoundarySet2D,
     DensityPolicy,
     PDE2DADISolver,
     PDEDiagnostics2D,
-    PDEDirection as PDEDirection,
     PDEState2D,
-    StaticCoefficientProvider2D as StaticCoefficientProvider2D,
     TensorGrid2D,
 )
 from stochvolmodels.models.logsv.params import LogSvParams
@@ -377,9 +373,6 @@ class SequentialLSVProjectionResult:
         """Maximum integrated negative mass across every propagation substep."""
         return max(d.negative_mass for row in self.slices
                    for d in (*row.collocation_diagnostics, *row.diagnostics))
-
-
-from stochvolmodels.models.lsv.propagation import _interval_time_grid as _interval_time_grid
 
 
 from stochvolmodels.models.lsv.propagation import _advance_lsv as _advance_lsv

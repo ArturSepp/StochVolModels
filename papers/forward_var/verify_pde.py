@@ -11,7 +11,7 @@ from vanilla_option_pricers import compute_bsm_vanilla_slice_prices
 
 from stochvolmodels import LogSVPricer, OptionType, get_btc_test_chain_data
 from stochvolmodels.models.logsv import LogSvModel
-from stochvolmodels.models.logsv_pde import _mma_coefficients
+from stochvolmodels.models.logsv.coefficients import _mma_coefficients
 from stochvolmodels.pde_solvers import (
     ADIConfig,
     BoundaryPair1D,

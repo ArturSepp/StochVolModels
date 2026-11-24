@@ -68,14 +68,14 @@ and existing utilities.
 For LogSV, `models.logsv.moments` owns volatility moments and expected quadratic variance;
 `fitters.logsv_backbone` owns calibration to variance-swap quotes. Existing `LogSvParams`
 methods delegate grid construction, moment-generator calculations and rough-kernel approximation
-to family modules, preserving their signatures and state updates. Published flat coefficient
-and simulation imports remain compatibility aliases; new code should use the family paths.
+to family modules, preserving their signatures and state updates. Import PDE coefficients from
+`models.logsv.coefficients` and Monte Carlo engines from the corresponding family's `simulation` module.
 
 | Layer | Canonical modules | Responsibility |
 |---|---|---|
 | Numerical solvers | `pde_solvers/` | Generic grids, theta/ADI evolution, jump operators, boundaries and diagnostics |
 | Models | `models/base.py`, `heston/`, `logsv/`, `rough_logsv/`, `regime_logsv/`, `tgarch/`, `hawkes_jd/`, `tdist/`, `gmm.py` | Parameters, model-specific transforms, terminal laws, moments and simulation |
-| Coefficient adapters | `models/local_vol.py`, `models/logsv/coefficients.py`, `models/lsv/` | Local volatility, leverage, PDE coefficients and propagation under a supplied model |
+| Coefficient adapters | `models/lsv/local_vol.py`, `models/logsv/coefficients.py`, `models/lsv/` | Local volatility, leverage, PDE coefficients and propagation under a supplied model |
 | Products and valuation | `products/`, `valuation.py` | Contract payoffs, path estimators and density integration |
 | Pricers | `pricers/model_pricer.py` and concrete pricer modules | Option-chain pricing, implied volatilities and existing calibration/plot entry points |
 | Fitters | `fitters/logsv_backbone.py`, `lsv_projection.py`, `dupire.py`, `lsv_fixed_point.py`, `lsv_parametric.py`, `lsv_market_pipeline.py` and smile fitters | Conditional-moment projection, surface inversion, calibration and acceptance |
@@ -91,9 +91,9 @@ mathematics lives in `models.tdist.distribution`; vanilla pricing and inversion 
 chain/terminal simulation wrappers are deferred. The optional `data.fetch_option_chain` adapter
 still uses a fitter-side provider adapter. Development runners may compose models and pricers.
 
-Old parameter, numerical, LSV projection and density-pricer paths are compatibility modules or
-aliases to the canonical objects, without new warnings. Published family exports resolve
-existing serialized model references. `LogSvModel`
+The rough-logSV pricer package exports its model parameters, numerical controls and pricing
+adapter. Import the underlying numerical functions from `models.rough_logsv` and the LSV
+projector from `fitters.lsv_projection`. `LogSvModel`
 retains its established public serialization identity; other moved definitions use their
 canonical implementation modules for new objects.
 A moved function resolves its globals in its canonical module, so code that patches private
@@ -515,9 +515,9 @@ check. The default is `None`. The per-expiry observations are always available i
 and price accuracy required. At zero volatility the lower endpoint is fixed, so check
 the first volatility spacing as well as the extent of the other three edges.
 
-The [frozen BTC replay](../examples/calibration/frozen_btc_lsv.py) runs the
+The [frozen BTC replay](../examples/fitters/frozen_btc_lsv.py) runs the
 baseline and adverse starts on the packaged 21 October 2021 quotes. The
-[stress matrix](../examples/pricing/lsv_production_stress.py) exercises the
+[stress matrix](../examples/pricers/lsv_production_stress.py) exercises the
 independent PDE and Monte Carlo pricers at fixed parameters.
 
 ### LSV Monte Carlo
@@ -631,12 +631,14 @@ their raw residuals. `DiagnosticReport` snapshots evidence; it is separate from
 
 The [repository research utilities](examples.md#research-diagnostics) combine reports, replay
 saved evidence, generate paired synthetic challenges and verify frozen studies. They live
-under `examples/calibration`, with tests in source CI, and are excluded from the installed
+under `examples/fitters`, with tests in source CI, and are excluded from the installed
 wheel. Their noise scenarios and caller-supplied statistical limits do not become production
 warning policies. Public LSV fitters and pricers own the maintained implementation. The independent historical
 calibration algorithms used by the regression tests live under `validation/pde_reference/`.
 
 ## The pricer interface
+
+From a checkout, run `python -m examples.pricers.run_add_model`. The [extension tutorial](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricers/run_add_model.py) defines typed constant-volatility parameters and prices each expiry on its own strike grid. The inherited `price_slice` returns discounted calls and puts and their Black IVs. The tutorial checks off-ATM put–call parity and the ATM value from the normal integral. The [package module guides](https://github.com/ArturSepp/StochVolModels/blob/main/src/stochvolmodels/README.md) trace each implementation to its direct imports and an executable example or test. Run `python scripts/check_package_guides.py` after moving a module or changing a lazy export.
 
 `ModelPricer` (`pricers/model_pricer.py`) has one abstract method, `price_chain(option_chain,
 params)`, which returns option prices slice by slice. Everything else is built on it:
@@ -758,7 +760,7 @@ The [API reference](api.md#provisional-and-experimental-surfaces) lists their en
 | Regime-switching log-normal SV: two regimes with equilibrium risk premia and transition jumps | Provisional | `models/regime_logsv/`, `models/regime_logsv/simulation.py`, `pricers/regime_switch_logsv_pricer.py` | `RegimeSwitchLogSvParams`, `solve_regime_switch_equilibrium`, `RegimeSwitchLogSVPricer` |
 | Rough log-normal SV: complete factor history, conditional Monte Carlo and nonlinear PDE at H=1/2 | Experimental | `pricers/rough_logsv/`, `pricers/rough_logsv_pricer.py` | `RoughLogSvParams`, `RoughKernel`, `RoughLogSVPricer`; see [Experimental rough-logSV pricing](rough_logsv.md). Wider calibration remains gated. |
 | TGARCH: a discrete threshold-volatility recursion, not a discretisation of the log-normal SV model | Provisional | `models/tgarch/` | `TgarchParams`, `TgarchModel.simulate_paths` |
-| Inverse-gamma normal terminal law: one maturity, a normal variance-mean mixture | Provisional | `models/inverse_gamma_normal.py` | `InverseGammaNormalTerminalModel` |
+| Inverse-gamma normal terminal law and single-expiry European option pricing | Provisional | `models/inverse_gamma/`, `pricers/inverse_gamma_pricer.py` | `InverseGammaNormalParams`, `InverseGammaNormalTerminalModel`, `InverseGammaNormalPricer` |
 | Estimation suite: OHLC variance estimators, realized-volatility targets, forecasting models | Documented with the provisional surfaces | `estimation/` | `estimate_ohlc_var`, `fit_volatility_forecaster`, `walk_forward_volatility_forecast` |
 
 ## Settings and paths

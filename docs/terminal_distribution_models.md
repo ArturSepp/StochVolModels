@@ -142,8 +142,9 @@ different local optima. The Student-t law, whose skew is fixed by its two parame
 
 Parameters are defined in `models.gmm.GmmParams` and `models.tdist.params.TdistParams`.
 Student-t density helpers are in `models.tdist.distribution`; vanilla valuation and inversion
-are in `pricers.tdist.analytics`. `fitters.tdist` retains compatibility aliases. `GmmTerminalModel` and `TdistTerminalModel` remain in the pricer
-modules because their pricing capabilities call concrete pricers. Existing imports work.
+are in `pricers.tdist.analytics`. The package root also exports these distribution and pricing functions.
+`GmmTerminalModel` and `TdistTerminalModel` live in the pricer modules because their pricing
+capabilities call concrete pricers.
 
 | Name | Role |
 |---|---|

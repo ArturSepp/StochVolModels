@@ -7,22 +7,23 @@ import json
 
 import numpy as np
 import pytest
-import vanilla_option_pricers as bsm
+import vanilla_option_pricers as vop
 from scipy.integrate import quad
 from scipy.special import gammaln, kve, ndtr
 
-from stochvolmodels import OptionSlice
-from stochvolmodels.fitters.tdist import cdf_tdist, imply_drift_tdist
+from stochvolmodels import OptionChain, OptionSlice, VariableType
+from stochvolmodels.models.tdist.distribution import cdf_tdist, imply_drift_tdist
 from stochvolmodels.models import (
     PathModel,
     TerminalDistributionModel,
     TerminalSmileModel,
     TransformModel,
 )
-from stochvolmodels.models.inverse_gamma_normal import (
+from stochvolmodels.models.inverse_gamma import (
     InverseGammaNormalParams,
     InverseGammaNormalTerminalModel,
 )
+from stochvolmodels.pricers.inverse_gamma_pricer import InverseGammaNormalPricer
 from stochvolmodels.pricers.tdist_pricer import TdistParams, TdistTerminalModel
 
 _FROZEN_CURVE_HASH = "2f78c1e678774f692946fc37f97496c754a0f306604af136d5800a342fbefeae"
@@ -284,6 +285,79 @@ def test_inverse_gamma_normal_exposes_only_terminal_capabilities() -> None:
     assert not hasattr(model, "log_mgf_grid")
 
 
+def test_old_module_exports_the_same_terminal_model_and_frozen_params() -> None:
+    from dataclasses import FrozenInstanceError
+
+    from stochvolmodels.models import inverse_gamma_normal as legacy
+
+    assert legacy.InverseGammaNormalParams is InverseGammaNormalParams
+    assert legacy.InverseGammaNormalTerminalModel is InverseGammaNormalTerminalModel
+    params = _model().params
+    with pytest.raises(FrozenInstanceError):
+        params.q = 1.0
+
+
+@pytest.mark.parametrize("q, order", [(-2.0, 128), (0.0, 256), (2.0, 256)])
+def test_chain_and_slice_match_discounted_terminal_prices_and_black_vols(q, order) -> None:
+    model = _model(q=q, ttm=0.75, quadrature_order=order)
+    pricer = InverseGammaNormalPricer()
+    inputs = dict(
+        ttm=model.ttm, forward=105.0, discfactor=0.96,
+        strikes=np.array([115, 90, 105, 115]), optiontypes=np.array(["P", "C", "P", "C"]),
+    )
+    option_slice = _slice(**inputs)
+    chain = OptionChain(
+        ttms=np.array([model.ttm]), forwards=np.array([option_slice.forward]),
+        discfactors=np.array([option_slice.discfactor]), strikes_ttms=(option_slice.strikes,),
+        optiontypes_ttms=(option_slice.optiontypes,), ids=None,
+    )
+    expected_prices = model.price_european(option_slice)
+    expected_vols = model.implied_vols(option_slice)
+    options = {"quadrature_order": order} if order != 256 else {}
+
+    chain_prices, chain_vols = pricer.compute_chain_prices_with_vols(chain, model.params, **options)
+    assert len(chain_prices) == len(chain_vols) == 1
+    slice_prices, slice_vols = pricer.price_slice(model.params, **inputs, **options)
+    for actual in (chain_prices[0], slice_prices):
+        np.testing.assert_array_equal(actual, expected_prices)
+    assert np.all(np.isfinite(expected_vols))
+    for actual in (chain_vols[0], slice_vols):
+        np.testing.assert_array_equal(actual, expected_vols)
+
+
+def test_pricer_rejects_multiple_and_mismatched_expiries() -> None:
+    pricer = InverseGammaNormalPricer()
+    params = _model().params
+    mixed = OptionChain.get_uniform_chain(ttms=np.array([1.0, 2.0]), ids=np.array(["1y", "2y"]))
+    with pytest.raises(ValueError, match="single maturity"):
+        pricer.price_chain(mixed, params)
+    with pytest.raises(ValueError, match="exactly match"):
+        pricer.price_slice(params, np.nextafter(1.0, 2.0), 1.0, np.array([1.0]), np.array(["C"]))
+
+
+@pytest.mark.parametrize("inverse_code", ["IC", "IP"])
+def test_pricer_rejects_inverse_settlement(inverse_code) -> None:
+    with pytest.raises(NotImplementedError, match="inverse"):
+        InverseGammaNormalPricer().price_slice(
+            _model().params, 1.0, 1.0, np.array([0.9, 1.0]), np.array(["C", inverse_code])
+        )
+
+
+@pytest.mark.parametrize("variable_type", [VariableType.Q_VAR, VariableType.SIGMA])
+def test_pricer_rejects_other_state_variables(variable_type) -> None:
+    with pytest.raises(ValueError, match="LOG_RETURN"):
+        InverseGammaNormalPricer().price_vanilla(
+            _model().params, 1.0, 1.0, 1.0, "C", variable_type=variable_type
+        )
+
+
+def test_pricer_rejects_inverse_measure() -> None:
+    with pytest.raises(ValueError, match="spot measure"):
+        InverseGammaNormalPricer().price_vanilla(
+            _model().params, 1.0, 1.0, 1.0, "C", is_spot_measure=False
+        )
+
+
 def test_q_zero_matches_tdist_at_nonunit_discount() -> None:
     """The symmetric law matches the accepted T2 adapter under prepaid-forward scaling."""
 
@@ -446,7 +520,7 @@ def test_prices_obey_parity_shape_refinement_and_black_round_trip() -> None:
     ivols = model.implied_vols(calls_slice)
     repriced = np.array(
         [
-            bsm.compute_bsm_vanilla_price(
+            vop.compute_bsm_vanilla_price(
                 forward=1.0,
                 strike=float(strike),
                 ttm=1.0,

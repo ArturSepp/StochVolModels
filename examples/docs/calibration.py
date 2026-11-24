@@ -1,10 +1,12 @@
 """Canonical script of docs/calibration.md.
 
-Every Python block on that page is a verbatim excerpt of this file, and every number the page
-quotes is asserted here. The calibration objective of Section 6.2 of Sepp and Rakhmonov (2023) is
+Every Python block on that page is a verbatim excerpt of this file. The full-chain
+gradient benchmarks run in test_fourier_calibration.py. The calibration objective
+of Section 6.2 of Sepp and Rakhmonov (2023) is
 evaluated on the bundled Bitcoin chain of 21 October 2021 at the parameters fitted in the Bitcoin
 case study, profiled around them, and the fit is repeated from a distant starting point under the
-martingale constraint. The refit takes minutes and is listed in ``SLOW_CASES``. Select a case in
+martingale constraint. A synthetic smile illustrates both gradient fits. The Bitcoin
+refit takes minutes and is listed in ``SLOW_CASES``. Select a case in
 ``Locals`` or run the file to execute every case.
 """
 from enum import Enum
@@ -61,6 +63,15 @@ def refit(chain: svm.OptionChain) -> svm.LogSvParams:
         calibration_engine=svm.CalibrationEngine.ANALYTIC, is_vega_weighted=True)
 
 
+def fit_with_gradient(chain: svm.OptionChain, params0: svm.LogSvParams,
+                      mode: svm.LogsvModelCalibrationType) -> svm.LogSvParams:
+    return svm.LogSVPricer().calibrate_model_params_to_chain(
+        option_chain=chain, params0=params0, model_calibration_type=mode,
+        constraints_type=svm.ConstraintsType.MMA_MARTINGALE,
+        fourier={},
+    )
+
+
 class Locals(Enum):
     """Cases of this script; each asserts the numbers the page quotes."""
     OBJECTIVE = 1
@@ -68,6 +79,7 @@ class Locals(Enum):
     CONSTRAINTS = 3
     VARSWAP_BACKBONE = 4
     REFIT = 5
+    GRADIENT = 6
 
 
 def run_local(local: Locals) -> None:
@@ -144,6 +156,24 @@ def run_local(local: Locals) -> None:
         assert fitted.kappa2 - fitted.beta >= -1e-8
         assert np.isfinite(after) and 0.0 <= after < before
         print("Corrected refit", values, "objective", after, "historical-vector objective", before)
+
+    elif local == Locals.GRADIENT:
+        quotes = svm.OptionChain.get_uniform_chain(strikes=np.linspace(.85, 1.15, 5))
+        truth = svm.LogSvParams(sigma0=.4, theta=.35, kappa1=2., kappa2=None, beta=-.4, volvol=.65)
+        start = with_value(truth, "sigma0", .385)
+        pricer = svm.LogSVPricer()
+        target = pricer.compute_model_ivols_for_chain(quotes, truth, fourier={})
+        quotes.bid_ivs = quotes.ask_ivs = target
+        initial = pricer.compute_model_ivols_for_chain(quotes, start, fourier={})
+        initial_error = np.linalg.norm(np.concatenate(initial) - np.concatenate(target))
+        for mode in (svm.LogsvModelCalibrationType.PARAMS4, svm.LogsvModelCalibrationType.PARAMS5):
+            fitted = fit_with_gradient(quotes, start, mode)
+            ivs = pricer.compute_model_ivols_for_chain(quotes, fitted, fourier={})
+            assert np.linalg.norm(np.concatenate(ivs) - np.concatenate(target)) < .5 * initial_error
+            if mode == svm.LogsvModelCalibrationType.PARAMS5:
+                np.testing.assert_allclose(fitted.kappa2, fitted.kappa1 / fitted.theta)
+            else:
+                assert (fitted.kappa1, fitted.kappa2) == (start.kappa1, start.kappa2)
 
 
 if __name__ == "__main__":

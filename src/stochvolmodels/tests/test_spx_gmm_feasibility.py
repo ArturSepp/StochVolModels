@@ -9,7 +9,7 @@ import pytest
 from scipy.integrate import quad
 from scipy.stats import norm
 
-STUDY = Path(__file__).resolve().parents[3] / "papers/risk_premia_gmm/replication/spx_feasibility.py"
+STUDY = Path(__file__).resolve().parents[3] / "papers/risk_premia_gmm/agents/studies/spx_feasibility.py"
 if not STUDY.exists():
     pytest.skip("Repository-only SPX study is absent", allow_module_level=True)
 spec = importlib.util.spec_from_file_location("spx_feasibility", STUDY)
