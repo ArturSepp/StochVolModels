@@ -35,7 +35,7 @@ as a benchmark. The package is the reference implementation of the log-normal mo
 its application to interest rates [@sepp2023rates] in the factor Heath-Jarrow-Morton framework
 [@sepp2025factorhjm]. Provisional modules add finite-difference solvers, a local volatility
 model and a local stochastic volatility model built on the log-normal model. Research modules
-hold the interest-rate application and the rough extension [@sepp2026rough].
+hold the interest-rate application and the rough volatility extension [@sepp2026rough].
 
 The package values vanilla options and user-supplied payoffs on simulated paths.
 `stochvolmodels` depends on `vanilla-option-pricers`, NumPy [@numpy], SciPy [@scipy], pandas
@@ -80,7 +80,7 @@ the affine expansion of @sepp2023logsv.
 | Package | Volatility models | Valuation routes | Calibration |
 |:--------|:--------------|:--------------|:------------|
 | QuantLib [@quantlib] | Heston, Bates, local and stochastic local volatility | analytic, finite-difference and Monte Carlo engines; C++ with Python bindings | Heston-type models; stochastic local volatility leverage function |
-| FinancePy [@financepy] | Heston, SABR; multi-asset product library | product valuation with NumPy and Numba | parametric smiles (SABR, SVI, SSVI) by expiry |
+| FinancePy [@financepy] | Heston, SABR; multi-asset product library | product valuation with NumPy and Numba | parametric volatility curves (SABR, SVI, SSVI) by expiry |
 | PyFENG [@pyfeng] | Heston, SABR, OUSV, GARCH, rough Heston, 3/2 | analytic, FFT and Monte Carlo, by model | SABR to three quotes |
 | fypy [@fypy] | Heston, Bates, Lévy models, SABR | Fourier methods | Lévy, Heston and SABR models |
 | quantflow [@quantflow] | Heston, Heston with jumps, BNS | characteristic-function inversion | Heston to a volatility surface |
@@ -116,10 +116,10 @@ the kernels of its stochastic law: a moment generating function where one exists
 coefficients of the pricing equation, and a simulator. A pricer derives from `ModelPricer` and
 adapts a model to an option chain through one abstract method, `price_chain`. Monte Carlo
 pricing and calibration are optional methods of the pricer, and single-option pricing, implied
-volatilities, Monte Carlo confidence bounds and smile plots are inherited. A payoff is a
-callable on simulated paths that returns one value per path. Fitters hold the calibration that
-needs densities, conditional moments or a solver, such as the inversion of @dupire1994 and the
-calibration of the leverage function.
+volatilities, their plots against market quotes and Monte Carlo confidence bounds are inherited.
+A payoff is a callable on simulated paths that returns one value per path. Fitters hold the
+calibration that needs densities, conditional moments or a solver, such as the inversion of
+@dupire1994 and the calibration of the leverage function.
 
 A new model therefore requires a parameter dataclass, its kernels and a pricer with
 `price_chain`. We define the pricing contract on a chain and not on a single option, because the
@@ -158,8 +158,9 @@ package also supports published articles on stochastic volatility in the factor
 Heath-Jarrow-Morton framework [@sepp2025factorhjm], on cryptocurrency inverse options
 [@lucic2024inverse], on the hedging of impermanent loss [@lipton2025il] and on barrier options
 under stochastic volatility [@lipton2022barrier]. The Hawkes pricer supports the option valuation
-in @liu2025jumps, accepted by the *SIAM Journal on Financial Mathematics*. The package also
-supports a study of robust volatility models [@sepp2023robust] and a rough LogSV manuscript
+in @liu2025jumps, accepted by the *SIAM Journal on Financial Mathematics*. The package supports
+a study of robust volatility models [@sepp2023robust] submitted to the *International Journal of
+Theoretical and Applied Finance* and a manuscript on the rough log-normal model
 [@sepp2026rough] submitted to *Quantitative Finance*.
 
 @brongers2026 extends the factor Heath-Jarrow-Morton model with a correction to the swap-rate
@@ -184,8 +185,8 @@ same test suite and continuous integration.
 # Acknowledgements
 
 We thank Parviz Rakhmonov, co-author of the model papers, for his contributions to the software,
-and Vladimir Lucic and Alexander Lipton, co-authors of the supported papers, for their research
-contributions. We thank Rukhsora Rakhmonova, Florian Bourgey, Pavel (`quant1729`) and Michael
-Sharp for their contributions to the repository. This work received no specific funding.
+and Vladimir Lucic and Alexander Lipton for their research contributions to our co-authored
+papers. We thank Rukhsora Rakhmonova, Florian Bourgey, Pavel (`quant1729`) and Michael Sharp for
+their contributions to the repository. This work received no specific funding.
 
 # References

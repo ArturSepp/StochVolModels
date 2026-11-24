@@ -66,7 +66,7 @@
     },
     {
       "title": "What is a robust stochastic volatility model? Measure changes, martingality and cross-asset applications",
-      "status": "working paper",
+      "status": "submitted to the International Journal of Theoretical and Applied Finance",
       "year": 2026,
       "identifier": "https://github.com/ArturSepp/StochVolModels/blob/v2.20.0/papers/robust_volatility_models_2026/paper/robust_volatility_models.pdf",
       "earlier_version": "https://doi.org/10.2139/ssrn.4647027",
