@@ -1,6 +1,6 @@
 # Rough log-normal stochastic volatility with quadratic drift
 
-*Authors: [Artur Sepp](https://github.com/ArturSepp) and Parviz Rakhmonov*
+*Authors: [Artur Sepp](https://github.com/ArturSepp) and Parviz Rakhmonov / First recorded: [2026-11-24](https://github.com/ArturSepp/StochVolModels/commit/a332f688ce837c9aa238603216ebe37ece04ee98)*
 
 Implemented in [StochVolModels](https://github.com/ArturSepp/StochVolModels).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
