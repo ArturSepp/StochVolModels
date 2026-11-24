@@ -65,9 +65,11 @@
       "joss_role": "published application to barrier pricing"
     },
     {
-      "title": "What is a robust stochastic volatility model",
+      "title": "What is a robust stochastic volatility model? Measure changes, martingality and cross-asset applications",
       "status": "working paper",
-      "identifier": "https://doi.org/10.2139/ssrn.4647027",
+      "year": 2026,
+      "identifier": "https://github.com/ArturSepp/StochVolModels/blob/v2.20.0/papers/robust_volatility_models_2026/paper/robust_volatility_models.pdf",
+      "earlier_version": "https://doi.org/10.2139/ssrn.4647027",
       "repository_directory": "papers/robust_volatility_models_2026",
       "software_surface": "model comparison and calibration",
       "reproduction_class": "author manuscript and historical replication scripts",
@@ -76,7 +78,7 @@
     },
     {
       "title": "Rough log-normal stochastic volatility with quadratic drift",
-      "status": "working paper",
+      "status": "submitted to Quantitative Finance",
       "identifier": "https://github.com/ArturSepp/StochVolModels/blob/v2.20.0/papers/rough_volterra_lognormal_sv_model_2026/paper/rough_volterra_lognormal.pdf",
       "repository_directory": "papers/rough_volterra_lognormal_sv_model_2026",
       "software_surface": "rough LogSV research modules",
