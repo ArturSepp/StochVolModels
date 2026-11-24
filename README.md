@@ -120,7 +120,7 @@ Core dependencies:
 - `matplotlib >= 3.8.0`
 - `seaborn >= 0.13.0`
 
-Version 2.19.0.dev9 requires Python 3.11.5 or newer. Versions 2.6.0 through 2.18.7 required
+Version 2.20.0 requires Python 3.11.5 or newer. Versions 2.6.0 through 2.18.7 required
 Python 3.11 or newer. Python 3.12 is the development and primary CI interpreter.
 Published version 2.5.0 retains its original Python 3.10 requirement.
 
@@ -488,7 +488,7 @@ package in your research, please cite the software and the relevant papers:
   title={StochVolModels: Python Implementation of Stochastic Volatility Models},
   author={Sepp, Artur},
   year={2026},
-  version={2.19.0.dev9},
+  version={2.20.0},
   url={https://github.com/ArturSepp/StochVolModels},
   note={Python package for pricing analytics and Monte Carlo simulations}
 }

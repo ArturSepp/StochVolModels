@@ -4,6 +4,14 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+## [2.20.0] - 2026-11-24
+
+Heston and LogSV now offer tolerance-controlled Fourier pricing and calibration.
+Controlled LogSV `PARAMS4` and `PARAMS5` fits use analytic gradients by default.
+The standard pricing calls retain their historical Fourier grids unless a caller
+requests the controlled mode. See the import migration table below if you use
+module-level paths.
+
 **2.19.0.dev9 (2026-11-23), changed.** Controlled LogSV `PARAMS4` and
 `PARAMS5` calibration now supplies the analytic IV-loss gradient to SLSQP by
 default. Pass `use_analytic_gradient=False` to use finite differences.
