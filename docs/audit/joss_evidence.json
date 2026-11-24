@@ -1,6 +1,13 @@
 {
   "schema_version": 1,
   "as_of": "2026-08-22",
+  "paper_release": {
+    "version": "2.20.0",
+    "tag": "v2.20.0",
+    "commit": "94974d047b19406a8c34cbce58fc1ad6c0352262",
+    "date_released": "2026-11-24",
+    "url": "https://pypi.org/project/stochvolmodels/2.20.0/"
+  },
   "baseline": {
     "tag": "v2.1.0",
     "commit": "c109a6dde3eb3fb6ca34a8ebe577d682b92f8439",
@@ -33,7 +40,7 @@
     "moving_metrics_policy": "Regenerate at the submission commit; do not gate ordinary commits on moving GitHub counts."
   },
   "current": {
-    "measured_at_commit": "e4b3bebc4a942995199c9f96375d331f3fa89b8b",
+    "measured_at_commit": "76e4107e3860a1026352531b75ae09187f58cd39",
     "metrics": {
       "package_version": {
         "value": "2.20.0",
@@ -54,19 +61,19 @@
         "paper_phrase": null
       },
       "paper_body_words": {
-        "value": 1712,
+        "value": 1717,
         "how": "whitespace-separated paper.md body tokens after YAML front matter",
         "live": true,
         "paper_phrase": null
       },
       "collected_tests": {
-        "value": 2339,
+        "value": 2350,
         "how": "python -m pytest --collect-only -q",
         "live": false,
         "paper_phrase": null
       },
       "commits": {
-        "value": 323,
+        "value": 335,
         "how": "git rev-list --count HEAD",
         "live": false,
         "paper_phrase": null
@@ -84,7 +91,7 @@
         "paper_phrase": null
       },
       "release_tags": {
-        "value": 17,
+        "value": 18,
         "how": "Git tags matching v* through measured_at_commit",
         "live": false,
         "paper_phrase": null

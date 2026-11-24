@@ -15,7 +15,7 @@ authors:
 affiliations:
   - name: LGT Bank (Schweiz) AG, Zürich, Switzerland
     index: 1
-date: 22 November 2026
+date: 24 November 2026
 bibliography: paper.bib
 ---
 
@@ -39,8 +39,9 @@ hold the interest-rate application and the rough extension [@sepp2026rough].
 
 The package values vanilla options and user-supplied payoffs on simulated paths.
 `stochvolmodels` depends on `vanilla-option-pricers`, NumPy [@numpy], SciPy [@scipy], pandas
-[@pandas], Matplotlib [@matplotlib], seaborn [@seaborn] and Numba [@numba], runs on Python 3.11
-to 3.14 and is released under the MIT licence. This paper describes version 2.19.0.
+[@pandas], Matplotlib [@matplotlib], seaborn [@seaborn] and Numba [@numba], runs on Python 3.11.5
+to 3.14 and is released under the MIT licence. This paper describes the PyPI release of
+`stochvolmodels` 2.20.0 [@sepp2026stochvolmodels].
 
 The optional companion package `option-chain-analytics` [@oca] supplies point-in-time option
 chains from CBOE, Deribit, ThetaData and Bloomberg data, and an adapter converts them to the
