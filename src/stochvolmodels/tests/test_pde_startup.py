@@ -111,7 +111,8 @@ def test_undamped_path_matches_existing_pricer_across_knots(study, case, scheme,
     expected = expected.price_chain_detailed(case.chain, case.model)
     assert result["status"] == "ok"
     for a, b in zip(result["prices"], expected.prices, strict=True):
-        np.testing.assert_array_equal(a, b)
+        # Batched and per-strike dot products can round differently across BLAS builds.
+        np.testing.assert_array_max_ulp(a, b, maxulp=4)
     for a, b in zip(result["diagnostics"]["step_moments"], expected.steps, strict=True):
         for name in ("time_end", "mass", "negative_mass", "mean_x", "variance_x", "covariance_xy"):
             assert a[name] == pytest.approx(getattr(b, name), rel=2e-13, abs=2e-13)

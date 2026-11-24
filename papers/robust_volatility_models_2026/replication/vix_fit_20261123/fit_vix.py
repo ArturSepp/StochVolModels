@@ -48,17 +48,18 @@ def pearson_acfs(paths):
     return (cross - left_sum*right_sum/count) / np.sqrt(left_ss*right_ss)
 
 
-def model_acf(parameters, increments):
+def model_acf(parameters, increments, steps_per_year=STEPS_PER_YEAR):
+    n_paths = increments.shape[1]
     sums = np.zeros(LAST_LAG)
-    for first in range(0, N_PATHS, 500):
+    for first in range(0, n_paths, 500):
         block = increments[:, first:first+500]
         paths, _ = simulate_vol_paths(
             ttm=YEARS, v0=parameters["theta"], theta=parameters["theta"],
             kappa1=parameters["kappa1"], kappa2=parameters["kappa2"],
             beta=0.0, volvol=parameters["v"], nb_path=block.shape[1],
-            nb_steps_per_year=STEPS_PER_YEAR, brownians=block)
+            nb_steps_per_year=steps_per_year, brownians=block)
         sums += pearson_acfs(paths).sum(axis=1)
-    return sums / N_PATHS
+    return sums / n_paths
 
 
 def main():
