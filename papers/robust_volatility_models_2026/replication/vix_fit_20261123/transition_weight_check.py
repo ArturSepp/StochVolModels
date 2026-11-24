@@ -27,10 +27,17 @@ def fit(moment, days=DAYS):
     c = days * coefficients[2]/REF
     speed = np.sqrt(b*b + 4*a*c)
     k1 = (speed-b)/2
-    theta = 2*a/(speed-b) if b < 0 else (speed+b)/(2*c)
-    if theta <= 0 or not np.isfinite(theta) or variance <= 0:
-        raise ValueError("The log-regression fit has no positive drift root or innovation variance")
-    return coefficients, variance, dict(theta=theta, kappa1=k1, kappa2=c,
+    if variance <= 0:
+        raise ValueError("Nonpositive fitted innovation variance")
+    # At some forecast origins the polynomial drift has no finite positive root.
+    # Its one-step conditional mean and variance still define a forecast.
+    if b < 0:
+        theta = 2*a/(speed-b)
+    elif c > 0:
+        theta = (speed+b)/(2*c)
+    else:
+        theta = None
+    return coefficients, variance, dict(theta=theta if theta and theta>0 else None, kappa1=k1, kappa2=c,
                                        v=np.sqrt(variance*days), local_speed=speed)
 
 
@@ -59,8 +66,11 @@ def bootstrap_kappa(moments, block, repetitions=1000, days=DAYS):
         starts = rng.integers(n, size=full+1)
         m = (prefix[starts[:full]+block]-prefix[starts[:full]]).sum(axis=0)
         m += prefix[starts[-1]+leftover]-prefix[starts[-1]]
-        draws.append(fit(m,days)[2]["kappa1"])
-    return dict(block=block, draws=repetitions, percentiles_2_5_50_97_5=np.quantile(draws,[.025,.5,.975]).tolist(),
+        params=fit(m,days)[2]
+        if params["theta"] is not None:
+            draws.append(params["kappa1"])
+    return dict(block=block, draws=repetitions, valid_drift_roots=len(draws),
+                percentiles_2_5_50_97_5=np.quantile(draws,[.025,.5,.975]).tolist(),
                 fraction_above_one=float(np.mean(np.asarray(draws)>1)))
 
 
@@ -80,8 +90,10 @@ def compare_transitions(s, days=DAYS):
         moment = np.einsum("t,tij->ij",w,moments[:split])
         means = []
         variances = []
+        missing_roots = 0
         for t in range(split, len(delta)):
-            coeff, variance, _ = fit(moment, days)
+            coeff, variance, parameterization = fit(moment, days)
+            missing_roots += parameterization["theta"] is None
             means.append(x[t]@coeff)
             variances.append(variance)
             moment = decay*moment + moments[t]
@@ -99,7 +111,7 @@ def compare_transitions(s, days=DAYS):
         if half is None:
             base_scores, base_error, base_var = scores, error, variances
         paired = scores-base_scores
-        result[str(half) if half else "equal"] = dict(parameters=params,
+        result[str(half) if half else "equal"] = dict(parameters=params,forecast_origins_without_positive_root=missing_roots,
             mean_oos_logscore=float(scores.mean()), gain_over_equal=float(paired.mean()),
             paired_hac_se_63=hac_se(paired,63), mse_log_increment=float(np.mean(error**2)),
             gain_changing_only_mean=float(np.mean(logscore(error,base_var)-base_scores)),

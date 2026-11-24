@@ -43,6 +43,7 @@ the source directory (three `pdflatex` passes).
 
 The active evidence bundles are:
 
+- The [cross-asset dynamics comparison](replication/cross_asset_dynamics_20261124/REPORT.md) reports daily, EWMA and persistence fits for 18 indices and identifies the separate pricing calibrations.
 - [`vix_fit_20261123`](replication/vix_fit_20261123/README.md) contains the four-parameter
   Bloomberg VIX fit, the comparison with the archived estimates, and the regenerated
   observation-map and persistence experiments.

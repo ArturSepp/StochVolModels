@@ -369,9 +369,15 @@ so its bias values do not quantify the bias of these empirical estimates.
 bundle = ROOT / 'vix_fit_20261123'
 fit = json.loads((bundle / 'vix_profile.json').read_text())
 study = json.loads((bundle / 'synthetic_results.json').read_text())
+daily = json.loads((bundle / 'transition_weight_check.json').read_text())
 params = fit['fitted']
 method = fit['method']
 assert study['calibration_sample'] == fit['sample']
+assert daily['sample'] == fit['sample']
+assert abs(daily['in_sample_acf_check']['persistence_fit_sse'] - fit['full']['best']['acf_sse']) < 1e-10
+daily_par = daily['fits']['equal']['parameters']
+daily_vector = ','.join(f'{daily_par[key]:.4f}' for key in ('theta', 'kappa1', 'kappa2', 'v'))
+lag60 = daily['in_sample_acf_check']['correlations']['60']
 assert all(study['baseline_parameters'][key] == value for key, value in params.items())
 obs = study['observation_summary']
 beta = study['illustrative_beta']
@@ -398,7 +404,13 @@ Its drift is $\kappa_2\sigma(\theta-\sigma)$, with local mean-reversion speed
 $\kappa_2\theta={local_speed:.2f}$ per year at $\sigma=\theta$.
 The inverse-Gamma boundary fits the histogram more closely. The choice of boundary
 therefore depends on which feature of VIX we match.''')
-m.add(rf'''We use these coefficients for the latent state in a synthetic observation experiment.
+m.add(rf'''For comparison, an equally weighted Gaussian Euler quasi-likelihood for daily
+log-VIX increments gives $({daily_vector})$ in the same parameter order.
+At lag 60 the observed level autocorrelation is {lag60['observed']:.3f}.
+The daily transition fit gives {lag60['equal_transition_fit']:.3f} and the persistence fit gives {lag60['persistence_fit']:.3f}.
+The replication package reports both fits for the other primary series and the established Cboe indices.
+
+We use the persistence fit for the latent state in the synthetic observation experiment.
 The two Brownian loadings enter the index dynamics only through $v^2=\beta^2+\varepsilon^2$. We choose $\beta={beta:g}$
 for illustration and set the residual loading to $\sqrt{{v^2-\beta^2}}$.
 We set $Q=P$ to isolate the observation map $F_\tau(\sigma)$, the ideal

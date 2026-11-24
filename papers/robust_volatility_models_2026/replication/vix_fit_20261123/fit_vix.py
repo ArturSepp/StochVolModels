@@ -10,10 +10,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from numba import njit
 from scipy.fft import irfft, next_fast_len, rfft
 from scipy.optimize import least_squares
-
-from stochvolmodels.pricers.logsv_pricer import simulate_vol_paths
 
 
 OUT = Path(__file__).resolve().parent
@@ -48,16 +47,31 @@ def pearson_acfs(paths):
     return (cross - left_sum*right_sum/count) / np.sqrt(left_ss*right_ss)
 
 
+@njit(nogil=True)
+def simulate_daily(theta, k1, k2, v, increments, days):
+    """Log-Euler with exactly one observation per increment plus the initial state."""
+    steps, count = increments.shape
+    states = np.empty((steps+1,count))
+    states[0] = theta
+    log_state = np.full(count,np.log(theta))
+    for t in range(steps):
+        for j in range(count):
+            sigma = states[t,j]
+            drift = k1*(theta/sigma-1.0) + k2*(theta-sigma) - 0.5*v*v
+            log_state[j] += drift/days + v*increments[t,j]
+            states[t+1,j] = np.exp(log_state[j])
+    return states
+
+
 def model_acf(parameters, increments, steps_per_year=STEPS_PER_YEAR):
     n_paths = increments.shape[1]
     sums = np.zeros(LAST_LAG)
     for first in range(0, n_paths, 500):
         block = increments[:, first:first+500]
-        paths, _ = simulate_vol_paths(
-            ttm=YEARS, v0=parameters["theta"], theta=parameters["theta"],
-            kappa1=parameters["kappa1"], kappa2=parameters["kappa2"],
-            beta=0.0, volvol=parameters["v"], nb_path=block.shape[1],
-            nb_steps_per_year=steps_per_year, brownians=block)
+        paths = simulate_daily(parameters["theta"], parameters["kappa1"], parameters["kappa2"],
+                               parameters["v"], block, steps_per_year)
+        if not np.all(np.isfinite(paths[-1]) & (paths[-1]>0)):
+            raise ValueError("Invalid simulated final state on the daily grid")
         sums += pearson_acfs(paths).sum(axis=1)
     return sums / n_paths
 
