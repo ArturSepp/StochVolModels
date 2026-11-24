@@ -42,7 +42,7 @@ its compiled PDF and original figure assets, with the Python workflows under `re
 | `t_distribution` | `illustrations.py` | Exploratory Student-t distribution analysis; no publication mapping is asserted |
 | `forward_var` | `calibrate_forward_var.py` | Exploratory forward-variance calibration analysis; no publication mapping is asserted |
 | [`barrier_options_sv_wilmott_2022`](barrier_options_sv_wilmott_2022/README.md) | `replication/article_figures.py` | Lipton and Sepp (2022), Toward an efficient hybrid method for pricing barrier options on assets with stochastic volatility, *Wilmott* — [`paper/`](barrier_options_sv_wilmott_2022/paper/README.md) · [arXiv](https://arxiv.org/abs/2202.07849) |
-| [Rough log-normal stochastic volatility with quadratic drift](rough_volterra_lognormal_sv_model_2026/README.md) | [Figure runner](rough_volterra_lognormal_sv_model_2026/replication/run_figures.py) | Figure 2 runs from the checkout. The authors’ archives supply the market fits for Figure 1 and simulation summaries for Figure 3. [Inputs and commands](rough_volterra_lognormal_sv_model_2026/replication/README.md) |
+| [Rough log-normal stochastic volatility with quadratic drift](rough_volterra_lognormal_sv_model_2026/README.md) | [Figure runner](rough_volterra_lognormal_sv_model_2026/replication/run_figures.py) | Figures 2 and 3 run from a fresh checkout. Figure 1 uses the authors’ local quotes, fits and checkpoints. [Inputs and commands](rough_volterra_lognormal_sv_model_2026/replication/README.md) |
 
 Sepp and Rakhmonov's robust-SV revision adds measure changes, martingality and cross-asset applications. Its exhibit staging script is `papers/robust_volatility_models_2026/replication/stage_manuscript.py`.
 

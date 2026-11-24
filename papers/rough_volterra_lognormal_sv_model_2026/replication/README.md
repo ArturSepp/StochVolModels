@@ -5,7 +5,7 @@
 Implemented in [StochVolModels](https://github.com/ArturSepp/StochVolModels).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
 
-[Sepp and Rakhmonov’s paper](../README.md) has three figures. The local entry point is [run_figures.py](run_figures.py). Figure 2 runs from a fresh source checkout. Figures 1 and 3 use the local inputs listed below.
+[Sepp and Rakhmonov’s paper](../README.md) has three figures. The [figure runner](run_figures.py) reproduces Figures 2 and 3 from a fresh source checkout. Figure 1 also requires the authors’ quote archive, saved fits and checkpoints.
 
 ## Installation and commands
 
@@ -14,6 +14,7 @@ From the StochVolModels repository root, install the checkout in an active Pytho
 ```console
 python -m pip install -e ".[research]"
 python -m papers.rough_volterra_lognormal_sv_model_2026.replication.run_figures --case figure2
+python -m papers.rough_volterra_lognormal_sv_model_2026.replication.run_figures --case figure3
 ```
 
 On the authors’ Windows machine, run all three with the existing repository environment from the StochVolModels root:
@@ -34,9 +35,9 @@ Choose `figure1`, `figure2`, `figure3` or `all` (default). The program prints th
 
 Figures 1 and 2 also write a PNG, a CSV of plotted values and a JSON of diagnostics. For Figure 1 the JSON records the inputs and repricing checks. For Figure 2 it records the grid comparison and classical limit. The Figure 3 case reads saved simulation estimates. The Monte Carlo producers are the `U3` and `R2` cases of the scheme script.
 
-On 24 November 2026, the three regenerated PDFs matched the artwork in the submitted source archive pixel-for-pixel when rendered at 144 dpi. The Figure 2 CSV also matched all 12,012 saved rows at the reported precision.
+On 24 November 2026, the three regenerated PDFs matched the artwork in the submitted source archive pixel-for-pixel when rendered at 144 dpi. The Figure 2 CSV matched all 12,012 saved rows at the reported precision. Running `--case figure3` from a clean checkout with the published summaries reproduced the submitted Figure 3 PDF byte-for-byte in the authors’ Python 3.12 environment.
 
-## Local inputs
+## Figure inputs
 
 **Figure 1.** The panel contains 45 Bitcoin quotes from 30 June 2023 and 39 Ether quotes from 26 October 2021. Each asset has three expiries. The replays compare fitted prices with the saved values to a tolerance of $10^{-7}$ of the full bid–ask spread and check the inclusion counts. The counts at H = 0.30 and 0.50, respectively, are 27/45 and 28/45 for Bitcoin, and 33/39 and 33/39 for Ether. These are fixed-H replays of the selected fits.
 
@@ -55,7 +56,7 @@ The evidence root defaults to the repository’s local `agents/` directory. The 
 
 **Figure 2.** All model parameters and the [product-integration solver](rough_logsv_stationarity_check.py) are in the repository. It runs offline after installation.
 
-**Figure 3.** Supply `results/F4_quadratic_drift_history_R2.json` and `results/F4_right_panel_time_averaged_history.json` under the data directory. These contain the authors’ Monte Carlo summaries for the two panels. The renderer uses the five quadratic-drift coefficients in their original order and displays the reported standard errors. The three [reference figure PDFs](../paper/figures/) are included in the repository.
+**Figure 3.** Panel (a) reads the [conditional-forward summary](inputs/figure3/F4_quadratic_drift_history_R2.json). Panel (b) reads the [time-averaged second-moment summary](inputs/figure3/F4_right_panel_time_averaged_history.json). The command plots the saved estimates and standard errors for five quadratic-drift coefficients. It runs offline after installation. The summaries retain the seed, grid sizes, batch counts and the SHA-256 of each original run file. Source paths are relative to the repository. With `--data-dir`, the runner reads both files from `inputs/figure3/`, or from `results/` in archives without that directory. Compare the output with the [submitted Figure 3 PDF](../paper/figures/F4_time_averaged_history_R2.pdf).
 
 ## Tables in the submitted manuscript
 

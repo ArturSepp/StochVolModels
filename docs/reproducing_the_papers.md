@@ -63,7 +63,7 @@ separate reference; its equation numbers must not be used for the rough draft.
 The [local figure runner](https://github.com/ArturSepp/StochVolModels/blob/main/papers/rough_volterra_lognormal_sv_model_2026/replication/README.md)
 recomputes Figure 2 from the model parameters. Figure 1 replays four fixed-H fits
 on 45 BTC and 39 ETH quotes using the authors’ quote panel and checkpoints.
-Figure 3 renders the authors’ saved Monte Carlo summaries.
+Figure 3 renders the two Monte Carlo summaries included in the checkout.
 
 ## Published figures on this site
 
