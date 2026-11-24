@@ -100,24 +100,10 @@ jobs:
           if-no-files-found: error
           retention-days: 30
   windows-numerical:
-    name: Tagged Windows numerical regressions
     needs: validate
-    runs-on: windows-latest
-    timeout-minutes: 30
-    env:
-      TZ: UTC
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.validate.outputs.sha }}
-          persist-credentials: false
-      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
-        with:
-          python-version: "3.12"
-      - name: Sync the tagged locked test environment
-        run: uv sync --locked --group test
-      - name: Run the tagged numerical regression suite
-        run: uv run --no-sync pytest -m slow -v --ignore=src/stochvolmodels/tests/test_docs_examples.py
+    uses: ./.github/workflows/windows-numerical.yml
+    with:
+      revision: ${{ needs.validate.outputs.sha }}
   publish:
     needs: [validate, windows-numerical]
     if: needs.validate.outputs.publish == 'true'

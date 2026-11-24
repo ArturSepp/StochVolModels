@@ -1,0 +1,52 @@
+name: Windows numerical regressions
+
+on:
+  workflow_call:
+    inputs:
+      revision:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  UV_HTTP_RETRIES: "5"
+  UV_HTTP_TIMEOUT: "60"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  MPLBACKEND: Agg
+  TZ: UTC
+
+jobs:
+  numerical:
+    name: Windows numerical (${{ matrix.case }})
+    runs-on: windows-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [regressions, legacy, controlled, gradient, params5-controlled, params5-gradient]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.revision }}
+          persist-credentials: false
+      - name: Install uv and Python 3.12
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          python-version: "3.12"
+      - name: Sync locked test environment
+        run: uv sync --locked --group test
+      - name: Run numerical regressions
+        if: matrix.case == 'regressions'
+        run: >-
+          uv run --no-sync pytest -m slow -v
+          --ignore=src/stochvolmodels/tests/test_docs_examples.py
+          -k "not test_bitcoin_calibration_cost_comparison"
+      - name: Run the full Bitcoin calibration case
+        if: matrix.case != 'regressions'
+        env:
+          SVM_CALIBRATION_CASE: ${{ matrix.case }}
+        run: >-
+          uv run --no-sync pytest -m slow -v
+          "src/stochvolmodels/tests/test_fourier_calibration.py::test_bitcoin_calibration_cost_comparison[$env:SVM_CALIBRATION_CASE]"

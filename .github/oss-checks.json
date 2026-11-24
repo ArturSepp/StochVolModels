@@ -81,12 +81,11 @@
         "Enforce stable coverage scope",
         "Upload coverage diagnostics"
       ],
-      "windows-numerical-regression": [
+      "windows-source": [
         "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
         "Install uv and Python 3.12",
         "Sync locked test environment",
-        "Run fast source tests",
-        "Run numerical regressions"
+        "Run fast source tests"
       ],
       "macos-source-smoke": [
         "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
@@ -118,6 +117,15 @@
         "Record installed versions",
         "Check optional dependencies stay outside package-root import",
         "Test declared dependency floors without live provider credentials"
+      ]
+    },
+    "windows-numerical": {
+      "numerical": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "Install uv and Python 3.12",
+        "Sync locked test environment",
+        "Run numerical regressions",
+        "Run the full Bitcoin calibration case"
       ]
     },
     "docs": {

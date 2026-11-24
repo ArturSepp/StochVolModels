@@ -103,9 +103,9 @@ jobs:
       - name: Compare the public engine with the historical LSV implementation
         run: uv run --no-sync pytest -m pde_reference
 
-  windows-numerical-regression:
+  windows-source:
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -121,8 +121,10 @@ jobs:
       - name: Run fast source tests
         run: uv run --no-sync pytest -m "not slow" -v
 
-      - name: Run numerical regressions
-        run: uv run --no-sync pytest -m slow -v --ignore=src/stochvolmodels/tests/test_docs_examples.py
+  windows-numerical:
+    uses: ./.github/workflows/windows-numerical.yml
+    with:
+      revision: ${{ github.sha }}
 
   linux-slow-doc-examples:
     runs-on: ubuntu-latest
