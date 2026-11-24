@@ -10,9 +10,9 @@ authors:
     given-names: Artur
     orcid: "https://orcid.org/0000-0002-7038-1748"
 repository-code: "https://github.com/ArturSepp/StochVolModels"
-url: "https://pypi.org/project/stochvolmodels/2.20.0/"
+url: "https://pypi.org/project/stochvolmodels/"
 license: MIT
-version: "2.20.0"
+version: "2.21.0.dev1"
 date-released: "2026-11-24"
 keywords:
   - stochastic-volatility

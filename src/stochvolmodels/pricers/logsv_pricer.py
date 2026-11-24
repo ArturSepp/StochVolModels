@@ -378,8 +378,9 @@ class LogSVPricer(ModelPricer):
         """Prepare a reusable controlled grid for vanilla quotes at the supplied expiries.
 
         Preparation fixes the measure, coefficient settings and calendar backbone.
-        The handle accepts initial-volatility scenarios and computes their premium
-        sensitivities. Its default state is a snapshot of params.sigma0.
+        The handle prices initial-volatility scenarios and computes volatility-state
+        sensitivity, forward delta and forward gamma from the saved coefficients.
+        Its default state is a snapshot of params.sigma0.
         """
         if fourier is not None and not isinstance(fourier, Mapping):
             raise ValueError("preparation requires a controlled Fourier settings mapping")

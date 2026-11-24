@@ -43,19 +43,19 @@
     "measured_at_commit": "76e4107e3860a1026352531b75ae09187f58cd39",
     "metrics": {
       "package_version": {
-        "value": "2.20.0",
+        "value": "2.21.0.dev1",
         "how": "project.version in pyproject.toml",
         "live": true,
         "paper_phrase": null
       },
       "stable_root_exports": {
-        "value": 35,
+        "value": 36,
         "how": "len(stochvolmodels.__all__)",
         "live": true,
-        "paper_phrase": "has 35 explicit exports"
+        "paper_phrase": "has 36 explicit exports"
       },
       "stable_exports_rendered_in_api": {
-        "value": 35,
+        "value": 36,
         "how": "stable __all__ names present in docs/api.md",
         "live": true,
         "paper_phrase": null

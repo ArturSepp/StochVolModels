@@ -7,6 +7,7 @@ legacy callers retain their seeded draw ordering and historical variance floor.
 """
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Literal, Tuple
 
 import numpy as np
@@ -22,6 +23,7 @@ from stochvolmodels.utils.mc_payoffs import compute_conditional_mc_payoff, compu
 from stochvolmodels.pricers._fourier_calibration import (
     FourierCalibration, validate_calibration_options,
 )
+from stochvolmodels.pricers._prepared_fourier import _PreparedFourierGrid
 from stochvolmodels.pricers.model_pricer import (
     ModelPricer,
     validate_optimization_result,
@@ -73,11 +75,78 @@ def _controlled_heston_chain(option_chain: OptionChain, params: HestonParams,
     return prices_ttms
 
 
+@dataclass(frozen=True, eq=False, repr=False)
+class PreparedHestonGrid(_PreparedFourierGrid):
+    """Caller-owned transform samples for repeated Heston vanilla pricing.
+
+    Construct with HestonPricer.prepare_fourier. Prepared maturities share one
+    accepted frequency grid. Each frequency costs one transform per maturity.
+    Diagnostics count frequencies, including discarded parent panels.
+    """
+
+    _seed_panels = 1
+
+    def price_chain(self, quotes: OptionChain, *,
+                    fourier: Mapping | None = None) -> List[np.ndarray]:
+        """Price discounted premiums in input order using the saved transforms.
+
+        Forwards, discounts, strikes and call or put codes may change at the
+        prepared maturities. New quotes and tighter tolerances must pass the
+        resolution and tail checks. Call refined_for if either check fails.
+        """
+        rows = self._quote_requests(quotes, fourier)
+        if not all(row.covered_by(self._quotes) for row in rows):
+            return List(self._query(rows))
+        return List([
+            self._plan.price_vanillas(
+                self._samples[row.expiry], forward=row.forward, discfactor=row.discount,
+                strikes=row.strikes, optiontypes=row.types,
+            )
+            for row in rows
+        ])
+
+    def refined_for(self, quotes: OptionChain, *,
+                    fourier: Mapping | None = None) -> "PreparedHestonGrid":
+        """Certify original and additional quotes, evaluating only new frequencies.
+
+        Preparation work limits apply cumulatively. The original handle remains
+        usable if refinement exhausts its budget.
+        """
+        return self._refine(self._quote_requests(quotes, fourier))
+
+
 class HestonPricer(ModelPricer):
 
     """
     ModelPricer for the Heston model, valued by Fourier inversion of the analytic MGF.
     """
+    def prepare_fourier(self, option_chain: OptionChain, params: HestonParams, *,
+                        fourier: Mapping | None = None,
+                        is_spot_measure: bool = True) -> PreparedHestonGrid:
+        """Prepare a reusable controlled grid for money-market European calls and puts.
+
+        Supply positive and increasing maturities in years. The handle snapshots
+        model parameters and checks discounted premium errors using the same settings
+        as controlled price_chain. The default absolute premium tolerance is 1e-6.
+        Changes in model parameters or maturities require a new preparation.
+        """
+        if fourier is not None and not isinstance(fourier, Mapping):
+            raise ValueError("preparation requires a controlled Fourier settings mapping")
+        if not is_spot_measure:
+            raise ValueError("controlled Heston requires log returns under the spot measure")
+        model = HestonModel(params)
+        ttms = np.array(option_chain.ttms, dtype=float, copy=True)
+
+        def transform(phi):
+            """Compute the copied model's log transform at each prepared maturity."""
+            return (model.log_mgf_grid(ttm=t, phi_grid=phi) for t in ttms)
+
+        # Start from the initial panel used by a fresh controlled Heston price.
+        controls = {"initial_cutoff": 1.0}
+        if fourier is not None:
+            controls.update(fourier)
+        return PreparedHestonGrid._prepare_grid(option_chain, transform, True, controls, ())
+
     def price_chain(self, option_chain: OptionChain, params: HestonParams, *,
                     fourier: Mapping[str, object] | Literal["legacy"] | None = None,
                     **kwargs) -> List[np.ndarray]:

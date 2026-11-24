@@ -4,6 +4,15 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+**2.21.0.dev1 (2026-11-24), added.** `HestonPricer.prepare_fourier` returns a
+`PreparedHestonGrid` for repeated controlled vanilla pricing at fixed model parameters
+and maturities. `price_chain` reuses saved transforms and `refined_for` evaluates
+additional frequencies when new quotes require a finer grid.
+
+**2.21.0.dev0 (2026-11-24), added.** `PreparedLogSVGrid.forward_greeks` returns
+forward delta and gamma of discounted vanilla premiums from saved coefficients.
+`refined_for` accepts `delta_atol` and `gamma_atol` for separate error checks.
+
 ## [2.20.0] - 2026-11-24
 
 Heston and LogSV now offer tolerance-controlled Fourier pricing and calibration.

@@ -102,7 +102,9 @@ Run component diagnostics from the repository root. For example,
 | `docs/hawkes_jump_diffusion.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py`; the Monte Carlo case in the slow lane |
 | `docs/heston_model.py` | canonical script of a documentation page | core only, bundled Bitcoin chain | every case run by `test_docs_examples.py` |
 | `docs/inverse_options.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
-| `docs/logsv_model.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
+| `docs/logsv_model.py` | LogSV dynamics, pricing and prepared-grid Greeks | core only, synthetic examples and bundled Bitcoin chain | every case run by `test_docs_examples.py`, including the Bitcoin benchmark in the slow lane |
+| `pricers/benchmark_btc_forward_greeks.py` | Forward delta and gamma for 49 Bitcoin quotes, central bumps and separate setup and warm timings | core only, bundled chain and recorded IV fit | offline slow case `logsv_model-BITCOIN_FORWARD_GREEKS` |
+| `pricers/benchmark_prepared_heston.py` | Ten-year Heston premiums for one wing and 1,001 strikes, including setup, refinement and warm timings | core only, synthetic calls | fresh controlled prices and independent wing premium |
 | `docs/logsv_smile_fitter.py` | canonical script of a documentation page | core only, generated chain | every case run by `test_docs_examples.py` |
 | `docs/surface_diagnostics.py` | fit, strike and calendar checks, native tick-scale handoff and portable research audits | core only, synthetic chains/scores and a temporary JSON report | every case run by `test_docs_examples.py`, including `NATIVE_QUOTES` and `RESEARCH_TOOLS` |
 | `fitters/oca_surface_diagnostics.py` | advanced source-to-fit quality, parity and surface reports | research extra, OCA 5.3, synthetic only | optional cross-package integration test |

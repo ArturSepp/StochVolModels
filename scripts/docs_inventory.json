@@ -270,7 +270,8 @@
     ],
     "docs/heston_model.md": [
       "HestonParams",
-      "HestonPricer"
+      "HestonPricer",
+      "PreparedHestonGrid"
     ],
     "docs/hawkes_jump_diffusion.md": [
       "HawkesJDParams",

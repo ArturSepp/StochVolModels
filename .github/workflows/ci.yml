@@ -141,6 +141,7 @@ jobs:
           - app_swaptions_and_sofr_options-SHOCK_SCENARIOS
           - calibration-REFIT
           - hawkes_jump_diffusion-MONTE_CARLO
+          - logsv_model-BITCOIN_FORWARD_GREEKS
           - quadratic_variance_options-QV_OPTIONS
 
     steps:

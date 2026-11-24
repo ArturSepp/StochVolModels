@@ -14,6 +14,7 @@ from stochvolmodels.utils.funcs import set_seed, set_time_grid
 
 # the drift cases of the paper module papers/logsv_model_with_quadratic_drift_ijtaf_2023/replication/theory/vol_drift.py
 DRIFT_KAPPA2S = (0.0, 4.0, 8.0)
+SLOW_CASES = ("BITCOIN_FORWARD_GREEKS",)
 
 
 def drift_params(kappa2: float) -> svm.LogSvParams:
@@ -119,6 +120,8 @@ class Locals(Enum):
     FIRST_SLICE = 5
     SHORT_EXPIRIES = 6
     PREPARED_GRID = 7
+    FORWARD_GREEKS = 8
+    BITCOIN_FORWARD_GREEKS = 9
 
 
 def run_local(local: Locals) -> None:
@@ -146,6 +149,21 @@ def run_local(local: Locals) -> None:
         np.testing.assert_allclose(scenario.price_chain(quotes, sigma0=.50)[0], [5.46643734], atol=1e-6)
         risk_grid = scenario.refined_for(quotes, sigma0=.40, sensitivity_atol=1e-6)
         np.testing.assert_allclose(risk_grid.sigma0_sensitivity(quotes)[0], [9.94015409], atol=1e-6)
+
+    elif local == Locals.FORWARD_GREEKS:
+        params = svm.LogSvParams(sigma0=.24, theta=.24, kappa1=0., kappa2=0., beta=0., volvol=0.)
+        quotes = svm.OptionChain.slice_to_chain(1 / (365 * 24), 100., np.array([100.]),
+                                                np.array(["C"]), .98)
+        grid = svm.LogSVPricer().prepare_fourier(quotes, params)
+        risk_grid = grid.refined_for(quotes, delta_atol=1e-9, gamma_atol=1e-9)
+        deltas, gammas = risk_grid.forward_greeks(quotes, delta_atol=1e-9, gamma_atol=1e-9)
+        np.testing.assert_allclose([deltas[0][0], gammas[0][0]], [.4905012625, 1.5246726011],
+                                   rtol=0, atol=1e-9)
+
+    elif local == Locals.BITCOIN_FORWARD_GREEKS:
+        from examples.pricers import benchmark_btc_forward_greeks as benchmark
+
+        benchmark.run_local(benchmark.Locals.BITCOIN)
 
     elif local == Locals.SHORT_EXPIRIES:
         np.testing.assert_allclose(short_expiry_prices()[0, 1], 0.58564723, rtol=0, atol=1e-6)

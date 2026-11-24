@@ -21,6 +21,84 @@ from stochvolmodels.tests.test_logsv_fourier_quadrature import _chain
 from stochvolmodels.utils._fourier_quadrature import QuadratureError
 
 
+def test_forward_greeks_short_atm_black_limit_and_refinement(monkeypatch):
+    sigma = .24
+    params = replace(LOGSV_BASE, sigma0=sigma, theta=sigma, kappa1=0., kappa2=0., beta=0., volvol=0.)
+    chain = OptionChain.slice_to_chain(1 / (365 * 24), 100., np.array([100., 100., 100.3, 99.7]),
+                                       np.array(["C", "P", "C", "P"]), .98)
+    grid = LogSVPricer().prepare_fourier(chain, params, fourier={"price_atol": 1.})
+    strict = dict(delta_atol=1e-9, gamma_atol=1e-9)
+    with monkeypatch.context() as patch:
+        patch.setattr(afe, "compute_logsv_a_mgf_grid", lambda **kw: pytest.fail("query solved ODEs"))
+        for tolerances in (dict(delta_atol=1e-9, gamma_atol=10.), dict(delta_atol=10., gamma_atol=1e-9)):
+            with pytest.raises(QuadratureError, match="prepared grid"):
+                grid.forward_greeks(chain, **tolerances)
+
+    refined = grid.refined_for(chain, **strict)
+    assert refined.diagnostics.evaluations > grid.diagnostics.evaluations
+    monkeypatch.setattr(afe, "compute_logsv_a_mgf_grid", lambda **kw: pytest.fail("query solved ODEs"))
+    assert refined.refined_for(chain, **strict) is refined
+    delta, gamma = refined.forward_greeks(chain, **strict)
+    std = sigma * np.sqrt(chain.ttms[0])
+    d1 = np.log(100. / chain.strikes_ttms[0]) / std + .5 * std
+    black_delta = .98 * (ndtr(d1) - (chain.optiontypes_ttms[0] == "P"))
+    black_gamma = .98 * np.exp(-.5 * d1**2) / (np.sqrt(2 * np.pi) * 100. * std)
+    np.testing.assert_allclose(delta[0], black_delta, rtol=0, atol=1e-9)
+    np.testing.assert_allclose(gamma[0], black_gamma, rtol=0, atol=1e-9)
+    assert delta[0][0] - delta[0][1] == pytest.approx(.98)
+    assert gamma[0][0] == gamma[0][1]
+    # Changing the contract's unit of account preserves delta and scales gamma inversely.
+    for scale in (1e-170, 1e170):
+        scaled = replace(chain, forwards=scale * chain.forwards,
+                         strikes_ttms=(scale * chain.strikes_ttms[0],))
+        scaled_delta, scaled_gamma = refined.forward_greeks(
+            scaled, delta_atol=1e-9, gamma_atol=1e-9 / scale)
+        np.testing.assert_allclose(scaled_delta[0], black_delta, rtol=0, atol=1e-9)
+        np.testing.assert_allclose(scale * scaled_gamma[0], black_gamma, rtol=0, atol=1e-9)
+    centre = refined.price_chain(chain)[0]
+    for h in (.001, .0005):
+        up = refined.price_chain(replace(chain, forwards=chain.forwards + h))[0]
+        down = refined.price_chain(replace(chain, forwards=chain.forwards - h))[0]
+        np.testing.assert_allclose(delta[0], (up - down) / (2*h), rtol=0, atol=1e-6)
+        np.testing.assert_allclose(gamma[0], (up - 2*centre + down) / h**2, rtol=0, atol=3e-6)
+    for name in strict:
+        with pytest.raises(ValueError, match=name):
+            refined.forward_greeks(chain, **{name: 0.})
+
+
+@pytest.mark.parametrize("spot", [True, False], ids=["money-market", "inverse"])
+def test_forward_greeks_against_central_forward_bumps(monkeypatch, spot):
+    # Hold strikes, dynamics and discount fixed. Reprice the bumped forwards independently.
+    quotes = OptionChain(
+        ttms=np.array([1., 30.]) / 365, forwards=np.array([100., 103.]),
+        strikes_ttms=(np.array([100., 100., 102.]), np.array([97., 110.])),
+        optiontypes_ttms=(np.array(["C", "P", "C"]), np.array(["P", "C"])) if spot else
+                         (np.array(["IC", "IP", "IC"]), np.array(["IP", "IC"])),
+        discfactors=np.array([.99, .95]), ids=None,
+    )
+    pricer = LogSVPricer()
+    params = replace(LOGSV_BASE, sigma0=.37)
+    tight_price = {"price_atol": 1e-10}
+    seed = _chain((1, 30), np.array([100.]))
+    grid = pricer.prepare_fourier(seed, LOGSV_BASE, is_spot_measure=spot)
+    strict = dict(sigma0=params.sigma0, delta_atol=1e-8, gamma_atol=1e-8)
+    grid = grid.refined_for(quotes, **strict)
+    with monkeypatch.context() as patch:
+        patch.setattr(afe, "compute_logsv_a_mgf_grid", lambda **kw: pytest.fail("query solved ODEs"))
+        deltas, gammas = grid.forward_greeks(quotes, **strict)
+
+    def price(shift):
+        bumped = replace(quotes, forwards=quotes.forwards + shift)
+        return np.concatenate(pricer.price_chain(bumped, params, fourier=tight_price, is_spot_measure=spot))
+
+    centre = price(0.)
+    for h in (.005, .0025):
+        up, down = price(h), price(-h)
+        np.testing.assert_allclose(np.concatenate(deltas), (up - down) / (2*h), rtol=0, atol=1e-6)
+        np.testing.assert_allclose(np.concatenate(gammas), (up - 2*centre + down) / h**2,
+                                   rtol=0, atol=5e-7)
+
+
 @pytest.mark.parametrize("order,spot", [(afe.ExpansionOrder.FIRST, False),
                                        (afe.ExpansionOrder.SECOND, True)])
 def test_state_prices_and_sensitivity_use_saved_coefficients(monkeypatch, order, spot):
@@ -167,7 +245,7 @@ def test_tail_and_panel_refinement_use_only_new_frequencies(monkeypatch):
     original = grid.price_chain(seed)[0].copy()
     strict = {"price_atol": 1e-6}
     unverified = grid._plan.price_vanillas(
-        grid._quotes[0].evaluate(grid._coefficients[0], LOGSV_ALT.theta),
+        grid._quotes[0].evaluate(grid._coefficients[0], grid._plan.nodes),
         forward=100.0,
         strikes=request.strikes_ttms[0],
         optiontypes=request.optiontypes_ttms[0],

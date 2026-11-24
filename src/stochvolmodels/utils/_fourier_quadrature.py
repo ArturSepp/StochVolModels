@@ -8,6 +8,7 @@ invocation and can be discarded once the final plan has priced the slice.
 
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from typing import Literal
 
 import numpy as np
 
@@ -30,6 +31,16 @@ _POSITIVE_NODES, _KRONROD, _GAUSS = _RULE.T
 _NODES = np.r_[-_POSITIVE_NODES[:0:-1], _POSITIVE_NODES]
 _FINE = np.r_[_KRONROD[:0:-1], _KRONROD]
 _EMBEDDED = np.r_[_GAUSS[:0:-1], _GAUSS]
+
+_Quantity = Literal["price", "state", "delta", "gamma"]
+
+
+def _half_contour_scale(forward, strikes, discount, quantity):
+    """Discounted sqrt(F*K)/pi scale including any forward differentiation."""
+    if quantity in ("delta", "gamma"):
+        scale = discount * (np.sqrt(strikes) / np.sqrt(forward)) / np.pi
+        return scale / forward if quantity == "gamma" else scale
+    return discount * np.sqrt(forward) * np.sqrt(strikes) / np.pi
 
 
 @dataclass(frozen=True, eq=False)
@@ -73,8 +84,9 @@ class FourierPlan:
         return prices
 
     def vanilla_sensitivities(self, derivatives: np.ndarray, *, forward: float,
-                              strikes: np.ndarray, discfactor: float) -> np.ndarray:
-        """Invert one or several d(MGF)/dp columns with the fixed half-contour weights."""
+                              strikes: np.ndarray, discfactor: float,
+                              quantity: _Quantity | tuple[_Quantity, ...] = "state") -> np.ndarray:
+        """Invert sensitivity columns with the same strike phases and column-specific units."""
         if derivatives.ndim not in (1, 2) or derivatives.shape[0] != self.nodes.size:
             raise ValueError("supply one transform derivative row per Fourier node")
         with np.errstate(over="raise", invalid="raise", under="ignore"):
@@ -82,8 +94,14 @@ class FourierPlan:
             weighted = flat * (self.weights / (self.nodes**2 + .25))[:, None]
             integrals = np.array([np.exp(-1j*x*self.nodes) @ weighted
                                   for x in np.log(forward) - np.log(strikes)])
-            scale = -discfactor * np.sqrt(forward) * np.sqrt(strikes) / np.pi
-            values = scale[:, None] * integrals.real
+            if isinstance(quantity, tuple):
+                if len(quantity) != flat.shape[1]:
+                    raise ValueError("supply one sensitivity quantity per column")
+                scales = np.column_stack([_half_contour_scale(forward, strikes, discfactor, q)
+                                          for q in quantity])
+            else:
+                scales = _half_contour_scale(forward, strikes, discfactor, quantity)[:, None]
+            values = -scales * integrals.real
         if not np.isfinite(values).all():
             raise FloatingPointError("nonfinite vanilla sensitivity")
         return values[:, 0] if derivatives.ndim == 1 else values
@@ -244,7 +262,7 @@ def integrate_vanilla_chain(
     seed_panels: int = 9, scenario_count: int = 1, initial_edges: np.ndarray | None = None,
     initial_refinements: int = 0, discarded_evaluations: int = 0,
     fixed_plan: FourierPlan | None = None, grouped_quotes: bool = False,
-    derivative_rows: Sequence[bool] | None = None,
+    quantities: Sequence[_Quantity] | None = None,
 ) -> tuple[FourierPlan, list[np.ndarray], QuadratureDiagnostics]:
     """Preflight all quotes together and value every expiry on the accepted frozen grid.
 
@@ -256,8 +274,10 @@ def integrate_vanilla_chain(
     scenarios contribute to the same panel errors and tail checks. Their transform
     rows are yielded in scenario-major order. A validation run can start from a
     prescribed refinement of a previous partition, retaining the original dyadic shells.
-    A derivative row supplies d(MGF)/d(state) directly. The same embedded and tail
-    tests then apply in discounted premium per unit state, with that row's tolerances.
+    A derivative row supplies the differentiated numerator of the half-contour
+    integral, with inverse forward powers factored into its quote scale. Its embedded
+    and tail checks use the derivative's units and tolerances. Forward delta includes
+    the derivative of the additive call term.
     """
     rows = [_checked_quotes(f, d, k, types, is_spot_measure)
             for f, d, k, types in zip(forwards, discfactors, strikes_ttms, optiontypes_ttms,
@@ -278,12 +298,12 @@ def integrate_vanilla_chain(
     for value in (max_nodes, max_refinements):
         if isinstance(value, bool) or not isinstance(value, (int, np.integer)) or value < 0:
             raise ValueError("work limits must be nonnegative integers")
-    derivatives = [False] * len(rows) if derivative_rows is None else list(derivative_rows)
-    if len(derivatives) != len(rows):
-        raise ValueError("supply one derivative flag per quote row")
+    quantities = ["price"] * len(rows) if quantities is None else list(quantities)
+    if len(quantities) != len(rows):
+        raise ValueError("supply one output quantity per quote row")
     if scenario_count > 1:
         rows = rows * scenario_count
-        derivatives = derivatives * scenario_count
+        quantities = quantities * scenario_count
         settings = list(settings) * scenario_count
         ttms = np.tile(ttms, scenario_count)
         forwards = np.tile(forwards, scenario_count)
@@ -295,11 +315,12 @@ def integrate_vanilla_chain(
     strikes = np.concatenate([k for k, _ in rows])
     expiry = np.repeat(np.arange(len(rows)), [len(k) for k, _ in rows])
     forward = np.asarray(forwards)[expiry]
-    discfactor = np.asarray(discfactors)[expiry]
 
     real_phi = -0.5 if is_spot_measure else 0.5
     log_moneyness = np.log(forward) - np.log(strikes)
-    premium_scale = discfactor * np.sqrt(forward) * np.sqrt(strikes) / np.pi
+    premium_scale = np.concatenate([_half_contour_scale(f, k, d, quantity)
+                                    for f, (k, _), d, quantity in
+                                    zip(forwards, rows, discfactors, quantities, strict=True)])
     panels: list[_Panel] = []
     # A refined handle retains the original cumulative work, including discarded parents.
     evaluations = discarded_evaluations
@@ -350,11 +371,11 @@ def integrate_vanilla_chain(
                 if not np.isfinite(values).all():
                     col = np.flatnonzero(~np.isfinite(values))[0]
                     frequency = phi[col].imag
-                    name = "transform derivative" if derivatives[row] else "log transform"
+                    name = "log transform" if quantities[row] == "price" else "differentiated numerator"
                     raise FloatingPointError(f"nonfinite {name} at frequency {frequency:g}")
                 samples[row] = values
                 with np.errstate(over="raise", invalid="raise", under="ignore"):
-                    transform = values if derivatives[row] else np.exp(values)
+                    transform = np.exp(values) if quantities[row] == "price" else values
                     kernels[row] = transform / denominator
             if next(transformed, None) is not None:
                 raise ValueError("unexpected extra expiry in log transforms")
@@ -437,13 +458,16 @@ def integrate_vanilla_chain(
     try:
         samples = np.concatenate([p.samples for p in panels], axis=1)
         prices = []
-        for values, f, (k, types), d, derivative in zip(samples, forwards, rows, discfactors, derivatives):
-            if derivative:
-                # The additive parity term has zero state derivative on either half contour.
-                prices.append(plan.vanilla_sensitivities(values, forward=f, strikes=k, discfactor=d))
-            else:
+        for values, f, (k, types), d, quantity in zip(samples, forwards, rows, discfactors, quantities):
+            if quantity == "price":
                 prices.append(plan.price_vanillas(values, forward=f, strikes=k, optiontypes=types,
                                                   discfactor=d, is_spot_measure=is_spot_measure))
+            else:
+                result = plan.vanilla_sensitivities(values, forward=f, strikes=k, discfactor=d,
+                                                    quantity=quantity)
+                if quantity == "delta":
+                    result[np.isin(types, ("C", "IC"))] += d  # derivative of the additive D*F call term
+                prices.append(result)
     except FloatingPointError as exc:
         raise QuadratureError(str(exc), diagnostics()) from exc
     return plan, prices, diagnostics()

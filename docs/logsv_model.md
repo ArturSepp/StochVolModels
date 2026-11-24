@@ -347,6 +347,98 @@ took 0.62–1.01 s per strike set. The grid retained 43,200 bytes of coefficient
 Compilation was measured separately.
 [Runnable prepare, query and refine example](../examples/docs/logsv_model.py)
 
+### Forward delta and gamma
+
+`grid.forward_greeks(quotes)` returns two lists of arrays in the same expiry and strike order
+as the quoted chain. Delta and gamma differentiate the discounted premium with respect to the
+forward, holding strike, discount, initial volatility and dynamics fixed. On the inverse
+contour the differentiated premium includes SVM's conversion by the forward. The optional
+`sigma0` selects the initial-volatility scenario for both derivatives.
+
+For frequency $u$, the forward-dependent factor in the half-contour integral is
+$H=\sqrt{FK}\exp[-iu\log(F/K)]$. With $a=1/2-iu$ its derivatives are
+
+$$
+\partial_F H=\frac{a}{F}H,\qquad
+\partial_F^2 H=-\frac{u^2+1/4}{F^2}H.
+$$
+
+The additive call term $DF$ contributes $D$ to delta. The additive put term $DK$ has zero
+forward derivatives. The gamma multiplier cancels the vanilla kernel denominator
+$u^2+1/4$, so gamma can require a wider cutoff, especially near expiry at the money.
+Each Greek gets an embedded quadrature check and a tail check in its own units.
+`delta_atol` is in premium per forward unit and `gamma_atol` is in premium per squared
+forward unit. Both default to `1e-6`. A query uses only saved coefficients. After a missed
+check, refine with the same tolerances and state.
+
+```python
+risk_grid = grid.refined_for(quotes, delta_atol=1e-9, gamma_atol=1e-9)
+deltas, gammas = risk_grid.forward_greeks(quotes, delta_atol=1e-9, gamma_atol=1e-9)
+```
+
+In the constant-volatility example, a one-hour call with $F=K=100$, volatility 24% and
+$D=0.98$ has forward delta $0.4905012625$ and gamma $1.5246726011$. These are the Black
+values $D\Phi(d_1)$ and $D\varphi(d_1)/(F\sigma\sqrt{T})$. The stochastic-volatility
+regression separately checks one-day and 30-day calls and puts against central forward bumps.
+[Verification cases](../src/stochvolmodels/tests/test_prepared_logsv_grid.py)
+
+### Bitcoin benchmark for forward delta and gamma
+
+The 21 October 2021 Bitcoin chain has 49 quotes across four expiries (12, 13, 15 and 9
+quotes). The benchmark fixes the parameters from the [five-parameter implied-volatility
+fit](calibration.md#five-parameter-logsv-gradient) and uses the second-order LogSV expansion
+under the money-market measure. Delta and gamma are the first and second derivatives of
+discounted USD premium with respect to the USD forward. Each bump holds strikes, discounts
+and model parameters fixed. One basis point (bp) is a relative forward move of 0.0001.
+
+| Bump to each expiry's forward | Max absolute delta error | Delta RMSE | Max absolute gamma error | Gamma RMSE |
+|---|---:|---:|---:|---:|
+| ±2 bp | 6.52e-8 | 2.31e-8 | 4.03e-12 | 1.34e-12 |
+| ±1 bp | 1.63e-8 | 5.78e-9 | 1.01e-12 | 3.34e-13 |
+| ±0.5 bp | 4.07e-9 | 1.45e-9 | 2.52e-13 | 8.36e-14 |
+
+Errors compare the analytic Greeks with central differences of premiums on an independent
+24-point Gauss–Legendre rule per panel. The reference uses 2,112 nodes through frequency
+512. At ±0.5 bp, the change from 960 nodes through 256 was at most 3.83e-10 for delta
+and 4.40e-14 for gamma. Both inversions use the same model expansion. The largest delta
+error was on the shortest expiry's USD 58,000 put and the largest gamma error on its
+USD 70,000 call.
+
+For a relative forward bump $s$, the reference computes the finite change of the strike
+phase with `expm1(-phi * log1p(s))`. This preserves the small premium changes entering
+the second difference. Halving the bump reduced both maximum errors by about four.
+Subtracting the outright double-precision premiums gave a maximum gamma discrepancy
+of 8.17e-11 at ±0.5 bp.
+
+| Operation on the full chain | Median wall time | Coefficient solves |
+|---|---:|---:|
+| Prepare the premium grid | 10.4 s | 8,760 |
+| Check and refine the grid for both Greeks | 23.5 ms | 0 |
+| Warm query for analytic delta and gamma together | 15.7 ms | 0 |
+| Warm central bumps on the prepared grid, base plus up and down | 26.5 ms | 0 |
+
+At a USD premium tolerance of `1e-6`, the grid retained 1,170 nodes through frequency 256.
+It already satisfied `delta_atol=1e-8` and `gamma_atol=1e-12`. The refinement time
+therefore measures the checks on the existing nodes. One coefficient solve here means
+one frequency on one maturity interval, including frequencies discarded during preparation.
+
+The 24 November 2026 run used Windows 11, Python 3.12.10 and one BLAS thread. The median setup
+times cover three fresh preparations and refinements. The warm timings cover 51 calls per
+method in alternating order. The bump query reprices the base and both ±0.5 bp scenarios
+on the same grid. On this run the analytic query was 1.69 times as fast. An initial
+14.0 s warm-up (including 11.7 s of Numba compilation) and the independent reference
+inversions were timed outside these measurements.
+
+From a source checkout with the package installed, run the following command. It prints
+the error and timing summaries. The optional `--output-dir` writes all 49 quote-level
+comparisons to `btc_forward_greeks_quotes.csv` and individual timings, fitted parameters
+and reference-grid details to `btc_forward_greeks_results.json`.
+[Benchmark source](../examples/pricers/benchmark_btc_forward_greeks.py)
+
+```console
+python -m examples.pricers.benchmark_btc_forward_greeks --output-dir agents/btc-forward-greeks
+```
+
 ## Interpretation and limitations
 
 - **Volatility beta and correlation.** $\beta$ is a loading, not a correlation: the correlation of

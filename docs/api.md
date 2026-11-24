@@ -66,7 +66,7 @@ The analytic vanilla and implied-volatility methods accept
    :members: price_vanilla, price_slice, price_chain, prepare_fourier, compute_chain_prices_with_vols, compute_model_ivols_for_chain, model_mc_price_chain, calibrate_model_params_to_chain
 
 .. autoclass:: stochvolmodels.PreparedLogSVGrid
-   :members: price_chain, sigma0_sensitivity, refined_for
+   :members: price_chain, sigma0_sensitivity, forward_greeks, refined_for
 ```
 
 ## Steady-state distribution, moments and expected quadratic variance
@@ -186,7 +186,10 @@ The analytic vanilla and implied-volatility methods accept the
    :members:
 
 .. autoclass:: stochvolmodels.HestonPricer
-   :members: price_vanilla, price_slice, price_chain, compute_chain_prices_with_vols, compute_model_ivols_for_chain, model_mc_price_chain, calibrate_model_params_to_chain
+   :members: price_vanilla, price_slice, price_chain, prepare_fourier, compute_chain_prices_with_vols, compute_model_ivols_for_chain, model_mc_price_chain, calibrate_model_params_to_chain
+
+.. autoclass:: stochvolmodels.PreparedHestonGrid
+   :members: price_chain, refined_for
 ```
 
 ## Jump-diffusion with clustered jumps

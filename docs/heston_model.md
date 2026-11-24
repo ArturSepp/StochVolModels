@@ -122,6 +122,45 @@ also supports [fixed Fourier grids](calibration.md#fixed-fourier-grids).
 The [reference comparison](numerical_accuracy_and_performance.md#fourier-modes-and-reference-prices)
 records the accuracy and default decision across five Heston fixtures.
 
+### Repricing on a prepared grid
+
+`grid = pricer.prepare_fourier(chain, params, fourier={"price_atol": 1e-6})` stores
+the accepted quadrature weights and the Heston log transform at each frequency
+and maturity. The supplied maturities must be positive and increasing. Preparation
+checks all maturities on a common grid. The node budget and `grid.diagnostics.evaluations`
+count frequencies across that grid, and each frequency costs one transform per maturity.
+
+`grid.price_chain(quotes)` returns discounted call and put premiums in the requested
+order. Previously certified quotes go directly through the stored quadrature.
+Changing forwards, discount factors, strikes, option types or tolerances triggers
+a resolution and tail check using the stored samples when the previous certificate
+does not cover the request. A changed quote row needs its own strike-aligned tolerances
+or time values if these were vectors at preparation.
+
+If a query raises `FloatingPointError` with a panel or cutoff diagnostic, use
+`grid = grid.refined_for(quotes)` with the same query settings. Refinement checks
+both the original and new quotes, evaluates only additional frequencies and returns
+a handle that can price either set. Queries can select a subset of the prepared maturities
+in increasing order and supply strikes in any order.
+A new maturity or a change in Heston model parameters requires a new preparation.
+
+For the ten-year wing above, the following times are medians of 31 interleaved rounds
+after compilation, using Python 3.12.10 on Windows with one BLAS thread. Setup prepares
+a new handle in each round. Both warm columns recompute every price from saved transforms.
+The changed-forward column raises the forward from 100 to 100.01 and includes validation
+of the new quotes. All four warm price vectors matched fresh controlled calls exactly
+in this run. Across the 1,001 original strikes, the largest absolute difference from
+the independent Heston probability inversion was `9.97e-9` premium units at strike 50.7.
+
+| Ten-year calls | Fresh controlled | Prepare | Warm, certified quotes | Warm, changed forward | Transforms, setup / warm |
+|---|---:|---:|---:|---:|---:|
+| Strike 140 | 7.01 ms | 8.53 ms | 0.60 ms | 2.12 ms | 180 / 0 |
+| 1,001 strikes from 50 to 150 | 36.03 ms | 38.04 ms | 10.09 ms | 24.19 ms | 330 / 0 |
+
+Extending the wing handle to the full strike grid took 32.74 ms and 150 additional
+transform evaluations. Run `python -m examples.pricers.benchmark_prepared_heston`
+from the checkout to reproduce the comparison. [Benchmark source](../examples/pricers/benchmark_prepared_heston.py)
+
 ### Feller condition and stationary law
 
 The variance stays away from zero if $2 \kappa \theta \ge \vartheta^2$, the Feller condition. Its
@@ -226,6 +265,7 @@ previous parameter/kernel imports remain aliases to the same objects.
 |---|---|
 | `HestonParams` | Fields `v0`, `theta`, `kappa`, `rho`, `volvol`, as in the table above |
 | `HestonPricer.price_chain`, `compute_model_ivols_for_chain` | Prices and implied volatilities from the closed-form MGF |
+| `HestonPricer.prepare_fourier`, `PreparedHestonGrid` | Controlled prices and explicit refinement at prepared maturities |
 | `HestonPricer.model_mc_price_chain`, `simulate_terminal_values` | Euler by default, with the historical Numba seed. Select QE-M with `mc_scheme="qe_m"` and pass `seed` and `steps_per_year` for reproducible paths. |
 | `HestonPricer.calibrate_model_params_to_chain` | Fit of all five parameters with the Feller constraint |
 | `BTC_HESTON_PARAMS` | Preset used as a starting point for Bitcoin chains (compatibility tier) |

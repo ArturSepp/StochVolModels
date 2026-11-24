@@ -139,7 +139,7 @@ report the total and the negative mass of the density at each expiry and do not 
 Numerical kernels are compiled with Numba and not written as C extensions, so the installation
 needs no build toolchain, at the cost of a compilation delay at the first call.
 
-The stable root namespace has 35 explicit exports, which cover option chains, the log-normal and
+The stable root namespace has 36 explicit exports, which cover option chains, the log-normal and
 Heston models, terminal-distribution pricers, calibration controls and vanilla analytics
 delegated to `vanilla-option-pricers`. Provisional and research modules are imported by their
 module paths, and their contracts are not yet fixed.

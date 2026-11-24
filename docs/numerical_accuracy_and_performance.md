@@ -89,7 +89,9 @@ transform or a second fitted-premium mismatch. [Work limits](heston_model.md#con
 | Task | Public entry point | Numerical detail |
 |---|---|---|
 | Price a Heston or classical LogSV vanilla chain to a premium tolerance | `price_chain(..., fourier={})` | [Panel resolution and tail estimates](european_option_pricing.md#controlled-resolution-and-tail-checks) |
+| Requote Heston calls and puts at prepared expiries | `HestonPricer.prepare_fourier`, then `grid.price_chain` | [Ten-year wing and dense-grid timings](heston_model.md#repricing-on-a-prepared-grid) |
 | Requote classical LogSV at prepared expiries, or change initial volatility | `LogSVPricer.prepare_fourier`, then `grid.price_chain` or `grid.sigma0_sensitivity` | [Stored coefficients, sensitivity units and refinement](logsv_model.md#repricing-on-a-prepared-grid) |
+| Compute forward delta and gamma of discounted LogSV vanillas | `grid.forward_greeks(quotes)` | [Greek tolerances and the short-expiry Black limit](logsv_model.md#forward-delta-and-gamma) · [49-quote Bitcoin bump errors and timings](logsv_model.md#bitcoin-benchmark-for-forward-delta-and-gamma) |
 | Fit classical LogSV `PARAMS4` or `PARAMS5` to implied volatilities | `calibrate_model_params_to_chain(..., fourier={})` | [Tangent equations and model vega](calibration.md#from-coefficient-sensitivities-to-the-iv-loss-gradient) · [PARAMS4 benchmark](calibration.md#four-parameter-logsv-gradient) · [PARAMS5 benchmark](calibration.md#five-parameter-logsv-gradient) |
 | Simulate Heston forward and variance paths | `HestonModel.simulate_paths(..., mc_scheme="qe_m")` | [Variance branches and conditional martingale correction](heston_model.md#martingale-corrected-qe-simulation) |
 
