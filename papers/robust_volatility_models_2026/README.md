@@ -43,6 +43,8 @@ the source directory (three `pdflatex` passes).
 
 The active evidence bundles are:
 
+- The [SPX physical and pricing calibration](replication/spx_physical_pricing_20261124/README.md) estimates latent volatility from historical observations and tests the measure-change restriction on the July SPXW quotes.
+
 - The [cross-asset dynamics comparison](replication/cross_asset_dynamics_20261124/REPORT.md) reports daily, EWMA and persistence fits for 18 indices and identifies the separate pricing calibrations.
 - [`vix_fit_20261123`](replication/vix_fit_20261123/README.md) contains the four-parameter
   Bloomberg VIX fit, the comparison with the archived estimates, and the regenerated
