@@ -174,9 +174,9 @@ def test_every_paper_directory_has_exactly_one_status_row(
     papers_readme = PAPERS_README_PATH.read_text(encoding="utf-8")
     table = papers_readme.split("## Papers", maxsplit=1)[1].split("## Running", maxsplit=1)[0]
     listed = [
-        linked or plain
-        for linked, plain in re.findall(
-            r"^\| (?:\[`([^`]+)`\]\([^)]+\)|`([^`]+)`) \|", table, re.MULTILINE
+        plain or target.removeprefix("./").split("/", 1)[0]
+        for plain, target in re.findall(
+            r"^\| (?:`([^`\n]+)`|\[[^\]\n]+\]\(([^)\s]+)\)) \|", table, re.MULTILINE
         )
     ]
     paper_paths = (
