@@ -40,6 +40,7 @@ class LocalTest(str, Enum):
     U1 = "U1"
     U3 = "U3"
     R2 = "R2"
+    RENDER_R2 = "render-r2"
 
 
 def configuration(label):
@@ -1005,6 +1006,14 @@ def run_fine_grids(args):
 
 
 def run_local_test(local_test, args):
+    if local_test == LocalTest.RENDER_R2:
+        if args.figure is None:
+            raise ValueError("Set --figure to the output PDF for the submitted Figure 3.")
+        return render_history_figure(
+            args.out / "F4_quadratic_drift_history_R2.json",
+            args.out / "F4_right_panel_time_averaged_history.json",
+            args.figure, finest_only=True,
+        )
     if local_test == LocalTest.R2:
         return run_fine_grids(args)
     if local_test == LocalTest.U1:
@@ -1018,9 +1027,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case", type=LocalTest, choices=list(LocalTest), default=LocalTest.U1)
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--out", type=Path, default=RESULTS, help="Directory for new result JSONs")
+    parser.add_argument("--out", type=Path, default=RESULTS,
+                        help="Result JSON directory (read existing results for render-r2)")
     parser.add_argument("--scratch", type=Path, default=ROOT / "agents/scheme-unification-20261123/u1")
     parser.add_argument("--u1", type=Path, help="Passed U1 result for U3 (default: U1 in --out)")
-    parser.add_argument("--figure", type=Path, help="New Figure 4 output for U3")
+    parser.add_argument("--figure", type=Path, help="Output PDF for U3, R2 or render-r2")
     args = parser.parse_args()
     run_local_test(args.case, args)

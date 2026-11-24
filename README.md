@@ -184,7 +184,7 @@ risk premia under clustered jumps.
 | Sepp, A. and Rakhmonov, P. (2025), *Stochastic Volatility for Factor Heath-Jarrow-Morton Framework*, [Review of Derivatives Research 28, article 12](https://doi.org/10.1007/s11147-025-09217-4) (preprint [SSRN 4646925](https://ssrn.com/abstract=4646925)) | Factor HJM stochastic-volatility pricing (experimental research surface) | [`papers/sv_for_factor_hjm_rdr_2025`](papers/sv_for_factor_hjm_rdr_2025), [factor HJM](docs/factor_hjm_stochastic_volatility.md) |
 | Liu, F., Packham, N. and Sepp, A., *Jump risk premia in the presence of clustered jumps*, accepted in *SIAM Journal on Financial Mathematics* ([preprint](https://arxiv.org/abs/2510.21297)) | Bivariate Hawkes option valuation and related estimation and calibration | [Author manuscript](papers/jump_risk_premia_clustered_jumps_sifin_2027/paper/hawkes.pdf), [replication scope](papers/jump_risk_premia_clustered_jumps_sifin_2027/README.md), [Hawkes model](docs/hawkes_jump_diffusion.md) |
 | Lipton, A. and Sepp, A. (2022), *Toward an efficient hybrid method for pricing barrier options on assets with stochastic volatility*, *Wilmott* | Conditional heat-potential and Monte Carlo comparisons on generated paths | [Figure runner and author-source inventory](papers/barrier_options_sv_wilmott_2022/README.md) |
-| Sepp, A. and Rakhmonov, P., *Rough Log-normal Stochastic Volatility with Quadratic Drift*, local working draft, 18 November 2026 | Selected saved-fit replay on 45 BTC and 39 ETH quotes at H = 0.30 and 0.50. Requires local quotes and checkpoints | [Replay instructions and evidence limits](docs/rough_logsv.md#replaying-selected-btceth-evidence) |
+| Sepp, A. and Rakhmonov, P., *Rough log-normal stochastic volatility with quadratic drift*, submitted 24 November 2026 | Figure 2 runs on model parameters alone. Figures 1 and 3 replay local calibration and simulation records. | [Paper and reference figures](papers/rough_volterra_lognormal_sv_model_2026/README.md) · [Run the figures](papers/rough_volterra_lognormal_sv_model_2026/replication/README.md) |
 
 The [replication index](docs/reproducing_the_papers.md) records the data each study needs. The GMM risk-premia study and its SPX panels are local. The GMM pricer provides an offline example of the underlying pricing law. [Gaussian-mixture pricer](examples/pricers/run_gmm_pricer.py)
 
@@ -564,7 +564,7 @@ note={Preprint: https://ssrn.com/abstract=4646925}
 @unpublished{sepprakhmonov2026rough,
   author={Sepp, Artur and Rakhmonov, Parviz},
   title={Rough Log-normal Stochastic Volatility with Quadratic Drift: Second-moment stability and the martingale property under positive correlation},
-  year={2026}, note={Authors' local working draft, 18 November}
+  year={2026}, note={Manuscript submitted to Quantitative Finance and arXiv, 24 November}
 }
 ```
 

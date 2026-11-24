@@ -17,8 +17,8 @@ Rough-logSV is a stochastic volatility model with multiplicative volatility shoc
 fractional memory and quadratic mean reversion. Its **experimental** standalone interface
 is `stochvolmodels.pricers.rough_logsv`, using `RoughLogSvParams` and `RoughLogSVPricer`.
 The classical `LogSVPricer` has no rough-mode switch. This guide documents the development
-implementation and the analytics of [Sepp and Rakhmonov's 18 November 2026 working
-draft](#references); the draft is not presented as a published article.
+implementation and the analytics of [Sepp and Rakhmonov's 24 November 2026
+manuscript](#references).
 
 Parameters, kernel fitting, history simulation and numerical controls have their canonical
 home in `stochvolmodels.models.rough_logsv`. The compatibility facade above also exposes the
@@ -356,7 +356,9 @@ quotes on 26 October 2021, both at 08:00 UTC, across three maturities per asset.
 The saved fits are at $H=0.30$ and $H=0.50$. These are retrospectively selected
 positive-skew illustrations; $H$ is fixed rather than estimated.
 
-The repository-only replay runner takes explicit local prerequisites and a fresh output root:
+To regenerate the three submitted figures, use the
+[paper figure runner](https://github.com/ArturSepp/StochVolModels/blob/main/papers/rough_volterra_lognormal_sv_model_2026/replication/README.md).
+For the separate validation benchmark, supply the paper, evidence and output directories:
 
 ```console
 python -B validation/rough_logsv/benchmark.py --paper-root <paper-directory> --evidence-root <evidence-directory> --output <new-output-directory>
@@ -411,13 +413,10 @@ Historical split-step functions and `LogSvParams.H/nodes/weights` remain for rep
 
 - Sepp, A. and Rakhmonov, P. (2026). *Rough Log-normal Stochastic Volatility with
   Quadratic Drift: Second-moment stability and the martingale property under positive
-  correlation*. Authors' working draft, **18 November 2026**. Source used for this
-  guide: `papers/rough_volterra_lognormal_sv_model_2026/paper/rough_volterra_lognormal.tex`
-  in the authors' local research checkout. Sections "Model", "Moments and the stability
-  parameter", "Martingale property under positive correlation", and "Numerical
-  illustrations". References above use named results from that draft, not equation
-  numbers from the published classical paper. The draft is not bundled with the
-  package; no public paper URL or DOI is asserted here.
+  correlation*. Submitted to *Quantitative Finance* and arXiv on **24 November 2026**.
+  The [paper and figure guide](https://github.com/ArturSepp/StochVolModels/tree/main/papers/rough_volterra_lognormal_sv_model_2026)
+  identifies the manuscript and numerical exhibits. The named results above refer to
+  the rough model.
 - Sepp, A. and Rakhmonov, P. (2023). *Log-normal stochastic volatility model with
   quadratic drift*. International Journal of Theoretical and Applied Finance 26(8),
   2450003. [DOI: 10.1142/S0219024924500031](https://doi.org/10.1142/S0219024924500031).

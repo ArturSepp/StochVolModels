@@ -47,14 +47,12 @@ appear on pages 6, 12, 30 and 36, respectively.
 
 ## Rough-logSV authors' working draft
 
-Sepp and Rakhmonov (2026), *Rough Log-normal Stochastic Volatility with Quadratic Drift:
-Second-moment stability and the martingale property under positive correlation*,
-working draft dated **18 November 2026**, is the research reference for the
-[experimental rough-logSV guide](rough_logsv.md). This is an authors' local draft,
-not a verified journal publication or public preprint record. Its title, authors,
-date and named results were checked against
-`papers/rough_volterra_lognormal_sv_model_2026/paper/rough_volterra_lognormal.tex`.
-No public URL or DOI is assigned in this documentation.
+Sepp and Rakhmonov submitted *Rough log-normal stochastic volatility with quadratic drift:
+second-moment stability and the martingale property under positive correlation*
+to *Quantitative Finance* and arXiv on **24 November 2026**.
+The [paper folder](https://github.com/ArturSepp/StochVolModels/tree/main/papers/rough_volterra_lognormal_sv_model_2026)
+links the reference figures and the [experimental rough-logSV guide](rough_logsv.md)
+explains the computational methods.
 
 The guide separates the draft's exact linear-drift moment equations, stability
 criterion, nonlinear time-averaged bound and sufficient martingale condition from
@@ -62,15 +60,10 @@ the package's numerical algorithms. Strict positivity for singular kernels and t
 general martingale converse remain open. The classical published IJTAF paper is a
 separate reference; its equation numbers must not be used for the rough draft.
 
-The local `replication/` folder contains the theoretical exhibits and the BTC/ETH
-figure producers. The latter use the standalone package pricer and estimator to
-replay the saved fixed $H$ fits: 45 BTC and 39 ETH quotes, three maturities per asset,
-at $H=0.30$ and $H=0.50$. See the guide's
-[replay instructions](rough_logsv.md#replaying-selected-btceth-evidence).
-The source draft, local input quotes and frozen checkpoint bundles are not wheel
-dependencies or public documentation exhibits. Reproduction needs those local
-prerequisites; a successful saved-fit replay does not qualify new calibration.
-$H=0.20$ and wider calibration remain gated.
+The [local figure runner](https://github.com/ArturSepp/StochVolModels/blob/main/papers/rough_volterra_lognormal_sv_model_2026/replication/README.md)
+recomputes Figure 2 from the model parameters. Figure 1 replays four fixed-H fits
+on 45 BTC and 39 ETH quotes using the authors’ quote panel and checkpoints.
+Figure 3 renders the authors’ saved Monte Carlo summaries.
 
 ## Published figures on this site
 

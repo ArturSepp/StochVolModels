@@ -1,7 +1,7 @@
-"""Reproduce paper Figures F1-F3 from sealed observations and deterministic moments.
+"""Plot the submitted Figure 2 and two earlier exhibits from the working drafts.
 
-Run from any directory with the repository interpreter. Input data and numerical
-results remain beside this script; publication PDFs go to ../paper/figures.
+By default, diagnostics go to results/ and PDFs to ../paper/figures. Use
+--output-dir to write both to a separate directory.
 """
 from pathlib import Path
 from enum import Enum
@@ -36,9 +36,9 @@ class Locals(Enum):
     ALL = 'all'
 
 
-def setup():
-    FIGURES.mkdir(exist_ok=True)
-    RESULTS.mkdir(exist_ok=True)
+def setup(figures_dir=FIGURES, results_dir=RESULTS):
+    figures_dir.mkdir(parents=True, exist_ok=True)
+    results_dir.mkdir(parents=True, exist_ok=True)
     plt.rcParams.update({
         'font.family': 'serif', 'font.serif': ['DejaVu Serif'],
         'mathtext.fontset': 'cm', 'font.size': 8,
@@ -48,9 +48,9 @@ def setup():
     })
 
 
-def save(fig, name):
-    fig.savefig(FIGURES / f'{name}.pdf', bbox_inches='tight', pad_inches=0.035)
-    fig.savefig(RESULTS / f'{name}.png', dpi=180, bbox_inches='tight', pad_inches=0.035)
+def save(fig, name, figures_dir=FIGURES, results_dir=RESULTS):
+    fig.savefig(figures_dir / f'{name}.pdf', bbox_inches='tight', pad_inches=0.035)
+    fig.savefig(results_dir / f'{name}.png', dpi=180, bbox_inches='tight', pad_inches=0.035)
     plt.close(fig)
 
 
@@ -66,7 +66,7 @@ def producer_metadata():
     }
 
 
-def market():
+def market(figures_dir=FIGURES, results_dir=RESULTS):
     inputs = BASE / 'inputs'
     manifest = json.loads((inputs / 'source_manifest.json').read_text())
     source = inputs / 'core_option_panel.csv'
@@ -101,8 +101,8 @@ def market():
             provenance.append({'asset': asset, 'observation_utc': str(g.observation_time_utc.iloc[0]),
                                'expiry': str(expiry), 'quotes': len(g),
                                'common_forward': float(g.common_forward.iloc[0])})
-    save(fig, 'F1_observed_positive_skew')
-    (RESULTS / 'F1_observed_positive_skew.json').write_text(json.dumps({
+    save(fig, 'F1_observed_positive_skew', figures_dir, results_dir)
+    (results_dir / 'F1_observed_positive_skew.json').write_text(json.dumps({
         'producer': producer_metadata(),
         'rows': provenance, 'source_sha256': manifest['csv_conversion']['sha256'],
         'source_seal_utc': manifest['sealed_utc'],
@@ -111,7 +111,7 @@ def market():
     print('F1: 84 sealed observed quotes plotted.', flush=True)
 
 
-def threshold():
+def threshold(figures_dir=FIGURES, results_dir=RESULTS):
     hs = np.linspace(.05, .5, 181)
     fig, axes = plt.subplots(1, 2, figsize=(160 / 25.4, 72 / 25.4), layout='constrained')
     records = []
@@ -131,9 +131,9 @@ def threshold():
     checks = [abs(g2_norm(h, k) / g2_norm_spectral(h, k) - 1)
               for h in [.1, .3, .5] for k in [1., 3., 10.]]
     assert max(checks) < 1e-8
-    save(fig, 'F2_stability_threshold')
-    pd.DataFrame(records).to_csv(RESULTS / 'F2_stability_threshold.csv', index=False)
-    (RESULTS / 'F2_stability_threshold.json').write_text(json.dumps({
+    save(fig, 'F2_stability_threshold', figures_dir, results_dir)
+    pd.DataFrame(records).to_csv(results_dir / 'F2_stability_threshold.csv', index=False)
+    (results_dir / 'F2_stability_threshold.json').write_text(json.dumps({
         'producer': producer_metadata(),
         'max_relative_spectral_check': max(checks),
         'kappa1_units': 'year^(-(H+1/2))',
@@ -142,7 +142,7 @@ def threshold():
     print(f'F2: maximum closed-form/spectral relative difference {max(checks):.3g}.', flush=True)
 
 
-def moments(steps_per_year=8000):
+def moments(steps_per_year=8000, *, figures_dir=FIGURES, results_dir=RESULTS):
     """Separate bounded/critical curves from explosive curves and display grid bands."""
     if steps_per_year < 2 or steps_per_year % 2:
         raise ValueError("steps_per_year must be a positive even integer")
@@ -206,9 +206,9 @@ def moments(steps_per_year=8000):
     axes[1, 2].legend(handles=[Patch(facecolor=COLORS[3], alpha=.24,
                                     label='Coarse/fine grid band')],
                        frameon=False, fontsize=6.2, loc='upper left')
-    save(fig, 'F3_second_moment_curves')
-    pd.DataFrame(records).to_csv(RESULTS / 'F3_second_moment_curves.csv', index=False)
-    (RESULTS / 'F3_second_moment_curves.json').write_text(json.dumps({
+    save(fig, 'F3_second_moment_curves', figures_dir, results_dir)
+    pd.DataFrame(records).to_csv(results_dir / 'F3_second_moment_curves.csv', index=False)
+    (results_dir / 'F3_second_moment_curves.json').write_text(json.dumps({
         'producer': producer_metadata(),
         'coarse_steps_per_year': steps_per_year // 2,
         'fine_steps_per_year': steps_per_year, 'checks': checks,
@@ -221,19 +221,22 @@ def moments(steps_per_year=8000):
     }, indent=2))
 
 
-def run_local(local=Locals.ALL, steps_per_year=8000):
-    setup()
+def run_local(local=Locals.ALL, steps_per_year=8000, *, output_dir=None):
+    figures_dir = FIGURES if output_dir is None else Path(output_dir)
+    results_dir = RESULTS if output_dir is None else Path(output_dir)
+    setup(figures_dir, results_dir)
     if local in (Locals.MARKET, Locals.ALL):
-        market()
+        market(figures_dir, results_dir)
     if local in (Locals.THRESHOLD, Locals.ALL):
-        threshold()
+        threshold(figures_dir, results_dir)
     if local in (Locals.MOMENTS, Locals.ALL):
-        moments(steps_per_year)
+        moments(steps_per_year, figures_dir=figures_dir, results_dir=results_dir)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--case', choices=[x.value for x in Locals], default='all')
     parser.add_argument('--steps-per-year', type=int, default=8000)
+    parser.add_argument('--output-dir', type=Path, help='Write PDFs and diagnostics together here')
     args = parser.parse_args()
-    run_local(Locals(args.case), args.steps_per_year)
+    run_local(Locals(args.case), args.steps_per_year, output_dir=args.output_dir)
