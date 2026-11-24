@@ -485,12 +485,12 @@ package in your research, please cite the software and the relevant papers:
 
 ```bibtex
 @misc{sepp2026stochvolmodels,
-  title={StochVolModels: Python Implementation of Stochastic Volatility Models},
-  author={Sepp, Artur},
-  year={2026},
-  version={2.20.0},
-  url={https://github.com/ArturSepp/StochVolModels},
-  note={Python package for pricing analytics and Monte Carlo simulations}
+  author    = {Sepp, Artur},
+  title     = {{StochVolModels}: Fourier-transform pricing, Monte Carlo validation, and calibration of European options under stochastic-volatility models in {Python}},
+  year      = {2026},
+  version   = {2.20.0},
+  publisher = {Python Package Index},
+  url       = {https://pypi.org/project/stochvolmodels/2.20.0/}
 }
 
 @article{sepprakhmonov2023,

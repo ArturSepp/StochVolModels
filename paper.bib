@@ -1,6 +1,5 @@
-% Bibliography for the stochvolmodels JOSS submission (draft of 2026-11-22).
-% Model and method references: the first five entries are carried unchanged from the
-% repository paper.bib; the dependency entries are carried unchanged from the published
+% Bibliography for the stochvolmodels JOSS submission (draft of 2026-11-24).
+% The dependency entries are carried from the published
 % qis paper.bib (JOSS 11(126), 11400), which passed the editorial reference check.
 
 @article{karasinski2012beta,
@@ -57,7 +56,8 @@
   publisher = {World Scientific},
   address   = {Singapore},
   year      = {2001},
-  isbn      = {978-981-02-4615-0}
+  isbn      = {978-981-02-4615-0},
+  doi       = {10.1142/4694}
 }
 
 @article{lipton2002,
@@ -142,8 +142,7 @@
   doi     = {10.1007/s42521-025-00144-5}
 }
 
-% The author points to the arXiv record (2026-11-22), which carries no journal reference.
-% The DOI follows the arXiv DataCite scheme and refers to the preprint.
+% The DOI identifies the Wilmott article. The arXiv URL gives access to the author manuscript.
 
 @article{lipton2022barrier,
   author  = {Lipton, Alexander and Sepp, Artur},
@@ -151,20 +150,21 @@
              stochastic volatility},
   journal = {Wilmott},
   year    = {2022},
-  note    = {DOI refers to the arXiv preprint},
-  doi     = {10.48550/arXiv.2202.07849},
+  volume  = {2022},
+  number  = {121},
+  doi     = {10.54946/wilm.11053},
   url     = {https://arxiv.org/abs/2202.07849}
 }
 
-% SSRN identifier carried from docs/reproducing_the_papers.md.
+% The 2026 revision is in the release. The earlier working paper is SSRN 4647027.
 
 @unpublished{sepp2023robust,
   author = {Sepp, Artur and Rakhmonov, Parviz},
   type   = {Working paper},
-  title  = {What is a robust stochastic volatility model},
-  year   = {2023},
-  note   = {SSRN 4647027},
-  doi    = {10.2139/ssrn.4647027}
+  title  = {What is a robust stochastic volatility model? Measure changes, martingality and cross-asset applications},
+  year   = {2026},
+  note   = {Earlier version: SSRN 4647027},
+  url    = {https://github.com/ArturSepp/StochVolModels/blob/v2.20.0/papers/robust_volatility_models_2026/paper/robust_volatility_models.pdf}
 }
 
 @article{liu2025jumps,
@@ -178,11 +178,11 @@
 
 @unpublished{sepp2026rough,
   author = {Sepp, Artur and Rakhmonov, Parviz},
-  type   = {Working paper},
+  type   = {Manuscript submitted to Quantitative Finance},
   title  = {Rough log-normal stochastic volatility with quadratic drift: Second-moment
             stability and the martingale property under positive correlation},
   year   = {2026},
-  note   = {Draft of 18 November 2026}
+  url    = {https://github.com/ArturSepp/StochVolModels/blob/v2.20.0/papers/rough_volterra_lognormal_sv_model_2026/paper/rough_volterra_lognormal.pdf}
 }
 
 % Independent work that cites the repository; arXiv record checked on 2026-11-21.
@@ -279,6 +279,15 @@
   year      = {2015},
   pages     = {1--6},
   doi       = {10.1145/2833157.2833162}
+}
+
+@software{sepp2026stochvolmodels,
+  author    = {Sepp, Artur},
+  title     = {{StochVolModels}: Fourier-transform pricing, Monte Carlo validation, and calibration of European options under stochastic-volatility models in {Python}},
+  year      = {2026},
+  version   = {2.20.0},
+  publisher = {Python Package Index},
+  url       = {https://pypi.org/project/stochvolmodels/2.20.0/}
 }
 
 @manual{oca,

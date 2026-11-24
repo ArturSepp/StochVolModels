@@ -20,6 +20,7 @@ SECTIONS = {
 }
 SECTIONS.update({name: f"calibration_section_20261030/{name}"
                  for name in ("calibration_macros.tex", "calibration_section.tex")})
+SECTIONS["spx_physical_pricing.tex"] = "spx_physical_pricing_20261124/spx_physical_pricing.tex"
 REFERENCE = re.compile(r"(\\(?:input|include|includegraphics)(?:\[[^\]]*\])?\s*\{)([^}]+)(\})")
 
 

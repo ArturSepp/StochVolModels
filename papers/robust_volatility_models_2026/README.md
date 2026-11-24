@@ -10,7 +10,7 @@ Rakhmonov. Local and licensed input snapshots are not redistribution permissions
 
 The current manuscript is
 [robust_volatility_models.tex](paper/robust_volatility_models.tex)
-(38 pages). The [pre-30 October revision](drafts/review_volatility_models_revised_20261028.tex) and the
+(40 pages). The [pre-30 October revision](drafts/review_volatility_models_revised_20261028.tex) and the
 [original manuscript](drafts/review_volatility_models.tex) are preserved unchanged
 in `drafts/`, with their PDFs and compilation dependencies. These are the two
 substantial historical versions retained as browsable drafts. Three intermediate
@@ -42,6 +42,8 @@ Open the current manuscript in the LaTeX editor, or compile it with `paper/` as
 the source directory (three `pdflatex` passes).
 
 The active evidence bundles are:
+
+- The [SPX physical and pricing calibration](replication/spx_physical_pricing_20261124/README.md) estimates latent volatility from historical observations and tests the measure-change restriction on the July SPXW quotes.
 
 - The [cross-asset dynamics comparison](replication/cross_asset_dynamics_20261124/REPORT.md) reports daily, EWMA and persistence fits for 18 indices and identifies the separate pricing calibrations.
 - [`vix_fit_20261123`](replication/vix_fit_20261123/README.md) contains the four-parameter

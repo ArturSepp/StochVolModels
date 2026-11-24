@@ -477,8 +477,8 @@ inputs are licensed and are not included.} stores the inputs, seeds,
 results and figures of this section, the synthetic study, and the option-surface
 calibrations of Section~\ref{sec:oca-calibration}. The single chronological split
 is descriptive, and the block intervals describe sampling error under a stationary
-approximation. Joint estimation of latent dynamics from realised and implied
-volatility is a separate project.
+approximation. Section~\ref{sec:spx-physical-premium} uses SPX returns, realised
+variance and VIX to estimate latent volatility dynamics and price the July SPXW surface.
 % [AI-DRAFT END]''')
 m.write('empirical_section.tex')
 

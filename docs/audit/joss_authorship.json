@@ -6,7 +6,7 @@
     {
       "name": "Artur Sepp",
       "orcid": "0000-0002-7038-1748",
-      "affiliation": "LGT Bank",
+      "affiliation": "LGT Bank (Schweiz) AG, Zürich, Switzerland",
       "basis": "project originator, principal maintainer, model author, scientific and architectural decision-maker",
       "consent": "approved 2026-08-21"
     }
@@ -20,6 +20,18 @@
   ],
   "acknowledgements": [
     {
+      "name": "Parviz Rakhmonov",
+      "basis": "software contributions and co-authorship of model papers"
+    },
+    {
+      "name": "Vladimir Lucic",
+      "basis": "research contributions as a co-author of supported papers"
+    },
+    {
+      "name": "Alexander Lipton",
+      "basis": "research contributions as a co-author of supported papers"
+    },
+    {
       "name": "Rukhsora Rakhmonova",
       "basis": "substantive repository-history contribution"
     },
@@ -30,6 +42,10 @@
     {
       "name": "Pavel (GitHub quant1729)",
       "basis": "external merged pull request #3"
+    },
+    {
+      "name": "Michael Sharp",
+      "basis": "NumPy compatibility fix in merged pull request #33"
     }
   ],
   "submission_statements": {

@@ -15,7 +15,7 @@ authors:
 affiliations:
   - name: LGT Bank (Schweiz) AG, Zürich, Switzerland
     index: 1
-date: 22 November 2026
+date: 24 November 2026
 bibliography: paper.bib
 ---
 
@@ -39,8 +39,9 @@ hold the interest-rate application and the rough extension [@sepp2026rough].
 
 The package values vanilla options and user-supplied payoffs on simulated paths.
 `stochvolmodels` depends on `vanilla-option-pricers`, NumPy [@numpy], SciPy [@scipy], pandas
-[@pandas], Matplotlib [@matplotlib], seaborn [@seaborn] and Numba [@numba], runs on Python 3.11
-to 3.14 and is released under the MIT licence. This paper describes version 2.19.0.
+[@pandas], Matplotlib [@matplotlib], seaborn [@seaborn] and Numba [@numba], runs on Python 3.11.5
+to 3.14 and is released under the MIT licence. This paper describes the PyPI release of
+`stochvolmodels` 2.20.0 [@sepp2026stochvolmodels].
 
 The optional companion package `option-chain-analytics` [@oca] supplies point-in-time option
 chains from CBOE, Deribit, ThetaData and Bloomberg data, and an adapter converts them to the
@@ -158,7 +159,8 @@ Heath-Jarrow-Morton framework [@sepp2025factorhjm], on cryptocurrency inverse op
 [@lucic2024inverse], on the hedging of impermanent loss [@lipton2025il] and on barrier options
 under stochastic volatility [@lipton2022barrier]. The Hawkes pricer supports the option valuation
 in @liu2025jumps, accepted by the *SIAM Journal on Financial Mathematics*. The package also
-supports working papers on robust volatility models [@sepp2023robust] and rough LogSV [@sepp2026rough].
+supports a study of robust volatility models [@sepp2023robust] and a rough LogSV manuscript
+[@sepp2026rough] submitted to *Quantitative Finance*.
 
 @brongers2026 extends the factor Heath-Jarrow-Morton model with a correction to the swap-rate
 loadings and cites the repository as the public reference implementation of the model.

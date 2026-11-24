@@ -2,6 +2,17 @@
   "schema_version": 1,
   "status": "approved_by_maintainer",
   "approved_on": "2026-08-21",
+  "paper_disclosure": {
+    "date": "2026-11-24",
+    "source": "https://github.com/ArturSepp/StochVolModels/blob/b2e773aaf64536b622627e56cb83a45ffd585171/paper.md#ai-usage-disclosure",
+    "period": "July to November 2026",
+    "models": {
+      "Anthropic Claude": ["Opus 5", "Opus 5.5", "Fable 5", "Fable 5.1", "Fable 5.2"],
+      "OpenAI Codex": ["Sol 5.6", "Sol 6.0", "Sol 6.2"]
+    },
+    "scope": "Software, tests, documentation and manuscript preparation, including finite-difference and local stochastic volatility routines based on the author's C++ implementation.",
+    "verification": "The manuscript records the author's methodological and architectural decisions, review of assisted outputs, numerical checks by independent methods and CI."
+  },
   "principle": "Human authors made the scientific and architectural decisions, reviewed assisted output, and remain responsible for accuracy, citations, licensing, and submission communication.",
   "entries": [
     {

@@ -1,12 +1,13 @@
 {
   "schema_version": 1,
-  "as_of": "2026-08-21",
+  "as_of": "2026-11-24",
+  "release_tag": "v2.20.0",
   "records": [
     {
       "title": "Log-normal stochastic volatility model with quadratic drift",
       "status": "published",
       "identifier": "https://doi.org/10.1142/S0219024924500031",
-      "repository_directory": "papers/logsv_model_with_quadratic_drift",
+      "repository_directory": "papers/logsv_model_with_quadratic_drift_ijtaf_2023",
       "software_surface": "stable LogSV pricer, transform, simulation, calibration, and parameters",
       "reproduction_class": "principal published-paper implementation with article source/PDF",
       "input_status": "generated model grids are public; some empirical calibration cases require documented local option data",
@@ -16,7 +17,7 @@
       "title": "Stochastic volatility for factor Heath-Jarrow-Morton framework",
       "status": "published",
       "identifier": "https://doi.org/10.1007/s11147-025-09217-4",
-      "repository_directory": "papers/sv_for_factor_hjm",
+      "repository_directory": "papers/sv_for_factor_hjm_rdr_2025",
       "software_surface": "experimental factor-HJM deep modules",
       "reproduction_class": "published-paper implementation with article source/PDF",
       "input_status": "article materials are public; calibration workflows require documented local inputs",
@@ -26,7 +27,7 @@
       "title": "Valuation and hedging of cryptocurrency inverse options",
       "status": "published/supporting illustration",
       "identifier": "https://doi.org/10.1080/14697688.2024.2364804",
-      "repository_directory": "papers/inverse_options",
+      "repository_directory": "papers/inverse_options_qf_2023",
       "software_surface": "supporting option-pricing utilities",
       "reproduction_class": "supporting illustration",
       "input_status": "read the directory workflow for data provenance",
@@ -42,10 +43,56 @@
       "reproduction_class": "Accepted author manuscript and supplied exhibits, with partial pricing, estimation and calibration code",
       "input_status": "Pricing examples use generated inputs. Historical exhibits require market data and separate co-author workflows.",
       "joss_role": "Research use of the advanced bivariate Hawkes pricer"
+    },
+    {
+      "title": "Unified approach for hedging impermanent loss of liquidity provision",
+      "status": "published",
+      "identifier": "https://doi.org/10.1007/s42521-025-00144-5",
+      "repository_directory": "papers/unified_approach_for_hedging_il_df_2025",
+      "software_surface": "LogSV pricing of impermanent-loss payoffs",
+      "reproduction_class": "theoretical replication and corrected author manuscript",
+      "input_status": "the theoretical examples use generated inputs",
+      "joss_role": "published application to a non-vanilla payoff"
+    },
+    {
+      "title": "Toward an efficient hybrid method for pricing barrier options on assets with stochastic volatility",
+      "status": "published",
+      "identifier": "https://doi.org/10.54946/wilm.11053",
+      "repository_directory": "papers/barrier_options_sv_wilmott_2022",
+      "software_surface": "barrier valuation and finite-difference comparisons",
+      "reproduction_class": "author manuscript, figures and Python replication drivers",
+      "input_status": "the theoretical comparisons use model parameters and grids",
+      "joss_role": "published application to barrier pricing"
+    },
+    {
+      "title": "What is a robust stochastic volatility model? Measure changes, martingality and cross-asset applications",
+      "status": "working paper",
+      "year": 2026,
+      "identifier": "https://github.com/ArturSepp/StochVolModels/blob/v2.20.0/papers/robust_volatility_models_2026/paper/robust_volatility_models.pdf",
+      "earlier_version": "https://doi.org/10.2139/ssrn.4647027",
+      "repository_directory": "papers/robust_volatility_models_2026",
+      "software_surface": "model comparison and calibration",
+      "reproduction_class": "author manuscript and historical replication scripts",
+      "input_status": "historical studies require local market inputs",
+      "joss_role": "working-paper application"
+    },
+    {
+      "title": "Rough log-normal stochastic volatility with quadratic drift",
+      "status": "submitted to Quantitative Finance",
+      "identifier": "https://github.com/ArturSepp/StochVolModels/blob/v2.20.0/papers/rough_volterra_lognormal_sv_model_2026/paper/rough_volterra_lognormal.pdf",
+      "repository_directory": "papers/rough_volterra_lognormal_sv_model_2026",
+      "software_surface": "rough LogSV research modules",
+      "reproduction_class": "author manuscript and Table 5 kernel replication",
+      "input_status": "the kernel fixture is public, while quote panels and fit checkpoints are local",
+      "joss_role": "working-paper extension of the log-normal model"
     }
   ],
+  "independent_reference": {
+    "author": "Bram Brongers",
+    "identifier": "https://arxiv.org/html/2608.29423v1",
+    "evidence": "Section 4.1 cites the public reference implementation when describing the factor-HJM calibration. This establishes methodological reuse. Direct use of the distributed Python package was not verified."
+  },
   "unmapped_exploratory_directories": [
-    "papers/risk_premia_gmm",
     "papers/t_distribution",
     "papers/forward_var"
   ]
