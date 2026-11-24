@@ -135,6 +135,8 @@ def main():
         "A and B and shifts C. That restriction requires a "
         "separate map from the latent state to the observed index.",
         "## Why the historical estimates differ",
+        "The [joint VIX analysis](JOINT_VIX.md) fits the two targets together, checks "
+        "the common drift boundary and gives the physical-to-pricing restriction.",
         f"VIX has empirical correlations of {obs[0]:.3f} at one session and {obs[59]:.3f} at 60. "
         f"The daily fit gives {day[0]:.3f} and {day[59]:.3f}. The "
         f"persistence fit gives {per[0]:.3f} and {per[59]:.3f}. "
@@ -194,12 +196,18 @@ def main():
     ]
     primary_higher = [n for n in PRIMARY if n not in primary_lower]
     lower_panel = sum(d["acf"]["daily"][59] < d["acf"]["empirical"][59] for d in results.values())
+    near_zero = sum(d["persistence"]["parameters"]["kappa1"] < 0.0005 for d in results.values())
+    above_one = sum(d["transition"]["fits"]["equal"]["parameters"]["kappa1"] > 1
+                    for d in results.values())
     text += [
         "The daily fit understates observed persistence at lag 60 for "
         f"{', '.join(primary_lower) or 'none of the primary series'}. "
         + (f"It overstates it for {', '.join(primary_higher)}. " if primary_higher else "")
         + "The daily fitted correlation is below the observed "
-        f"value for {lower_panel} of {len(names)} series overall."
+        f"value for {lower_panel} of {len(names)} series overall.",
+        f"The persistence estimate of κ₁ rounds to zero in {near_zero} of {len(names)} histories. "
+        f"The equal-weight daily estimate exceeds one in {above_one}. For OVX and the two DVOL "
+        "series both methods give zero for κ₁, even though they give different κ₂ and v.",
     ]
     text += [
         "## Additional established Cboe indices",

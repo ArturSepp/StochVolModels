@@ -267,33 +267,35 @@ so its bias values do not quantify the bias of these empirical estimates.
 \subsection{Synthetic observation maps and finite-sample persistence}
 \label{sec:synthetic-observation-acf}
 % [AI-DRAFT BEGIN: updated VIX calibration and synthetic results. Author pass pending.]
-We fit the quadratic-drift model to 6,779 daily Bloomberg VIX closes
-from January 2000 through October 2026 (Table~\ref{tab:empirical-data}).
-For each relative contribution of the two drift terms, we fit the stationary
-log-volatility density to a 50-bin histogram of $\log(\mathrm{VIX}/100)$ by least squares.
-We select the drift mix and its speed by matching daily VIX level autocorrelations
-at lags 1 to 119, with equal weight on each squared error.
-We average model autocorrelations over 10,000 ten-year paths using common random shocks.
-The search includes both stationary boundary laws of Proposition~\ref{prop:stationary}.
+We use 6,779 Bloomberg VIX closes from January 2000 through October 2026
+(Table~\ref{tab:empirical-data}). At each drift mix we fit the stationary log-volatility
+density to a 50-bin histogram of $\log(\mathrm{VIX}/100)$ by least squares.
+We choose the mix and speed by minimising equally weighted squared errors in level autocorrelations
+at lags 1 to 119. We average the simulated correlations over
+10,000 ten-year paths with common shocks and include both boundaries of Proposition~\ref{prop:stationary}.
 
-The fitted index coefficients are $(\theta,\kappa_1,\kappa_2,v)=(0.2002,0.0000,10.7203,0.6893)$.
-The autocorrelation criterion selects the Gamma boundary, $\kappa_1=0$.
-Its drift is $\kappa_2\sigma(\theta-\sigma)$, with local mean-reversion speed
-$\kappa_2\theta=2.15$ per year at $\sigma=\theta$.
-The inverse-Gamma boundary fits the histogram more closely. The choice of boundary
-therefore depends on which feature of VIX we match.
+The persistence fit gives $(\theta,\kappa_1,\kappa_2,v)=(0.2002,0.0000,10.7645,0.6908)$.
+At this Gamma boundary the drift is $\kappa_2\sigma(\theta-\sigma)$ and its local reversion speed
+at $\theta$ is $\kappa_2\theta=2.15$ per year. The inverse-Gamma boundary fits the histogram more closely.
 
-We use these coefficients for the latent state in a synthetic observation experiment.
+An equally weighted Gaussian Euler quasi-likelihood for daily log-VIX increments
+gives $(0.2068,3.0032,9.9788,1.1463)$ in the same order.
+At lag 60 the observed correlation is 0.529, compared with 0.228
+under the daily fit and 0.548 under the persistence fit.
+Across the primary and established indices, the persistence estimate of $\kappa_1$ rounds to zero
+at three decimal places for 18 of 18 series. The daily estimate exceeds one per year for 14.
+
+We use the persistence fit for the latent state in the synthetic observation experiment.
 The two Brownian loadings enter the index dynamics only through $v^2=\beta^2+\varepsilon^2$. We choose $\beta=0.35$
 for illustration and set the residual loading to $\sqrt{v^2-\beta^2}$.
 We set $Q=P$ to isolate the observation map $F_\tau(\sigma)$, the ideal
 variance-swap volatility at $\tau=30/365$ years.
 
 The stationary mean and standard deviation are 0.17802
-and 0.06281 for latent volatility and 0.17960 and
-0.05813 for the mapped index. At the stationary median
-$\sigma=0.17069$, the map gives $F_\tau(\sigma)=0.17421$.
-The instantaneous index-level beta is $\beta F_\tau'(\sigma)=0.33057$.
+and 0.06281 for latent volatility and 0.17961 and
+0.05811 for the mapped index. At the stationary median
+$\sigma=0.17069$, the map gives $F_\tau(\sigma)=0.17422$.
+The instantaneous index-level beta is $\beta F_\tau'(\sigma)=0.33049$.
 The 30-day observation horizon thus changes both the stationary distribution
 and the return sensitivity even when $Q=P$.
 % [AI-DRAFT END]
@@ -315,17 +317,17 @@ Figure~\ref{fig:synthetic-acf-bias} shows its lag profile.
 Clock & Years & Population ACF & Mean sample ACF & Bias & MC s.e.\\
 \midrule
 
-1.00 & 5 & 0.5999 & 0.4451 & -0.1547 & 0.0081 \\
+1.00 & 5 & 0.5987 & 0.4442 & -0.1545 & 0.0081 \\
 
-1.00 & 10 & 0.5999 & 0.5250 & -0.0749 & 0.0063 \\
+1.00 & 10 & 0.5987 & 0.5239 & -0.0747 & 0.0063 \\
 
-1.00 & 20 & 0.5999 & 0.5697 & -0.0301 & 0.0042 \\
+1.00 & 20 & 0.5987 & 0.5686 & -0.0301 & 0.0042 \\
 
-0.25 & 5 & 0.8761 & 0.6385 & -0.2376 & 0.0090 \\
+0.25 & 5 & 0.8756 & 0.6382 & -0.2375 & 0.0090 \\
 
-0.25 & 10 & 0.8761 & 0.7542 & -0.1219 & 0.0060 \\
+0.25 & 10 & 0.8756 & 0.7539 & -0.1218 & 0.0060 \\
 
-0.25 & 20 & 0.8761 & 0.8211 & -0.0551 & 0.0036 \\
+0.25 & 20 & 0.8756 & 0.8206 & -0.0550 & 0.0036 \\
 
 \bottomrule\end{tabular}
 \caption{Synthetic sample-ACF bias at lag 63. Monte Carlo standard errors describe

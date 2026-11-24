@@ -378,6 +378,12 @@ assert abs(daily['in_sample_acf_check']['persistence_fit_sse'] - fit['full']['be
 daily_par = daily['fits']['equal']['parameters']
 daily_vector = ','.join(f'{daily_par[key]:.4f}' for key in ('theta', 'kappa1', 'kappa2', 'v'))
 lag60 = daily['in_sample_acf_check']['correlations']['60']
+comparison_dir = ROOT / 'cross_asset_dynamics_20261124' / 'results'
+index_names = list(dict.fromkeys([*MAIN, *P['established_panel']]))
+comparisons = [json.loads((comparison_dir / (name.replace(' ', '_')+'.json')).read_text())
+               for name in index_names]
+n_zero = sum(row['persistence']['parameters']['kappa1'] < 0.0005 for row in comparisons)
+n_above_one = sum(row['transition']['fits']['equal']['parameters']['kappa1'] > 1 for row in comparisons)
 assert all(study['baseline_parameters'][key] == value for key, value in params.items())
 obs = study['observation_summary']
 beta = study['illustrative_beta']
@@ -389,26 +395,22 @@ assert params['kappa1'] == 0 and gamma_case['histogram_sse'] > inverse_gamma_cas
 m.add(rf'''\subsection{{Synthetic observation maps and finite-sample persistence}}
 \label{{sec:synthetic-observation-acf}}
 % [AI-DRAFT BEGIN: updated VIX calibration and synthetic results. Author pass pending.]
-We fit the quadratic-drift model to {fit['sample']['n']:,} daily Bloomberg VIX closes
-from January 2000 through October 2026 (Table~\ref{{tab:empirical-data}}).
-For each relative contribution of the two drift terms, we fit the stationary
-log-volatility density to a {method['histogram_bins']}-bin histogram of $\log(\mathrm{{VIX}}/100)$ by least squares.
-We select the drift mix and its speed by matching daily VIX level autocorrelations
-at lags 1 to {method['acf_lags'][1]}, with equal weight on each squared error.
-We average model autocorrelations over {method['paths']:,} ten-year paths using common random shocks.
-The search includes both stationary boundary laws of Proposition~\ref{{prop:stationary}}.
+We use {fit['sample']['n']:,} Bloomberg VIX closes from January 2000 through October 2026
+(Table~\ref{{tab:empirical-data}}). At each drift mix we fit the stationary log-volatility
+density to a {method['histogram_bins']}-bin histogram of $\log(\mathrm{{VIX}}/100)$ by least squares.
+We choose the mix and speed by minimising equally weighted squared errors in level autocorrelations
+at lags 1 to {method['acf_lags'][1]}. We average the simulated correlations over
+{method['paths']:,} ten-year paths with common shocks and include both boundaries of Proposition~\ref{{prop:stationary}}.
 
-The fitted index coefficients are $(\theta,\kappa_1,\kappa_2,v)=({rounded})$.
-The autocorrelation criterion selects the Gamma boundary, $\kappa_1=0$.
-Its drift is $\kappa_2\sigma(\theta-\sigma)$, with local mean-reversion speed
-$\kappa_2\theta={local_speed:.2f}$ per year at $\sigma=\theta$.
-The inverse-Gamma boundary fits the histogram more closely. The choice of boundary
-therefore depends on which feature of VIX we match.''')
-m.add(rf'''For comparison, an equally weighted Gaussian Euler quasi-likelihood for daily
-log-VIX increments gives $({daily_vector})$ in the same parameter order.
-At lag 60 the observed level autocorrelation is {lag60['observed']:.3f}.
-The daily transition fit gives {lag60['equal_transition_fit']:.3f} and the persistence fit gives {lag60['persistence_fit']:.3f}.
-The replication package reports both fits for the other primary series and the established Cboe indices.
+The persistence fit gives $(\theta,\kappa_1,\kappa_2,v)=({rounded})$.
+At this Gamma boundary the drift is $\kappa_2\sigma(\theta-\sigma)$ and its local reversion speed
+at $\theta$ is $\kappa_2\theta={local_speed:.2f}$ per year. The inverse-Gamma boundary fits the histogram more closely.''')
+m.add(rf'''An equally weighted Gaussian Euler quasi-likelihood for daily log-VIX increments
+gives $({daily_vector})$ in the same order.
+At lag 60 the observed correlation is {lag60['observed']:.3f}, compared with {lag60['equal_transition_fit']:.3f}
+under the daily fit and {lag60['persistence_fit']:.3f} under the persistence fit.
+Across the primary and established indices, the persistence estimate of $\kappa_1$ rounds to zero
+at three decimal places for {n_zero} of {len(comparisons)} series. The daily estimate exceeds one per year for {n_above_one}.
 
 We use the persistence fit for the latent state in the synthetic observation experiment.
 The two Brownian loadings enter the index dynamics only through $v^2=\beta^2+\varepsilon^2$. We choose $\beta={beta:g}$
