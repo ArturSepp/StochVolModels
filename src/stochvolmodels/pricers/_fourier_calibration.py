@@ -193,6 +193,7 @@ class FourierCalibration:
                 valid_gradient_at = None
 
                 def objective(vector, args=None, *, fixed_plan=plan):
+                    """Evaluate the loss and optional gradient on the fixed fit grid."""
                     nonlocal invalid, first_error, last_error, valid_gradient_at
                     try:
                         if transform_jacobian is not None:

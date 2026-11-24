@@ -389,6 +389,7 @@ class LogSVPricer(ModelPricer):
         ttms = np.array(option_chain.ttms, dtype=float, copy=True)
 
         def transform(phi):
+            """Evaluate transforms and expansion coefficients for the frozen parameters."""
             zeros = np.zeros_like(phi)
             return _chain_transforms(snapshot, ttms, phi, zeros, zeros,
                                      expansion_order=expansion_order, is_analytic=is_analytic,
@@ -636,14 +637,17 @@ class LogSVPricer(ModelPricer):
 
         if controlled:
             def transforms(vector, ttms, phi):
+                """Sample trial log-return transforms across the calibration maturities."""
                 params = codec.parse(vector)
                 zero = np.zeros_like(phi)
                 return _chain_transforms(params, ttms, phi, zero, zero)
 
             def optimize(fun, start):
+                """Run SLSQP with the selected bounds and martingale constraints."""
                 return minimize(fun, start, **optimizer_kwargs)
 
             def jacobian(vector, ttms, phi):
+                """Differentiate the trial transforms in the active fit parameters."""
                 return calibration_transform_jacobian(
                     codec.parse(vector), ttms, phi,
                     fit_kappa1=model_calibration_type == LogsvModelCalibrationType.PARAMS5,
@@ -881,6 +885,7 @@ def logsv_chain_pricer(params: LogSvParams,
             raise ValueError(f"fourier conflicts with legacy settings: {sorted(conflicts)}")
 
         def sample_chain(phi):
+            """Sample the return transform with zero variance-transform arguments."""
             zero = np.zeros_like(phi)
             return transforms(phi, zero, zero)
 

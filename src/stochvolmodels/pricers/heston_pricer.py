@@ -279,11 +279,13 @@ class HestonPricer(ModelPricer):
         options = {'disp': True, 'ftol': 1e-8}
 
         def optimize(fun, start):
+            """Fit the supplied implied-volatility objective under the Feller constraint."""
             return minimize(fun, start, args=None, method='SLSQP', constraints=constraints,
                             bounds=bounds, options=options)
 
         if controlled:
             def transforms(vector, ttms, phi):
+                """Evaluate the trial Heston log transforms on the common grid."""
                 model = HestonModel(parse_model_params(vector))
                 return (model.log_mgf_grid(ttm=t, phi_grid=phi) for t in ttms)
 

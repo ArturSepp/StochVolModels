@@ -308,6 +308,7 @@ def integrate_vanilla_chain(
     tail = np.full(strikes.shape, np.inf)
 
     def diagnostics(failed_expiry=None) -> QuadratureDiagnostics:
+        """Report the quote with the largest error relative to its budget."""
         score = np.maximum(resolution, tail) if np.isfinite(tail).all() else resolution
         relative_error = score / budget
         if failed_expiry is not None:
@@ -320,6 +321,7 @@ def integrate_vanilla_chain(
         )
 
     def sample(edges: np.ndarray, shells: Sequence[int]) -> list[_Panel]:
+        """Evaluate chain transforms and embedded estimates on the requested panels."""
         nonlocal evaluations
         if evaluations + (edges.size - 1) * _NODES.size > max_nodes:
             needed = (edges.size - 1) * _NODES.size

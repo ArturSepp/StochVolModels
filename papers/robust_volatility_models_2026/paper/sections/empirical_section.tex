@@ -269,13 +269,19 @@ so its bias values do not quantify the bias of these empirical estimates.
 % [AI-DRAFT BEGIN: updated VIX calibration and synthetic results. Author pass pending.]
 We fit the quadratic-drift model to 6,779 daily Bloomberg VIX closes
 from January 2000 through October 2026 (Table~\ref{tab:empirical-data}).
-For each pair $(\kappa_1,\kappa_2)$, we choose $\theta$ and total volatility of volatility $v$
-by matching the stationary log-volatility density to a 50-bin histogram of $\log(\mathrm{VIX}/100)$.
-We then choose $(\kappa_1,\kappa_2)$ by matching daily VIX level
-autocorrelations at lags 1 to 119. Both steps minimise sums of squared errors.
-For each pair we average the model autocorrelations over 10,000 ten-year paths with common random shocks.
-The fitted index coefficients are $(\theta,\kappa_1,\kappa_2,v)=(0.1995,0.2000,9.1829,0.6851)$.
-The estimate of $\kappa_1$ reaches its lower search bound of $0.2$.
+For each relative contribution of the two drift terms, we fit the stationary
+log-volatility density to a 50-bin histogram of $\log(\mathrm{VIX}/100)$ by least squares.
+We select the drift mix and its speed by matching daily VIX level autocorrelations
+at lags 1 to 119, with equal weight on each squared error.
+We average model autocorrelations over 10,000 ten-year paths using common random shocks.
+The search includes both stationary boundary laws of Proposition~\ref{prop:stationary}.
+
+The fitted index coefficients are $(\theta,\kappa_1,\kappa_2,v)=(0.2002,0.0000,10.7203,0.6893)$.
+The autocorrelation criterion selects the Gamma boundary, $\kappa_1=0$.
+Its drift is $\kappa_2\sigma(\theta-\sigma)$, with local mean-reversion speed
+$\kappa_2\theta=2.15$ per year at $\sigma=\theta$.
+The inverse-Gamma boundary fits the histogram more closely. The choice of boundary
+therefore depends on which feature of VIX we match.
 
 We use these coefficients for the latent state in a synthetic observation experiment.
 The two Brownian loadings enter the index dynamics only through $v^2=\beta^2+\varepsilon^2$. We choose $\beta=0.35$
@@ -283,11 +289,11 @@ for illustration and set the residual loading to $\sqrt{v^2-\beta^2}$.
 We set $Q=P$ to isolate the observation map $F_\tau(\sigma)$, the ideal
 variance-swap volatility at $\tau=30/365$ years.
 
-The stationary mean and standard deviation are 0.17967
-and 0.06326 for latent volatility and 0.18125 and
-0.05856 for the mapped index. At the stationary median
-$\sigma=0.17142$, the map gives $F_\tau(\sigma)=0.17479$.
-The instantaneous index-level beta is $\beta F_\tau'(\sigma)=0.33076$.
+The stationary mean and standard deviation are 0.17802
+and 0.06281 for latent volatility and 0.17960 and
+0.05813 for the mapped index. At the stationary median
+$\sigma=0.17069$, the map gives $F_\tau(\sigma)=0.17421$.
+The instantaneous index-level beta is $\beta F_\tau'(\sigma)=0.33057$.
 The 30-day observation horizon thus changes both the stationary distribution
 and the return sensitivity even when $Q=P$.
 % [AI-DRAFT END]
@@ -297,7 +303,7 @@ holding $\theta$ fixed and multiplying $\beta$ by $\sqrt{c}$.
 This preserves the latent invariant distribution while replacing its
 population autocorrelation $\rho(h)$ by $\rho(ch)$.
 We recompute the fixed-maturity observation map for each clock.
-For each regime, 400 independent paths start from the invariant GIG distribution.
+For each regime, 400 independent paths start from the fitted invariant Gamma distribution.
 We record 252 observations per model year with four positive splitting steps per observation.
 The sample ACF uses the full-sample mean. At lag $h$ we divide the cross-product
 sum by $N-h$ and the sum of squared deviations by $N$.
@@ -309,17 +315,17 @@ Figure~\ref{fig:synthetic-acf-bias} shows its lag profile.
 Clock & Years & Population ACF & Mean sample ACF & Bias & MC s.e.\\
 \midrule
 
-1.00 & 5 & 0.5991 & 0.4481 & -0.1509 & 0.0080 \\
+1.00 & 5 & 0.5999 & 0.4451 & -0.1547 & 0.0081 \\
 
-1.00 & 10 & 0.5991 & 0.5260 & -0.0731 & 0.0061 \\
+1.00 & 10 & 0.5999 & 0.5250 & -0.0749 & 0.0063 \\
 
-1.00 & 20 & 0.5991 & 0.5698 & -0.0293 & 0.0041 \\
+1.00 & 20 & 0.5999 & 0.5697 & -0.0301 & 0.0042 \\
 
-0.25 & 5 & 0.8767 & 0.6366 & -0.2402 & 0.0088 \\
+0.25 & 5 & 0.8761 & 0.6385 & -0.2376 & 0.0090 \\
 
-0.25 & 10 & 0.8767 & 0.7560 & -0.1207 & 0.0057 \\
+0.25 & 10 & 0.8761 & 0.7542 & -0.1219 & 0.0060 \\
 
-0.25 & 20 & 0.8767 & 0.8224 & -0.0543 & 0.0034 \\
+0.25 & 20 & 0.8761 & 0.8211 & -0.0551 & 0.0036 \\
 
 \bottomrule\end{tabular}
 \caption{Synthetic sample-ACF bias at lag 63. Monte Carlo standard errors describe
@@ -333,7 +339,7 @@ the estimated mean across independent paths. The three horizons use nested prefi
 We compute the observation map and population ACF with a reversible
 finite-volume generator on a log-volatility grid. When we double the daily splitting steps
 from four to eight, the largest absolute change in the mean latent sample ACF is approximately
-$7.5\times 10^{-6}$ across lags 0 to 126.
+$8.0\times 10^{-6}$ across lags 0 to 126.
 The replication package also reports grid refinement and independent Monte Carlo checks.
 
 \subsection{Reproducibility and scope}
