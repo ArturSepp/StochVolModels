@@ -308,7 +308,12 @@ def test_review_density_projection_and_objective(monkeypatch):
 @pytest.mark.parametrize("case", ["SPXW", "GLD", "TLT", "TLT+"])
 def test_local_review_fixed_parameters(monkeypatch, case):
     review_root = ROOT / "papers" / "robust_volatility_models_2026" / "replication"
-    if not review_root.is_dir():
+    manifest = (
+        review_root / "calibration_positive_skew_20261031" / "BUNDLE_MANIFEST.json"
+        if case == "TLT+"
+        else review_root / "calibration_pde_20261029" / "runtime_provenance.json"
+    )
+    if not manifest.is_file():
         pytest.skip("requires the local review's frozen surfaces")
     monkeypatch.syspath_prepend(str(ROOT))
     from papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification import (
