@@ -23,18 +23,23 @@ def main():
 
     runs = []
 
-    def optimize(start, grid):
+    def optimize(start, grid, tolerance, budget):
         rejected = 0
+        calls = 0
 
         def residual(x):
-            nonlocal rejected
+            nonlocal rejected, calls
+            calls += 1
             try:
                 iv = evaluate_iv(chain, params(x), grid)
             except FloatingPointError:
                 # Reject an unpriceable trial on the full vector; no selected quote is dropped.
                 rejected += 1
                 return np.full(len(df), 1e3)
-            return 100 * np.sqrt(weights) * (iv - market_iv)
+            errors = 100 * np.sqrt(weights) * (iv - market_iv)
+            if calls % 35 == 0:
+                print(grid.space_nodes, calls, "IV RMSE", np.linalg.norm(errors), x, flush=True)
+            return errors
 
         assert max(abs(residual(start))) < 1e3
         sol = least_squares(
@@ -43,12 +48,12 @@ def main():
             bounds=([0.025, 0.025, 0.05, 0.05], [0.8, 1.0, 30.0, 80.0]),
             diff_step=5e-4,
             x_scale="jac",
-            ftol=3e-7,
-            xtol=3e-7,
+            ftol=tolerance,
+            xtol=tolerance,
             gtol=2e-6,
-            max_nfev=90,
+            max_nfev=budget,
         )
-        if not sol.success:
+        if sol.status < 0 or (grid == MEDIUM and not sol.success):
             raise RuntimeError(sol.message)
         runs.append(
             dict(
@@ -57,14 +62,17 @@ def main():
                 start=list(start),
                 rmse_pp=np.linalg.norm(sol.fun),
                 rejected_trials=rejected,
+                converged=sol.success,
+                nfev=sol.nfev,
+                message=sol.message,
             )
         )
         print("Historical loadings, free Q drift", runs[-1], flush=True)
         return sol.x
 
-    a = optimize([0.14, 0.19, 5.0, 10.0], COARSE)
-    b = optimize([0.145, 0.14, 23.0, 3.0], COARSE)
-    x = optimize(a if runs[0]["rmse_pp"] < runs[1]["rmse_pp"] else b, MEDIUM)
+    a = optimize([0.14, 0.19, 5.0, 10.0], COARSE, 4e-4, 22)
+    b = optimize([0.145, 0.14, 23.0, 3.0], COARSE, 4e-4, 22)
+    x = optimize(a if runs[0]["rmse_pp"] < runs[1]["rmse_pp"] else b, MEDIUM, 1e-4, 50)
     par = params(x)
     iv = evaluate_iv(chain, par, FINE)
     record = dict(

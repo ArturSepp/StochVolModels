@@ -10,7 +10,7 @@ Rakhmonov. Local and licensed input snapshots are not redistribution permissions
 
 The current manuscript is
 [robust_volatility_models.tex](paper/robust_volatility_models.tex)
-(38 pages). The [pre-30 October revision](drafts/review_volatility_models_revised_20261028.tex) and the
+(40 pages). The [pre-30 October revision](drafts/review_volatility_models_revised_20261028.tex) and the
 [original manuscript](drafts/review_volatility_models.tex) are preserved unchanged
 in `drafts/`, with their PDFs and compilation dependencies. These are the two
 substantial historical versions retained as browsable drafts. Three intermediate
