@@ -58,6 +58,16 @@ The evidence root defaults to the repository’s local `agents/` directory. The 
 
 **Figure 3.** Panel (a) reads the [conditional-forward summary](inputs/figure3/F4_quadratic_drift_history_R2.json). Panel (b) reads the [time-averaged second-moment summary](inputs/figure3/F4_right_panel_time_averaged_history.json). The command plots the saved estimates and standard errors for five quadratic-drift coefficients. It runs offline after installation. The summaries retain the seed, grid sizes, batch counts and the SHA-256 of each original run file. Source paths are relative to the repository. With `--data-dir`, the runner reads both files from `inputs/figure3/`, or from `results/` in archives without that directory. Compare the output with the [submitted Figure 3 PDF](../paper/figures/F4_time_averaged_history_R2.pdf).
 
+## Reproduce the blog charts
+
+From the repository root, after the installation above, run the [blog figure script](make_blog_figures.py) to reproduce the annotated forward chart in blog Figure 1.
+
+```console
+python -m papers.rough_volterra_lognormal_sv_model_2026.replication.make_blog_figures --case MISSING_FORWARD
+```
+
+The chart is written to `outputs/rough_logsv_blog/blog_fig_missing_forward.png`. Cases `PULL_CURVE` and `RUNAWAY_VARIANCE` draw blog Figures 2 and 3. Case `VOLATILITY_PATHS` simulates the two panels of blog Figure 5 and writes the selected path indices, peaks and log-volatility statistics to JSON. Use `--case ALL` for all four charts or `--output-dir PATH` to choose a destination. These cases use the published inputs. Blog Figure 4 uses the [submitted Bitcoin and Ether smiles](../paper/figures/F1_positive_skew_calibration_final_2026-11-18.pdf).
+
 ## Tables in the submitted manuscript
 
 | Table | Source |
