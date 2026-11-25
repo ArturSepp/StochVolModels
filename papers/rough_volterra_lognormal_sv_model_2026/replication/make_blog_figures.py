@@ -115,14 +115,15 @@ def plot_missing_forward(inputs_dir: Path,
         ax.annotate(f"Sample average {100.0 * (1.0 - means[0]):.1f}%\nbelow the forward",
                     xy=(kappas[0], means[0]), xytext=(0.13, 0.953), fontsize=10,
                     arrowprops={'arrowstyle': '-', 'color': '#777', 'lw': 0.8})
-        ax.text(VOL_BETA + 0.02, 0.9435, 'pull at least as large as\nthe volatility beta (0.6)', fontsize=10, color='#2f6b52')
+        ax.text(VOL_BETA + 0.02, 0.9435, rf"$\kappa_2 \geq \beta$ (volatility beta = {VOL_BETA:g})",
+                fontsize=10, color='#2f6b52')
         ax.text(0.02, 1.0012, 'exact average of the scheme = 1', fontsize=9, color='#555')
         ax.set_xlim(-0.06, kappas[-1] + 0.08)
         ax.set_ylim(0.935, 1.006)
         ax.set_xticks(kappas)
-        ax.set_xlabel(r"Strength of the quadratic pull, $\kappa_2$")
+        ax.set_xlabel(r"Quadratic mean-reversion coefficient $\kappa_2$")
         ax.set_ylabel("Sample average of the simulated price\n(one year, forward = 1)")
-        ax.set_title(r"The sample average reaches the forward once $\kappa_2 \geq \beta$", loc='left')
+        ax.set_title("One-year sample mean relative to the forward", loc='left')
         fig.tight_layout()
         path = output_dir / 'blog_fig_missing_forward.png'
         fig.savefig(path, dpi=dpi)
@@ -144,7 +145,7 @@ def plot_runaway_variance(inputs_dir: Path,
         ax.grid(axis='y', which='major', color='#d8dde0', lw=0.6)
         ax.set_axisbelow(True)
         ax.set_yscale('log')
-        ax.plot(years, linear, '-D', color=LINEAR_COLOR, lw=1.8, ms=5, label='linear pull only (exact)')
+        ax.plot(years, linear, '-D', color=LINEAR_COLOR, lw=1.8, ms=5, label='Linear only (exact)')
         for row in summary['results']:
             kappa2 = row['kappa2']
             if kappa2 not in KAPPA2_COLORS:
@@ -153,19 +154,21 @@ def plot_runaway_variance(inputs_dir: Path,
                      for t in years]
             estimates = [c['time_averaged_second_moment_ratio']['mean'] for c in cells]
             ax.plot(years, estimates, '-o', color=KAPPA2_COLORS[kappa2], lw=1.6, ms=4.5,
-                    label=rf"quadratic pull, $\kappa_2={kappa2:g}$")
-        ax.annotate(f"{linear[-1]:,.0f} times", xy=(years[-1], linear[-1]), xytext=(3.55, 1500.0), fontsize=10)
-        ax.annotate(f"{linear[0]:.0f} times", xy=(years[0], linear[0]), xytext=(1.08, 21.0), fontsize=10)
+                    label=rf"Quadratic, $\kappa_2={kappa2:g}$ (MC)")
+        ax.annotate(f"{linear[-1]:,.0f}×", (years[-1], linear[-1]), xytext=(-7, 4),
+                    textcoords='offset points', ha='right', fontsize=10)
+        ax.annotate(f"{linear[0]:.0f}×", (years[0], linear[0]), xytext=(3, -14),
+                    textcoords='offset points', fontsize=10)
         ax.set_ylim(1.0, 6000.0)
         ax.set_yticks([1, 2, 5, 10, 100, 1000], ['1', '2', '5', '10', '100', '1,000'])
         ax.minorticks_off()
         ax.set_xlim(0.7, 5.3)
         ax.set_xticks(years)
         ax.set_xlabel("Horizon (years)")
-        ax.set_ylabel("Average variance over the horizon\n" + r"(multiple of the reference level $\theta^2$)")
-        ax.text(1.0, 1.12, 'zero correlation between price and volatility shocks', fontsize=9, color='#555')
-        ax.set_title(f"Linear pull alone: average variance grows {linear[-1] / linear[0]:.0f}-fold", loc='left')
-        ax.legend(frameon=False, fontsize=9, loc='center right', bbox_to_anchor=(1.0, 0.52))
+        ax.set_ylabel(r"Average variance / $\theta^2$ (log scale)")
+        ax.set_title("Time-averaged variance at zero price–volatility correlation", loc='left')
+        ax.legend(title='Mean-reversion', frameon=False, fontsize=9, loc='center right',
+                  bbox_to_anchor=(1.0, 0.42))
         fig.tight_layout()
         path = output_dir / 'blog_fig_runaway_variance.png'
         fig.savefig(path, dpi=dpi)
