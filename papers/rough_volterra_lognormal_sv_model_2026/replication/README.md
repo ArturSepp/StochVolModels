@@ -60,13 +60,15 @@ The evidence root defaults to the repository’s local `agents/` directory. The 
 
 ## Reproduce the blog charts
 
-From the repository root, after the installation above, run the [blog figure script](make_blog_figures.py) to reproduce the annotated forward chart in blog Figure 1.
+From the repository root, after the installation above, run the [blog figure script](make_blog_figures.py) to reproduce the simulated volatility paths in blog Figure 1.
 
 ```console
-python -m papers.rough_volterra_lognormal_sv_model_2026.replication.make_blog_figures --case MISSING_FORWARD
+python -m papers.rough_volterra_lognormal_sv_model_2026.replication.make_blog_figures --case FIGURE1
 ```
 
-The chart is written to `outputs/rough_logsv_blog/blog_fig_missing_forward.png`. Cases `PULL_CURVE` and `RUNAWAY_VARIANCE` draw blog Figures 2 and 3. Case `VOLATILITY_PATHS` simulates the two panels of blog Figure 5 and writes the selected path indices, peaks and log-volatility statistics to JSON. Use `--case ALL` for all four charts or `--output-dir PATH` to choose a destination. These cases use the published inputs. Blog Figure 4 uses the [submitted Bitcoin and Ether smiles](../paper/figures/F1_positive_skew_calibration_final_2026-11-18.pdf).
+The command writes `outputs/rough_logsv_blog/blog_fig_rough_vs_classical_paths.png`. It uses the Bitcoin fits in Table 4 and the [97-factor kernel](inputs/kernels/H0.3_s512_n8.json). Both fits receive the same shocks (seed 3, 2,000 one-year paths, 32 time steps per day). The chart shows the first 90 days of the path ranked at the median annual peak of daily volatility under the classical fit. The legend gives the standard deviations of one- and 30-day log-volatility changes across all paths.
+
+Cases `RUNAWAY_VARIANCE` and `MISSING_FORWARD` draw blog Figures 2 and 3. Blog Figure 4 uses the [submitted Bitcoin and Ether smiles](../paper/figures/F1_positive_skew_calibration_final_2026-11-18.pdf). The earlier `VOLATILITY_PATHS` case also writes the two-panel chart and a JSON with the selected path indices, peaks and log-volatility statistics. `PULL_CURVE` draws the drift curves. Use `--case ALL` for all charts or `--output-dir PATH` to choose a destination.
 
 ## Tables in the submitted manuscript
 

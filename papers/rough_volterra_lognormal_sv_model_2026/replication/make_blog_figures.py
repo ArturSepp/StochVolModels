@@ -4,6 +4,7 @@ Plain-label figures for the blog post on the rough log-normal SV model with quad
 The model of Sepp and Rakhmonov (2026) has the volatility drift (kappa_1 + kappa_2 sigma)(theta - sigma)
 and the volatility noise vartheta sigma dW, both acting through a memory kernel with Hurst exponent H.
 
+    FIGURE1            rough and classical Bitcoin volatility paths with their one- and 30-day move statistics
     MISSING_FORWARD    sample mean of the conditional forward S_1/S_0 at one year against kappa_2,
                        at 5,760 steps per year (Table 3 of the paper, finest grid)
     RUNAWAY_VARIANCE   time-averaged second moment E[I_T]/(T theta^2) at T = 1, 2, 5 years:
@@ -12,11 +13,14 @@ and the volatility noise vartheta sigma dW, both acting through a memory kernel 
     VOLATILITY_PATHS   simulated volatility paths from the scheme of Appendix B of the paper:
                        (a) linear against quadratic drift on the same shocks, parameters of Table 3
                        (b) the two Bitcoin fits of Table 4, H = 0.30 against H = 0.50, same shocks
+                       Panel (b) is also written alone as blog_fig_rough_vs_classical_paths.png,
+                       with the log-volatility statistics in the legend. It is Figure 1 of the post.
 
 The first two cases read the Monte Carlo summaries published in StochVolModels under
 papers/rough_volterra_lognormal_sv_model_2026/replication/inputs/figure3 and run no simulation.
 VOLATILITY_PATHS needs stochvolmodels importable from a source checkout and the kernel file
-replication/inputs/kernels/H0.3_s512_n8.json. It writes its path selection and statistics to a JSON.
+replication/inputs/kernels/H0.3_s512_n8.json. It writes its path selection, statistics and the
+SHA-256 of its producer files to a JSON.
 
 Units: time in years, volatility as a fraction (plotted in percent), forward as a ratio to S_0,
 variance as a ratio to theta^2. A day is 1/360 of a year in the path figure.
@@ -25,6 +29,7 @@ The module does not produce the paper artwork. Use replication/run_figures.py fo
 """
 # packages
 import argparse
+import hashlib
 import json
 import numpy as np
 import matplotlib
@@ -74,6 +79,7 @@ class LocalTest(Enum):
     PULL_CURVE = 3
     VOLATILITY_PATHS = 4
     ALL = 5
+    FIGURE1 = 6
 
 
 def load_summary(inputs_dir: Path,
@@ -106,17 +112,17 @@ def plot_missing_forward(inputs_dir: Path,
         ax.axhline(1.0, color='#777', lw=0.9, ls='--')
         ax.axvline(VOL_BETA, color='#777', lw=0.9, ls=':')
         ax.errorbar(kappas, means, yerr=errors, color='#3a8565', marker='o', ms=5, lw=1.4, capsize=3)
-        ax.annotate(f"Sample mean {100.0 * (1.0 - means[0]):.1f}%\nbelow forward",
+        ax.annotate(f"Sample average {100.0 * (1.0 - means[0]):.1f}%\nbelow the forward",
                     xy=(kappas[0], means[0]), xytext=(0.13, 0.953), fontsize=10,
                     arrowprops={'arrowstyle': '-', 'color': '#777', 'lw': 0.8})
         ax.text(VOL_BETA + 0.02, 0.9435, 'pull at least as large as\nthe volatility beta (0.6)', fontsize=10, color='#2f6b52')
-        ax.text(0.02, 1.0012, 'exact grid mean = 1', fontsize=9, color='#555')
+        ax.text(0.02, 1.0012, 'exact average of the scheme = 1', fontsize=9, color='#555')
         ax.set_xlim(-0.06, kappas[-1] + 0.08)
         ax.set_ylim(0.935, 1.006)
         ax.set_xticks(kappas)
         ax.set_xlabel(r"Strength of the quadratic pull, $\kappa_2$")
-        ax.set_ylabel("Sample mean of the one-year conditional forward\n(forward = 1)")
-        ax.set_title("How close do 200,000 paths come to the forward?", loc='left')
+        ax.set_ylabel("Sample average of the simulated price\n(one year, forward = 1)")
+        ax.set_title(r"The sample average reaches the forward once $\kappa_2 \geq \beta$", loc='left')
         fig.tight_layout()
         path = output_dir / 'blog_fig_missing_forward.png'
         fig.savefig(path, dpi=dpi)
@@ -157,7 +163,8 @@ def plot_runaway_variance(inputs_dir: Path,
         ax.set_xticks(years)
         ax.set_xlabel("Horizon (years)")
         ax.set_ylabel("Average variance over the horizon\n" + r"(multiple of the reference level $\theta^2$)")
-        ax.set_title("Average variance at zero return–volatility correlation", loc='left')
+        ax.text(1.0, 1.12, 'zero correlation between price and volatility shocks', fontsize=9, color='#555')
+        ax.set_title(f"Linear pull alone: average variance grows {linear[-1] / linear[0]:.0f}-fold", loc='left')
         ax.legend(frameon=False, fontsize=9, loc='center right', bbox_to_anchor=(1.0, 0.52))
         fig.tight_layout()
         path = output_dir / 'blog_fig_runaway_variance.png'
@@ -212,11 +219,41 @@ def select_path_by_peak_quantile(volatility: np.ndarray,
     return int(order[int(round(quantile * volatility.shape[1])) - 1])
 
 
+def _save_bitcoin_paths(output_dir: Path, dpi: int, window_days: np.ndarray,
+                       rough_path: np.ndarray, classical_path: np.ndarray, moves: dict) -> Path:
+    """Write blog Figure 1 with the log-volatility changes from all simulated paths."""
+    with plt.rc_context(STYLE):
+        fig, ax = plt.subplots(figsize=(7.2, 4.3))
+        ax.grid(axis='y', color='#d8dde0', lw=0.6)
+        ax.set_axisbelow(True)
+        for values, color, lw, name, key in ((rough_path, ROUGH_COLOR, 0.8, 'rough fit (H = 0.30)', 'rough'),
+                                             (classical_path, CLASSICAL_COLOR, 1.0, 'classical fit (H = 0.50)', 'classical')):
+            ax.plot(window_days, 100.0 * values, color=color, lw=lw,
+                    label=(f"{name}: daily move {100.0 * moves['std_log_change_1_day'][key]:.0f}%, "
+                           f"30-day move {100.0 * moves['std_log_change_30_days'][key]:.0f}%"))
+        ax.set_xlim(0.0, float(MEMORY_WINDOW_DAYS))
+        ax.set_xticks(np.arange(0, MEMORY_WINDOW_DAYS + 1, 15))
+        ax.set_ylim(bottom=0.0)
+        ax.set_xlabel("Days")
+        ax.set_ylabel("Volatility (%)")
+        ax.set_title("The rough fit moves more in a day and about as much in a month", loc='left')
+        ax.legend(frameon=False, fontsize=9, loc='upper left')
+        fig.tight_layout()
+        path = output_dir / 'blog_fig_rough_vs_classical_paths.png'
+        fig.savefig(path, dpi=dpi)
+        plt.close(fig)
+    return path
+
+
 def plot_volatility_paths(inputs_dir: Path,
                           output_dir: Path,
-                          dpi: int = 200
-                          ) -> Path:
-    """Simulated volatility paths: pull against no pull, and memory against no memory."""
+                          dpi: int = 200,
+                          *, figure1_only: bool = False
+                          ) -> List[Path]:
+    """Simulated volatility paths: pull against no pull, and memory against no memory.
+
+    The Figure 1 case renders only the two fitted Bitcoin paths. The legacy case also renders the stress panel.
+    """
     # imported here so that the summary-only cases run without a stochvolmodels checkout
     import stochvolmodels
     from stochvolmodels.models.rough_logsv import history
@@ -231,11 +268,6 @@ def plot_volatility_paths(inputs_dir: Path,
         output, _ = history.simulate_history(prepared=prepared, normal=normal, observation_steps=observation_steps)
         return output[2]  # volatility at the observation steps, shape (observations, paths)
 
-    stress_row = load_summary(inputs_dir=inputs_dir, file_name=FORWARD_FILE)['results'][0]
-    stress = dict(stress_row['parameters'])
-    stress_kernel = RoughKernel(nodes=tuple(stress_row['kernel']['nodes']),
-                                weights=tuple(stress_row['kernel']['weights']),
-                                H=stress['H'])
     rough_kernel = RoughKernel.from_dict(load_summary(inputs_dir=inputs_dir.parent / 'kernels', file_name=KERNEL_FILE))
     btc_rough = RoughLogSvParams(**BTC_FIT_ROUGH)
     btc_classical = RoughLogSvParams(**BTC_FIT_CLASSICAL)
@@ -245,15 +277,7 @@ def plot_volatility_paths(inputs_dir: Path,
     daily_steps = np.arange(PATH_STEPS_PER_DAY, PATH_STEPS_PER_YEAR + 1, PATH_STEPS_PER_DAY)
     all_steps = np.arange(1, PATH_STEPS_PER_YEAR + 1)
 
-    # panel (a): the tail path of the linear-pull model, then the same shocks under the quadratic pull
-    linear_all = simulate_volatility(RoughLogSvParams(**{**stress, 'kappa2': 0.0}), stress_kernel, normal, daily_steps)
-    tail_index = select_path_by_peak_quantile(volatility=linear_all, quantile=TAIL_QUANTILE)
-    tail_shocks = normal[:, [tail_index]]
-    tail_paths = {kappa2: simulate_volatility(RoughLogSvParams(**{**stress, 'kappa2': kappa2}),
-                                              stress_kernel, tail_shocks, daily_steps)[:, 0]
-                  for kappa2 in (0.0, 0.6, 1.2)}
-
-    # panel (b): a typical path of the Bitcoin fit without memory, then the same shocks with memory
+    # Select on the annual peak of the classical fit, then replay the same shocks under both fits.
     classical_all = simulate_volatility(btc_classical, RoughKernel.classical(), normal, daily_steps)
     rough_all = simulate_volatility(btc_rough, rough_kernel, normal, daily_steps)
     typical_index = select_path_by_peak_quantile(volatility=classical_all, quantile=TYPICAL_QUANTILE)
@@ -266,7 +290,39 @@ def plot_volatility_paths(inputs_dir: Path,
         log_volatility = np.log(volatility)
         return float((log_volatility[lag:] - log_volatility[:-lag]).std())
 
+    moves = {'rough_fit': BTC_FIT_ROUGH, 'classical_fit': BTC_FIT_CLASSICAL, 'kernel_file': KERNEL_FILE,
+             'rule': f"path at the {TYPICAL_QUANTILE:.0%} quantile of the one-year peak of daily volatility, classical fit",
+             'path_index': typical_index,
+             'std_log_change_1_day': {'rough': log_change_std(rough_all, 1),
+                                      'classical': log_change_std(classical_all, 1)},
+             'std_log_change_30_days': {'rough': log_change_std(rough_all, 30),
+                                        'classical': log_change_std(classical_all, 30)}}
+    window_days = all_steps[window] / PATH_STEPS_PER_DAY
+    figure1 = _save_bitcoin_paths(output_dir, dpi, window_days, rough_path, classical_path, moves)
+    if figure1_only:
+        return [figure1]
+
+    stress_row = load_summary(inputs_dir=inputs_dir, file_name=FORWARD_FILE)['results'][0]
+    stress = dict(stress_row['parameters'])
+    stress_kernel = RoughKernel(nodes=tuple(stress_row['kernel']['nodes']),
+                                weights=tuple(stress_row['kernel']['weights']),
+                                H=stress['H'])
+    # panel (a): the tail path of the linear-pull model, then the same shocks under the quadratic pull
+    linear_all = simulate_volatility(RoughLogSvParams(**{**stress, 'kappa2': 0.0}), stress_kernel, normal, daily_steps)
+    tail_index = select_path_by_peak_quantile(volatility=linear_all, quantile=TAIL_QUANTILE)
+    tail_shocks = normal[:, [tail_index]]
+    tail_paths = {kappa2: simulate_volatility(RoughLogSvParams(**{**stress, 'kappa2': kappa2}),
+                                              stress_kernel, tail_shocks, daily_steps)[:, 0]
+                  for kappa2 in (0.0, 0.6, 1.2)}
+
+    producers = {'make_blog_figures.py': Path(__file__),
+                 'rough_logsv/history.py': Path(history.__file__),
+                 'rough_logsv/_history.py': Path(history._history.__file__),
+                 'rough_logsv/_history_fast.py': Path(history._history_fast.__file__),
+                 'rough_logsv/params.py': Path(history.__file__).with_name('params.py'),
+                 f"kernels/{KERNEL_FILE}": inputs_dir.parent / 'kernels' / KERNEL_FILE}
     statistics = {'stochvolmodels_version': getattr(stochvolmodels, '__version__', 'unknown'),
+                  'source_sha256': {name: hashlib.sha256(path.read_bytes()).hexdigest() for name, path in producers.items()},
                   'seed': PATH_SEED, 'paths': PATH_COUNT, 'steps_per_year': PATH_STEPS_PER_YEAR,
                   'steps_per_day': PATH_STEPS_PER_DAY, 'day_count': 360,
                   'panel_a': {'parameters': stress, 'kernel_nodes': list(stress_kernel.nodes),
@@ -274,18 +330,11 @@ def plot_volatility_paths(inputs_dir: Path,
                               'path_index': tail_index,
                               'peak_volatility': {f"{k:g}": float(v.max()) for k, v in tail_paths.items()},
                               'mean_volatility': {f"{k:g}": float(v.mean()) for k, v in tail_paths.items()}},
-                  'panel_b': {'rough_fit': BTC_FIT_ROUGH, 'classical_fit': BTC_FIT_CLASSICAL, 'kernel_file': KERNEL_FILE,
-                              'rule': f"path at the {TYPICAL_QUANTILE:.0%} quantile of the one-year peak of daily volatility, classical fit",
-                              'path_index': typical_index,
-                              'std_log_change_1_day': {'rough': log_change_std(rough_all, 1),
-                                                       'classical': log_change_std(classical_all, 1)},
-                              'std_log_change_30_days': {'rough': log_change_std(rough_all, 30),
-                                                         'classical': log_change_std(classical_all, 30)}}}
+                  'panel_b': moves}
     with open(output_dir / 'blog_fig_volatility_paths.json', 'w', encoding='utf-8') as f:
         json.dump(statistics, f, indent=1)
 
     days = daily_steps / PATH_STEPS_PER_DAY
-    window_days = all_steps[window] / PATH_STEPS_PER_DAY
     with plt.rc_context(STYLE):
         fig, (a, b) = plt.subplots(2, 1, figsize=(6.6, 7.8))
         for ax in (a, b):
@@ -301,18 +350,19 @@ def plot_volatility_paths(inputs_dir: Path,
         a.set_xlabel("Days")
         a.set_title("(a) The quadratic pull trims a volatility spike", loc='left')
         a.legend(frameon=False, fontsize=9, loc='upper right')
-        b.plot(window_days, 100.0 * rough_path, color=ROUGH_COLOR, lw=0.7, label='with memory (H = 0.30)')
-        b.plot(window_days, 100.0 * classical_path, color=CLASSICAL_COLOR, lw=0.9, label='without memory (H = 0.50)')
+        b.plot(window_days, 100.0 * rough_path, color=ROUGH_COLOR, lw=0.7, label='rough fit (H = 0.30)')
+        b.plot(window_days, 100.0 * classical_path, color=CLASSICAL_COLOR, lw=0.9, label='classical fit (H = 0.50)')
         b.set_xlim(0.0, float(MEMORY_WINDOW_DAYS))
         b.set_xticks(np.arange(0, MEMORY_WINDOW_DAYS + 1, 15))
         b.set_xlabel("Days")
-        b.set_title("(b) The two Bitcoin fits agree more closely on 30-day moves", loc='left')
+        b.set_title("(b) The rough Bitcoin fit moves more from day to day", loc='left')
         b.legend(frameon=False, fontsize=9, loc='upper left')
         fig.tight_layout()
         path = output_dir / 'blog_fig_volatility_paths.png'
         fig.savefig(path, dpi=dpi)
         plt.close(fig)
-    return path
+
+    return [path, figure1]
 
 
 def run_local_test(local_test: LocalTest,
@@ -328,8 +378,9 @@ def run_local_test(local_test: LocalTest,
         paths.append(plot_runaway_variance(inputs_dir=inputs_dir, output_dir=output_dir))
     if local_test in (LocalTest.PULL_CURVE, LocalTest.ALL):
         paths.append(plot_pull_curve(inputs_dir=inputs_dir, output_dir=output_dir))
-    if local_test in (LocalTest.VOLATILITY_PATHS, LocalTest.ALL):
-        paths.append(plot_volatility_paths(inputs_dir=inputs_dir, output_dir=output_dir))
+    if local_test in (LocalTest.FIGURE1, LocalTest.VOLATILITY_PATHS, LocalTest.ALL):
+        paths.extend(plot_volatility_paths(inputs_dir=inputs_dir, output_dir=output_dir,
+                                           figure1_only=local_test == LocalTest.FIGURE1))
     return paths
 
 
