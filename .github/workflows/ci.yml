@@ -1,6 +1,6 @@
 # SHARED CI CORE v1.0 — T2 — synced 2026-08-22
 name: CI
-run-name: ${{ github.event_name == 'schedule' && 'Dependency compatibility (live resolution)' || 'CI' }}
+run-name: ${{ (github.event_name == 'schedule' || inputs.live_dependencies) && 'Dependency compatibility (live resolution)' || 'CI' }}
 
 permissions:
   contents: read
@@ -10,8 +10,15 @@ on:
   schedule:
     - cron: "37 3 * * *"
   workflow_dispatch:
+    inputs:
+      live_dependencies:
+        description: Resolve current dependencies as in scheduled CI
+        type: boolean
+        default: false
 
 env:
+  # FontTools 4.69.0 shipped only a few CPython 3.11 wheels and no source archive.
+  LIVE_UPGRADE_ARGS: --upgrade --upgrade-package fonttools!=4.69.0
   UV_HTTP_RETRIES: "5"
   UV_HTTP_TIMEOUT: "60"
   PIP_RETRIES: "5"
@@ -54,7 +61,7 @@ jobs:
         shell: bash
         run: |
           for attempt in 1 2 3; do
-            if uv sync --group test ${{ github.event_name == 'schedule' && '--upgrade' || '--locked' }}; then exit 0; fi
+            if uv sync --group test ${{ (github.event_name == 'schedule' || inputs.live_dependencies) && env.LIVE_UPGRADE_ARGS || '--locked' }}; then exit 0; fi
             if [ "$attempt" -eq 3 ]; then echo "::error::uv sync failed after 3 attempts"; exit 1; fi
             delay=$((attempt * 30 - 15))
             echo "::warning::uv sync attempt $attempt failed; retrying in ${delay}s"
@@ -251,7 +258,7 @@ jobs:
         run: echo "UV_PROJECT_ENVIRONMENT=$RUNNER_TEMP/lowest-dependencies" >> "$GITHUB_ENV"
       - name: Resolve a fresh lowest-direct test environment
         # Upgrade ignores lockfile preference; this job never commits its experimental lock.
-        run: uv sync --python 3.11 --resolution lowest-direct --upgrade --group test ${{ matrix.extras }}
+        run: uv sync --python 3.11 --resolution lowest-direct ${{ env.LIVE_UPGRADE_ARGS }} --group test ${{ matrix.extras }}
       - name: Record installed versions
         run: uv pip freeze --python "$UV_PROJECT_ENVIRONMENT/bin/python"
       - name: Check optional dependencies stay outside package-root import
