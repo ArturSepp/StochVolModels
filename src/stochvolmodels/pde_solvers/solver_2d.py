@@ -21,6 +21,7 @@ from stochvolmodels.pde_solvers.coefficients import (
     PDE2DCoefficients,
     StaticCoefficientProvider2D,
 )
+from stochvolmodels.pde_solvers.compound_poisson import ExponentialJumpProcess
 from stochvolmodels.pde_solvers.diagnostics import boundary_residuals
 from stochvolmodels.pde_solvers.grids import TensorGrid2D
 from stochvolmodels.pde_solvers.operators_1d import PDEDirection
@@ -75,6 +76,8 @@ class PDEDiagnostics2D:
     negative_tolerance_exceeded: bool
     mass_tolerance_exceeded: bool
     jump_clamped_mass: float | None = None
+    jump_killed_mass: float | None = None
+    jump_truncated_probability: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,15 +142,21 @@ class PDE2DADISolver:
         *,
         save_times: tuple[float, ...] = (),
         forward_x_jump: FixedXJump | None = None,
+        jump: ExponentialJumpProcess | None = None,
     ) -> PDESolution2D:
         """Propagate an initial density forward or a terminal value backward.
 
-        For a forward fixed-size x jump, supply the continuous coefficients (including
+        For exponential jumps in either direction, pass an ExponentialJumpProcess
+        with individual or common event clocks. For a forward fixed-size x jump, supply the continuous coefficients (including
         any model drift compensation) and the jump law. Apply a compound-Poisson
         half-step before and after each ADI step. Diagnostics and saved states use
         the completed step. Boundary rates describe its continuous generator.
         """
         self._validate_inputs(grid, coefficient_provider, boundaries, direction)
+        if jump is not None:
+            jump.validate_grid(grid)
+            if forward_x_jump is not None:
+                raise ValueError("supply only one of jump and forward_x_jump")
         translation = None
         if forward_x_jump is not None:
             if direction is not PDEDirection.FORWARD:
@@ -208,7 +217,20 @@ class PDE2DADISolver:
 
             half_jump = translation(0.5 * step_size) if translation is not None else None
             diffusion_input = state if half_jump is None else half_jump.matrix @ state
+            first = None
+            if jump is not None:
+                first = jump.poisson_step(state, direction, 0.5 * step_size)
+                diffusion_input = first.values
+                if direction is PDEDirection.BACKWARD:
+                    diffusion_input = _enforce_boundaries_2d(diffusion_input, boundaries)
             raw_state = adi_step(operator, diffusion_input, direction, step_size, self.config)
+            killed_mass = tail = None
+            if jump is not None:
+                second = jump.poisson_step(raw_state, direction, 0.5 * step_size)
+                raw_state = second.values
+                tail = first.truncated_probability * (2.0 - first.truncated_probability)
+                if direction is PDEDirection.FORWARD:
+                    killed_mass = first.killed_mass + second.killed_mass
             clamped_mass = None
             if half_jump is not None:
                 clamped_mass = half_jump.clamped_mass(state, grid.y) + half_jump.clamped_mass(
@@ -217,9 +239,17 @@ class PDE2DADISolver:
                 raw_state = half_jump.matrix @ raw_state
             if direction is PDEDirection.FORWARD:
                 mass_input = state
-                if half_jump is not None and np.any(operator.coefficients.discount):
+                split_discount = (half_jump is not None or jump is not None) and np.any(
+                    operator.coefficients.discount
+                )
+                if split_discount:
                     mass_input = diffusion_input
                 expected_mass = self._expected_forward_mass(grid, operator, mass_input, step_size)
+                if killed_mass is not None:
+                    if split_discount:
+                        discount_loss = grid.integrate(diffusion_input) - expected_mass
+                        expected_mass = grid.integrate(state) - discount_loss
+                    expected_mass -= killed_mass
                 state, renormalized = self._apply_density_policy(
                     grid, raw_state, expected_mass
                 )
@@ -245,6 +275,8 @@ class PDE2DADISolver:
                 negativity_tolerance=self.density_policy.negativity_tolerance,
                 mass_error_tolerance=self.density_policy.mass_error_tolerance,
                 jump_clamped_mass=clamped_mass,
+                jump_killed_mass=killed_mass,
+                jump_truncated_probability=tail,
             )
             if self.density_policy.fail_on_violation and (
                 diagnostic.negative_tolerance_exceeded
@@ -361,6 +393,8 @@ def _make_step_diagnostics(
     negativity_tolerance: float,
     mass_error_tolerance: float,
     jump_clamped_mass: float | None = None,
+    jump_killed_mass: float | None = None,
+    jump_truncated_probability: float | None = None,
 ) -> PDEDiagnostics2D:
     """Build immutable diagnostics for one completed PDE step."""
     accepted = grid.validate_shape(values)
@@ -444,6 +478,8 @@ def _make_step_diagnostics(
         negative_tolerance_exceeded=negative_exceeded,
         mass_tolerance_exceeded=mass_exceeded,
         jump_clamped_mass=jump_clamped_mass,
+        jump_killed_mass=jump_killed_mass,
+        jump_truncated_probability=jump_truncated_probability,
     )
 
 

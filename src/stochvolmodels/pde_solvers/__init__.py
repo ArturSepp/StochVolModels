@@ -37,6 +37,7 @@ from .coefficients import (
     StaticCoefficientProvider1D,
     StaticCoefficientProvider2D,
 )
+from .compound_poisson import ExponentialJumpProcess, ExponentialJumpStep
 from .diagnostics import PDEDiagnostics
 from .exponential_jumps import ExponentialJumpKernel, apply_common_exponential_jump
 from .grids import BoundaryMass1D, BoundaryMass2D, Grid1D, TensorGrid2D
@@ -80,6 +81,8 @@ __all__ = (
     "DensityPolicy",
     "DriftDiscretization",
     "ExponentialJumpKernel",
+    "ExponentialJumpProcess",
+    "ExponentialJumpStep",
     "apply_common_exponential_jump",
     "Grid1D",
     "JumpCoordinate",

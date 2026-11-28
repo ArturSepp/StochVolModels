@@ -20,6 +20,7 @@ from stochvolmodels.pde_solvers.coefficients import (
     PDE1DCoefficients,
     StaticCoefficientProvider1D,
 )
+from stochvolmodels.pde_solvers.compound_poisson import ExponentialJumpProcess
 from stochvolmodels.pde_solvers.diagnostics import PDEDiagnostics, make_step_diagnostics
 from stochvolmodels.pde_solvers.grids import Grid1D
 from stochvolmodels.pde_solvers.operators_1d import (
@@ -157,8 +158,13 @@ class PDE1DSolver:
         values: ArrayLike,
         *,
         save_times: tuple[float, ...] = (),
+        jump: ExponentialJumpProcess | None = None,
     ) -> PDESolution1D:
-        """Propagate an initial density forward or a terminal value backward."""
+        """Propagate an initial density forward or a terminal value backward.
+
+        An optional exponential jump process applies a Poisson half-step on either
+        side of each theta step. Supply any model drift compensation in the coefficients.
+        """
         if not isinstance(grid, Grid1D):
             raise TypeError("grid must be a Grid1D")
         if not callable(getattr(coefficient_provider, "evaluate", None)):
@@ -175,6 +181,8 @@ class PDE1DSolver:
                 "forward propagation currently requires natural boundaries derived by adjoint"
             )
 
+        if jump is not None:
+            jump.validate_grid(grid)
         boundaries = boundaries._on_grid(grid)
         times = _validated_time_grid(time_grid)
         state = np.array(grid.validate_shape(values), dtype=np.float64, copy=True, order="C")
@@ -226,23 +234,46 @@ class PDE1DSolver:
                 coefficients = cached_coefficients
                 operator = cached_operator
 
+            first = None
+            diffusion_input = state
+            if jump is not None:
+                first = jump.poisson_step(state, direction, 0.5 * step_size)
+                diffusion_input = first.values
+                if direction is PDEDirection.BACKWARD:
+                    diffusion_input = _enforce_prescribed_boundaries(diffusion_input, boundaries)
             generator = operator.generator(direction)
-            rhs = state + (1.0 - self.config.theta) * step_size * generator.apply(state)
+            rhs = diffusion_input + (1.0 - self.config.theta) * step_size * generator.apply(
+                diffusion_input
+            )
             implicit = operator.implicit_matrix(direction, step_size, self.config.theta)
             if direction is PDEDirection.FORWARD:
-                raw_state = implicit.solve(rhs)
+                diffused = implicit.solve(rhs)
+            else:
+                diffused = _solve_backward_system(implicit, rhs, boundaries)
+            raw_state = diffused
+            killed_mass = tail = None
+            if jump is not None:
+                second = jump.poisson_step(diffused, direction, 0.5 * step_size)
+                raw_state = second.values
+                tail = first.truncated_probability * (2.0 - first.truncated_probability)
+                if direction is PDEDirection.FORWARD:
+                    killed_mass = first.killed_mass + second.killed_mass
+                else:
+                    raw_state = _enforce_prescribed_boundaries(raw_state, boundaries)
+            if direction is PDEDirection.FORWARD:
                 previous_mass = grid.integrate(state)
-                old_discount_mass = grid.integrate(coefficients.discount * state)
-                new_discount_mass = grid.integrate(coefficients.discount * raw_state)
+                old_discount_mass = grid.integrate(coefficients.discount * diffusion_input)
+                new_discount_mass = grid.integrate(coefficients.discount * diffused)
                 expected_mass = previous_mass - step_size * (
                     (1.0 - self.config.theta) * old_discount_mass
                     + self.config.theta * new_discount_mass
                 )
+                if killed_mass is not None:
+                    expected_mass -= killed_mass
                 state, renormalized = self._apply_density_policy(
                     grid, raw_state, expected_mass
                 )
             else:
-                raw_state = _solve_backward_system(implicit, rhs, boundaries)
                 state = raw_state
                 expected_mass = None
                 renormalized = False
@@ -262,6 +293,8 @@ class PDE1DSolver:
                 renormalized=renormalized,
                 negativity_tolerance=self.density_policy.negativity_tolerance,
                 mass_error_tolerance=self.density_policy.mass_error_tolerance,
+                jump_killed_mass=killed_mass,
+                jump_truncated_probability=tail,
             )
             if self.density_policy.fail_on_violation and (
                 diagnostic.negative_tolerance_exceeded

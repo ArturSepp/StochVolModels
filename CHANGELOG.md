@@ -4,6 +4,11 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+**2.21.0.dev7 (2026-11-28), added.** `PDE1DSolver.solve` and `PDE2DADISolver.solve`
+accept an optional `ExponentialJumpProcess` for compound-Poisson exponential marks.
+Tensor grids support common and axis-specific arrivals. Forward diagnostics report
+killed overshoot mass and the probability of omitting a Poisson count separately.
+
 **2026-11-28, added.** `ExponentialJumpKernel` integrates one upward or downward
 exponential mark on nonuniform grids, with clamped or killed exterior values and
 a quadrature-weighted forward adjoint. `apply_common_exponential_jump` applies

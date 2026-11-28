@@ -49,6 +49,8 @@ class PDEDiagnostics:
     renormalized: bool
     negative_tolerance_exceeded: bool
     mass_tolerance_exceeded: bool
+    jump_killed_mass: float | None = None
+    jump_truncated_probability: float | None = None
 
 
 def make_step_diagnostics(
@@ -67,6 +69,8 @@ def make_step_diagnostics(
     renormalized: bool = False,
     negativity_tolerance: float = 0.0,
     mass_error_tolerance: float = 0.0,
+    jump_killed_mass: float | None = None,
+    jump_truncated_probability: float | None = None,
 ) -> PDEDiagnostics:
     """Construct immutable diagnostics without changing the numerical state."""
     accepted = grid.validate_shape(values)
@@ -125,6 +129,8 @@ def make_step_diagnostics(
         renormalized=bool(renormalized),
         negative_tolerance_exceeded=negative_exceeded,
         mass_tolerance_exceeded=mass_exceeded,
+        jump_killed_mass=jump_killed_mass,
+        jump_truncated_probability=jump_truncated_probability,
     )
 
 

@@ -43,7 +43,7 @@
     "measured_at_commit": "9e974b9831bbfb3dd15570926b466dc00d3552f9",
     "metrics": {
       "package_version": {
-        "value": "2.21.0.dev6",
+        "value": "2.21.0.dev7",
         "how": "project.version in pyproject.toml",
         "live": true,
         "paper_phrase": null

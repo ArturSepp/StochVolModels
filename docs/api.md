@@ -504,6 +504,10 @@ The provisional [finite-difference solvers](software_design.md#generic-finite-di
 are available as `stochvolmodels.pde_solvers.PDE1DSolver` and `PDE2DADISolver`.
 The same solver package exposes `TranslationJump` for additive or level-multiplicative
 jumps, including forward and backward translations, compound-Poisson steps and Strang splitting.
+The optional `jump=` argument on both solvers accepts an `ExponentialJumpProcess`.
+Build it from `ExponentialJumpKernel` instances and constant arrival intensities.
+Its `poisson_step` returns an `ExponentialJumpStep` with the propagated values, retained
+count terms, omitted count probability and forward killed mass.
 `stochvolmodels.valuation.DensityPricer` prices calls and puts from a
 `DensityState1D`. Use `DensityState2D.marginal_x_state()` for a joint density.
 `stochvolmodels.models.logsv.coefficients.LogSvCoefficientProvider` supplies the LogSV generator

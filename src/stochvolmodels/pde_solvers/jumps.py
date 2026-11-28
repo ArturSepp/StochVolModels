@@ -386,11 +386,25 @@ def log_forward_jump_compensator(intensity: float, jump_size: float) -> float:
     return drift
 
 
+class _JumpStepValues(Protocol):
+    @property
+    def values(self) -> FloatArray: ...
+
+
+class _PoissonStepOperator(Protocol):
+    @property
+    def grid(self) -> Grid1D | TensorGrid2D: ...
+
+    def poisson_step(
+        self, values: ArrayLike, direction: PDEDirection, step_size: float, *, tail_tolerance: float
+    ) -> _JumpStepValues: ...
+
+
 def strang_split_step(
     values: ArrayLike,
     direction: PDEDirection,
     step_size: float,
-    jump: TranslationJump,
+    jump: _PoissonStepOperator,
     diffusion_step: Callable[[FloatArray, PDEDirection, float], ArrayLike],
     *,
     tail_tolerance: float = 1.0e-14,
@@ -400,8 +414,8 @@ def strang_split_step(
     If the supplied forward and backward diffusion maps are weighted adjoints, the symmetric
     composition preserves the same fully discrete duality.
     """
-    if not isinstance(jump, TranslationJump):
-        raise TypeError("jump must be a TranslationJump")
+    if not callable(getattr(jump, "poisson_step", None)):
+        raise TypeError("jump must provide a compound-Poisson step")
     if not callable(diffusion_step):
         raise TypeError("diffusion_step must be callable")
     _validate_direction(direction)
@@ -580,7 +594,7 @@ def _make_diagnostics(
     )
 
 
-def _validated_state(grid: Grid1D, values: ArrayLike) -> FloatArray:
+def _validated_state(grid: Grid1D | TensorGrid2D, values: ArrayLike) -> FloatArray:
     """Validate the shape and finiteness of a jump propagation state."""
     state = grid.validate_shape(values)
     if not np.all(np.isfinite(state)):

@@ -88,7 +88,39 @@ exterior deposits the same probability on the endpoint. Use `side="up"` for posi
 
 For a common arrival with conditionally independent marks, call
 `apply_common_exponential_jump(values, x_kernel, y_kernel, direction)` on an
-`(nx, ny)` array. Arrival intensity and elapsed time enter when composing events.
+`(nx, ny)` array. To evolve over a time interval, prepare the clocks once and pass the
+process to the solver. In this example the three intensities count x-only, y-only and
+common events per year. A common arrival draws one independent exponential mark per axis.
+
+<!-- fragment -->
+```python
+from stochvolmodels.pde_solvers import ExponentialJumpKernel, ExponentialJumpProcess
+
+jumps = ExponentialJumpProcess(
+    grid,
+    x_kernel=ExponentialJumpKernel(grid.x, 5.0, exterior="zero"),
+    y_kernel=ExponentialJumpKernel(grid.y, 10.0, exterior="zero"),
+    x_intensity=0.4, y_intensity=0.6, common_intensity=0.2,
+)
+solution = solver.solve(grid, provider, boundaries, direction, times, values, jump=jumps)
+```
+
+Here `grid` is a `TensorGrid2D` and `solver` is a `PDE2DADISolver`. For a
+`PDE1DSolver`, pass a `Grid1D`, `x_kernel` and `x_intensity`. Omitting a clock sets
+its intensity to zero. Supply any model drift compensation through the coefficient provider.
+
+Both solvers apply a compound-Poisson half-step on each side of the diffusion step.
+Each count contributes the corresponding power of the single-event mixture. For a
+standalone jump step, `jumps.poisson_step(values, direction, dt)` accepts
+`tail_tolerance` and `max_terms`. Retained count probabilities sum to one.
+For a completed solver interval, `jump_truncated_probability` reports the probability
+that either half-step exceeds its count cutoff. The forward `jump_killed_mass` sums
+physical overshoot losses from both half-steps, in integrated density units. The
+expected-mass diagnostic accounts for those losses and for discounting. Weighted
+forward/backward duality applies with natural diffusion boundaries and density
+renormalization disabled. The existing `forward_x_jump` interface supplies fixed-size
+forward translations and is mutually exclusive with `jump`.
+
 [Solver API](api.md#provisional-and-experimental-surfaces)
 
 ### Reference solvers and volatility boundaries
