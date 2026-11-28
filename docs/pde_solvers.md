@@ -16,7 +16,7 @@ Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/bl
 A partial differential equation (PDE) solver evolves a value function or a probability
 density on a finite grid. The provisional `stochvolmodels.pde_solvers` API provides
 one-dimensional theta stepping and two-dimensional alternating-direction implicit (ADI)
-stepping. The package examples use APIs available in 2.18.8. The unsplit reference
+stepping. The compound-Poisson example requires the Stage 2 jump API in 2.21.0.dev7 or later. The unsplit reference
 solver and positive spatial discretization described below are repository experiments.
 
 ## Overview
@@ -122,6 +122,34 @@ renormalization disabled. The existing `forward_x_jump` interface supplies fixed
 forward translations and is mutually exclusive with `jump`.
 
 [Solver API](api.md#provisional-and-experimental-surfaces)
+
+### Two-name survival with continuous barriers
+
+Run the pricing example and the independent qualification from the repository root.
+
+```bash
+python -m examples.pde_solvers.run_two_name_survival
+python -m validation.pde_two_name_survival --output results.json
+```
+
+Both names start at log value zero. Their lower barriers are −0.2 and −0.1. Each name
+has an individual jump clock, and a third clock moves both names. All three clocks
+have annual intensity one. Jump sizes on a common arrival are independent exponentials
+with means 0.2 and 0.1. The example reports marginal and joint survival, the probability
+of at least one default, and the probability that both have defaulted. At zero interest,
+the first-default probability is also the price of one unit paid on first default.
+
+With zero drift and zero diffusion, cumulative losses only increase. Mixing gamma loss
+distributions over the Poisson counts gives exact joint survival of 0.70195422,
+0.47676345 and 0.20466416 at three, six and twelve months. With annual Brownian
+variances 0.00027 and 0.000583 and correlation 0.5, the backward solver uses absorbing
+lower faces and kills jump overshoots. On 289 nodes per axis and 64 steps per year,
+the corresponding joint probabilities are 0.69318542, 0.46137141 and 0.18903398.
+
+The qualification simulates exact jump times. Between jumps it conditions on Gaussian
+endpoints and uses one-dimensional Brownian-bridge crossing probabilities to bound
+joint survival. Its JSON reports the estimated gap between the bounds, Monte Carlo
+standard errors, and the effect of changing space, time and upper bounds individually.
 
 ### Reference solvers and volatility boundaries
 

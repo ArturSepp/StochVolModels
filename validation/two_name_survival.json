@@ -1,0 +1,29 @@
+{
+  "model": {
+    "barriers": [-0.2, -0.1],
+    "mark_rates": [5.0, 10.0],
+    "axis_intensities": [1.0, 1.0],
+    "common_intensity": 1.0,
+    "drifts": [0.0, 0.0],
+    "variances": [0.00027, 0.000583],
+    "correlation": 0.5
+  },
+  "maturities": [0.25, 0.5, 1.0],
+  "pure_jump": {
+    "joint_survival": [0.70195422, 0.47676345, 0.20466416],
+    "first_default": [0.29804578, 0.52323655, 0.79533584],
+    "both_default": [0.06333427, 0.16825513, 0.41607044],
+    "one_year_marginals": [0.39429686, 0.39429686],
+    "absolute_tolerance": 0.0005
+  },
+  "grid": {"cells_per_distance": 96, "upper_distances": 3, "steps_per_year": 64},
+  "refinement_absolute_tolerance": 0.0005,
+  "monte_carlo": {"seed": 20081128, "paths": 800000, "bridge_intervals_per_year": 16, "standard_errors": 4, "max_monitoring_width": 0.00001},
+  "diffusion_reference": {
+    "x": {"estimate": [0.816391684673, 0.647954066666, 0.385072372367], "se": [7.2372264e-05, 0.000108493009, 0.000136535767]},
+    "y": {"estimate": [0.809911431689, 0.634345016403, 0.365433266781], "se": [0.000127676316, 0.000188841744, 0.000235157796]},
+    "joint_lower": {"estimate": [0.693364975597, 0.461388616419, 0.189028891789], "se": [0.000121585665, 0.000165495409, 0.000172215132]},
+    "joint_upper": {"estimate": [0.693368905138, 0.461391136491, 0.189032756342], "se": [0.000121574736, 0.000165494242, 0.000172207733]},
+    "monitoring_width": {"estimate": [3.929541e-06, 2.520073e-06, 3.864552e-06], "se": [8.66103e-07, 5.16107e-07, 8.29833e-07]}
+  }
+}

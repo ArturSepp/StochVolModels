@@ -4,6 +4,11 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+**2026-11-28, added.** The repository two-name survival example prices first default
+under common and individual exponential jumps. The qualification runner compares
+pure jumps with an exact Poisson/gamma mixture and continuously monitored diffusion
+with an independent Brownian-bridge simulation.
+
 **2.21.0.dev7 (2026-11-28), added.** `PDE1DSolver.solve` and `PDE2DADISolver.solve`
 accept an optional `ExponentialJumpProcess` for compound-Poisson exponential marks.
 Tensor grids support common and axis-specific arrivals. Forward diagnostics report
