@@ -73,6 +73,7 @@ PDE_FILES = {
     "stochvolmodels/pde_solvers/boundaries.py",
     "stochvolmodels/pde_solvers/coefficients.py",
     "stochvolmodels/pde_solvers/diagnostics.py",
+    "stochvolmodels/pde_solvers/exponential_jumps.py",
     "stochvolmodels/pde_solvers/grids.py",
     "stochvolmodels/pde_solvers/jumps.py",
     "stochvolmodels/pde_solvers/operators_1d.py",
