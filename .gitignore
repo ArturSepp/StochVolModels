@@ -150,3 +150,6 @@ dmypy.json
 
 # Local option-implied risk-premia research.
 /papers/risk_premia_gmm/
+
+# Local JCR credit-value-adjustment replication.
+/papers/credit_value_adjustment_jcr_2009/
