@@ -214,10 +214,16 @@ and slice pricing (`price_vanilla`, `price_slice`), model implied vols from chai
 `HestonPricer` are the two stable reference implementations of this contract; see
 [software design](docs/software_design.md).
 
-For finite-difference pricing, the provisional `PDE1DSolver` and `PDE2DADISolver` provide
-the numerical solvers. The opt-in `LogSvPdePricer` prices European calls and puts under the
-money-market measure. [Solver guide](docs/pde_solvers.md) ·
-[LogSV PDE pricing](docs/software_design.md#logsv-vanilla-pde-valuation)
+The provisional `PDE1DSolver` and `PDE2DADISolver` evolve values backward or densities
+forward. In the 2.21.0.dev7 source checkout, pass a compound-Poisson process as
+`jump=` to solve a partial integro-differential equation (PIDE) with exponential jumps.
+The two-name example uses shared and name-specific
+arrivals to price first-default protection. [Solver guide](docs/pde_solvers.md) ·
+[Two-name survival](docs/pde_solvers.md#two-name-survival-with-continuous-barriers) ·
+[Exponential-jump API](docs/api.md#compound-poisson-exponential-jumps)
+
+For European calls and puts under the money-market measure, use the opt-in
+`LogSvPdePricer`. [LogSV PDE pricing](docs/software_design.md#logsv-vanilla-pde-valuation)
 
 ### Methods
 

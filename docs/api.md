@@ -290,11 +290,6 @@ The provisional types and functions below are explained in [Finite-difference PD
 .. autoclass:: stochvolmodels.pde_solvers.DriftDiscretization
    :members:
 
-.. autoclass:: stochvolmodels.pde_solvers.ExponentialJumpKernel
-   :members:
-
-.. autofunction:: stochvolmodels.pde_solvers.apply_common_exponential_jump
-
 .. autoclass:: stochvolmodels.pde_solvers.Grid1D
    :members:
 
@@ -372,6 +367,31 @@ The provisional types and functions below are explained in [Finite-difference PD
    :members:
 
 ```
+
+### Compound-Poisson exponential jumps
+
+Import these provisional names from `stochvolmodels.pde_solvers`. Prepare one kernel
+per active coordinate and pass the process as `jump=` to `PDE1DSolver.solve` or
+`PDE2DADISolver.solve`. [Jump operator and boundary conventions](pde_solvers.md#exponential-jump-marks) ·
+[Two-name survival example](pde_solvers.md#two-name-survival-with-continuous-barriers)
+
+```{eval-rst}
+.. autoclass:: stochvolmodels.pde_solvers.ExponentialJumpKernel
+   :members:
+
+.. autofunction:: stochvolmodels.pde_solvers.apply_common_exponential_jump
+
+.. autoclass:: stochvolmodels.pde_solvers.ExponentialJumpProcess
+   :members: poisson_step
+
+.. autoclass:: stochvolmodels.pde_solvers.ExponentialJumpStep
+```
+
+For a standalone `poisson_step`, read `values` for the propagated array and
+`poisson_terms` for the number of retained count terms, including zero arrivals.
+`truncated_probability` is the omitted Poisson count probability. In a forward step,
+`killed_mass` is the integrated density lost through a zero exterior. A backward
+step returns `None` for this field.
 
 ## Local volatility and local stochastic volatility
 
@@ -504,10 +524,9 @@ The provisional [finite-difference solvers](software_design.md#generic-finite-di
 are available as `stochvolmodels.pde_solvers.PDE1DSolver` and `PDE2DADISolver`.
 The same solver package exposes `TranslationJump` for additive or level-multiplicative
 jumps, including forward and backward translations, compound-Poisson steps and Strang splitting.
-The optional `jump=` argument on both solvers accepts an `ExponentialJumpProcess`.
-Build it from `ExponentialJumpKernel` instances and constant arrival intensities.
-Its `poisson_step` returns an `ExponentialJumpStep` with the propagated values, retained
-count terms, omitted count probability and forward killed mass.
+Both solvers also accept exponential marks with constant arrival intensities.
+[Compound-Poisson exponential jumps](#compound-poisson-exponential-jumps)
+
 `stochvolmodels.valuation.DensityPricer` prices calls and puts from a
 `DensityState1D`. Use `DensityState2D.marginal_x_state()` for a joint density.
 `stochvolmodels.models.logsv.coefficients.LogSvCoefficientProvider` supplies the LogSV generator

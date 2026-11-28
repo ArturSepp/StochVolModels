@@ -24,8 +24,13 @@ quadratic drift, with the Heston model as benchmark. Its core depends on no sibl
 than [vanilla-option-pricers](https://github.com/ArturSepp/VanillaOptionPricers).
 
 The provisional `stochvolmodels.pde_solvers` module provides `PDE1DSolver` and `PDE2DADISolver`
-for evolving option values backward or densities forward. To price a chain of European calls
-and puts under the money-market measure, use the opt-in `LogSvPdePricer`.
+for evolving option values backward or densities forward. The 2.21.0.dev7 source checkout
+also supports partial integro-differential equations (PIDEs) with exponential jumps.
+The two-name example computes the probability that both names stay above their default
+barriers under shared and individual jumps. [Two-name survival example](pde_solvers.md#two-name-survival-with-continuous-barriers) ·
+[Exponential-jump API](api.md#compound-poisson-exponential-jumps)
+
+To price a chain of European calls and puts under the money-market measure, use the opt-in `LogSvPdePricer`.
 [Solver guide](pde_solvers.md) ·
 [LogSV PDE pricing](software_design.md#logsv-vanilla-pde-valuation) ·
 [Local volatility and LSV](local_volatility_and_lsv.md) ·

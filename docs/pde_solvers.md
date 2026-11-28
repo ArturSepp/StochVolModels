@@ -2,8 +2,8 @@
 myst:
   html_meta:
     description: >-
-      Finite-difference PDE solvers for forward densities and backward values, with
-      coefficient conventions, boundary diagnostics and reproducible LogSV vanilla refinement.
+      One- and two-dimensional PDE solvers for diffusions and compound-Poisson exponential
+      jumps, with two-name first-passage probabilities and LogSV vanilla price refinement.
 ---
 
 # Finite-difference PDE solvers
@@ -16,8 +16,10 @@ Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/bl
 A partial differential equation (PDE) solver evolves a value function or a probability
 density on a finite grid. The provisional `stochvolmodels.pde_solvers` API provides
 one-dimensional theta stepping and two-dimensional alternating-direction implicit (ADI)
-stepping. The compound-Poisson example requires the Stage 2 jump API in 2.21.0.dev7 or later. The unsplit reference
-solver and positive spatial discretization described below are repository experiments.
+stepping. Adding exponential jumps gives a partial integro-differential equation (PIDE).
+Its jump term depends on the expected change in value at each arrival. The
+two-name survival example below uses the 2.21.0.dev7 source checkout. The unsplit
+reference solver and positive spatial discretization described below are repository experiments.
 
 ## Overview
 
@@ -79,18 +81,30 @@ The optional density policy can reject a solve, and any renormalization is expli
 
 ### Exponential jump marks
 
-`ExponentialJumpKernel(grid, rate, side="down", exterior="zero")` computes the
-expectation for one additive mark with mean magnitude `1 / rate`. Backward application
-integrates the piecewise-linear payoff over each cell. Forward application moves a
-pointwise density using the quadrature-weighted transpose. With a zero exterior,
-`kernel.exterior_mass(density)` measures probability lost in that event. A clamped
-exterior deposits the same probability on the endpoint. Use `side="up"` for positive marks.
+`ExponentialJumpKernel` computes the expectation after one additive jump. Its
+`rate` is the inverse mean jump magnitude in coordinate units. Use `side="down"`
+(the default) for a negative jump and `side="up"` for a positive jump. Backward
+application integrates the piecewise-linear payoff over each cell. Forward application
+moves the pointwise density using the quadrature-weighted transpose. The default
+`exterior="clamp"` assigns an overshoot to the endpoint. Use `exterior="zero"`
+to kill it. In the latter case, `kernel.exterior_mass(density)` gives the integrated
+probability lost in a single event.
 
 For a common arrival with conditionally independent marks, call
 `apply_common_exponential_jump(values, x_kernel, y_kernel, direction)` on an
 `(nx, ny)` array. To evolve over a time interval, prepare the clocks once and pass the
-process to the solver. In this example the three intensities count x-only, y-only and
-common events per year. A common arrival draws one independent exponential mark per axis.
+process to the solver. The three constant Poisson intensities count x-only, y-only
+and common events per year. Denote these intensities by $\lambda_x$, $\lambda_y$
+and $\lambda_c$, respectively. Write $K_x$ and $K_y$ for the single-axis backward
+expectations and $I$ for the identity. The jump generator added to the diffusion is
+
+$$
+J = \lambda_x(K_x-I) + \lambda_y(K_y-I) + \lambda_c(K_xK_y-I).
+$$
+
+The product in the common term applies both marks at the same arrival time. Each
+coordinate's marginal arrival intensity includes the common clock. For example,
+the x coordinate in the snippet below jumps at $0.4+0.2=0.6$ arrivals per year.
 
 <!-- fragment -->
 ```python
@@ -121,16 +135,22 @@ forward/backward duality applies with natural diffusion boundaries and density
 renormalization disabled. The existing `forward_x_jump` interface supplies fixed-size
 forward translations and is mutually exclusive with `jump`.
 
-[Solver API](api.md#provisional-and-experimental-surfaces)
+[Exponential-jump API](api.md#compound-poisson-exponential-jumps)
 
 ### Two-name survival with continuous barriers
 
-Run the pricing example and the independent qualification from the repository root.
+Install the core package from the 2.21.0.dev7 checkout with `python -m pip install -e .`.
+From the same repository root, run the pricing example and its independent check.
+Both computations use only the bundled inputs and run offline.
 
 ```bash
 python -m examples.pde_solvers.run_two_name_survival
 python -m validation.pde_two_name_survival --output results.json
 ```
+
+[Pricing example](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pde_solvers/run_two_name_survival.py) ·
+[Frozen parameters and reference probabilities](https://github.com/ArturSepp/StochVolModels/blob/main/validation/two_name_survival.json) ·
+[Qualification runner](https://github.com/ArturSepp/StochVolModels/blob/main/validation/pde_two_name_survival.py)
 
 Both names start at log value zero. Their lower barriers are −0.2 and −0.1. Each name
 has an individual jump clock, and a third clock moves both names. All three clocks
@@ -139,17 +159,28 @@ with means 0.2 and 0.1. The example reports marginal and joint survival, the pro
 of at least one default, and the probability that both have defaulted. At zero interest,
 the first-default probability is also the price of one unit paid on first default.
 
-With zero drift and zero diffusion, cumulative losses only increase. Mixing gamma loss
-distributions over the Poisson counts gives exact joint survival of 0.70195422,
-0.47676345 and 0.20466416 at three, six and twelve months. With annual Brownian
-variances 0.00027 and 0.000583 and correlation 0.5, the backward solver uses absorbing
-lower faces and kills jump overshoots. On 289 nodes per axis and 64 steps per year,
-the corresponding joint probabilities are 0.69318542, 0.46137141 and 0.18903398.
+Both cases use zero log drift. With pure downward jumps, cumulative losses only
+increase, so mixing gamma loss distributions over the Poisson counts gives exact
+survival. Adding annual Brownian variances 0.00027 and 0.000583 and correlation
+0.5 allows a name to cross its barrier between jumps. The example therefore prices
+backward with absorbing lower faces for diffusion and a zero exterior for jump
+overshoots.
 
-The qualification simulates exact jump times. Between jumps it conditions on Gaussian
-endpoints and uses one-dimensional Brownian-bridge crossing probabilities to bound
-joint survival. Its JSON reports the estimated gap between the bounds, Monte Carlo
-standard errors, and the effect of changing space, time and upper bounds individually.
+| Maturity | Both survive, pure jumps (exact) | Both survive, jump-diffusion (PIDE) | Unit first-default protection, jump-diffusion |
+|---|---:|---:|---:|
+| 3 months | 0.702 | 0.693 | 0.307 |
+| 6 months | 0.477 | 0.461 | 0.539 |
+| 1 year | 0.205 | 0.189 | 0.811 |
+
+On 289 nodes per axis and 64 steps per year, the maximum pure-jump joint survival
+error is $5.98\times10^{-7}$ across the three maturities. For the diffusion case,
+the independent check simulates 800,000 paths with exact jump times. Between jumps,
+one-dimensional Brownian-bridge crossing probabilities bound the chance that both
+names survive. The largest estimated gap between the bounds is $3.93\times10^{-6}$.
+The JSON reports Monte Carlo sampling errors separately and varies space, time and
+upper bounds individually. Both marginals and joint survival pass at every maturity
+when the bounds include four sampling standard errors. Using 145 nodes per axis
+misses that tolerance for the first name at three months.
 
 ### Reference solvers and volatility boundaries
 

@@ -82,6 +82,7 @@ certification. Calibration convergence and market acceptance are separate report
 | Script | What it checks | Data and execution |
 |---|---|---|
 | [`docs/pde_solvers.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/pde_solvers.py) | Generic solvers and short-expiry LogSV refinement | Synthetic; [solver guide](pde_solvers.md) |
+| [`pde_solvers/run_two_name_survival.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pde_solvers/run_two_name_survival.py) | Marginal and joint survival with common and name-specific exponential jumps, with and without diffusion | Frozen synthetic inputs. [Run the example and its independent benchmarks](pde_solvers.md#two-name-survival-with-continuous-barriers) |
 | [`docs/local_volatility_and_lsv.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/docs/local_volatility_and_lsv.py) | Sloped Dupire buckets, fitted leverage, correlated PDE/MC and acceptance | Synthetic; [LSV guide](local_volatility_and_lsv.md) |
 | [`fitters/frozen_btc_lsv.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/fitters/frozen_btc_lsv.py) | Baseline and adverse-start fits, original quotes and independent PDE/MC replay | Bundled BTC snapshot of 21 October 2021; slow calibration |
 | [`pricers/lsv_production_stress.py`](https://github.com/ArturSepp/StochVolModels/blob/main/examples/pricers/lsv_production_stress.py) | Seven fixed-parameter scenarios, prices, density diagnostics and expected rejection decisions | Synthetic scenarios and a tracked frozen reference; slow simulation |
