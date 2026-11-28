@@ -2163,7 +2163,7 @@ wheels = [
 
 [[package]]
 name = "option-chain-analytics"
-version = "6.0.0"
+version = "6.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "matplotlib" },
@@ -2178,9 +2178,9 @@ dependencies = [
     { name = "seaborn" },
     { name = "vanilla-option-pricers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/01/cd/8e3973ecc875fc4623e8ef065368c7b5475e5062a1569f64d3b4a6902a25/option_chain_analytics-6.0.0.tar.gz", hash = "sha256:022a5162f8ae62da74477cbefda95557698bf216d283d007cd87ed0ddd6b9bc6", size = 166546, upload-time = "2026-10-22T03:52:13.962Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d8/b7/251f67863d288e0730e4e1f5c082f13f23caba6771d5c6326bcce3b7be96/option_chain_analytics-6.1.1.tar.gz", hash = "sha256:5794a21fd440a121dc89c01b32a37bb7915332fa42738e59273d5b29498a8ebf", size = 208703, upload-time = "2026-11-28T13:44:40.622Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2b/23/8d85d2c51040e26402732c9147bcaacf2e00844c4dd86f9b3a6327957744/option_chain_analytics-6.0.0-py3-none-any.whl", hash = "sha256:ea621b39b1721d9451ee134111a95acb53ad771b81347e4246bf095e03e865b4", size = 93504, upload-time = "2026-10-22T03:52:12.436Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/4b/884b2f86db22cf161ef1f9f7a3b3877c9cf11288eef6607e93163f57cc2b/option_chain_analytics-6.1.1-py3-none-any.whl", hash = "sha256:9888d04b6ac5dce96262069f853625257f0dd92b4c1dc623dbf4d5d5ed890e48", size = 103838, upload-time = "2026-11-28T13:44:39.183Z" },
 ]
 
 [package.optional-dependencies]
@@ -3708,7 +3708,7 @@ requires-dist = [
     { name = "notebook", marker = "extra == 'jupyter'", specifier = ">=6.5.0" },
     { name = "numba", specifier = ">=0.60.0" },
     { name = "numpy", specifier = ">=2.0" },
-    { name = "option-chain-analytics", extras = ["cboe"], marker = "extra == 'research'", specifier = ">=6.0.0" },
+    { name = "option-chain-analytics", extras = ["cboe"], marker = "extra == 'research'", specifier = ">=6.1.1" },
     { name = "pandas", specifier = ">=2.2.0" },
     { name = "plotly", marker = "extra == 'visualization'", specifier = ">=5.0.0" },
     { name = "qis", marker = "extra == 'research'", specifier = ">=5.11.0" },
