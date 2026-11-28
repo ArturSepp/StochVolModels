@@ -22,9 +22,7 @@ symbols. Equation (4.17) prints $\vartheta$ for $\vartheta^2$ in the linear
 coefficient of $A^{(2)}$. Equation (4.25) prints $q$ for $\theta$ in the
 coefficient that multiplies $A^{(3)}$ in the equation for $A^{(2)}$. The code
 never contained either misprint. The pricing formulas therefore need no journal
-erratum. The comparison was made on 23 November 2026 against the journal PDF
-and is recorded in
-`papers/robust_volatility_models_2026/agents/logsv-ijtaf-2023-errata-check-2026-11-23.md`.
+erratum.
 
 ### Code change log
 
@@ -86,7 +84,6 @@ The maintained paper implementations are Python subpackages under `replication/`
 | [calibration](replication/calibration/) | Surface fits and option calibration time-series analysis |
 | [figures](replication/figures/article_figures.py) | Historical article figure dispatcher |
 | [empirics](replication/empirics/) | Historical time-series and autocorrelation experiments |
-| [legacy](replication/legacy/) | BTC development script requiring the historical private data interface |
 | [verification](replication/verification/) | Independent generator algebra, finite-difference PDE, Fourier inversion and Monte Carlo comparisons |
 
 All paper-root Python entry points have moved into the organized `replication/`
@@ -123,8 +120,8 @@ host. Verification uses fixed published parameter sets and one disclosed stress
 case; it does not download option quotes or use private data.
 
 ```console
-python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.run_checks --quick --output agents/logsv-quick.json
-python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.run_checks --output agents/logsv-full.json
+python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.run_checks --quick --output logsv-quick.json
+python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.run_checks --output logsv-full.json
 python -m pytest src/stochvolmodels/tests/test_logsv_expansion_errata.py
 ```
 
@@ -171,7 +168,7 @@ Brownian bridges, and conditions out the independent return shock. This shares
 the model dynamics and parameters with production simulation, but not the
 finite-expansion pricing approximation.
 
-### Recorded validation, 29 October 2026
+### Numerical validation
 
 Prices are undiscounted calls divided by the forward. One basis point (bp) below
 is $10^{-4}$ of the forward, not a volatility point. Each maximum is across
@@ -221,10 +218,9 @@ These are research runners, not assertions that every historical exhibit can
 be reproduced without its original inputs. Research plotting requires the
 repository's optional research dependencies. Figure 7 needs the archived
 calibration workbook; historical option-chain/time-series workflows may need
-the original OCA data and configured `local_path` resource directories.
+the original OCA data. Supply `tardis/BTC_freq_H.feather` and
+`tardis/BTC_perp_freq_H.feather` under the configured resource directory.
 Yahoo download helpers require the optional `yfinance` package only when called.
-The preserved legacy BTC runner still refers to the private `sigma_strats`
-schema and needs deliberate data-interface migration for a public replay.
 
 Generated figures use the configured output location. The historical assets in
 `paper/final_figures/` are deliberately separate from fresh replication outputs.

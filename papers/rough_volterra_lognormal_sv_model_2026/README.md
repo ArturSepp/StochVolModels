@@ -9,7 +9,15 @@ Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/bl
 
 ## Manuscript and figures
 
-Read the [34-page submitted manuscript](paper/qf/rough_volterra_lognormal_sv_qf_2026-11-24.pdf) or open its [LaTeX source](paper/qf/rough_volterra_lognormal_sv_qf_2026-11-24.tex) and [bibliography](paper/qf/rough_volterra_lognormal_sv_qf.bib). The three PDF links below open the artwork used in the submission. Figure numbers follow the manuscript; filenames retain their original study labels.
+The [author manuscript](paper/rough_volterra_lognormal.pdf), [LaTeX source](paper/rough_volterra_lognormal.tex)
+and all three figure files are included. Run from this paper module.
+
+```console
+cd paper
+pdflatex -interaction=nonstopmode -halt-on-error rough_volterra_lognormal.tex
+pdflatex -interaction=nonstopmode -halt-on-error rough_volterra_lognormal.tex
+pdflatex -interaction=nonstopmode -halt-on-error rough_volterra_lognormal.tex
+```
 
 | Figure | What it shows | Inputs to regenerate it |
 |---|---|---|
@@ -26,4 +34,4 @@ python -m papers.rough_volterra_lognormal_sv_model_2026.replication.run_figures 
 python -m papers.rough_volterra_lognormal_sv_model_2026.replication.run_figures --case figure3
 ```
 
-Use `--case all` in the authors’ checkout to regenerate all three figures. The [replication guide](replication/README.md) gives installation instructions, the local input layout, output filenames and the table-to-code map. For enquiries about access to the selected quotes, contact the corresponding author at `artursepp@gmail.com`.
+Supply the external Figure 1 inputs and use `--case all` to regenerate all three figures. The [replication guide](replication/README.md) gives installation instructions, the local input layout, output filenames and the table-to-code map. For enquiries about access to the selected quotes, contact the corresponding author at `artursepp@gmail.com`.

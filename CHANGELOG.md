@@ -4,6 +4,11 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+**2026-11-28, changed.** Paper READMEs document build commands, replication
+entry points and separately supplied inputs. The factor-HJM manuscript includes
+its restored figures. Superseded research scripts have been removed from the
+active replication folders.
+
 **2.21.0.dev6 (2026-11-26), added.** Public single-equity accumulator and decumulator
 strike quotes and fixed-strike marks use the calibrated local-volatility marginal
 under the settlement measure. Scheduled closing knock-outs, signed monthly payments

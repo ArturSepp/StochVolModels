@@ -4,7 +4,7 @@ The subsection tests the restricted measure change of the paper on one surface p
 the option fit keeps the historical coefficients A, B, beta and epsilon and fits the premium
 delta = C_Q - C_P, with the filtered closing state (delta_F) or with the state that reproduces
 the observed volatility index (delta_I). It replaces the two subsections written by
-../spx_physical_pricing_20261124/make_section.py and
+the SPX pricing workflow and
 ../cross_asset_physical_pricing_20261124/exhibits.py (length cut of 27 Nov 2026).
 
 Inputs, stored outputs only:

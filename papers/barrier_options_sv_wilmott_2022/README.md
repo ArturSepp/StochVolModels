@@ -25,12 +25,11 @@ output names do not always correspond one to one.
 
 ## Run the replication
 
-Run from the repository root with its configured Python interpreter and the
-`research` extra installed. On this Windows host, use the external interpreter specified
-in the repository's [AGENTS.md](../../AGENTS.md); do not create an environment in OneDrive.
+Run from the repository root in your external Python environment after installing
+`python -m pip install -e ".[research]"`. The workflows use generated inputs.
 
 ```console
-python -m papers.barrier_options_sv_wilmott_2022.replication.verify_pde --output agents/barrier_pde.json
+python -m papers.barrier_options_sv_wilmott_2022.replication.verify_pde --output barrier_pde.json
 python -m papers.barrier_options_sv_wilmott_2022.replication.article_figures
 ```
 
@@ -56,7 +55,6 @@ the larger original Green, survival and call batches as well.
 The figure driver's default survival calculation preserves the historical time
 partition. The optional `pde_engine="adapter"` with `partition="full"` includes the
 earliest time interval; see the [barrier verification notes](../README.md#barrier-pde-verification).
-Moving these modules did not change their numerical code or random seeds.
 
 ## Build the manuscript
 

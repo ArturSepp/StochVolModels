@@ -16,19 +16,13 @@ MANUSCRIPT = PAPER / "robust_volatility_models.tex"
 
 SECTIONS = {
     name: f"empirical_bloomberg_20261030/{name}"
-    for name in ("empirical_macros.tex", "empirical_section.tex", "empirical_supplement.tex")
+    for name in ("empirical_macros.tex", "empirical_section.tex")
 }
 SECTIONS.update({name: f"calibration_section_20261030/{name}"
                  for name in ("calibration_macros.tex", "calibration_section.tex")})
-SECTIONS["spx_physical_pricing.tex"] = "spx_physical_pricing_20261124/spx_physical_pricing.tex"
-SECTIONS["cross_asset_physical_pricing.tex"] = (
-    "cross_asset_physical_pricing_20261124/cross_asset_physical_pricing.tex"
-)
 SECTIONS["physical_pricing.tex"] = "physical_pricing_section_20261127/physical_pricing.tex"
 for name in ("quarterly_premia.tex", "quarterly_macros.tex"):
     SECTIONS[name] = f"cross_asset_physical_pricing_20261124/quarterly_panel/{name}"
-for name in ("martingale_bound.tex", "martingale_macros.tex"):
-    SECTIONS[name] = f"martingale_bound_20261127/{name}"
 
 BLOCK = re.compile(
     r"^(?P<start>\\ReplicationBlock\{begin\}\{(?P<name>[\w.-]+\.tex)\}\n)"

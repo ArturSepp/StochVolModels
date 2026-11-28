@@ -48,6 +48,7 @@ foreach ($market in 'gld','tlt','tlt_positive','uso','btc','eth') {
 & $py -B -m "$study.boundary_check"
 & $py -B -m "$study.check_new_prices"
 & $py -B -m "$study.exhibits"
+& $py -B papers/robust_volatility_models_2026/replication/physical_pricing_section_20261127/make_section.py
 & $py -B papers/robust_volatility_models_2026/replication/stage_manuscript.py --sync
 ```
 

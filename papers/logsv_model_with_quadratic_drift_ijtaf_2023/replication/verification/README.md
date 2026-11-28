@@ -43,7 +43,7 @@ diagnostics to JSON and the overlay to PNG. The command below also evaluates
 both of the paper's Figure 6 Fourier expansions.
 
 ```console
-python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.figure_density --expansions --output-dir agents/ijtaf-figures
+python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.figure_density --expansions --output-dir ijtaf-figures
 ```
 
 **Figure 6.** The one-month run replays 400,000 paths using the paper's seed of
@@ -219,7 +219,7 @@ the recorded final parameter vector and grid. Both modes hold the parameters
 fixed and use the pilot's original slice-normalized vega weights.
 
 ```console
-python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.final_fit_density --pilot agents/logsv-long/pde_calibration_pilot.json --output agents/logsv-long/final_fit_density.json
+python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.final_fit_density --pilot logsv-long/pde_calibration_pilot.json --output logsv-long/final_fit_density.json
 ```
 
 The 181 by 121 density grid uses 96 Douglas steps per expiry interval. The
@@ -236,12 +236,12 @@ Run from the repository root using the configured external interpreter. Set
 Every command writes evidence separately from historical manuscript figures.
 
 ```console
-python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.expansion_diagnostics_run --output agents/logsv-long/expansion_diagnostics.json
-python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.long_maturity_pde --output agents/logsv-long/pde_convergence.json
-python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.long_maturity_mc --output agents/logsv-long/mc_reference.json
-python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.calibration.pde_calibration --output agents/logsv-long/pde_calibration_pilot.json
-python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.calibration_mc_validation --pilot agents/logsv-long/pde_calibration_pilot.json --output agents/logsv-long/calibration_mc_validation.json
-python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.spectral_collocation_run --pilot agents/logsv-long/pde_calibration_pilot.json --output agents/logsv-long/spectral_checks.json
+python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.expansion_diagnostics_run --output logsv-long/expansion_diagnostics.json
+python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.long_maturity_pde --output logsv-long/pde_convergence.json
+python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.long_maturity_mc --output logsv-long/mc_reference.json
+python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.calibration.pde_calibration --output logsv-long/pde_calibration_pilot.json
+python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.calibration_mc_validation --pilot logsv-long/pde_calibration_pilot.json --output logsv-long/calibration_mc_validation.json
+python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.spectral_collocation_run --pilot logsv-long/pde_calibration_pilot.json --output logsv-long/spectral_checks.json
 ```
 
 Use [calibration_mc_validation.py](calibration_mc_validation.py) with the saved

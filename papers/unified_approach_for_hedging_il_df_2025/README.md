@@ -19,7 +19,6 @@ The top level contains this README and two folders:
 - [replication/](replication/): pricing, figure-generation and verification scripts,
   including the original LogSV examples.
 
-Review working files are retained in the repository's ignored `agents/` directory.
 
 ## Corrected author draft
 
@@ -48,10 +47,9 @@ CSV files preserve the generated numerical series for inspection.
 | 6-7 | BSM premium and delta | [bsm_il.py](replication/bsm_il.py) |
 | 8 | Synthetic LogSV smiles and protection premiums | Existing stochvolmodels pricers and [run_logsv_for_il_payoff.py](replication/run_logsv_for_il_payoff.py) |
 
-[replicate_figures.py](replication/replicate_figures.py) generates all figures. The earlier statement that
-[run_logsv_for_il_payoff.py](replication/run_logsv_for_il_payoff.py) alone produces all paper figures was incorrect: that
-file is the LogSV IL pricing example. [logsv_figures.py](replication/logsv_figures.py) is retained as the earlier
-smile illustration.
+[replicate_figures.py](replication/replicate_figures.py) generates all eight
+figures. [run_logsv_for_il_payoff.py](replication/run_logsv_for_il_payoff.py)
+runs the standalone synthetic LogSV pricing example.
 
 The new payoff/static-hedge and BSM modules are extracted or adapted from the authors'
 SigmaStrats `my_projects/lp_model` implementation; the figure parameters come from
@@ -70,7 +68,7 @@ The smile uses normalized strikes, the original C/P codes and package Black IV
 inversion. The figure driver and comparison share their parameter definitions.
 
 ```console
-python papers/unified_approach_for_hedging_il_df_2025/replication/verify_replication.py --figure8-density --output agents/il/figure8_density.json
+python papers/unified_approach_for_hedging_il_df_2025/replication/verify_replication.py --figure8-density --output figure8_density.json
 ```
 
 The report compares both panels to their original transforms on the 101 by 61

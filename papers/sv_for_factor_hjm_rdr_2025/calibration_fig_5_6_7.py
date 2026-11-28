@@ -41,7 +41,7 @@ def plot_mkt_model_joint_smile_MF(swaption_chains: Dict[str, SwOptionChain],
 
 
     swaption_chain = swaption_chains[ccy]
-    idx_ttms = np.in1d(swaption_chain.ttms_ids, ttms_ids).nonzero()[0]
+    idx_ttms = np.isin(swaption_chain.ttms_ids, ttms_ids).nonzero()[0]
     ttms = np.array(swaption_chain.ttms)[range(np.max(idx_ttms)+1)]
     params0 = params[ccy]
     t_grid = generate_ttms_grid(ttms)
@@ -49,7 +49,7 @@ def plot_mkt_model_joint_smile_MF(swaption_chains: Dict[str, SwOptionChain],
 
     for ttm, palette in zip(ttms, palettes):
         idx = np.where(swaption_chain.ttms == ttm)[0][0]
-        idx_tenors = np.in1d(swaption_chain.tenors_ids, tenors).nonzero()[0]
+        idx_tenors = np.isin(swaption_chain.tenors_ids, tenors).nonzero()[0]
 
         forwards = [swaption_chain.forwards[idx_tenor][[idx]] for idx_tenor, _ in enumerate(swaption_chain.tenors_ids)]
         strikes_ttms = [swaption_chain.strikes_ttms[idx_tenor][slice(idx, idx+1)] for idx_tenor, _ in enumerate(swaption_chain.tenors_ids)]

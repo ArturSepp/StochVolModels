@@ -11,6 +11,13 @@ Sepp, A. and Rakhmonov, P. (2025), Stochastic volatility for factor Heath-Jarrow
 framework, *Review of Derivatives Research* **28**:12.
 <https://doi.org/10.1007/s11147-025-09217-4>
 
+## Figures
+
+The author source uses the PDFs under [figures/fhjm](figures/fhjm/).
+Seven are the authors' original plots. `futures_mc_vs_ae1.pdf` is the
+75-day and 103-day comparison recovered as a vector crop from Figure 9
+on page 42 of the [published article](Factor%20HJM%20-%20SV%20Model.pdf).
+
 ## Equation numbering
 
 Docstrings in `src/stochvolmodels/pricers/factor_hjm/` cite the **PDF**: (9) for the

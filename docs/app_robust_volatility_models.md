@@ -157,7 +157,6 @@ python examples/docs/app_robust_volatility_models.py
 ```
 
 All cases take seconds. The recorded parameters are those of `MODEL_PARAMS_TABLE` in the original SSRN script.
-The local paper checkout keeps it under `papers/robust_volatility_models_2026/replication/ssrn_2023/`.
 
 ## See also
 

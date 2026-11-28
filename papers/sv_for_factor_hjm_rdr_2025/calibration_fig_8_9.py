@@ -243,11 +243,12 @@ def plot_mkt_model_joint_fut_smile_MF(params0: MultiFactRateLogSvParams,
         mkt_ivols = SwOptionChain.remap_to_inc_delta(mkt_ivols)
         model_ivols = pd.Series(model_ivs_ttms[0][0], index=x_grid, name=f"model").sort_index()
         model_ivols = SwOptionChain.remap_to_inc_delta(model_ivols)
-        # although strikes to delta mapping must be recalculated, we ignore it in our plot
-        mkt_ivols_up = pd.Series(mkt_ivols_up, index=x_grid, name=f"up").sort_index()
-        mkt_ivols_up = SwOptionChain.remap_to_inc_delta(mkt_ivols_up)
-        mkt_ivols_down = pd.Series(mkt_ivols_down, index=x_grid, name=f"down").sort_index()
-        mkt_ivols_down = SwOptionChain.remap_to_inc_delta(mkt_ivols_down)
+        if add_up_down:
+            # although strikes to delta mapping must be recalculated, we ignore it in our plot
+            mkt_ivols_up = pd.Series(mkt_ivols_up, index=x_grid, name=f"up").sort_index()
+            mkt_ivols_up = SwOptionChain.remap_to_inc_delta(mkt_ivols_up)
+            mkt_ivols_down = pd.Series(mkt_ivols_down, index=x_grid, name=f"down").sort_index()
+            mkt_ivols_down = SwOptionChain.remap_to_inc_delta(mkt_ivols_down)
 
         xvar_format = '{:.2%}'
         sns.lineplot(data=pd.concat([model_ivols], axis=1), ax=ax, palette=['blue'], markers=False)

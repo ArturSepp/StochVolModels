@@ -45,6 +45,8 @@ def generate_ust_data(folder: str = f"{LOCAL_RESOURCE_PATH}xml"):
     """Refresh raw Treasury XML and the derived yield-curve CSV."""
     from .ust import available_years, read_rates, save_xml, year_now
 
+    Path(folder).mkdir(parents=True, exist_ok=True)
+
     # save UST yield rates to local folder for selected years
     for year in available_years():
         save_xml(year, folder=folder)

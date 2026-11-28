@@ -127,7 +127,7 @@ new dataset; validate market conventions and residuals separately.
 | `logsv_model_with_quadratic_drift_ijtaf_2023` | principal published-paper implementation with article source and PDF | generated model grids, bundled option chains, and documented local option data for the time-series calibrations |
 | `sv_for_factor_hjm_rdr_2025` | published-paper implementation of an experimental package surface | hard-coded swaption and SOFR option data; online US Treasury data for Fig. 4 |
 | `inverse_options_qf_2023`, `unified_approach_for_hedging_il_df_2025` | code of published papers | generated inputs |
-| `robust_volatility_models_2026/replication/ssrn_2023` (local) | code of a working paper, with recorded parameters | public volatility indices and private Bitcoin data, downloaded or local |
+| `robust_volatility_models_2026` | manuscript, exhibit staging, and empirical replication code | volatility-index histories and local option and market-data snapshots |
 | `jump_risk_premia_clustered_jumps_sifin_2027` | Accepted manuscript, Hawkes option pricer and selected estimation and calibration workflows | historical BTC data and separate co-author code for empirical results |
 | `barrier_options_sv_wilmott_2022` | Published conditional barrier pricing. Run `replication/article_figures.py` from its documented module path | generated model paths, author manuscript and archived figures |
 | `t_distribution`, `forward_var` | Exploratory terminal-law illustrations and forward-variance calibration. Entry points are `illustrations.py` and `calibrate_forward_var.py` | generated or recorded inputs according to the runner |
@@ -154,14 +154,12 @@ the pages that use the code describe their verification and workarounds.
   [skews case study](app_positive_and_negative_skews.md) uses its recorded parameters as a package
   illustration.
 - **`sv_for_factor_hjm_rdr_2025`.** The recorded parameters differ from Tables 1 and 3 of the article, and
-  some expiries and path counts differ from its text; the
-  [case study](app_swaptions_and_sofr_options.md) sets both out. `plot_mkt_model_joint_smile_MF`
-  calls `np.in1d`, which NumPy has removed, and `plot_mkt_model_joint_fut_smile_MF` fails with
-  `add_up_down=False`.
+  some expiries and path counts differ from its text. The
+  [case study](app_swaptions_and_sofr_options.md) sets both out.
 - **Original SSRN scripts.** The [archived revision](https://github.com/ArturSepp/StochVolModels/tree/588193611f4fbf5595d60b198e34cb5c24826f8a/papers/volatility_models) uses `qis`. Its `autocorr_fit.py` calls
   `LogSVPricer.simulate_vol_paths` with a total step count, which the package reads as steps per
   year, so its simulated autocorrelation cannot be reproduced as written; two empirical plots use a
-  pandas frequency that pandas 3 rejects. The local `ssrn_2023` folder corrects the simulation grid and annual plot frequency.
+  pandas frequency that pandas 3 rejects.
 - **`inverse_options_qf_2023`.** `compare_net_delta.py` imports `qis`, and its output could not be matched
   to a numbered figure of the article.
 - **`unified_approach_for_hedging_il_df_2025`.** The corrected author manuscript and theoretical

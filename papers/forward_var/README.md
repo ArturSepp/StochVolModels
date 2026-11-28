@@ -341,11 +341,8 @@ the largest PDE/refined-MC difference is 2.57 batch standard errors. Maximum tim
 spatial and domain shifts are respectively 0.600, 0.691 and 0.266 bp of discounted forward.
 Density mass, forward expectation, negative-mass bounds and option-price bounds also pass.
 
-The complete before/after results are retained locally under the ignored repository-root
-directory `agents/forward_variance_relaxed_20261118/`, including `comparisons.json`,
-`REPORT.md` and `fit_comparison.png`. These are local evidence, not dependencies of this
-document or files expected in a public checkout. The replay commands below regenerate
-the current calibrated case from distributed inputs.
+The replay commands below regenerate the current calibrated case from the
+bundled BTC option chain.
 
 ## Implementation in stochvolmodels
 
@@ -364,13 +361,13 @@ for this study, use the external interpreter below; do not create an environment
 
 ```powershell
 # Calibrate and display the fitted smiles; uses the default mode in the driver.
-& C:\Python\StochVolModels312\Scripts\python.exe -m papers.forward_var.calibrate_forward_var
+python-m papers.forward_var.calibrate_forward_var
 
 # Recalibrate and save the complete PDE/MC comparison for the current calibrated case.
-& C:\Python\StochVolModels312\Scripts\python.exe -m papers.forward_var.verify_pde --case calibrated --output agents/forward_variance_calibrated.json
+python-m papers.forward_var.verify_pde --case calibrated --output forward_variance_calibrated.json
 
 # Exercise the bootstrap and quotation-unit regression tests.
-& C:\Python\StochVolModels312\Scripts\python.exe -m pytest src/stochvolmodels/tests/test_logsv_varswap_backbone.py -q
+python-m pytest src/stochvolmodels/tests/test_logsv_varswap_backbone.py -q
 ```
 
 The output JSON contains parameters, loadings, prices, Monte Carlo uncertainties and mesh

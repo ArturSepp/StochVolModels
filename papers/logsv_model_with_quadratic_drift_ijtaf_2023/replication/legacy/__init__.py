@@ -1,1 +1,0 @@
-"""LogSV paper legacy modules."""

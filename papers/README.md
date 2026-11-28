@@ -5,14 +5,14 @@
 Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
 
-The tracked directories below contain paper manuscripts, implementations and exploratory studies. The package supplies their analytics. Historical inputs and fit checkpoints are available through the local research checkout.
+The tracked directories below contain paper manuscripts, implementations and exploratory studies. The package supplies their analytics. Each paper README identifies its separate data inputs and saved checkpoints.
 
 ## Install
 
 Install the research extra for paper workflows that import `qis` or OptionChainAnalytics.
 
 ```console
-python -m pip install "stochvolmodels[research]"
+python -m pip install -e ".[research]"
 ```
 
 Dependencies vary by runner. Historical plots and calibration scripts commonly import `qis`. The generated-input IL and HJM workflows can run on the core stack. Yahoo-based scripts additionally require `yfinance`.
@@ -35,7 +35,7 @@ its compiled PDF and original figure assets, with the Python workflows under `re
 |---|---|---|
 | `logsv_model_with_quadratic_drift_ijtaf_2023` | `replication/figures/article_figures.py` | Log-normal Stochastic Volatility Model with Quadratic Drift, *IJTAF* 26(8), 2450003 — [`paper/`](logsv_model_with_quadratic_drift_ijtaf_2023/paper) · [publisher](https://doi.org/10.1142/S0219024924500031) · [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2522425) |
 | `sv_for_factor_hjm_rdr_2025` | `calibration_fig_5_6_7.py`, `calibration_fig_8_9.py` | Stochastic volatility for factor Heath-Jarrow-Morton framework, *Review of Derivatives Research* 28:12 — [`paper/`](sv_for_factor_hjm_rdr_2025/paper) · [publisher](https://doi.org/10.1007/s11147-025-09217-4) · [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4646925) |
-| [`robust_volatility_models_2026`](robust_volatility_models_2026/README.md) | [Author manuscript](robust_volatility_models_2026/paper/robust_volatility_models.pdf), `replication/ssrn_2023/article_figures.py` | Sepp and Rakhmonov, What Is a Robust Stochastic Volatility Model. Historical replication requires local inputs. [Original SSRN record](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027) |
+| [`robust_volatility_models_2026`](robust_volatility_models_2026/README.md) | [Author manuscript](robust_volatility_models_2026/paper/robust_volatility_models.pdf), `replication/stage_manuscript.py` | Sepp and Rakhmonov, What Is a Robust Stochastic Volatility Model. Historical replication requires local inputs. [Original SSRN record](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4647027) |
 | `unified_approach_for_hedging_il_df_2025` | `replication/run_logsv_for_il_payoff.py` | Unified Approach for Hedging Impermanent Loss of Liquidity Provision — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4887298) |
 | `inverse_options_qf_2023` | `compare_net_delta.py` | Valuation and Hedging of Cryptocurrency Inverse Options — [SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4606748) |
 | [`jump_risk_premia_clustered_jumps_sifin_2027`](jump_risk_premia_clustered_jumps_sifin_2027/README.md) | [Author manuscript](jump_risk_premia_clustered_jumps_sifin_2027/paper/hawkes.pdf), `replication/hawkes_estimator.py`, `replication/risk_premia_calibration.py` | Liu, Packham and Sepp, accepted in *SIAM Journal on Financial Mathematics*. SVM provides Hawkes pricing and related estimation code. Historical exhibits use local data and co-author workflows. [Preprint](https://arxiv.org/abs/2510.21297) |
@@ -55,10 +55,7 @@ Run from the repository root. Most original paper directories are implicit names
 so their intra-directory imports resolve only when the root is on `sys.path`:
 
 ```python
-# Original SSRN parameter table, with local historical inputs
-python -m papers.robust_volatility_models_2026.replication.ssrn_2023.article_figures
-
-# Public checkout, offline case study using the same recorded parameters
+# Offline case study using recorded parameters
 python examples/docs/app_robust_volatility_models.py
 ```
 
@@ -75,7 +72,7 @@ first two price its 49 quotes. The fixed-parameter smile uses the driver's 31
 display strikes at each of the four expiries.
 
 ```console
-python -m papers.forward_var.verify_pde --output agents/forward_variance_pde.json
+python -m papers.forward_var.verify_pde --output forward_variance_pde.json
 ```
 
 The fitter returns a piecewise-constant **volatility loading**. A value indexed by
@@ -165,7 +162,7 @@ The JSON records the independent Volterra and analytic comparisons, time refinem
 endpoint diagnostics, and warmed wall times for both implementations.
 
 ```console
-python -m papers.barrier_options_sv_wilmott_2022.replication.verify_pde --path-batches --output agents/barrier_pde.json
+python -m papers.barrier_options_sv_wilmott_2022.replication.verify_pde --path-batches --output barrier_pde.json
 ```
 
 ## Paths
@@ -197,7 +194,3 @@ The machine-local YAML is in `.gitignore` and excluded from distributions. PyYAM
 when that file exists, so it is not a core pricing dependency. Package getters return absolute
 strings with a trailing separator, matching `qis`; compose provider folders directly or convert to
 `pathlib.Path` for path operations.
-
-## Known issues
-
-- The archived GMM exploratory scripts and `t_distribution/mc_pricer_with_kernel.py` include module-level calculations. For the maintained SPX feasibility command, use the guarded runner in the table above.

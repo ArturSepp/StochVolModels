@@ -1,139 +1,148 @@
-# Review of volatility models
+# What Is a Robust Stochastic Volatility Model?
 
-*Author: [Artur Sepp](https://github.com/ArturSepp)*
+*Authors: [Artur Sepp](https://github.com/ArturSepp) and Parviz Rakhmonov / First recorded: [2026-11-24](https://github.com/ArturSepp/StochVolModels/commit/ec1bd08e395a56a1ce14ca8a32ed9cd4dfb9ebe2)*
 
 Research in [StochVolModels](https://github.com/ArturSepp/StochVolModels).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
 
-Working manuscript by Artur Sepp and Parviz Rakhmonov. The replication scripts read
-licensed inputs from local snapshots.
-
-The current manuscript is available as [PDF](paper/robust_volatility_models.pdf)
-and [LaTeX source](paper/robust_volatility_models.tex).
-The [pre-30 October revision](drafts/review_volatility_models_revised_20261028.tex) and the
-[original manuscript](drafts/review_volatility_models.tex) are preserved unchanged
-in `drafts/`, with their PDFs and compilation dependencies. These are the two
-substantial historical versions retained as browsable drafts. Three intermediate
-checkpoints are preserved in `drafts/older_audit_snapshots.zip`.
-The 30 October changes are listed in
-[agents/2026-10-30_REVISION_LOG.md](agents/2026-10-30_REVISION_LOG.md); the review
-that motivated them is
-[agents/review-volatility-models-revision-ijtaf-2026-10-29.md](agents/review-volatility-models-revision-ijtaf-2026-10-29.md).
+The paper gives a criterion for when a stochastic volatility model retains its
+form under changes of measure and derives the stock martingale condition for
+quadratic-drift lognormal volatility. The empirical study compares volatility
+indices across assets, calibrates Heston and lognormal stochastic volatility
+(LogSV) to option surfaces, and examines how the choice of spot volatility
+affects the inferred volatility risk premium.
 
 ## Layout
 
 | Directory | Contents |
 |---|---|
-| [paper](paper/) | Single LaTeX manuscript, PDF and figure assets |
-| [replication](replication/) | All Python scripts, dated experiment bundles, frozen data and results; formerly `replication_code/` |
-| [drafts](drafts/) | Original manuscript and pre-30 October revision with build dependencies; ZIP of intermediate checkpoints |
-| [agents](agents/) | Historical revision plans, reviews, audits and provenance records |
-| [private](private/) | Historical console outputs and LaTeX build artifacts |
+| [paper](paper/) | Manuscript [PDF](paper/robust_volatility_models.pdf), [LaTeX source](paper/robust_volatility_models.tex), and figures |
+| [replication](replication/) | Scripts for the empirical analysis, option calibration, and manuscript exhibits |
 
-Experiment bundles retain their original names and internal structure. Frozen
-data, results and historical provenance records are unchanged. The [original SSRN replication](replication/ssrn_2023/) contains the earlier paper's
-recorded parameters, empirical fits and figure scripts.
+## Build the manuscript
 
-## Build and reproduce
-
-Open the current manuscript in the LaTeX editor, or compile it with `paper/` as
-the source directory (three `pdflatex` passes).
-
-The active evidence bundles are:
-
-- The [cross-asset physical and pricing fits](replication/cross_asset_physical_pricing_20261124/README.md) include the quarterly OCA comparison of filtered and index-implied spot across SPXW, gold, Treasuries, oil, bitcoin and ether.
-
-- The [SPX physical and pricing calibration](replication/spx_physical_pricing_20261124/README.md) estimates latent volatility from historical observations and tests the measure-change restriction on the July SPXW quotes.
-
-- The [merged physical-to-pricing section](replication/physical_pricing_section_20261127/README.md) writes one manuscript subsection for the seven dated surfaces from the stored outputs of the two bundles above. No recalibration.
-
-- The [cross-asset dynamics comparison](replication/cross_asset_dynamics_20261124/REPORT.md) reports daily, EWMA and persistence fits for 18 indices and identifies the separate pricing calibrations.
-- [`vix_fit_20261123`](replication/vix_fit_20261123/README.md) contains the four-parameter
-  Bloomberg VIX fit, the comparison with the archived estimates, and the regenerated
-  observation-map and persistence experiments.
-- [`empirical_bloomberg_20261030`](replication/empirical_bloomberg_20261030/README.md):
-  descriptive index analysis with the 3/2 marginal family and the main/notes
-  cohort split, plus `make_beta_panel.py` for the five-panel beta figure; reads the frozen inputs of
-  [`empirical_bloomberg_20261029`](replication/empirical_bloomberg_20261029/README.md),
-  whose expanded Cboe panel is unchanged.
-- [`calibration_section_20261030`](replication/calibration_section_20261030/README.md):
-  calibration section built from the frozen PDE outputs of
-  [`calibration_pde_20261029`](replication/calibration_pde_20261029/README.md),
-  with the per-maturity table, half-lives and the SPXW smile figure. No recalibration.
-
-The index, four-snapshot calibration and quarterly OCA exhibit generators write
-LaTeX macros for the empirical results quoted elsewhere in the manuscript.
-Sibling bundles retain preliminary results and diagnostics. The LogSV PDE remains in
-[`../logsv_model_with_quadratic_drift_ijtaf_2023/replication`](../logsv_model_with_quadratic_drift_ijtaf_2023/replication/).
-
-Use `C:\Python\StochVolModels312\Scripts\python.exe`. Never create an environment
-under OneDrive. From this module directory, after regenerating the experiment
-figures or TeX snippets, stage the manuscript dependencies with:
+From the StochVolModels repository root, run the following with a LaTeX
+distribution that provides `pdflatex`. The checkout contains all four figures
+and all LaTeX needed for the 36-page manuscript.
 
 ```powershell
-& 'C:\Python\StochVolModels312\Scripts\python.exe' -B replication/stage_manuscript.py --sync
-& 'C:\Python\StochVolModels312\Scripts\python.exe' -B replication/stage_manuscript.py --check
+Push-Location papers/robust_volatility_models_2026/paper
+try {
+    1..3 | ForEach-Object {
+        pdflatex -interaction=nonstopmode -halt-on-error robust_volatility_models.tex
+        if ($LASTEXITCODE -ne 0) { throw "LaTeX pass $_ failed" }
+    }
+} finally {
+    Pop-Location
+}
 ```
 
-The staging check compares the embedded TeX blocks and the figures with their
-sources in `replication/`. The `--sync` option refreshes the blocks between
-paired `\ReplicationBlock` markers and copies missing or changed figures to
-`paper/figures/`. Make lasting changes to generated material through its
-producer in `replication/`. The former section files are available in the
-[draft archive](drafts/sections_before_inline_2026-11-28/).
-The `--sync` option writes the staging manifest to
-[exhibit_manifest.json](../../agents/robust_volatility_review_20261030/exhibit_manifest.json).
-Compile historical drafts from `drafts/`; they do not participate in current staging.
+## Regenerate the exhibits from saved results
 
-The original installation scripts and audit rewrite scripts are historical
-one-time operations, not current build commands. The historical mathematical-audit
-Python files now live in `replication/historical_mathematical_audit_20261029/`.
-Do not rerun these rewrite/install scripts on the revised manuscript. Historical
-provenance records retain the paths used when the experiments ran. The
-[cleanup inventory and verification](../../agents/robust_volatility_review_20261030/)
-record this reorganization. `private/cleanup_20261030/paper_before.zip` preserves
-the complete pre-cleanup paper folder, including redundant staged files.
+The checkout provides the scripts and the material needed to compile the
+manuscript. Exhibit regeneration also needs the saved fit results and market-data
+snapshots listed below. Preserve the original filenames and bytes where the
+scripts verify input hashes.
 
-## Fixed-parameter LogSV density comparison
+### Data supplied separately
 
-Run from the StochVolModels checkout with its external interpreter. The four case
-keys are `SPXW`, `GLD`, `TLT` and `TLT+`. The last key selects the separate TLT
-snapshot from 2 August 2024. The default replays all four frozen fits.
+Place these files under `papers/robust_volatility_models_2026/replication/`.
+In the table, braces indicate lists of filenames or filename components.
 
-```console
-python -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.review_density --review papers/robust_volatility_models_2026/replication --output agents/robust_review_density.json
+| Directory | Required files |
+|---|---|
+| `empirical_bloomberg_20261029/` | `panel_results.json`, `bloomberg_request.json`, `inputs/bloomberg_volatility.csv`, `inputs/bloomberg_reference_cash_adjusted.csv`, and `tables/{VIX,OVX,MOVE}_beta_span{65,260}.csv` |
+| `empirical_bloomberg_20261030/` | `descriptive_results.json` |
+| `dvol_diagnostics_20261030/` | `descriptive_results.json` and `tables/{btc,eth}_beta_{65,260}.csv` |
+| `vix_fit_20261123/` | `synthetic_results.json` |
+| `calibration_fits_20261029/` | `{spxw,gld,tlt}_20260715_selected_quotes.csv` |
+| `calibration_pde_20261029/` | `{comparison_table,maturity_comparison,numerical_checks}.csv`, `{spxw,gld,tlt}_pde_{fit,checks}.json`, and `{spxw,gld,tlt}_quote_results.csv` |
+| `calibration_positive_skew_20261031/` | `{comparison_table,maturity_comparison,numerical_checks,selected_surface_summary}.csv`, `scan_summary.json`, `tlt_20240802_selected_quotes.csv`, `tlt_pde_{fit,checks}.json`, and `tlt_quote_results.csv` |
+| `spx_physical_pricing_20261124/` | `{physical,pricing,filtered_pricing,free_drift}.json` and `quote_fits.csv` |
+| `cross_asset_physical_pricing_20261124/` | `history_checks.json` and `{gld,tlt,tlt_positive,uso,btc,eth}_{physical,filtered,inverted,spot,drift,unrestricted}.json`. Under `inputs/`, supply `{gld,tlt,uso}_risklab.txt`, `{btc,eth}_history.{csv,json}`, and `{uso,btc,eth}_quotes.{csv,json}`. |
+| `cross_asset_physical_pricing_20261124/quarterly_panel/` | `dates.json`, each asset's `results.csv` and `checks.json`, and the files for each accepted asset and date in `dates.json`. In every `<asset>/<date>/` directory, supply `quotes.csv`, `source.json`, `history.json`, and `<asset>_{filtered,inverted,spot,drift,unrestricted}.json`. This covers 47 surfaces across SPXW, GLD, TLT, USO, BTC, and ETH. |
+
+Point `ANALYTICS_RESOURCES` at the market-data root. The cross-asset exhibit
+checks selected GLD and TLT quotes against the three original
+Option Chain Analytics (OCA) partitions. The quarterly exhibit checks BTC and
+ETH spot prices against the hourly Tardis index series. Supply these five files
+under that root with the original directory structure.
+
+```text
+options_data/thetadata_options/gld/options/2026-07.parquet
+options_data/thetadata_options/tlt/options/2026-07.parquet
+options_data/thetadata_options/tlt/options/2024-08.parquet
+tardis/BTC_perp_freq_H.feather
+tardis/ETH_perp_freq_H.feather
 ```
 
-The runner recomputes the archived fine-grid transform PDE and compares each
-retained discounted call or put with a two-dimensional forward density at the
-same parameters. The local JSON records raw nodal premiums, the refined price,
-actual bid–ask spreads, archived Monte Carlo errors, and the equal-maturity
-midpoint-IV RMSE. Prices are divided by the original forward. GLD and TLT use
-the frozen European-equivalent quotes and effective discounts.
+### Commands
 
-The report compares raw grid premiums and prices obtained by interpolating
-nodal call and put premiums separately in strike. The reported comparison uses
-second-order Richardson extrapolation of these prices across nested spatial
-and time meshes. It checks both review limits on every quote: 0.005 IV
-percentage points and 2% of the observed premium spread. The JSON retains
-per-mesh density mass, forward error and negative mass at each expiry.
+Use Python 3.12 in your external project environment. From the repository root,
+install the research dependencies and the Parquet and Feather reader.
 
-## Working plan
+```powershell
+python -m pip install -e ".[research]" pyarrow
+```
 
-See the [revision log of 30 October 2026](agents/2026-10-30_REVISION_LOG.md) for the
-open author items (crux sentence, expansion regime, European-equivalent option
-conversion, affiliations and bibliography details) and the
-[revision plan and outline of 28 October](agents/plans/2026-10-28_REVISION_PLAN_AND_UPDATED_OUTLINE.md)
-for the scope decisions it builds on.
+Run the exhibits in this order. Replace `C:\path\to\analytics_resources` with
+the root holding the five market-data files above.
 
-The [equation review](../../agents/robust_volatility_review_20261030/equation_review.md)
-records the mathematical and interpretive findings. Its accepted recommendations
-are implemented in the current manuscript and section generators; the
-[implementation record](../../agents/robust_volatility_review_20261030/implementation/README.md)
-lists the changes and validation. Saved data, calibration results and figures are unchanged.
-The positive-skew calibration and DVOL integration are already complete. Round 3 of the
-revision log records the length cut (exhibits moved to the package, float settings,
-unreferenced staged figures moved to `private/unstaged_figures_20261030_r3/`).
-The length cut of 27 November 2026 is recorded in
-[agents/implementation_2026-11-27/LENGTH_CUT_2026-11-27.md](agents/implementation_2026-11-27/LENGTH_CUT_2026-11-27.md).
-The pre-cut manuscript, sections, figures and generators are in `drafts/pre_length_cut_2026-11-27/`.
+```powershell
+$ErrorActionPreference = 'Stop'
+$env:ANALYTICS_RESOURCES = 'C:\path\to\analytics_resources'
+$env:PYTHONPATH = (Resolve-Path src).Path
+$rep = 'papers/robust_volatility_models_2026/replication'
+$cross = 'papers.robust_volatility_models_2026.replication.cross_asset_physical_pricing_20261124'
+
+python -B "$rep/empirical_bloomberg_20261030/make_empirical_section.py"
+python -B "$rep/empirical_bloomberg_20261030/make_beta_panel.py"
+python -B "$rep/calibration_section_20261030/make_calibration_section.py"
+python -B -m "$cross.exhibits"
+python -B "$rep/physical_pricing_section_20261127/make_section.py"
+python -B -m "$cross.panel_exhibit"
+python -B "$rep/stage_manuscript.py" --sync
+python -B "$rep/stage_manuscript.py" --check
+```
+
+The staging check reports one main file and 11 verified dependencies.
+`--sync` updates the seven embedded blocks and four PNGs from their generated
+sources. PNG bytes can vary with the plotting environment. Rebuild the
+manuscript with the LaTeX command above.
+
+## Check the option fits from frozen quotes
+
+Run from the repository root using `$rep` and the Python environment above.
+The four Heston fits use the selected quote CSVs from the table. The commands
+write Heston fit JSONs into the corresponding replication folders.
+
+```powershell
+python -B "$rep/calibration_fits_20261029/run_calibrations.py" --model Heston
+python -B "$rep/calibration_positive_skew_20261031/run_calibrations.py" --ticker TLT --date 2024-08-02 --model Heston
+```
+
+The independent forward-density replay reprices SPXW, GLD, TLT, and TLT+
+at the reported LogSV parameters. In addition to the quote CSVs and
+`*_pde_fit.json` files above, supply
+`calibration_pde_20261029/{spxw,gld,tlt}_pde_mc.json` and
+`calibration_pde_20261029/runtime_provenance.json`, plus
+`calibration_positive_skew_20261031/tlt_pde_mc.json` and
+`calibration_positive_skew_20261031/BUNDLE_MANIFEST.json`.
+
+```powershell
+python -B -m papers.logsv_model_with_quadratic_drift_ijtaf_2023.replication.verification.review_density --review "$rep" --case all --output review_density.json
+```
+
+## Rerun analyses from market snapshots
+
+The exhibit commands reuse saved results. To refit the models, supply the
+dated volatility histories, realised-variance series, and selected option
+quotes used by the analysis scripts. The calibration runners also use saved
+starting fits, and the validation steps use saved fit and Monte Carlo
+records. The SPXW and cross-asset guides give the market sources, file
+locations, and commands for the physical and pricing fits. [Index panel
+runner](replication/empirical_bloomberg_20261029/run_expanded_panel.py) ·
+[SPXW workflow](replication/spx_physical_pricing_20261124/README.md) ·
+[Cross-asset and quarterly workflow](replication/cross_asset_physical_pricing_20261124/README.md) ·
+[PDE calibration runner](replication/calibration_pde_20261029/run_pde.py) ·
+[Positive-skew TLT runner](replication/calibration_positive_skew_20261031/run_pde.py)

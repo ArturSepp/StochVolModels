@@ -22,7 +22,7 @@ YEARS = 10
 STEPS_PER_YEAR = 260
 LAST_LAG = 119  # The historical num_lags=120 includes lag zero.
 SEED = 3
-# Full precision from vix_log_params in ssrn_2023/article_figures.py.
+# Full precision of the original SSRN VIX parameters.
 HISTORICAL = dict(theta=0.19928505844247962, kappa1=1.2878835150774184,
                   kappa2=1.9267876555824357, v=0.7210463316739526)
 
@@ -77,7 +77,7 @@ def model_acf(parameters, increments, steps_per_year=STEPS_PER_YEAR):
 
 
 def main():
-    from ..ssrn_2023.ss_distribution_fit import fit_distribution_log_sv_fixed_kappa
+    from .stationary_fit import fit_distribution_log_sv_fixed_kappa
 
     metadata = json.loads((BLOOMBERG / "input_manifest.json").read_text())["series"]["VIX"]
     source = BLOOMBERG / "inputs" / metadata["file"]
@@ -125,7 +125,7 @@ def main():
                               sigma0="theta", kappa_bounds=[0.2, 10.], theta_bounds=[0.05, 1.],
                               v_bounds=[0.25, 5.], acf="pathwise lag-pair Pearson, equal lag weights"),
                   fitted=params, optimizer_runs=runs, acf_sse=best["sse"],
-                  historical_comparison=dict(source="../ssrn_2023/article_figures.py: vix_log_params",
+                  historical_comparison=dict(source="https://github.com/ArturSepp/StochVolModels/blob/588193611f4fbf5595d60b198e34cb5c24826f8a/papers/volatility_models/article_figures.py#L150",
                                              parameters=HISTORICAL,
                                              acf_sse_on_updated_sample=sum((historical_acf-empirical)**2)),
                   acf=dict(lags=list(range(1, LAST_LAG+1)), empirical=empirical.tolist(),

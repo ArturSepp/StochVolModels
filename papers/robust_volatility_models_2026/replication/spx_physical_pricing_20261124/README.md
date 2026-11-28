@@ -46,10 +46,11 @@ Run from the repository root with the frozen local inputs in place.
 $env:PYTHONPATH = (Resolve-Path src).Path
 $py = 'C:\Python\StochVolModels312\Scripts\python.exe'
 $module = 'papers.robust_volatility_models_2026.replication.spx_physical_pricing_20261124'
-foreach ($step in 'physical','historical_checks','pricing','filtered_pricing','drift_check','verify_results','make_section') {
+foreach ($step in 'physical','historical_checks','pricing','filtered_pricing','drift_check','verify_results') {
     & $py -B -m "$module.$step"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
+& $py -B papers/robust_volatility_models_2026/replication/physical_pricing_section_20261127/make_section.py
 & $py -B papers/robust_volatility_models_2026/replication/stage_manuscript.py --sync
 ```
 
