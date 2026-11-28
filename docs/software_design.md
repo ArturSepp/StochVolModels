@@ -20,6 +20,73 @@ code begins, which names are stable, and what the package depends on. The
 [notation and conventions](option_chains_and_conventions.md) page defines the units and the
 stability tiers; the [API reference](api.md) lists the names by the page that explains them.
 
+## Single-payment OTC valuation
+
+Built-in cash-settled OTC contracts have a concrete payoff in `products/`, a schedule
+fixed at inception, a model capability and an independent valuation reference.
+
+The first built-in path-dependent contract is a cash-settled worst-of barrier reverse
+convertible. Its provisional APIs have direct-module imports. The same basket model
+can produce contractual index levels for other pathwise payoffs.
+
+| Component | Inputs and result |
+|---|---|
+| `fitters.sparse_local_vol.fit_sparse_local_vol` | One six-month native-currency `OptionChain` per asset, spot, forward, native discount and five decimal Black mids at 80/90/100/110/120% of spot. The five fitted local vols are linear in log-forward moneyness, constant beyond the outer nodes and held through time. Inspect `status`, `residual_iv_bp` and `refined_iv_bp` before using the surface. The fit uses the existing forward PDE on an ACT/365 weekly grid with a final stub. |
+| `models.basket.CorrelatedLocalVolModel` | Dated native forward curves starting at spot, fitted surfaces, ordered equity correlation matrix, settlement and native currencies, FX vols and signed equity–FX correlations. FX is quoted as settlement currency per native unit. The domestic FX vol is zero. Curves must cover all remaining observation times. |
+| `products.barrier_reverse_convertible.BrcTerms` and `BrcState` | Store original fixing levels, absolute barriers, remaining fixing and payment times, face, currency, monitoring and dated historical touch evidence. Confirmed historical hits persist. An unresolved continuous history produces an explicit status until the hit can be established. |
+| `pricers.barrier_reverse_convertible` | `quote_brc_coupon` solves the issue coupon as a fraction of face. `value_brc` marks a fixed coupon. `value_brc_batch` shares paths across ordered requests, each with its own payment discount. The returned full PV, redemption PV and coupon PV are in settlement currency. |
+
+The any-name barrier triggers on equality or a lower price. At final fixing the loss
+per face on a hit is the positive shortfall of the worst final-to-original price ratio
+from one. The name that triggered the barrier can differ from the name that sets the
+loss. For a payment discount $D$, expected loss $E[L]$ and issue face $N$, the par
+maturity coupon is $1/D-1+E[L]$. The fixed-coupon mark is $ND(1+c_0-E[L])$.
+A fixed but unpaid redemption uses the observed terminal levels and the remaining
+payment discount. A paid note has zero remaining PV.
+
+On an existing continuous note, `BrcState(asof=...)` defaults to unresolved historical
+touch evidence. Pass `TouchState.CLEAR` when observations cover the full interval
+through the cutoff, or `TouchState.HIT` after a confirmed breach. Issue quoting
+initializes the observation window at the supplied spots.
+
+Continuous monitoring uses correlated log-Euler endpoints on a synchronized clock,
+with scalar Brownian-bridge crossing probabilities conditional on each step. The
+central estimate uses the product of marginal survivals. The two Fréchet bounds
+quantify the uncertainty in within-step dependence under the simulated diffusion.
+The default tolerance is 1 bp of face including a one-sided sampling margin on the
+width. A breach triggers a coupled half-step replay. Inspect `status`,
+`width_upper_bp` and `refinement_history` together with the separate MC standard error.
+The maturity-only convention uses the observed prices at final fixing.
+
+The historical consumer supplies synchronized inputs as of each date and owns the
+52-week EWMA, its 60/40 blend with unit correlation, trading calendars, local-session
+touch evidence and index ledger. For accrual reporting it can retain the original
+coupon schedule and mark the redemption leg using `redemption_pv`. Individual
+exchange-session monitoring would also require session calendars and an intraday
+joint dynamics specification. The [synthetic worked example](../examples/brc_local_vol.py)
+fits three marginals and reprices the issued notes to par.
+
+## Scheduled accumulators and decumulators
+
+The product observes the equity at specified native closes. An inclusive upper knock-out
+ends a buyer's contract and an inclusive lower knock-out ends a seller's contract before
+that fixing. Earlier signed cash remains payable. The pricer uses the same native
+local-volatility fit as the BRC. The selected equity–FX correlation enters the marginal
+settlement-measure drift for a foreign equity. Correlations with other equities drop out.
+
+Between observations the one-dimensional forward PDE evolves the live density on the
+whole log-forward grid. At each close the pricer keeps the surviving fraction of each
+cell and discounts its fixing to the corresponding payment date. After an observation,
+two implicit Euler half-steps damp the discontinuity before Crank–Nicolson stepping
+resumes. A quote reuses these discounted densities throughout its strike solve.
+Successive meshes check the change in PV and strike. The default tolerances are
+0.25 bp of original scheduled notional for PV and 0.5 bp of original spot for strike.
+An excessive boundary mass triggers domain expansion using the largest fitted local
+volatility and the remaining time to select a wider trial grid. Diagnostics include the mesh,
+surviving mass at each fixing, peak negative and boundary mass and refinement differences.
+[Public interface](api.md#accumulators-and-decumulators)
+· [Independent Gaussian reference generator](../validation/accumulator_reference.py)
+
 ## Layers
 
 ```mermaid

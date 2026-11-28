@@ -7,7 +7,7 @@ already-reconstructed ``SlicesChain`` and materializes an SVM ``OptionChain``.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Literal, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -23,8 +23,10 @@ def option_chain_from_oca(
     chain: SlicesChain,
     value_time: Optional[pd.Timestamp] = None,
     days_map: Optional[Dict[str, int]] = None,
-    delta_bounds: Tuple[Optional[float], Optional[float]] = (-0.1, 0.1),
+    delta_bounds: Tuple[Optional[float], Optional[float]] | Literal['default'] | None = 'default',
     is_filtered: bool = True,
+    *,
+    iv_source: Literal['auto', 'bid_ask', 'mark'] = 'auto',
 ) -> OptionChain:
     """Convert one reconstructed OCA chain into SVM calibration inputs.
 
@@ -35,11 +37,17 @@ def option_chain_from_oca(
     value_time : pandas.Timestamp, optional
         Anchor for maturity targets. Defaults to the chain's actual observation time.
     days_map : dict[str, int], optional
-        Calibration maturity labels and calendar-day offsets. Defaults to 7 and 21 days.
-    delta_bounds : tuple[float or None, float or None], default=(-0.1, 0.1)
-        OCA joint-slice delta filter.
+        Calibration maturity labels and calendar-day offsets. Defaults to every
+        available expiry for marks and to 7 and 21 days for two-sided IVs.
+    delta_bounds : tuple, None or 'default'
+        OCA delta filter. Defaults to (-0.1, 0.1) for two-sided inputs and all
+        available pillars for mark inputs.
     is_filtered : bool, default=True
         Apply OCA's quote filtering before conversion.
+    iv_source : {'auto', 'bid_ask', 'mark'}
+        Auto uses marks for a snapshot with no quoted IV sides. Mark mode
+        uses all available expiries by default and stores only positive mark
+        IVs, with absent bid and ask fields. Two-sided selection is unchanged.
 
     Returns
     -------
@@ -59,21 +67,45 @@ def option_chain_from_oca(
     if value_time is None:
         value_time = chain.value_time
     value_time = pd.Timestamp(value_time)
-    if days_map is None:
-        days_map = {'1w': 7, '1m': 21}
+    if iv_source not in ('auto', 'bid_ask', 'mark'):
+        raise ValueError("iv_source must be 'auto', 'bid_ask' or 'mark'")
+    sides = chain.options_df.reindex(columns=[SliceColumn.BID_IV, SliceColumn.ASK_IV])
+    mark_only = iv_source == 'mark' or (iv_source == 'auto' and not sides.notna().any().any())
+    if delta_bounds == 'default':
+        delta_bounds = None if mark_only else (-0.1, 0.1)
+    if days_map is None and mark_only:
+        selections = [(None, expiry) for expiry in chain.expiry_slices]
+    else:
+        if days_map is None:
+            days_map = {'1w': 7, '1m': 21}
+        selections = [(label, chain.get_next_slice_after_date(value_time + pd.DateOffset(days=day)))
+                      for label, day in days_map.items()]
 
     records = []
     seen_expiries = set()
-    for label, day in days_map.items():
-        next_date = value_time + pd.DateOffset(days=day)
-        slice_date = chain.get_next_slice_after_date(mat_date=next_date)
+    for label, slice_date in selections:
         if slice_date in seen_expiries:
             continue
         slice_t = chain.expiry_slices[slice_date]
-        df = slice_t.get_joint_slice(
-            delta_bounds=delta_bounds,
-            is_filtered=is_filtered,
-        )
+        if mark_only:
+            df = slice_t.options_df
+            if is_filtered:
+                mids = pd.to_numeric(df[SliceColumn.MARK_IV], errors='coerce')
+                df = df.loc[np.isfinite(mids) & (mids > 0)]
+            if delta_bounds is not None:
+                low, high = delta_bounds
+                put = df[SliceColumn.OPTION_TYPE] == 'P'
+                if low is not None:
+                    df = df.loc[~put | (df[SliceColumn.DELTA] <= low)]
+                if high is not None:
+                    df = df.loc[(df[SliceColumn.OPTION_TYPE] == 'P') | (df[SliceColumn.DELTA] >= high)]
+            # Prefer the OTM quote if both sides of parity exist at a strike.
+            otm_type = np.where(df[SliceColumn.STRIKE] < slice_t.get_future_price(), 'P', 'C')
+            df = (df.assign(_otm=df[SliceColumn.OPTION_TYPE] == otm_type)
+                  .sort_values([SliceColumn.STRIKE, '_otm'], kind='stable')
+                  .drop_duplicates(SliceColumn.STRIKE, keep='last').set_index(SliceColumn.STRIKE))
+        else:
+            df = slice_t.get_joint_slice(delta_bounds=delta_bounds, is_filtered=is_filtered)
         if df.empty:
             continue
 
@@ -91,16 +123,18 @@ def option_chain_from_oca(
 
         records.append(
             {
-                'id': f'{label}: {slice_t.expiry_id}',
+                'id': slice_t.expiry_id if label is None else f'{label}: {slice_t.expiry_id}',
                 'ttm': slice_t.get_ttm(),
                 'forward': slice_t.get_future_price(),
                 'discfactor': discfactor,
                 'strikes': df.index.to_numpy(),
                 'optiontypes': df[SliceColumn.OPTION_TYPE].to_numpy(dtype=str),
-                'bid_ivs': df[SliceColumn.BID_IV].to_numpy(),
-                'ask_ivs': df[SliceColumn.ASK_IV].to_numpy(),
-                'bid_prices': df[SliceColumn.BID_PRICE].to_numpy(),
-                'ask_prices': df[SliceColumn.ASK_PRICE].to_numpy(),
+                **({'mid_ivs': df[SliceColumn.MARK_IV].to_numpy(dtype=float)} if mark_only else {
+                    'bid_ivs': df[SliceColumn.BID_IV].to_numpy(),
+                    'ask_ivs': df[SliceColumn.ASK_IV].to_numpy(),
+                    'bid_prices': df[SliceColumn.BID_PRICE].to_numpy(),
+                    'ask_prices': df[SliceColumn.ASK_PRICE].to_numpy(),
+                }),
             }
         )
         seen_expiries.add(slice_date)
@@ -109,26 +143,14 @@ def option_chain_from_oca(
         raise ValueError('no non-empty OCA maturity slices matched days_map')
     records.sort(key=lambda record: record['ttm'])
 
-    strikes_ttms, optiontypes_ttms = List(), List()
-    bid_ivs, ask_ivs = List(), List()
-    bid_prices, ask_prices = List(), List()
-    for record in records:
-        strikes_ttms.append(record['strikes'])
-        optiontypes_ttms.append(record['optiontypes'])
-        bid_ivs.append(record['bid_ivs'])
-        ask_ivs.append(record['ask_ivs'])
-        bid_prices.append(record['bid_prices'])
-        ask_prices.append(record['ask_prices'])
+    fields = ('mid_ivs',) if mark_only else ('bid_ivs', 'ask_ivs', 'bid_prices', 'ask_prices')
 
     return OptionChain(
         ttms=np.array([record['ttm'] for record in records]),
         forwards=np.array([record['forward'] for record in records]),
         discfactors=np.array([record['discfactor'] for record in records]),
         ids=np.array([record['id'] for record in records]),
-        strikes_ttms=strikes_ttms,
-        optiontypes_ttms=optiontypes_ttms,
-        bid_ivs=bid_ivs,
-        ask_ivs=ask_ivs,
-        bid_prices=bid_prices,
-        ask_prices=ask_prices,
+        strikes_ttms=List(record['strikes'] for record in records),
+        optiontypes_ttms=List(record['optiontypes'] for record in records),
+        **{field: List(record[field] for record in records) for field in fields},
     )

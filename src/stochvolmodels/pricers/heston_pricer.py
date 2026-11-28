@@ -8,6 +8,7 @@ legacy callers retain their seeded draw ordering and historical variance floor.
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from functools import partial
 from typing import Literal, Tuple
 
 import numpy as np
@@ -23,7 +24,7 @@ from stochvolmodels.utils.mc_payoffs import compute_conditional_mc_payoff, compu
 from stochvolmodels.pricers._fourier_calibration import (
     FourierCalibration, validate_calibration_options,
 )
-from stochvolmodels.pricers._prepared_fourier import _PreparedFourierGrid
+from stochvolmodels.pricers._prepared_fourier import _PreparedFourierGrid, _VanillaQuotes
 from stochvolmodels.pricers.model_pricer import (
     ModelPricer,
     validate_optimization_result,
@@ -34,7 +35,7 @@ import stochvolmodels.utils.mgf_pricer as mgfp
 from stochvolmodels.data.option_chain import OptionChain
 
 
-from stochvolmodels.models.heston.model import HestonModel
+from stochvolmodels.models.heston.model import HestonModel, _real
 from stochvolmodels.models.heston.params import HestonParams as HestonParams
 
 
@@ -76,43 +77,128 @@ def _controlled_heston_chain(option_chain: OptionChain, params: HestonParams,
 
 
 @dataclass(frozen=True, eq=False, repr=False)
-class PreparedHestonGrid(_PreparedFourierGrid):
-    """Caller-owned transform samples for repeated Heston vanilla pricing.
+class _HestonQuotes(_VanillaQuotes):
+    """Vanilla premiums or derivatives at one initial annualized variance."""
 
-    Construct with HestonPricer.prepare_fourier. Prepared maturities share one
-    accepted frequency grid. Each frequency costs one transform per maturity.
-    Diagnostics count frequencies, including discarded parent panels.
+    v0: float
+
+    def same_output(self, other):
+        """A certificate applies to one initial variance and one output quantity."""
+        return self.v0 == other.v0 and self.quantity == other.quantity
+
+    def evaluate(self, coefficients, nodes):
+        """Return log M for premiums or the differentiated transform numerator for risk."""
+        intercept, loading = coefficients.T
+        with np.errstate(over="raise", invalid="raise", under="ignore"):
+            log_mgf = intercept + self.v0 * loading
+            if self.quantity == "state":
+                return loading * np.exp(log_mgf)
+        return super().evaluate(log_mgf, nodes)
+
+
+@dataclass(frozen=True, eq=False, repr=False)
+class PreparedHestonGrid(_PreparedFourierGrid):
+    """Caller-owned affine coefficients for Heston prices and sensitivities.
+
+    Construct with HestonPricer.prepare_fourier. All prepared maturities share
+    one accepted frequency grid. Diagnostics count frequencies, including discarded
+    parent panels. Each frequency is evaluated once per prepared maturity.
     """
 
     _seed_panels = 1
+    _v0: float
 
-    def price_chain(self, quotes: OptionChain, *,
+    def _row_factory(self, v0):
+        """Bind all quote rows in a request to the selected variance."""
+        state = self._v0 if v0 is None else _real(v0, "v0")
+        return partial(_HestonQuotes, v0=state)
+
+    def price_chain(self, quotes: OptionChain, *, v0: float | None = None,
                     fourier: Mapping | None = None) -> List[np.ndarray]:
         """Price discounted premiums in input order using the saved transforms.
 
-        Forwards, discounts, strikes and call or put codes may change at the
-        prepared maturities. New quotes and tighter tolerances must pass the
-        resolution and tail checks. Call refined_for if either check fails.
+        Forwards, discounts, strikes and call/put codes can change at prepared
+        maturities. v0 is initial annualized variance, defaulting to the preparation
+        snapshot. A new state, quote or stricter budget must pass resolution and tail
+        checks on the stored grid. On failure, call refined_for explicitly.
         """
-        rows = self._quote_requests(quotes, fourier)
+        rows = self._quote_requests(quotes, fourier, row_factory=self._row_factory(v0))
+        if all(row.covered_by(self._quotes) for row in rows):
+            return List([self._plan.price_vanillas(
+                row.evaluate(self._samples[row.expiry], self._plan.nodes),
+                forward=row.forward, discfactor=row.discount,
+                strikes=row.strikes, optiontypes=row.types,
+            ) for row in rows])
+        return List(self._query(rows))
+
+    def v0_sensitivity(self, quotes: OptionChain, *, v0: float | None = None,
+                       atol: float = 1e-6) -> List[np.ndarray]:
+        """Return d(discounted premium)/d(v0) per unit of initial annualized variance.
+
+        Hold forwards, strikes, discounts and the other Heston parameters fixed.
+        The default state is the preparation snapshot. The absolute tolerance applies
+        to the derivative. Use refined_for with sensitivity_atol if a grid check fails.
+        """
+        rows = self._sensitivity_requests(
+            quotes, "state", atol, "atol", row_factory=self._row_factory(v0)
+        )
         if not all(row.covered_by(self._quotes) for row in rows):
             return List(self._query(rows))
-        return List([
-            self._plan.price_vanillas(
-                self._samples[row.expiry], forward=row.forward, discfactor=row.discount,
-                strikes=row.strikes, optiontypes=row.types,
-            )
-            for row in rows
-        ])
+        return List([self._plan.vanilla_sensitivities(
+            row.evaluate(self._samples[row.expiry], self._plan.nodes),
+            forward=row.forward, strikes=row.strikes, discfactor=row.discount,
+        ) for row in rows])
 
-    def refined_for(self, quotes: OptionChain, *,
-                    fourier: Mapping | None = None) -> "PreparedHestonGrid":
+    def forward_greeks(self, quotes: OptionChain, *, v0: float | None = None, delta_atol: float = 1e-6,
+                       gamma_atol: float = 1e-6) -> tuple[List, List]:
+        """Return forward delta and gamma of discounted premiums in expiry and strike order.
+
+        Strike, discount and the selected variance state stay fixed as the forward changes. Tolerances
+        are absolute premium per forward unit and per squared forward unit, respectively.
+        Queries use saved transforms. If a check fails, pass the same tolerances to refined_for.
+        """
+        factory = self._row_factory(v0)
+        deltas = self._sensitivity_requests(quotes, "delta", delta_atol, "delta_atol", row_factory=factory)
+        gammas = self._sensitivity_requests(quotes, "gamma", gamma_atol, "gamma_atol", row_factory=factory)
+        if not all(row.covered_by(self._quotes) for row in deltas + gammas):
+            values = self._query(deltas + gammas)
+            return List(values[:len(deltas)]), List(values[len(deltas):])
+
+        # Both integrals at a strike share the complex phase. Apply both weights in one pass.
+        delta_values, gamma_values = List(), List()
+        for delta, gamma in zip(deltas, gammas, strict=True):
+            coefficients = self._samples[delta.expiry]
+            nodes = self._plan.nodes
+            derivatives = np.column_stack((delta.evaluate(coefficients, nodes),
+                                           gamma.evaluate(coefficients, nodes)))
+            pair = self._plan.vanilla_sensitivities(
+                derivatives, forward=delta.forward, strikes=delta.strikes,
+                discfactor=delta.discount, quantity=("delta", "gamma"),
+            )
+            pair[delta.types == "C", 0] += delta.discount
+            delta_values.append(pair[:, 0].copy())
+            gamma_values.append(pair[:, 1].copy())
+        return delta_values, gamma_values
+
+    def refined_for(self, quotes: OptionChain, *, v0: float | None = None,
+                    fourier: Mapping | None = None, sensitivity_atol: float | None = None,
+                    delta_atol: float | None = None,
+                    gamma_atol: float | None = None) -> "PreparedHestonGrid":
         """Certify original and additional quotes, evaluating only new frequencies.
 
         Preparation work limits apply cumulatively. The original handle remains
-        usable if refinement exhausts its budget.
+        usable, including when refinement exhausts its budget. At the requested v0,
+        sensitivity_atol checks the initial-variance derivative, and delta_atol and
+        gamma_atol check the forward derivatives.
         """
-        return self._refine(self._quote_requests(quotes, fourier))
+        factory = self._row_factory(v0)
+        rows = self._quote_requests(quotes, fourier, row_factory=factory)
+        for quantity, atol, name in (("state", sensitivity_atol, "sensitivity_atol"),
+                                     ("delta", delta_atol, "delta_atol"),
+                                     ("gamma", gamma_atol, "gamma_atol")):
+            if atol is not None:
+                rows += self._sensitivity_requests(quotes, quantity, atol, name, row_factory=factory)
+        return self._refine(rows)
 
 
 class HestonPricer(ModelPricer):
@@ -121,14 +207,15 @@ class HestonPricer(ModelPricer):
     ModelPricer for the Heston model, valued by Fourier inversion of the analytic MGF.
     """
     def prepare_fourier(self, option_chain: OptionChain, params: HestonParams, *,
-                        fourier: Mapping | None = None,
-                        is_spot_measure: bool = True) -> PreparedHestonGrid:
+                        fourier: Mapping | None = None, is_spot_measure: bool = True,
+                        ) -> PreparedHestonGrid:
         """Prepare a reusable controlled grid for money-market European calls and puts.
 
-        Supply positive and increasing maturities in years. The handle snapshots
-        model parameters and checks discounted premium errors using the same settings
-        as controlled price_chain. The default absolute premium tolerance is 1e-6.
-        Changes in model parameters or maturities require a new preparation.
+        Supply increasing maturities in years. The handle snapshots Heston dynamics and
+        checks discounted premium errors using the same settings as controlled price_chain.
+        The default absolute premium tolerance is 1e-6. Saved affine coefficients support
+        initial-variance scenarios. A new maturity or change to theta, kappa, rho or
+        volvol requires a separate preparation.
         """
         if fourier is not None and not isinstance(fourier, Mapping):
             raise ValueError("preparation requires a controlled Fourier settings mapping")
@@ -138,14 +225,13 @@ class HestonPricer(ModelPricer):
         ttms = np.array(option_chain.ttms, dtype=float, copy=True)
 
         def transform(phi):
-            """Compute the copied model's log transform at each prepared maturity."""
-            return (model.log_mgf_grid(ttm=t, phi_grid=phi) for t in ttms)
+            return (np.column_stack(model._affine_coefficients(ttm=t, phi_grid=phi)) for t in ttms)
 
-        # Start from the initial panel used by a fresh controlled Heston price.
-        controls = {"initial_cutoff": 1.0}
-        if fourier is not None:
-            controls.update(fourier)
-        return PreparedHestonGrid._prepare_grid(option_chain, transform, True, controls, ())
+        # Match the initial panel used by the fresh controlled Heston slice.
+        controls = {"initial_cutoff": 1.0, **({} if fourier is None else fourier)}
+        v0 = model.params.v0
+        return PreparedHestonGrid._prepare_grid(option_chain, transform, True, controls, (2,),
+                                                row_factory=partial(_HestonQuotes, v0=v0), _v0=v0)
 
     def price_chain(self, option_chain: OptionChain, params: HestonParams, *,
                     fourier: Mapping[str, object] | Literal["legacy"] | None = None,

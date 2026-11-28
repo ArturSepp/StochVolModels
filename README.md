@@ -5,19 +5,12 @@
 Implemented in [stochvolmodels](https://github.com/ArturSepp/StochVolModels).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
 
-**Fourier-transform pricing, Monte Carlo validation, and calibration of European options under
-stochastic-volatility models in Python**
+**Calibrate the Karasinski–Sepp log-normal stochastic volatility model with quadratic drift
+(LogSV) to an option chain and simulate paths from the fitted model in Python.**
 
-The stable workflows cover European vanilla and related variance analytics under Heston and the
-Karasinski-Sepp log-normal stochastic-volatility model; experimental research modules are labelled
-separately rather than presented as stable derivatives infrastructure.
-
-For finite-difference pricing, the provisional `stochvolmodels.pde_solvers` module provides
-`PDE1DSolver` and `PDE2DADISolver`. The opt-in `LogSvPdePricer` prices chains of European
-calls and puts under the money-market measure.
-[Solver guide](https://stochvolmodels.readthedocs.io/en/latest/pde_solvers.html) ·
-[LogSV PDE pricing](https://stochvolmodels.readthedocs.io/en/latest/software_design.html#logsv-vanilla-pde-valuation) ·
-[API reference](https://stochvolmodels.readthedocs.io/en/latest/api.html#finite-difference-pde-solvers)
+Supply European option quotes to fit the implied-volatility surface. The same fitted
+parameters drive Fourier pricing and Monte Carlo paths of the asset, volatility and
+integrated variance. [Fit LogSV and simulate paths](#fit-logsv-and-simulate-paths)
 
 **Install:** `pip install stochvolmodels` · **Import:** `stochvolmodels` · **Status:** Stable
 
@@ -41,59 +34,55 @@ calls and puts under the money-market measure.
 
 ## Why stochvolmodels
 
-`stochvolmodels` is the reference implementation of the Karasinski-Sepp log-normal stochastic
-volatility model, maintained by one of the model's originators, with the Heston model implemented
-alongside as a benchmark. The design goal is a single generic interface for a stochastic
-volatility model — a closed-form moment generating function for Fourier-transform pricing on one
-side, Monte Carlo dynamics on the other — so that analytic prices, simulated prices, and
-calibrated implied volatilities are directly comparable model to model.
+`stochvolmodels` is the reference implementation of quadratic-drift LogSV, maintained
+by one of the model's originators. Volatility mean-reverts through a quadratic drift, and
+its exposure to asset returns can produce either sign of implied-volatility skew. The
+Fourier pricer approximates the model's transform by an affine expansion. Monte Carlo
+simulation gives an independent way to value a payoff under the same dynamics. Heston
+is available as a benchmark on the same quotes. [LogSV dynamics and pricing](docs/logsv_model.md)
 
-### Key differentiators
+### Fit LogSV and simulate paths
 
-Researchers and quantitative practitioners need more than a standalone pricing formula when they
-evaluate a stochastic-volatility specification: market quotes must share explicit forward,
-discount, option-type, and maturity conventions; calibration must fail visibly when constraints are
-not satisfied; and analytic prices need an independent simulation route. General derivatives
-libraries provide much broader instrument infrastructure, while model collections provide many
-formulas. This package deliberately serves the narrower workflow around the quadratic-drift LogSV
-model, with Heston as a like-for-like benchmark and paper implementations tied to the same code.
+The bundled Bitcoin chain has 49 quotes across four expiries. This example fits initial
+volatility, long-run volatility, volatility beta and residual volatility of volatility.
+`PARAMS4` holds the two mean-reversion rates fixed. The fit imposes the martingale
+condition for the money-market measure, which is also the measure used for simulation.
 
-- **A common pricing interface.** `ModelPricer` requires `price_chain` and supplies
-  single-option, slice and implied-volatility helpers. LogSV and Heston implement both
-  transform and Monte Carlo pricing, plus constrained calibration. Other models expose
-  their supported capabilities; an unavailable simulation or calibration method raises
-  `NotImplementedError`. See the [model and pricer boundaries](docs/software_design.md#model-pricer-product-and-data-ownership).
-- **Calibration that fails visibly.** Validated LogSV and Heston calibration reports
-  optimizer failures through `CalibrationError`; LogSV's `ConstraintsType` selects the
-  martingale conditions.
-- **One lightweight `OptionChain`.** Bundled simulated chains, normalised OCA panels, and local
-  CBOE, ThetaData and Tardis caches all converge to the same container, so fitting and pricing
-  code does not depend on the original provider.
-- **Diagnostics in declared quote units.** Fit residuals support scalar or per-quote spread
-  floors. [Native quote diagnostics](docs/surface_diagnostics.md#native-quote-scales-and-admissible-perturbations)
-  retain tick-size, price-bound and missing-data evidence, separately from any caller-defined
-  acceptance policy. [Research helpers](docs/examples.md#research-diagnostics) provide synthetic
-  challenge cases and saved-study verification in a source checkout.
-- **Paper implementations tied to the same code.** The `papers/` directory reproduces the
-  computations and figures of six papers with the package's own pricers.
+```python
+import numpy as np
+import stochvolmodels as svm
+from stochvolmodels.models.logsv import LogSvModel
 
-For reusable model dynamics, the provisional
-[`HestonModel`](docs/heston_model.md) adapter supplies named path states and joint transforms
-without a quote chain. `HestonPricer` remains the stable pricing/calibration entry point;
-[products and valuation](docs/software_design.md#model-pricer-product-and-data-ownership)
-own payoffs and discounting.
+chain = svm.get_btc_test_chain_data()
+start = svm.LogSvParams(sigma0=1.2, theta=0.6, kappa1=2.21, kappa2=2.18,
+                        beta=-0.5, volvol=1.0)
+fitted = svm.LogSVPricer().calibrate_model_params_to_chain(
+    option_chain=chain, params0=start, fourier={},
+    model_calibration_type=svm.LogsvModelCalibrationType.PARAMS4,
+    constraints_type=svm.ConstraintsType.MMA_MARTINGALE,
+)
+paths = LogSvModel(fitted).simulate_paths(
+    measure="Q_MMA", observation_times=np.r_[0.0, chain.ttms],
+    spot0=1.0, n_paths=4096, steps_per_year=360, seed=17,
+)
+levels = paths.assets[:, :, 0]
+sigma = paths.states["sigma"]
+integrated_variance = paths.states["quadratic_variance"]
+```
 
-### When to use it — and when not
+To adapt the fit, replace `chain` with your own `OptionChain`. Supply times to expiry in years,
+forwards, discount factors, strikes, call/put codes and annualised decimal IVs. You can
+provide explicit mids or both bid and ask IVs. The full Bitcoin fit takes several minutes.
+[Option-chain inputs](docs/option_chains_and_conventions.md#calibration-to-explicit-mid-ivs) ·
+[Calibration settings and bounds](docs/calibration.md)
 
-Use `stochvolmodels` for European vanilla pricing and implied-volatility analytics under stochastic volatility, for model calibration to option chains (a calibration example to Bitcoin options data is included), and for replicating the papers listed under [Statement of need](#statement-of-need).
-
-For deterministic local volatility, the provisional fitting and pricing APIs support
-[Dupire inversion and European vanilla PDE prices](https://stochvolmodels.readthedocs.io/en/latest/local_volatility_and_lsv.html).
-American options and general term-structure modelling are outside the package scope. Black-Scholes-Merton and absolute-normal Bachelier analytics are
-provided by the required
-[`vanilla-option-pricers`](https://github.com/ArturSepp/VanillaOptionPricers) package and
-re-exported from `stochvolmodels`; for strategy backtesting and reporting, use
-[`qis`](https://github.com/ArturSepp/QuantInvestStrats).
+To run new scenarios, keep `fitted` and change the observation times, path count or seed.
+If you already have a parameter estimate, pass your own `LogSvParams` directly to
+`LogSvModel`. This provisional path interface takes classical LogSV parameters with a unit
+volatility backbone. Each array above has one row per path and one column per observation,
+including time zero. Here the asset is a zero-drift level starting at one, and `sigma`
+is annualised volatility. [Runnable example](examples/getting_started/calibrate_and_simulate_logsv.py) ·
+[Path simulation source](src/stochvolmodels/models/logsv/model.py)
 
 ## Installation
 
@@ -120,7 +109,7 @@ Core dependencies:
 - `matplotlib >= 3.8.0`
 - `seaborn >= 0.13.0`
 
-Version 2.21.0.dev1 requires Python 3.11.5 or newer. Versions 2.6.0 through 2.18.7 required
+Version 2.21.0.dev6 requires Python 3.11.5 or newer. Versions 2.6.0 through 2.18.7 required
 Python 3.11 or newer. Python 3.12 is the development and primary CI interpreter.
 Published version 2.5.0 retains its original Python 3.10 requirement.
 
@@ -225,6 +214,11 @@ and slice pricing (`price_vanilla`, `price_slice`), model implied vols from chai
 `HestonPricer` are the two stable reference implementations of this contract; see
 [software design](docs/software_design.md).
 
+For finite-difference pricing, the provisional `PDE1DSolver` and `PDE2DADISolver` provide
+the numerical solvers. The opt-in `LogSvPdePricer` prices European calls and puts under the
+money-market measure. [Solver guide](docs/pde_solvers.md) ·
+[LogSV PDE pricing](docs/software_design.md#logsv-vanilla-pde-valuation)
+
 ### Methods
 
 | Model | Dynamics | Implementation | Article · example |
@@ -255,6 +249,14 @@ A **model** specifies parameters and the supported dynamics, transform or termin
 The package root lists its stable names in `stochvolmodels.__all__`. Model capabilities, path valuation and PDE interfaces are provisional direct imports. Rough LogSV and factor HJM are experimental. The [stability guide](docs/software_design.md#stability-tiers-and-exports) describes historical aliases and each tier's import contract.
 
 ## Five-minute quickstart
+
+To fit a five-strike six-month smile for each underlying and price a worst-of barrier
+reverse convertible, run the [offline BRC example](examples/brc_local_vol.py). The
+[OTC pricing guide](docs/software_design.md#single-payment-otc-valuation) describes its market inputs,
+monitoring conventions, coupon units and batch interface.
+
+To quote a zero-premium accumulator or decumulator on the same type of marginal
+and mark its accrued cash after knock-out, run the [accumulator example](examples/accumulator_local_vol.py).
 
 This first result runs from the installed package and needs no credentials, local YAML, `qis`,
 OptionChainAnalytics, or data download:
@@ -414,8 +416,8 @@ analytic model calibration.
 | OCA Tardis 08:00 UTC EOD cache | Yes | `load_tardis_eod_option_chain()` | clustered-jump chain calibration |
 
 The repository does not redistribute CBOE, ThetaData, or Tardis records. OCA owns provider access,
-normalisation, and caches; SVM receives only the strikes, option types, forwards, discounts, and
-bid/ask quotes required for an illustration or calibration. The cached routes need
+normalisation, and caches. SVM receives the strikes, option types, forwards, discounts and
+either explicit mid IVs or bid and ask IVs for calibration. The cached routes need
 `pip install "stochvolmodels[research]"` and `RESOURCE_PATH` in the local settings file; the
 [examples guide](examples/README.md) describes each loader and the cache layout, and
 [`papers/jump_risk_premia_clustered_jumps_sifin_2027/README.md`](papers/jump_risk_premia_clustered_jumps_sifin_2027/README.md)
@@ -488,9 +490,9 @@ package in your research, please cite the software and the relevant papers:
   author    = {Sepp, Artur},
   title     = {{StochVolModels}: Fourier-transform pricing, Monte Carlo validation, and calibration of European options under stochastic-volatility models in {Python}},
   year      = {2026},
-  version   = {2.21.0.dev1},
-  publisher = {GitHub},
-  url       = {https://github.com/ArturSepp/StochVolModels}
+  version   = {2.21.0.dev6},
+  publisher = {Python Package Index},
+  url       = {https://pypi.org/project/stochvolmodels/}
 }
 
 @article{sepprakhmonov2023,

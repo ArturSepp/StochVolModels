@@ -5,12 +5,12 @@
 Research in [StochVolModels](https://github.com/ArturSepp/StochVolModels).
 Software citation: [CITATION.cff](https://github.com/ArturSepp/StochVolModels/blob/main/CITATION.cff).
 
-Local working module for the volatility-model review by Artur Sepp and Parviz
-Rakhmonov. Local and licensed input snapshots are not redistribution permissions.
+Working manuscript by Artur Sepp and Parviz Rakhmonov. The replication scripts read
+licensed inputs from local snapshots.
 
-The current manuscript is
-[robust_volatility_models.tex](paper/robust_volatility_models.tex)
-(40 pages). The [pre-30 October revision](drafts/review_volatility_models_revised_20261028.tex) and the
+The current manuscript is available as [PDF](paper/robust_volatility_models.pdf)
+and [LaTeX source](paper/robust_volatility_models.tex).
+The [pre-30 October revision](drafts/review_volatility_models_revised_20261028.tex) and the
 [original manuscript](drafts/review_volatility_models.tex) are preserved unchanged
 in `drafts/`, with their PDFs and compilation dependencies. These are the two
 substantial historical versions retained as browsable drafts. Three intermediate
@@ -19,14 +19,12 @@ The 30 October changes are listed in
 [agents/2026-10-30_REVISION_LOG.md](agents/2026-10-30_REVISION_LOG.md); the review
 that motivated them is
 [agents/review-volatility-models-revision-ijtaf-2026-10-29.md](agents/review-volatility-models-revision-ijtaf-2026-10-29.md).
-Existing PDF files are retained exports; `paper/*_20261030.pdf` were compiled on
-30 October 2026 from the staged sources.
 
 ## Layout
 
 | Directory | Contents |
 |---|---|
-| [paper](paper/) | Current manuscript, PDF, generated TeX sections and figures |
+| [paper](paper/) | Single LaTeX manuscript, PDF and figure assets |
 | [replication](replication/) | All Python scripts, dated experiment bundles, frozen data and results; formerly `replication_code/` |
 | [drafts](drafts/) | Original manuscript and pre-30 October revision with build dependencies; ZIP of intermediate checkpoints |
 | [agents](agents/) | Historical revision plans, reviews, audits and provenance records |
@@ -43,7 +41,11 @@ the source directory (three `pdflatex` passes).
 
 The active evidence bundles are:
 
+- The [cross-asset physical and pricing fits](replication/cross_asset_physical_pricing_20261124/README.md) include the quarterly OCA comparison of filtered and index-implied spot across SPXW, gold, Treasuries, oil, bitcoin and ether.
+
 - The [SPX physical and pricing calibration](replication/spx_physical_pricing_20261124/README.md) estimates latent volatility from historical observations and tests the measure-change restriction on the July SPXW quotes.
+
+- The [merged physical-to-pricing section](replication/physical_pricing_section_20261127/README.md) writes one manuscript subsection for the seven dated surfaces from the stored outputs of the two bundles above. No recalibration.
 
 - The [cross-asset dynamics comparison](replication/cross_asset_dynamics_20261124/REPORT.md) reports daily, EWMA and persistence fits for 18 indices and identifies the separate pricing calibrations.
 - [`vix_fit_20261123`](replication/vix_fit_20261123/README.md) contains the four-parameter
@@ -57,11 +59,11 @@ The active evidence bundles are:
 - [`calibration_section_20261030`](replication/calibration_section_20261030/README.md):
   calibration section built from the frozen PDE outputs of
   [`calibration_pde_20261029`](replication/calibration_pde_20261029/README.md),
-  with the per-maturity table, information criterion and half-lives. No recalibration.
+  with the per-maturity table, half-lives and the SPXW smile figure. No recalibration.
 
-Both generators also write `*_macros.tex`, which define every number quoted in the
-manuscript's abstract, introduction, selection guide and discussion. Sibling bundles
-retain preliminary results and diagnostics. The LogSV PDE remains in
+The index, four-snapshot calibration and quarterly OCA exhibit generators write
+LaTeX macros for the empirical results quoted elsewhere in the manuscript.
+Sibling bundles retain preliminary results and diagnostics. The LogSV PDE remains in
 [`../logsv_model_with_quadratic_drift_ijtaf_2023/replication`](../logsv_model_with_quadratic_drift_ijtaf_2023/replication/).
 
 Use `C:\Python\StochVolModels312\Scripts\python.exe`. Never create an environment
@@ -73,10 +75,12 @@ figures or TeX snippets, stage the manuscript dependencies with:
 & 'C:\Python\StochVolModels312\Scripts\python.exe' -B replication/stage_manuscript.py --check
 ```
 
-The staging check follows `paper/robust_volatility_models.tex` and verifies its four generated TeX files and five figures. The `--sync` option copies
-graphics into `paper/figures/` and generated TeX into `paper/sections/`, rewriting
-dependency paths in those staged snippets only. Edit generated text through its
-producer in `replication/`. Staging does not run calibrations or change equations.
+The staging check compares the embedded TeX blocks and the figures with their
+sources in `replication/`. The `--sync` option refreshes the blocks between
+paired `\ReplicationBlock` markers and copies missing or changed figures to
+`paper/figures/`. Make lasting changes to generated material through its
+producer in `replication/`. The former section files are available in the
+[draft archive](drafts/sections_before_inline_2026-11-28/).
 The `--sync` option writes the staging manifest to
 [exhibit_manifest.json](../../agents/robust_volatility_review_20261030/exhibit_manifest.json).
 Compile historical drafts from `drafts/`; they do not participate in current staging.
@@ -130,3 +134,6 @@ lists the changes and validation. Saved data, calibration results and figures ar
 The positive-skew calibration and DVOL integration are already complete. Round 3 of the
 revision log records the length cut (exhibits moved to the package, float settings,
 unreferenced staged figures moved to `private/unstaged_figures_20261030_r3/`).
+The length cut of 27 November 2026 is recorded in
+[agents/implementation_2026-11-27/LENGTH_CUT_2026-11-27.md](agents/implementation_2026-11-27/LENGTH_CUT_2026-11-27.md).
+The pre-cut manuscript, sections, figures and generators are in `drafts/pre_length_cut_2026-11-27/`.

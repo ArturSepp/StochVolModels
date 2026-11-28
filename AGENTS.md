@@ -213,8 +213,9 @@ LaTeX source.
   re-running `papers/` — published papers depend on this code.
 - Do not make `qis` a hard dependency: it is an optional `research` extra used by the
   paper code, not by the pricing library. `yfinance` is likewise test and example only.
-- Do not add exotic or path-dependent payoffs; this package covers European vanillas
-  under stochastic volatility by design.
+- SVM supports European option chains, user-supplied pathwise payoffs and concrete
+  cash-settled OTC products in `products/` with a payment schedule fixed at issue,
+  a named model capability and an independent valuation reference.
 - Do not silently regenerate `pytest-regressions` baselines to make a failing test pass.
 - Do not commit calibration output or figures. The one exception is the documentation
   exhibits: reviewed PNG previews in `docs/images/` and `docs/images/analytics_manifest.json`,

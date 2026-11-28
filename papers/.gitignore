@@ -36,6 +36,8 @@
 !/robust_volatility_models_2026/replication/**/
 !/robust_volatility_models_2026/replication/**/*.py
 !/robust_volatility_models_2026/replication/spx_physical_pricing_20261124/README.md
+!/robust_volatility_models_2026/replication/cross_asset_physical_pricing_20261124/README.md
+!/robust_volatility_models_2026/replication/martingale_bound_20261127/README.md
 
 /jump_risk_premia_clustered_jumps_sifin_2027/*
 !/jump_risk_premia_clustered_jumps_sifin_2027/README.md

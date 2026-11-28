@@ -214,13 +214,15 @@ def markov_stability_parameter(nodes: np.ndarray,
     if np.any(weights <= 0.0) or np.any(nodes < 0.0) or kappa1 <= 0.0:
         raise ValueError("require positive weights, non-negative nodes and positive kappa1")
 
-    def integrand(w: float) -> float:
-        k_hat = np.sum(weights / (1j * w + nodes))
-        g_hat = k_hat / (1.0 + kappa1 * k_hat)
-        return g_hat.real ** 2 + g_hat.imag ** 2
-
-    scale = float(np.max(nodes) + kappa1 * np.sum(weights))
-    return vartheta ** 2 * _half_line_integral(integrand, scale=scale) / np.pi
+    # G_N(t) = u.T exp[-(diag(x) + kappa1 u u.T)t] u, where u_i = sqrt(w_i).
+    # Pool identical nodes first to remove unobservable zero rates.
+    rates, groups = np.unique(nodes, return_inverse=True)
+    u = np.sqrt(np.bincount(groups, weights=weights))
+    decay, basis = np.linalg.eigh(np.diag(rates) + kappa1 * np.outer(u, u))
+    if np.any(decay <= 0):
+        raise ArithmeticError("Could not resolve the positive decay rates of the mean resolvent")
+    residues = (basis.T @ u) ** 2
+    return float(vartheta ** 2 * np.sum(np.outer(residues, residues) / np.add.outer(decay, decay)))
 
 
 def critical_eta(H: float,

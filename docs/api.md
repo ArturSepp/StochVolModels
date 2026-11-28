@@ -189,7 +189,7 @@ The analytic vanilla and implied-volatility methods accept the
    :members: price_vanilla, price_slice, price_chain, prepare_fourier, compute_chain_prices_with_vols, compute_model_ivols_for_chain, model_mc_price_chain, calibrate_model_params_to_chain
 
 .. autoclass:: stochvolmodels.PreparedHestonGrid
-   :members: price_chain, refined_for
+   :members: price_chain, v0_sensitivity, forward_greeks, refined_for
 ```
 
 ## Jump-diffusion with clustered jumps
@@ -778,3 +778,40 @@ one page.
 | `historical_backbone_order` | `False` | Use the forward-variance paper’s increasing-expiry transform order | [Calibration to implied volatilities](calibration.md) |
 | `fourier` | `None` | A settings mapping selects a fixed optimizer grid and independent fitted-premium validation | [Calibration to implied volatilities](calibration.md) |
 | `use_analytic_gradient` | `None` | Automatically supply the weighted IV-loss gradient for controlled analytic `PARAMS4` and `PARAMS5` fits. Pass `False` for finite differences. | [Calibration to implied volatilities](calibration.md) |
+
+## Barrier reverse convertibles
+
+The direct-module APIs for five-strike calibration, correlated basket simulation,
+par coupons, fixed-coupon marks and shared-path batch valuation are documented in
+the [single-payment OTC guide](software_design.md#single-payment-otc-valuation).
+
+`BrcQuote.status` reports the underlying valuation status. Pass `model=None` to
+`value_brc` for a fixed or paid contract with explicit historical evidence.
+
+## Accumulators and decumulators
+
+These provisional public interfaces use direct-module imports. Construct
+`AccumulatorTerms` and `AccumulatorState` from `stochvolmodels.products.accumulator`.
+Import `quote_accumulator_strike`, `value_accumulator` and `AccumulatorPdeConfig`
+from `stochvolmodels.pricers.accumulator`. The quote returns the zero-premium strike as
+a fraction of original spot. The mark reports future-fixing PV, fixed unpaid PV and
+their sum in settlement currency. Both entry points take the same dated marginal model.
+
+Supply the original ACT/365 fixing and distinct payment times, and one zero-based payment
+index per fixing. State is after all fixings and payments through its elapsed time from
+issue. Times within $10^{-12}$ years of that cutoff are treated as observed. Start with
+`AccumulatorState.at_issue`. Its `advance` method takes newly observed native closes
+and the locked strike and returns the new state and the net cash paid during the interval.
+At a midlife mark use current native forwards starting at today's spot and payment discounts
+ordered by `state.outstanding_payments(terms)`. The original notional, spot, strike and
+number of fixings continue to govern settlement.
+
+Check `status` before using a result. A live certified valuation returns `ok`. Earned
+cash on a stopped trade can be valued with `model=None` and returns `fixed`, or
+`settled` when the remaining balance is zero. Incomplete evidence returns
+`unresolved_history`. Failure to meet numerical budgets returns `uncertified` and a NaN
+stochastic price. A zero-exposure par quote has no unique strike. The model supplies
+`marginal_pde_coefficient_provider(asset_id)` and reproducible antithetic blocks via
+`iter_path_blocks` for independent path comparisons.
+[Worked synthetic example](../examples/accumulator_local_vol.py) ·
+[PDE and payoff conventions](software_design.md#scheduled-accumulators-and-decumulators)

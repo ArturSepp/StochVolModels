@@ -2,7 +2,7 @@
 
 Inputs: descriptive_results.json (this bundle, run_descriptive.py), panel_results.json
 (frozen ../empirical_bloomberg_20261029, unchanged expanded Cboe panel) and the synthetic
-subsection of ../empirical_20261029. Outputs, all in this directory:
+sample-ACF study in ../vix_fit_20261123. Outputs, all in this directory:
 
   empirical_section.tex     main section: VIX, OVX, MOVE, BTC DVOL and ETH DVOL
   empirical_supplement.tex  supplementary notes shipped with the replication package
@@ -22,6 +22,15 @@ the five-panel beta figure figures/beta_five.png (made by make_beta_panel.py fro
 the frozen beta tables), the Bloomberg survival figure and the synthetic ACF-bias
 figure. The level, ACF, Cboe-fraction and synthetic observation-map figures and the
 common-session Cboe score table stay in the bundles and are cited as package material.
+
+Length cut of 27 Nov 2026: the main section carries two tables and one figure. The Cboe
+panel table gains rows for MOVE and the two DVOL indices and replaces the coverage table
+and the positive-beta table. The score table stays. The beta figure is set at a reduced
+height. The survival figure, the span-260 and Newey--West columns, the lag-63 column and
+the synthetic observation-map subsection with its table and figure are no longer exhibits.
+Their numbers stay in the JSON inputs. The persistence subsection quotes the lag-63 bias of
+the latent-volatility sample ACF from ../vix_fit_20261123/synthetic_results.json. The
+reproducibility subsection moved to the package footnote of the introduction.
 """
 from pathlib import Path
 import json
@@ -135,7 +144,7 @@ VIX and OVX are divided by 100 into decimal annualised price volatility. MOVE is
 kept in annualised yield-volatility basis points, because it is a normal
 volatility of Treasury yields and not a price volatility. The reference series are
 the SPX index, the USO exchange-traded fund (ETF) and the ten-year constant-maturity yield, with price
-returns in logarithms and yield changes in basis points. Table~\ref{tab:empirical-data}
+returns in logarithms and yield changes in basis points. Table~\ref{tab:cboe-panel}
 gives the coverage.
 The primary cohort also includes BTC and ETH DVOL, Deribit's option-based indices
 targeting 30-day annualised volatility, from 24 March 2021 to 28 October 2026
@@ -148,30 +157,10 @@ Exact timestamps, raw responses and checksums are retained.}
 The DVOL observation windows contain weekends,
 whereas the Bloomberg series use reported sessions, and the common 30-day target
 does not make the index constructions identical.
-The replication package documents the remaining conventions (adjustment flags, gap
-rules, source reconciliation), plots the five index histories, and reports the earlier
-Deribit ATM series for BTC and ETH, whose tenor metadata cannot be verified and which
-we therefore keep out of the main comparison.
 % [AI-DRAFT END]''')
-m.add(r'\begin{table}[htbp]\centering\small\setlength{\tabcolsep}{4pt}' + '\n'
-      + r'\begin{tabular}{@{}l P{39mm} r P{31mm} r@{}}\toprule Series & Sample & $N$ & Native mean (interval) & Common mean\\\midrule')
-for n in MAIN:
-    s = R['summary'][n]
-    f = 1 if n == 'MOVE' else 100
-    m.add(f'{n} & {s["start"]} to {s["end"]} & {s["n"]} & ' + interval(s['mean'], s['mean_ci250'], 1, f)
-          + f' & {s["common_mean"]*f:.1f}' + r' \\')
-m.add(r'''\bottomrule\end{tabular}
-\caption{Coverage of the five primary volatility indices. Means are percentage
-price volatility, except MOVE (yield-volatility bp). Native-mean brackets are
-pointwise 95\% circular-block intervals with 250-observation blocks and 400
-resamples under a stationary approximation. Common-date means use '''
-      + str(R['common_sample']['n']) + ' observations from ' + R['common_sample']['start'] + ' to '
-      + R['common_sample']['end'] + r''', the intersection of the five date labels.
-These are comparable coverage windows, not synchronous closes. Source: Bloomberg
-and Deribit, fetched 29 October 2026.}
-\label{tab:empirical-data}\end{table}''')
-# Round 3 length cut: the level plot (figures/levels_main.png) stays in the bundle and is
-# no longer an exhibit of the main text.
+# Length cut of 27 Nov 2026: the coverage table (tab:empirical-data) is folded into
+# tab:cboe-panel. The native and common-date means stay in descriptive_results.json. The
+# level plot (figures/levels_main.png) stays in the bundle.
 
 m.add(r'''
 \subsection{Observed leverage signs across assets}
@@ -181,51 +170,36 @@ The sign of the return--volatility dependence is asset specific. At a 65-observa
 the trailing regression slope of index changes on reference returns is positive on
 '''
       + pct(beta65['VIX']) + r'\% of VIX days, ' + pct(beta65['OVX']) + r'\% of OVX days and, against yield changes, on '
-      + pct(beta65['MOVE']) + r'''\% of MOVE days (Table~\ref{tab:empirical-beta} and
-Figure~\ref{fig:observed-beta}). Across the fifteen established Cboe indices in
-Table~\ref{tab:cboe-panel}, broad equity indices stay below 3\%, while gold
+      + pct(beta65['MOVE']) + r'''\% of MOVE days (Table~\ref{tab:cboe-panel} and
+Figure~\ref{fig:observed-beta}). Across the fifteen established Cboe indices,
+broad equity indices stay below 3\%, while gold
 (GVZ, ''' + pct(panel_beta65['GVZ']) + r'\%) and the Treasury ETF (VXTLT, '
       + pct(panel_beta65['VXTLT']) + r'''\%) alternate between positive and negative regimes.
 These observations motivate specifications capable of reproducing both signs of
-observed return--index dependence. Their implications for a latent leverage
-coefficient depend on the observation map and inference assumptions of
-Section~\ref{sec:observations}.
+observed return--index dependence.
 
 BTC and ETH DVOL have positive span-65 slopes on \betaPosBTCDVOL\% and
 \betaPosETHDVOL\% of fitted days, respectively (lower panels of
 Figure~\ref{fig:observed-beta}). Their median slopes remain
-negative, and the longer-span estimates spend less time above zero. Thus the
+negative, and the span-260 slopes are positive on '''
+      + pct(R['beta']['BTC DVOL']['260']['positive_fraction']) + r'\% and '
+      + pct(R['beta']['ETH DVOL']['260']['positive_fraction']) + r'''\% of days. Thus the
 crypto indices add examples of changing dependence and do not show a universally
-positive crypto leverage effect. The pointwise-band and sign-frequency columns
-in Table~\ref{tab:empirical-beta} distinguish a positive fitted slope from one
-whose pointwise interval excludes zero.
+positive crypto leverage effect.
 
 We estimate $\Delta I_t=a_t+b_t x_t+e_t$ by trailing exponentially weighted least
 squares with an intercept, at spans of 65 and 260 observations and a five-span
 window, where $x_t$ is the log return of the reference asset (the yield change in
 basis points for MOVE). For MOVE a positive slope therefore means that yield
 volatility rises with yields, which is the convention of a rate model and the
-opposite of the bond-price convention used for VXTLT. Each estimate uses
-observations through the fitted date.
-Pointwise bands use weighted Newey--West covariance with five lags, and
-sign-frequency intervals resample the fitted sign indicators in blocks equal to
-the span. These are slopes of an observed index on an observed return. By the
+opposite of the bond-price convention used for VXTLT.
+These are slopes of an observed index on an observed return. By the
 observation map of Section~\ref{sec:observations} they are not the latent
 coefficient $\beta$ and are not inserted into the condition $C_Q-\beta\geq0$.
 % [AI-DRAFT END]''')
-m.add(r'\begin{table}[htbp]\centering\small\begin{tabular}{@{}l r r r r@{}}\toprule Series & Span & Estimates & Positive (\%, interval) & Lower band $>0$ (\%)\\\midrule')
-for n in MAIN:
-    for span in ['65', '260']:
-        s = R['beta'][n][span]
-        ci = None if s['positive_bootstrap_degenerate'] else s['positive_fraction_ci' + span]
-        m.add(f'{n} & {span} & {s["n"]} & ' + interval(s['positive_fraction'], ci, 1, 100)
-              + f' & {100*s["pointwise_positive_fraction"]:.1f}' + r' \\')
-m.add(r'''\bottomrule\end{tabular}\caption{Share of days with a positive observed volatility beta.
-Intervals are conditional block-bootstrap intervals of the fitted sign indicator, and a
-constant indicator (VIX) has no interval. The last column is the share of days on
-which the lower Newey--West band excludes zero. MOVE uses a yield-change regressor in
-different units. DVOL spans count calendar days and Bloomberg spans count retained
-sessions. Sources: Bloomberg and Deribit, with coverage in Table~\ref{tab:empirical-data}.}\label{tab:empirical-beta}\end{table}''')
+# Length cut of 27 Nov 2026: the positive-beta table (tab:empirical-beta) is folded into
+# tab:cboe-panel at span 65. The span-260 fractions, their block intervals and the
+# Newey--West band shares stay in descriptive_results.json.
 # Round 3 length cut: one five-panel beta figure (make_beta_panel.py, frozen beta tables)
 # replaces beta_main.png and dvol_levels_beta.png. Both remain in their bundles.
 m.figure(FIGDIR + 'beta_five.png',
@@ -235,7 +209,7 @@ m.figure(FIGDIR + 'beta_five.png',
          r'return. Bloomberg spans count retained sessions, DVOL spans count calendar days, and '
          r'DVOL dates label the candle start. Sources: Bloomberg, 2000--2026, and Deribit, '
          r'24 March 2021 to 28 October 2026.',
-         'fig:observed-beta', height=r'.55\textheight', placement='tbp')
+         'fig:observed-beta', height=r'.36\textheight', placement='tbp')
 
 m.add(r'''
 % [AI-DRAFT BEGIN: Cboe panel paragraph, condensed from the 29 Oct draft.]
@@ -251,13 +225,16 @@ also reports the common post-launch sample of ''' + str(P['common_sessions']['n'
 Single-stock indices add firm-specific variation that a daily panel does not
 isolate, and correlated markets share shocks, so the fifteen series are not
 fifteen independent replications. The table also carries the held-out GIG-minus-Heston
-log scores of Section~\ref{sec:empirical-density} on the native histories. The
-common-session scores and the span-260 fractions are in the replication package.
+log scores of Section~\ref{sec:empirical-density} on the native histories. Its last
+three rows give the same statistics for MOVE and the two DVOL indices.
 % [AI-DRAFT END]''')
 # Round 3 length cut: the native density scores (formerly their own table) join the panel
 # table, the common-session scores and the fraction plot expanded_beta.png stay in the bundle.
-panel_head = r'Index & Reference & First value & $N$ & Native $+$ & Common $+$ & ACF$_{63}$ & Score & 95\% interval\\\midrule'
-m.add(r'''{\small\setlength{\tabcolsep}{3pt}\begin{longtable}{@{}l P{22mm} l r r r r r l@{}}\caption{Established Cboe volatility-index panel. Positive-beta columns are percentages of days at span 65 on the native history and on the common post-launch sessions. ACF$_{63}$ is the lag-63 level correlation. Score is the held-out GIG minus Heston-marginal mean log score on the native history, with its pointwise 95\% circular-block interval (65 observations), from a chronological 70/30 split per series with the training fit held fixed. The intervals come from a separate resampling run with its own seed, so the VIX and OVX intervals differ by resampling error from those of Table~\ref{tab:empirical-scores}. Source: Bloomberg, with all histories ending on 28 October 2026.}\label{tab:cboe-panel}\\\toprule '''
+# Length cut of 27 Nov 2026: the lag-63 column is dropped and three rows are added for MOVE and
+# the two DVOL indices, from the same statistics as the former coverage and positive-beta tables
+# and as tab:empirical-scores. The common post-launch sample is defined for the Cboe panel only.
+panel_head = r'Index & Reference & First value & $N$ & Native $+$ & Common $+$ & Score & 95\% interval\\\midrule'
+m.add(r'''{\small\setlength{\tabcolsep}{3pt}\begin{longtable}{@{}l P{22mm} l r r r r l@{}}\caption{Volatility-index panel: fifteen established Cboe indices, MOVE and the two Deribit DVOL indices. Positive-beta columns are percentages of days at span 65 on the native history and, for the Cboe indices, on their common post-launch sessions. MOVE is regressed on changes of the ten-year yield in basis points. Score is the held-out GIG minus Heston-marginal mean log score on the native history, with its pointwise 95\% circular-block interval (65 observations), from a chronological 70/30 split per series with the training fit held fixed. The Cboe intervals come from a separate resampling run with its own seed, so the VIX and OVX intervals differ by resampling error from those of Table~\ref{tab:empirical-scores}. DVOL spans and blocks count calendar days. Sources: Bloomberg and Deribit, with all histories ending on 28 October 2026.}\label{tab:cboe-panel}\\\toprule '''
       + panel_head + r'\endfirsthead\toprule ' + panel_head + r'\endhead')
 for n in panel:
     s = P['series'][n]
@@ -265,8 +242,14 @@ for n in panel:
     d = s['density']
     ref = c['reference'].replace(' US Equity', '').replace(' Index', '')
     m.add(f'{n} & {ref} & {c["start"]} & {c["n"]} & {100*s["beta"]["65"]["positive_fraction"]:.1f} & '
-          f'{100*s["common_beta"]["65"]["positive_fraction"]:.1f} & {s["acf"]["63"]["estimate"]:.3f} & '
+          f'{100*s["common_beta"]["65"]["positive_fraction"]:.1f} & '
           f'{d["score_difference"]:.3f} & [{d["score_ci65"][0]:.3f}, {d["score_ci65"][1]:.3f}]' + r' \\')
+m.add(r'\midrule')
+for n, ref in [('MOVE', '10y yield'), ('BTC DVOL', 'BTC'), ('ETH DVOL', 'ETH')]:
+    s = R['summary'][n]
+    d = R['distribution'][n]['score_differences']['sqrt_gamma']
+    m.add(f'{n} & {ref} & {s["start"]} & {s["n"]} & {100*beta65[n]:.1f} & --- & '
+          f'{d["mean"]:.3f} & [{d["ci65"][0]:.3f}, {d["ci65"][1]:.3f}]' + r' \\')
 m.add(r'\bottomrule\end{longtable}}')
 
 m.add(r'''
@@ -285,13 +268,12 @@ Table~\ref{tab:empirical-scores} reports the held-out differences in favour of t
 GIG candidate. Against the Heston marginal the VIX difference is '''
       + f"{R['distribution']['VIX']['score_differences']['sqrt_gamma']['mean']:.3f}" + r''' with
 a block interval above zero, and the score column of Table~\ref{tab:cboe-panel}
-is positive for ''' + str(gig_wins) + ' of ' + str(len(panel)) + r''' indices, with '''
+is positive for ''' + str(gig_wins) + ' of the ' + str(len(panel)) + r''' Cboe indices, with '''
       + str(gig_sig) + r''' intervals above zero and ''' + str(gig_sig_neg)
       + r''' below. Against the 3/2 marginal the VIX difference is '''
       + f"{R['distribution']['VIX']['score_differences']['sqrt_invgamma']['mean']:.3f}" + r''', with an
 interval that contains zero, so the two power-tailed laws are indistinguishable on
-this criterion. Figure~\ref{fig:observed-density} shows the fitted survival
-functions against the held-out Bloomberg tails.
+this criterion.
 
 The two DVOL training fits select interior GIG laws. On BTC DVOL, GIG-minus-Heston
 and GIG-minus-3/2 scores are \scoreBTCDVOLHeston\ and \scoreBTCDVOLThreeHalf,
@@ -301,28 +283,15 @@ ETH DVOL favours GIG against Heston and the 3/2 marginal against GIG. ETH also f
 lognormal law over GIG. Thus there is no common winning marginal family across
 the five indices. Both crypto evaluation samples have no observation above their
 own training 95th percentile, so this is transfer to a lower-volatility period
-and not a stress-tail validation. DVOL survival plots and persistence diagnostics are
-in the replication package.
+and not a stress-tail validation.
 
 The fitted GIG law selects its inverse-Gamma limit, the boundary $C=0$ of
 Proposition~\ref{prop:stationary}, for ''' + ' and '.join(ig_series) + r''', and an
 interior law for ''' + ', '.join(interior_series) + r'''. An index marginal is the law of
 $F(\sigma)$ rather than of $\sigma$, so the VIX and OVX fits do not estimate the latent
 physical drift. The index fits motivate examining the inverse-Gamma boundary,
-without identifying $C_P=0$ for latent volatility. If a separately estimated latent
-physical model has $C_P=0$, then~\eqref{eq:pq-map} gives
-$C_Q=\beta\ell_0+\varepsilon\ell_1$. A valid pricing density and stock martingality
-jointly require the projected risk price to satisfy
-$\beta\ell_0+\varepsilon\ell_1\geq\max(\beta,0)$.
-For $\beta>0$, this requires a positive quadratic coefficient under the pricing
-measure, although $C_Q\geq\beta$ need not hold with equality. This conditional
-model construction is distinct from an inference about latent dynamics from
-the index marginals.
-
-For a fitted inverse-Gamma index law with shape $\alpha>0$, positive moments of
-order $r$ are finite if and only if $r<\alpha$, and diverge for $r\geq\alpha$.
-The fitted shapes are about 8 for both series, so the fitted index laws have finite
-moments up to order seven and divergent moments above order eight.
+without identifying $C_P=0$ for latent volatility. The discussion after
+Corollary~\ref{cor:pq} gives the pricing-measure condition for a latent model with $C_P=0$.
 
 These are comparisons of marginal families on an observed index, not of calibrated
 dynamic models. Normalisation uses the training median only, score intervals hold
@@ -337,148 +306,48 @@ for n in MAIN:
     c = s['score_differences']['lognormal']
     m.add(n + ' & ' + kind + ' & ' + interval(a['mean'], a['ci65']) + ' & ' + interval(b['mean'], b['ci65'])
           + ' & ' + interval(c['mean'], c['ci65']) + r' \\')
-m.add(r'''\bottomrule\end{tabular}\caption{Held-out mean log-score differences in favour of the selected GIG candidate, with pointwise 95\% circular-block intervals (65 observations, 400 resamples). Heston denotes the square-root-Gamma marginal and 3/2 the square-root-inverse-Gamma marginal. Training on the first 70\% of each history, evaluation on the last 30\%. Sources: Bloomberg and Deribit, with coverage in Table~\ref{tab:empirical-data}.}\label{tab:empirical-scores}\end{table}''')
-m.figure(FIGDIR + 'density_main.png',
-         r'Training-fitted survival functions and held-out empirical tails for VIX, OVX and MOVE. Bars are pointwise block intervals at training quantiles, and the logarithmic axis is truncated below 0.001. Source: Bloomberg, 2000--2026.',
-         'fig:observed-density', height=r'.4\textheight', placement='tbp')
+m.add(r'''\bottomrule\end{tabular}\caption{Held-out mean log-score differences in favour of the selected GIG candidate, with pointwise 95\% circular-block intervals (65 observations, 400 resamples). Heston denotes the square-root-Gamma marginal and 3/2 the square-root-inverse-Gamma marginal. Training on the first 70\% of each history, evaluation on the last 30\%. Sources: Bloomberg and Deribit, with coverage in Table~\ref{tab:cboe-panel}.}\label{tab:empirical-scores}\end{table}''')
+# Length cut of 27 Nov 2026: the survival figure (figures/density_main.png) stays in the
+# bundle and is no longer an exhibit of the main text.
 # Round 3 length cut: the Cboe score table (tab:cboe-density) is folded into tab:cboe-panel
 # above (native scores). The common-session scores remain in panel_results.json.
 
+# Length cut of 27 Nov 2026: the synthetic observation-map subsection, its table and its figure are
+# no longer exhibits. Two numbers of that study remain in the persistence paragraph: the lag-63
+# bias of the latent-volatility sample ACF on the shortest and the longest sample, at clock 1.
+study = json.loads((ROOT / 'vix_fit_20261123' / 'synthetic_results.json').read_text())
+baseline = next(regime for regime in study['regimes'] if regime['parameters']['clock'] == 1.0)
+latent = {row['years']: row for row in baseline['sample_bias'] if row['observable'] == 'Latent volatility'}
+assert sorted(latent) == [5, 10, 20]
+five_year, twenty_year = latent[5], latent[20]
+k5, k20 = five_year['lags'].index(63), twenty_year['lags'].index(63)
+assert five_year['population_acf'][k5] == twenty_year['population_acf'][k20]
+assert five_year['bias'][k5] < twenty_year['bias'][k20] < 0
+# Round 3 length cut: the ACF plot (figures/acf_main.png) stays in the bundle and is no
+# longer an exhibit of the main text.
 m.add(r'''
 \subsection{Observed persistence}
 \label{sec:empirical-acf}
 % [AI-DRAFT BEGIN: persistence paragraph, condensed. Author pass pending.]
 Lag correlations of the index levels decay slowly and unevenly across assets.
 At lag 120 the correlations are ''' + ', '.join(f'{n}: {R["acf"][n][-1]["estimate"]:.3f}' for n in MAIN)
-      + r''', and the lag-63 values of the Cboe panel in
-Table~\ref{tab:cboe-panel} range from ''' + f'{acf63[acf63_min]:.2f} ({acf63_min}) to {acf63[acf63_max]:.2f} ({acf63_max})'
+      + r''', and the lag-63 values of the fifteen Cboe indices range from '''
+      + f'{acf63[acf63_min]:.2f} ({acf63_min}) to {acf63[acf63_max]:.2f} ({acf63_max})'
       + r'''. We compute Pearson correlations of lagged level pairs at lags 1 to 120
 observations, with circular blocks of 250 observations resampling the lag-pair
-vectors. The correlation paths and their pointwise block intervals are in the
-replication package. These diagnostics assume a stationary approximation despite visible regime
+vectors. These diagnostics assume a stationary approximation despite visible regime
 changes. They do not identify roughness or the latent mean-reversion clock, for the
 two reasons developed in Section~\ref{sec:observations}: the observable is a map of
-the state, and finite samples can bias an ACF estimator. The synthetic study below
-illustrates this bias using a full-sample-centred estimator. Its centring and
-variance normalisation differ from the lag-pair Pearson estimator used here,
-so its bias values do not quantify the bias of these empirical estimates.
-% [AI-DRAFT END]''')
-# Round 3 length cut: the ACF plot (figures/acf_main.png) stays in the bundle and is no
-# longer an exhibit of the main text.
-# Generate the current synthetic exhibit from the full-precision VIX fit.
-bundle = ROOT / 'vix_fit_20261123'
-fit = json.loads((bundle / 'vix_profile.json').read_text())
-study = json.loads((bundle / 'synthetic_results.json').read_text())
-daily = json.loads((bundle / 'transition_weight_check.json').read_text())
-params = fit['fitted']
-method = fit['method']
-assert study['calibration_sample'] == fit['sample']
-assert daily['sample'] == fit['sample']
-assert abs(daily['in_sample_acf_check']['persistence_fit_sse'] - fit['full']['best']['acf_sse']) < 1e-10
-daily_par = daily['fits']['equal']['parameters']
-daily_vector = ','.join(f'{daily_par[key]:.4f}' for key in ('theta', 'kappa1', 'kappa2', 'v'))
-lag60 = daily['in_sample_acf_check']['correlations']['60']
-comparison_dir = ROOT / 'cross_asset_dynamics_20261124' / 'results'
-index_names = list(dict.fromkeys([*MAIN, *P['established_panel']]))
-comparisons = [json.loads((comparison_dir / (name.replace(' ', '_')+'.json')).read_text())
-               for name in index_names]
-n_zero = sum(row['persistence']['parameters']['kappa1'] < 0.0005 for row in comparisons)
-n_above_one = sum(row['transition']['fits']['equal']['parameters']['kappa1'] > 1 for row in comparisons)
-assert all(study['baseline_parameters'][key] == value for key, value in params.items())
-obs = study['observation_summary']
-beta = study['illustrative_beta']
-rounded = ','.join(f'{params[key]:.4f}' for key in ('theta', 'kappa1', 'kappa2', 'v'))
-local_speed = params['kappa1'] + params['kappa2']*params['theta']
-gamma_case, inverse_gamma_case = fit['full']['profile'][0], fit['full']['profile'][-1]
-assert gamma_case['share'] == 0 and inverse_gamma_case['share'] == 1
-assert params['kappa1'] == 0 and gamma_case['histogram_sse'] > inverse_gamma_case['histogram_sse']
-m.add(rf'''\subsection{{Synthetic observation maps and finite-sample persistence}}
-\label{{sec:synthetic-observation-acf}}
-% [AI-DRAFT BEGIN: updated VIX calibration and synthetic results. Author pass pending.]
-We use {fit['sample']['n']:,} Bloomberg VIX closes from January 2000 through October 2026
-(Table~\ref{{tab:empirical-data}}). At each drift mix we fit the stationary log-volatility
-density to a {method['histogram_bins']}-bin histogram of $\log(\mathrm{{VIX}}/100)$ by least squares.
-We choose the mix and speed by minimising equally weighted squared errors in level autocorrelations
-at lags 1 to {method['acf_lags'][1]}. We average the simulated correlations over
-{method['paths']:,} ten-year paths with common shocks and include both boundaries of Proposition~\ref{{prop:stationary}}.
-
-The persistence fit gives $(\theta,\kappa_1,\kappa_2,v)=({rounded})$.
-At this Gamma boundary the drift is $\kappa_2\sigma(\theta-\sigma)$ and its local reversion speed
-at $\theta$ is $\kappa_2\theta={local_speed:.2f}$ per year. The inverse-Gamma boundary fits the histogram more closely.''')
-m.add(rf'''An equally weighted Gaussian Euler quasi-likelihood for daily log-VIX increments
-gives $({daily_vector})$ in the same order.
-At lag 60 the observed correlation is {lag60['observed']:.3f}, compared with {lag60['equal_transition_fit']:.3f}
-under the daily fit and {lag60['persistence_fit']:.3f} under the persistence fit.
-Across the primary and established indices, the persistence estimate of $\kappa_1$ rounds to zero
-at three decimal places for {n_zero} of {len(comparisons)} series. The daily estimate exceeds one per year for {n_above_one}.
-
-We use the persistence fit for the latent state in the synthetic observation experiment.
-The two Brownian loadings enter the index dynamics only through $v^2=\beta^2+\varepsilon^2$. We choose $\beta={beta:g}$
-for illustration and set the residual loading to $\sqrt{{v^2-\beta^2}}$.
-We set $Q=P$ to isolate the observation map $F_\tau(\sigma)$, the ideal
-variance-swap volatility at $\tau=30/365$ years.''')
-if params['kappa2'] < beta:
-    m.add(r'With this illustrative loading, $\kappa_2<\beta$ under $Q=P$. '
-          r'The discounted stock is then a strict local martingale by Proposition~\ref{prop:martingale}. '
-          r'We use the conditional average of future variance directly for this experiment.')
-m.add(rf'''The stationary mean and standard deviation are {obs['latent_mean']:.5f}
-and {obs['latent_sd']:.5f} for latent volatility and {obs['mapped_mean']:.5f} and
-{obs['mapped_sd']:.5f} for the mapped index. At the stationary median
-$\sigma={obs['states'][3]:.5f}$, the map gives $F_\tau(\sigma)={obs['map'][3]:.5f}$.
-The instantaneous index-level beta is $\beta F_\tau'(\sigma)={obs['mapped_beta'][3]:.5f}$.
-The 30-day observation horizon thus changes both the stationary distribution
-and the return sensitivity even when $Q=P$.
-% [AI-DRAFT END]''')
-m.add(r'''We multiply $(\kappa_1,\kappa_2,v^2)$ by clocks $c=1$ and $c=0.25$,
-holding $\theta$ fixed and multiplying $\beta$ by $\sqrt{c}$.
-This preserves the latent invariant distribution while replacing its
-population autocorrelation $\rho(h)$ by $\rho(ch)$.
-We recompute the fixed-maturity observation map for each clock.
-For each regime, 400 independent paths start from the fitted invariant Gamma distribution.
-We record 252 observations per model year with four positive splitting steps per observation.
-The sample ACF uses the full-sample mean. At lag $h$ we divide the cross-product
-sum by $N-h$ and the sum of squared deviations by $N$.
-Table~\ref{tab:synthetic-acf-bias} reports the bias at lag 63.
-Figure~\ref{fig:synthetic-acf-bias} shows its lag profile.''')
-m.add(r'''\begin{table}[htbp]\centering\small
-\begin{tabular}{rrrrrr}\toprule
-Clock & Years & Population ACF & Mean sample ACF & Bias & MC s.e.\\
-\midrule''')
-for regime in study['regimes']:
-    for row in regime['sample_bias']:
-        if row['observable'] == 'Latent volatility':
-            k = row['lags'].index(63)
-            m.add(f"{regime['parameters']['clock']:.2f} & {row['years']} & "
-                  f"{row['population_acf'][k]:.4f} & {row['mean_sample_acf'][k]:.4f} & "
-                  f"{row['bias'][k]:+.4f} & {row['mc_se'][k]:.4f}" + r' \\')
-m.add(r'''\bottomrule\end{tabular}
-\caption{Synthetic sample-ACF bias at lag 63. Monte Carlo standard errors describe
-the estimated mean across independent paths. The three horizons use nested prefixes of each path.}
-\label{tab:synthetic-acf-bias}\end{table}''')
-m.figure('vix_fit_20261123/synthetic_sample_acf_bias.png',
-         r'Average sample-ACF bias for latent and mapped volatility under the two clocks. '
-         r'Shading gives 95\% Monte Carlo intervals for the mean bias.', 'fig:synthetic-acf-bias',
-         placement='htbp')
-delta = study['paired_step_refinement']['max_absolute_mean_acf_difference']
-mantissa, exponent = f'{delta:.1e}'.split('e')
-m.add(rf'''We compute the observation map and population ACF with a reversible
-finite-volume generator on a log-volatility grid. When we double the daily splitting steps
-from four to eight, the largest absolute change in the mean latent sample ACF is approximately
-${mantissa}\times 10^{{{int(exponent)}}}$ across lags 0 to 126.
-The replication package also reports grid refinement and independent Monte Carlo checks.''')
-
-m.add(r'''
-\subsection{Reproducibility and scope}
-% [AI-DRAFT BEGIN: scope paragraph, condensed. Author pass pending.]
-The replication package\footnote{\url{https://github.com/ArturSepp/StochVolModels},
-directory \path{papers/robust_volatility_models_2026/replication}. Code, the Cboe-index pipeline,
-quote hashes and every fitted parameter are included. Bloomberg and ThetaData
-inputs are licensed and are not included.} stores the inputs, seeds,
-results and figures of this section, the synthetic study, and the option-surface
-calibrations of Section~\ref{sec:oca-calibration}. The single chronological split
-is descriptive, and the block intervals describe sampling error under a stationary
-approximation. Section~\ref{sec:spx-physical-premium} uses SPX returns, realised
-variance and VIX to estimate latent volatility dynamics and price the July SPXW surface.
+the state, and finite samples can bias an ACF estimator.
+% [AI-DRAFT END]
+% [AI-DRAFT BEGIN: synthetic bias sentences, length cut of 27 Nov 2026. Author pass pending.]
+A synthetic experiment illustrates the second reason. We simulate a quadratic-drift
+model fitted to the VIX histogram and level autocorrelations. At lag 63 the mean
+sample ACF of latent volatility is ''' + f"{-five_year['bias'][k5]:.3f}" + r''' below its population value of
+''' + f"{five_year['population_acf'][k5]:.3f}" + r''' on five-year samples and ''' + f"{-twenty_year['bias'][k20]:.3f}"
+      + r''' below on twenty-year samples.
+The experiment averages ''' + str(study['n_paths']) + r''' paths and centres the estimator on the full-sample mean, so
+its bias values do not correct the empirical estimates above.
 % [AI-DRAFT END]''')
 m.write('empirical_section.tex')
 

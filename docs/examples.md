@@ -21,6 +21,19 @@ they are not part of the wheel. Run them from a source checkout after an editabl
 `python -m pip install -e .`. The scripts marked "core" run offline on the core installation; the
 others need the `research` extra and, where stated, a local data cache.
 
+## Package comparison examples
+
+The [library comparison](package_comparison.md) covers QuantLib, FinancePy, PyFENG, fypy,
+quantflow and tf-quant-finance. Use these SVM workflows to reproduce the pricing and calibration
+results or to adapt the fitted LogSV dynamics to your own path simulation.
+
+| Question | Example | Inputs |
+|---|---|---|
+| How do I pass a calibrated model to a path simulator? | [Fit LogSV and simulate asset, volatility and integrated variance](../examples/getting_started/calibrate_and_simulate_logsv.py). Run `python -m examples.getting_started.calibrate_and_simulate_logsv` from the checkout. | Core, bundled 49-quote Bitcoin chain |
+| How much does the Fourier cutoff change a long-dated Heston call? | The [controlled wing case](heston_model.md#controlled-fourier-pricing) checks the premium at strike 140. | Core, fixed model parameters |
+| How much calibration work do analytic derivatives save? | The [four-parameter gradient benchmark](calibration.md#four-parameter-logsv-gradient) compares the full fits on the same IVs. | Core, bundled Bitcoin chain |
+| How do Heston and LogSV fit FX broker mids? | [Price errors in IV units by tenor and delta](calibration.md#five-tenor-fx-mid-iv-fit) from the [EUR/USD replay script](../examples/fitters/compare_eurusd_fx_grid.py). | Core and a local five-tenor OCA grid |
+
 ## Documentation scripts
 
 Each page with Python code has one canonical script. The page shows excerpts of it, and the test

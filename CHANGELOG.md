@@ -4,6 +4,32 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+**2.21.0.dev6 (2026-11-26), added.** Public single-equity accumulator and decumulator
+strike quotes and fixed-strike marks use the calibrated local-volatility marginal
+under the settlement measure. Scheduled closing knock-outs, signed monthly payments
+and numerical diagnostics are explicit. Fixed BRCs can also be valued without a model.
+
+**2.21.0.dev5 (2026-11-25), added.** Five-strike six-month local-volatility calibration,
+correlated equity paths with quanto drift, and par coupon, fixed-coupon and shared-path
+portfolio valuation for cash-settled worst-of barrier reverse convertibles. Continuous
+monitoring reports dependence bounds and sampling uncertainty. The installed-wheel
+example also prices the maturity-only contract.
+
+**2.21.0.dev4 (2026-11-25), added.** `OptionChain.mid_ivs` and
+`OptionSlice.mid_ivs` carry explicit calibration mids. The OCA adapter
+and `load_option_chain` accept `iv_source` and use all expiries and pillars
+by default when only mark IVs are available. Bid and ask fields stay absent.
+
+**2.21.0.dev3 (2026-11-24), added.** Prepared Heston grids accept an initial
+variance `v0` for prices and forward Greeks. `v0_sensitivity` differentiates
+discounted premiums with respect to initial variance using the saved affine
+coefficients. `refined_for(..., v0=..., sensitivity_atol=...)` checks the
+scenario price and its variance sensitivity together.
+
+**2.21.0.dev2 (2026-11-24), added.** `PreparedHestonGrid.forward_greeks` returns
+discounted forward deltas and gammas using saved Heston transforms. Pass `delta_atol`
+and `gamma_atol` to `refined_for` to certify the derivatives independently.
+
 **2.21.0.dev1 (2026-11-24), added.** `HestonPricer.prepare_fourier` returns a
 `PreparedHestonGrid` for repeated controlled vanilla pricing at fixed model parameters
 and maturities. `price_chain` reuses saved transforms and `refined_for` evaluates

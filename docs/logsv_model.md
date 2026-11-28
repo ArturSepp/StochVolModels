@@ -448,6 +448,11 @@ python -m examples.pricers.benchmark_btc_forward_greeks --output-dir agents/btc-
   volatility beta and the vol-of-vol can produce similar smiles. The paper therefore fixes the rates
   from the autocorrelation of volatility before calibrating the other parameters; see the
   [Bitcoin case study](app_bitcoin_options.md).
+- **Long-run volatility from FX options.** With `PARAMS4`, the fitted $\theta$ is
+  in annualised volatility units. On one EUR/USD snapshot, adding 3M, 6M and 1Y
+  to the 1M and 2M pillars moved the estimate from 1.683% to 5.895% at fixed
+  $\kappa_1=2$ and $\kappa_2=8$. The short-only fit was sensitive to the
+  optimiser's stopping test. [Mid-IV fit, bounds and control runs](calibration.md#five-tenor-fx-mid-iv-fit)
 - **Martingale conditions.** A parameter set with $\kappa_2 < \beta$ is not a consistent model under
   the MMA measure, and one with $\kappa_2 < 2 \beta$ is not under the inverse measure. The pricer
   still returns numbers for such parameters.

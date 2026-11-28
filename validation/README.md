@@ -19,6 +19,7 @@ directories for study reports.
 
 | Command | Inputs and runtime | Output and interpretation |
 |---|---|---|
+| `python -m validation.accumulator_reference` | Flat 20% volatility, 252 native closes and two Gaussian quadrature meshes | Regenerates the twelve independent accumulator and decumulator fair strikes used by the installed PDE tests. Reports the change in bp of original spot under spatial refinement. |
 | `python -m examples.pde_solvers.run_theta_1d` | Small 1D grids, seconds | Forward Gaussian mass and moments, a backward ATM call with fixed endpoint values, and the integrated error against an analytic Poisson mixture. Each analytic comparison is asserted. |
 | `python -m examples.pde_solvers.run_adi_2d` | Synthetic correlated diffusion and two one-week smiles, seconds to minutes | Tensor-grid mass, variances and covariance, followed by coarse and fine Black and LogSV price errors in bp of discounted forward. |
 | `python -m validation.pde_qualification --cases high_vol_of_vol --repeats 1` | Frozen stress model and MC reference, minutes | `qualification.json` and `qualification.md` give the archive replay, changes with refinement and the actual qualification decision. Omit `--cases` for the slow full study. |

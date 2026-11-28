@@ -76,6 +76,7 @@ def diagnostic_chain_from_oca(
         raise ValueError("supply quality_report or quality_metadata, not both")
     result = option_chain_from_oca(
         chain,
+        iv_source='bid_ask',
         value_time=value_time,
         days_map=days_map,
         delta_bounds=delta_bounds,

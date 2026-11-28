@@ -125,7 +125,7 @@ records the accuracy and default decision across five Heston fixtures.
 ### Repricing on a prepared grid
 
 `grid = pricer.prepare_fourier(chain, params, fourier={"price_atol": 1e-6})` stores
-the accepted quadrature weights and the Heston log transform at each frequency
+the accepted quadrature weights and both Heston affine coefficients at each frequency
 and maturity. The supplied maturities must be positive and increasing. Preparation
 checks all maturities on a common grid. The node budget and `grid.diagnostics.evaluations`
 count frequencies across that grid, and each frequency costs one transform per maturity.
@@ -142,7 +142,8 @@ If a query raises `FloatingPointError` with a panel or cutoff diagnostic, use
 both the original and new quotes, evaluates only additional frequencies and returns
 a handle that can price either set. Queries can select a subset of the prepared maturities
 in increasing order and supply strikes in any order.
-A new maturity or a change in Heston model parameters requires a new preparation.
+A new maturity or a change to `theta`, `kappa`, `rho` or `volvol` requires a new
+preparation. Pass `v0` to query another initial variance on the same handle.
 
 For the ten-year wing above, the following times are medians of 31 interleaved rounds
 after compilation, using Python 3.12.10 on Windows with one BLAS thread. Setup prepares
@@ -161,6 +162,129 @@ Extending the wing handle to the full strike grid took 32.74 ms and 150 addition
 transform evaluations. Run `python -m examples.pricers.benchmark_prepared_heston`
 from the checkout to reproduce the comparison. [Benchmark source](../examples/pricers/benchmark_prepared_heston.py)
 
+### Forward delta and gamma
+
+`grid.forward_greeks(quotes, delta_atol=1e-9, gamma_atol=1e-10)` returns two
+lists of arrays in expiry and strike order. Delta and gamma differentiate the discounted
+premium with respect to the forward, holding strike, discount, maturity and all Heston
+parameters fixed. The two absolute tolerances default to `1e-6` in premium per forward
+unit and per squared forward unit, respectively.
+
+The half-contour integrand contains the forward factor $F^{1/2-iu}$ at frequency $u$.
+Its first derivative multiplies the integrand by $(1/2-iu)/F$, and its second by
+$-(u^2+1/4)/F^2$. Differentiating the additive call term contributes the discount factor
+to call delta. Calls and puts at the same strike have the same gamma.
+
+Use `risk = grid.refined_for(quotes, delta_atol=1e-9, gamma_atol=1e-10)` to check
+panel resolution and frequency tails in the units of each derivative. On certified
+quotes, `risk.forward_greeks` with the same tolerances computes both weighted sums
+using one strike phase per frequency. A new quote can use the saved transforms after
+passing the fixed-grid checks. Only explicit refinement can evaluate new frequencies.
+
+The one-hour ATM Black check uses $F=K=100$, $D=0.98$, constant volatility 24% and
+zero vol-of-vol. Call delta is 0.4905012625, put delta is −0.4894987375 and gamma is
+1.5246726011 for both contracts. The prepared-grid values agree with the discounted
+Black derivatives to within `7e-16`. [Verification cases](../src/stochvolmodels/tests/test_prepared_heston_grid.py)
+
+For the ten-year case above, the strike-140 call has delta **0.046512222891** and
+gamma **0.007264704717**. The table compares both derivatives with central differences
+of fresh controlled premiums at $F-h$, $F$ and $F+h$, with absolute premium tolerance
+`1e-11`. Errors are absolute, and the grid columns report the maximum across all 1,001 strikes.
+
+| Forward bump $h$ | Wing delta error | Wing gamma error | Grid delta error | Grid gamma error |
+|---:|---:|---:|---:|---:|
+| 0.020 | 7.44e-8 | 5.49e-9 | 1.77e-7 | 2.44e-8 |
+| 0.010 | 1.86e-8 | 1.92e-9 | 4.41e-8 | 7.16e-9 |
+| 0.005 | 4.65e-9 | 2.70e-9 | 1.10e-8 | 8.44e-9 |
+
+Halving the bump reduced the delta discrepancy by about four at each step. Gamma's
+second difference is sensitive to cancellation at the smallest bump. A separate
+inversion of the share-measure tail probability and log-return density gave maximum
+dense-grid discrepancies of `1.59e-14` for delta and `4.29e-14` for gamma.
+
+The timings below are milliseconds per complete chain, with 31 interleaved rounds after
+warm-up and one BLAS thread. The analytic path starts with a `1e-6` price tolerance,
+then refines to `delta_atol=1e-9` and `gamma_atol=1e-10`. The warm bump comparison
+recomputes three premiums on a separate grid certified for all three forwards at
+$h=0.005$. Both warm paths use zero additional transforms.
+
+| Ten-year calls | Prepare price grid | Refine for both Greeks | Warm analytic pair | Warm central pair | Frequencies, prepare + refine |
+|---|---:|---:|---:|---:|---:|
+| Strike 140 | 6.36 ms | 7.07 ms | 1.17 ms | 1.92 ms | 180 + 75 |
+| 1,001 strikes from 50 to 150 | 65.32 ms | 292.33 ms | 39.47 ms | 94.04 ms | 330 + 465 |
+
+Preparing and certifying the separate bump grids took 28.84 ms for the wing and
+553.19 ms for the dense grid. The benchmark reports medians, 10th and 90th percentiles
+and the worst strike at each bump. [Reproducible benchmark](../examples/pricers/benchmark_prepared_heston.py)
+
+### Initial-variance scenarios and sensitivity
+
+At each maturity and frequency the Heston transform is $M(v_0)=\exp(A+Bv_0)$.
+The prepared grid stores $A$ and $B$. Changing the initial variance requires only
+recombining these coefficients. For the variance derivative, the Fourier integral
+uses $\partial M/\partial v_0=B M(v_0)$. Put-call parity makes this derivative
+identical for a call and a put at the same strike.
+
+For example, `risk = grid.refined_for(quotes, v0=0.09, sensitivity_atol=1e-8)`
+checks the premium and the derivative at 30% initial volatility. Use
+`risk.price_chain(quotes, v0=0.09)` for discounted premiums and
+`risk.v0_sensitivity(quotes, v0=0.09, atol=1e-8)` for their derivatives, in
+expiry and strike order. Omitting `v0` uses the original preparation state.
+`v0` is a nonnegative annualized **variance**. The derivative is premium per
+unit variance, holding the forward, strike, discount and remaining dynamics
+fixed. To obtain the derivative per unit of initial volatility $\sigma_0$,
+multiply by $2\sigma_0$. A new state has its own resolution and tail checks.
+Only explicit refinement evaluates additional coefficients.
+
+The ten-year benchmark uses $F=100$, discount factor 1, $\theta=0.04$,
+$\kappa=0.5$, $\rho=-0.9$ and vol-of-vol 1. The grid was prepared at $v_0=0.04$
+with a premium tolerance of `1e-6`, then refined for all three states with a
+sensitivity tolerance of `1e-8`. The price reference is a fresh controlled call
+at each state with premium tolerance `1e-11`. The sensitivity reference uses
+fresh controlled prices at $v_0+h$ and $v_0-h$ with the same tight tolerance.
+
+| Initial variance | Strike-140 call | Wing $\partial P/\partial v_0$ | Max dense price difference | Max dense sensitivity difference at $h=0.0000125$ |
+|---:|---:|---:|---:|---:|
+| 0.01 | 0.174345600470 | 3.1782113471 | 9.45e-14 | 7.95e-8 |
+| 0.04 | 0.295774435798 | 5.0292153006 | 1.18e-13 | 6.02e-8 |
+| 0.09 | 0.654695999087 | 9.6235738840 | 8.06e-14 | 4.23e-8 |
+
+The following absolute sensitivity discrepancies are maxima across the three
+states and all strikes in each case. Halving the bump reduced the dense-grid
+discrepancy by about four at each step.
+
+| Variance bump $h$ | Strike 140 | 1,001 strikes from 50 to 150 |
+|---:|---:|---:|
+| 0.0001000 | 1.32e-6 | 5.05e-6 |
+| 0.0000500 | 3.29e-7 | 1.26e-6 |
+| 0.0000250 | 8.15e-8 | 3.16e-7 |
+| 0.0000125 | 1.99e-8 | 7.95e-8 |
+
+Timings are medians of 21 interleaved rounds after warm-up with one BLAS thread
+on Windows, Python 3.12.10. Preparation builds the seed once. Refinement certifies
+all three states starting from that seed. Each pricing or sensitivity column times
+one complete three-state sweep. The warm central comparison uses six premium queries
+on a separate grid certified at the bumped variances. Fresh pricing uses the same
+`1e-6` operating tolerance as prepared pricing.
+
+| Ten-year calls | Prepare | Refine for three states | Warm prices | Fresh prices | Warm analytic sensitivities | Warm central bumps |
+|---|---:|---:|---:|---:|---:|---:|
+| Strike 140 | 7.37 ms | 16.56 ms | 1.84 ms | 17.45 ms | 1.53 ms | 3.10 ms |
+| 1,001 strikes | 35.99 ms | 888.33 ms | 49.11 ms | 126.04 ms | 100.45 ms | 148.84 ms |
+
+Preparation and refinement evaluated 180 + 75 frequencies for the wing and
+330 + 525 for the dense grid. All warm queries used zero additional coefficient
+evaluations. Reproduce the tables with
+`python -m examples.pricers.benchmark_prepared_heston --v0`. The JSON output
+includes timing percentiles, root mean square errors and the worst strike at
+each state and bump. [Benchmark source](../examples/pricers/benchmark_prepared_heston.py)
+
+The regression tests also check the analytic Black variance derivative for
+deterministic variance, including $v_0=0$ with positive mean reversion. At
+$v_0=0.09$, a separate Heston probability inversion checks prices and
+Richardson-extrapolated central variance bumps at maturities of 0.1 and 10 years.
+[Numerical checks](../src/stochvolmodels/tests/test_prepared_heston_grid.py)
+
 ### Feller condition and stationary law
 
 The variance stays away from zero if $2 \kappa \theta \ge \vartheta^2$, the Feller condition. Its
@@ -170,9 +294,18 @@ one the law is exponential, with its mode at zero variance.
 
 ### Calibration and simulation
 
-`HestonPricer.calibrate_model_params_to_chain` fits all five parameters by sequential least squares
-to implied volatilities weighted by vegas normalised within each maturity, with bounds and the
-Feller condition as an inequality constraint. By default, `model_mc_price_chain` uses 360 Euler steps a
+`HestonPricer.calibrate_model_params_to_chain` fits all five parameters by sequential
+least-squares programming under box bounds and the Feller inequality. The default loss
+weights IV errors by vegas normalised within each maturity. With explicit `mid_ivs`
+and `is_vega_weighted=False`, each reconstructed pillar has equal weight.
+
+The public calibrator sets a lower bound of 0.01 on both $v_0$ and $\theta$ in
+**variance** units, equivalent to 10% initial and long-run volatility. For a lower-volatility
+currency pair, that floor can dominate the fit. The EUR/USD benchmark uses the same
+controlled pricing engine with a separate optimiser that sets bounds in volatility
+units and enforces the Feller inequality. [FX bounds and comparison with the public calibrator](calibration.md#five-tenor-fx-mid-iv-fit)
+
+By default, `model_mc_price_chain` uses 360 Euler steps a
 year and floors the variance at $10^{-4}$ after each step (see
 [Monte Carlo simulation](monte_carlo_simulation.md#the-heston-scheme)).
 
@@ -265,7 +398,7 @@ previous parameter/kernel imports remain aliases to the same objects.
 |---|---|
 | `HestonParams` | Fields `v0`, `theta`, `kappa`, `rho`, `volvol`, as in the table above |
 | `HestonPricer.price_chain`, `compute_model_ivols_for_chain` | Prices and implied volatilities from the closed-form MGF |
-| `HestonPricer.prepare_fourier`, `PreparedHestonGrid` | Controlled prices and explicit refinement at prepared maturities |
+| `HestonPricer.prepare_fourier`, `PreparedHestonGrid` | Controlled prices, forward delta and gamma, initial-variance scenarios and sensitivity, and explicit refinement at prepared maturities |
 | `HestonPricer.model_mc_price_chain`, `simulate_terminal_values` | Euler by default, with the historical Numba seed. Select QE-M with `mc_scheme="qe_m"` and pass `seed` and `steps_per_year` for reproducible paths. |
 | `HestonPricer.calibrate_model_params_to_chain` | Fit of all five parameters with the Feller constraint |
 | `BTC_HESTON_PARAMS` | Preset used as a starting point for Bitcoin chains (compatibility tier) |

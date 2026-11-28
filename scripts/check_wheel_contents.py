@@ -93,6 +93,15 @@ def check_pde_files(members) -> None:
 
 
 REQUIRED_RUNTIME_FILES = PDE_FILES | {
+    "stochvolmodels/fitters/sparse_local_vol.py",
+    "stochvolmodels/models/basket/__init__.py",
+    "stochvolmodels/models/basket/model.py",
+    "stochvolmodels/models/basket/simulation.py",
+    "stochvolmodels/products/accumulator.py",
+    "stochvolmodels/products/barrier_reverse_convertible.py",
+    "stochvolmodels/pricers/accumulator.py",
+    "stochvolmodels/pricers/barrier_reverse_convertible.py",
+    "stochvolmodels/pricers/_barrier_monitoring.py",
     "stochvolmodels/fitters/logsv_backbone.py",
     "stochvolmodels/models/hawkes_jd/params.py",
     "stochvolmodels/models/hawkes_jd/transforms.py",

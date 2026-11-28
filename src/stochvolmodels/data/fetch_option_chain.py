@@ -358,9 +358,11 @@ def generate_vol_chain_np(chain: SlicesChain,
 
 def load_option_chain(options_data_dfs: OptionsDataDFs,
                       value_time: pd.Timestamp = pd.Timestamp('2023-02-06 08:00:00+00:00'),
-                      days_map: Dict[str, int] = {'1w': 7, '1m': 21},
-                      delta_bounds: Tuple[Optional[float], Optional[float]] = (-0.1, 0.1),
-                      is_filtered: bool = True
+                      days_map: Optional[Dict[str, int]] = None,
+                      delta_bounds: Tuple[Optional[float], Optional[float]] | Literal['default'] | None = 'default',
+                      is_filtered: bool = True,
+                      *,
+                      iv_source: Literal['auto', 'bid_ask', 'mark'] = 'auto',
                       ) -> Optional[OptionChain]:
     """
     Build an OptionChain from the latest OCA observation at or before a schedule time.
@@ -377,6 +379,7 @@ def load_option_chain(options_data_dfs: OptionsDataDFs,
         days_map=days_map,
         delta_bounds=delta_bounds,
         is_filtered=is_filtered,
+        iv_source=iv_source,
     )
 
 

@@ -96,6 +96,16 @@ class HestonModel:
         Riccati roots or very small volatility of variance, an adaptive Riccati solve
         evaluates the same dynamics without subtracting nearly equal coefficients.
         """
+        intercept, loading = self._affine_coefficients(ttm=ttm, phi_grid=phi_grid, psi_grid=psi_grid)
+        result = intercept + self._v0 * loading
+        if not np.isfinite(result).all():
+            raise FloatingPointError("Heston transform is not finite on the requested grid")
+        return result
+
+    def _affine_coefficients(
+        self, *, ttm: float, phi_grid: np.ndarray, psi_grid: np.ndarray | None = None,
+    ) -> tuple[NDArray[np.complex128], NDArray[np.complex128]]:
+        """Return the exact affine coefficients A, B in log M = A + B*v0."""
         maturity = _real(ttm, "ttm")
         grids = []
         for name, grid in (("phi_grid", phi_grid), ("psi_grid", psi_grid)):
@@ -110,28 +120,27 @@ class HestonModel:
         phi, psi = grids
         if phi.shape != psi.shape:
             raise ValueError("phi_grid and psi_grid must have the same shape")
+        intercept, loading = np.zeros_like(phi), np.zeros_like(phi)
         if maturity == 0.0:
-            return np.zeros_like(phi)
+            return intercept, loading
+        b0 = 0.5 * phi * (phi + 1.0) - psi
         if self._volvol == 0.0:
-            integrated = (
-                self._v0 * maturity
-                if self._kappa == 0.0
-                else (
-                    self._theta * maturity
-                    + (self._v0 - self._theta) * (-np.expm1(-self._kappa * maturity)) / self._kappa
-                )
+            kt = self._kappa * maturity
+            duration = maturity if kt == 0.0 else -np.expm1(-kt) / self._kappa
+            # Resolve the small long-run-variance contribution even at v0 = 0.
+            drift_duration = (
+                maturity * kt * (0.5 - kt / 6 + kt**2 / 24)
+                if kt < 1e-5 else maturity - duration
             )
-            return (0.5 * phi * (phi + 1.0) - psi) * integrated
+            return b0 * (self._theta * drift_duration), b0 * duration
 
-        from stochvolmodels.models.heston.kernels import compute_heston_mgf_grid
+        from stochvolmodels.models.heston.kernels import _heston_affine_coefficients
 
         # Every zero constant term gives the exact zero Riccati solution, including
         # joint return/variance grids beyond the usual phi=0 and phi=-1 anchors.
-        b0 = 0.5 * phi * (phi + 1.0) - psi
         active = b0 != 0.0
-        result = np.zeros_like(phi)
         if not np.any(active):
-            return result
+            return intercept, loading
 
         volvol2 = self._volvol * self._volvol
         b1 = self._kappa + self._rho * self._volvol * phi
@@ -159,8 +168,7 @@ class HestonModel:
         direct = active & ~fallback
         if np.any(direct):
             try:
-                values, _, _ = compute_heston_mgf_grid(
-                    v0=self._v0,
+                a, b = _heston_affine_coefficients(
                     theta=self._theta,
                     kappa=self._kappa,
                     rho=self._rho,
@@ -173,8 +181,8 @@ class HestonModel:
                 fallback[direct] = True
             else:
                 indices = np.flatnonzero(direct)
-                finite = np.isfinite(values)
-                result[indices[finite]] = values[finite]
+                finite = np.isfinite(a) & np.isfinite(b)
+                intercept[indices[finite]], loading[indices[finite]] = a[finite], b[finite]
                 fallback[indices[~finite]] = True
 
         if np.any(fallback):
@@ -207,10 +215,8 @@ class HestonModel:
                     raise FloatingPointError(
                         "Heston Riccati transform failed on the requested grid"
                     )
-                result[index] = solution.y[0, -1] + self._v0 * solution.y[1, -1]
-        if not np.isfinite(result).all():
-            raise FloatingPointError("Heston transform is not finite on the requested grid")
-        return result
+                intercept[index], loading[index] = solution.y[:, -1]
+        return intercept, loading
 
     def simulate_paths(
         self,

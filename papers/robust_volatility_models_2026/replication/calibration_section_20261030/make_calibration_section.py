@@ -3,7 +3,9 @@
 Reads only saved outputs of ../calibration_pde_20261029 and
 ../calibration_positive_skew_20261031 (comparison_table.csv,
 maturity_comparison.csv, numerical_checks.csv, *_pde_fit.json, *_pde_checks.json,
-*_quote_results.csv). No option is repriced and no parameter is refitted.
+*_quote_results.csv) and, for the SPXW figure, the stored restricted fit in
+../spx_physical_pricing_20261124/quote_fits.csv. No option is repriced and no parameter
+is refitted.
 
 Adds to the 29 Oct section, as decided in the manuscript review of 29 Oct 2026:
   * the per-maturity IV RMSE and inside-spread table (E3);
@@ -22,12 +24,21 @@ author's pass; every number in them is read from the saved outputs.
 Length cut of 30 Oct 2026 (round 3): the section shows the SPXW and TLT+ smile
 figures only (FIGURE_TICKERS). The GLD and July TLT figures remain in the frozen
 bundle and are cited as replication-package material.
+
+Length cut of 27 Nov 2026: the section keeps the fit table, the per-maturity table and one
+SPXW figure (spxw_smiles.png, drawn here), which adds the index-inverted one-premium fit
+to the Heston and unrestricted LogSV curves. The two parameter tables, the numerical-check
+table, the information-criterion text, the TLT+ figure and the solver detail are no longer
+in the section. Their numbers stay in the frozen bundles and in derived_numbers.json.
 """
 from pathlib import Path
 import json
 import os
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 BASE = Path(__file__).resolve().parent
 ROOT = Path(os.environ.get('REVIEW_REPLICATION_ROOT', BASE.parent))
@@ -165,14 +176,9 @@ A fourth snapshot, TLT on 2 August 2024 (denoted TLT+), exercises positive smile
 skew with the same filters, objective, bounds and numerical checks. Its 99 quotes
 span expiries 14 August, 30 August, 20 September and 30 September 2024 (about
 12, 28, 49 and 59 days), and all four slices have positive 25-delta smile skew.
-The candidate search tried GLD first, then TLT, requiring four usable maturities
-and a positive 30-day skew, and the strict all-four-positive rule was not relaxed.
-The selected snapshot maximises the 30-day skew among eligible TLT candidates.
-The GLD archive holds 22 dates, all in July 2026, and no qualifying positive
-30-day skew, whereas the TLT archive has 805 dates from June 2023 to August 2026, of which
-196 have positive 30-day skew. This unequal coverage and the deliberate extreme
-selection make TLT+ a methodological illustration, not an estimate of positive-skew
-frequency across markets. The shorter expiry is retained in both models' joint fits.
+The snapshot has the highest 30-day skew among the archived TLT dates with four usable
+maturities and positive skew in all four slices. TLT+ is therefore a methodological
+illustration and not an estimate of positive-skew frequency.
 % [AI-DRAFT END]
 
 \paragraph{Objective and numerical implementation.}
@@ -214,21 +220,14 @@ $U(t,y;\phi)=\E[\exp(-\phi X_t)\mid\sigma_0=e^y]$, the equation is
 \end{align}
 Here $\Re\phi=-1/2$ is the valuation contour. The model is the Markovian specification
 with a flat volatility backbone.
-% [AI-DRAFT BEGIN: discretisation of the transform PDE, 17 Nov 2026, second pass. Taken from logvol_pde.py.]
-The solver discretises $y$ on a uniform grid with spacing $\Delta y$, centred at
-$\log\sigma_0$. It uses central differences, with the diffusion coefficient raised to
-$\Delta y\,|a(y)|/2$ at nodes where that value exceeds $v^2/2$. The remote values are one at low volatility and zero at high
-volatility. Two implicit Euler half steps precede the Crank--Nicolson steps and damp the
-mismatch between the initial condition and the upper remote value.
+% [AI-DRAFT BEGIN: solver summary, length cut of 27 Nov 2026, condensed from the 17 Nov discretisation
+%  block and the grid paragraph. The Sepp (2011) sentence moved here from the former Section 7.1.]
+We solve~\eqref{eq:oca-transform-pde} by finite differences on a uniform log-volatility grid
+with Crank--Nicolson time stepping. Two coarse-grid optimisations from different starting
+vectors precede a refinement, and reported curves and scores use 1601 state nodes and 1024
+time steps. Finite-difference methods for the calibration and pricing equations of local
+stochastic volatility models are described in \citet{Sepp2011}.
 % [AI-DRAFT END]
-
-Two bounded coarse-grid optimisations use 401 state nodes and 256 time steps, one
-started from a simulation-based fit and one from an independent starting
-vector. The better solution is refined with 801 nodes and 512 steps. All optimiser
-stages terminate successfully, which does not establish a global optimum. Reported
-curves and scores use 1601 nodes and 1024 steps, with 64-point Gauss--Legendre
-integration in each of six Fourier subintervals up to frequency 1600, on a
-log-volatility domain of six units on either side of $\log\sigma_0$.
 
 \begin{table}[htbp]\centering\small
 \begin{tabular}{@{}l l r r r r@{}}\toprule
@@ -267,172 +266,109 @@ TLT, and about 12, 28, 49 and 59 days for TLT+. Quote counts per slice are 17 to
 Source: ThetaData via OCA, with dates as in Table~\ref{tab:oca-fits}.}
 \label{tab:oca-maturity}\end{table}''')
 
-# Round 3 length cut (30 Oct 2026): only the SPXW and TLT+ smile figures are exhibits of the
-# main text. The GLD and July TLT figures stay in calibration_pde_20261029/figures. The figure
-# environments follow the two fit tables in the source so that LaTeX places them at the top of
-# the next text pages instead of on float pages after the section.
-FIGURE_TICKERS = ['SPXW', 'TLTpositive']
-
-
-def smile_figure(t):
-    etf = ' The ETF panels use OCA European-equivalent Black IV conventions.' if t != 'SPXW' else ''
+# Length cut of 27 Nov 2026: one SPXW figure replaces the SPXW and TLT+ smile figures of this
+# section and the SPXW figure of the physical-to-pricing subsection. It adds the index-inverted
+# one-premium fit stored in ../spx_physical_pricing_20261124 to the two unrestricted fits. The
+# earlier figures stay in their bundles.
+def spxw_figure():
+    """Draw the SPXW smiles with the Heston, unrestricted LogSV and index-inverted one-premium fits."""
+    restricted = pd.read_csv(ROOT / 'spx_physical_pricing_20261124' / 'quote_fits.csv')
+    q = quotes['SPXW'].merge(restricted, on='contract', validate='one_to_one')
+    assert len(q) == len(quotes['SPXW'])
+    # the unrestricted fit of the physical-to-pricing bundle is the LogSV fit of this section
+    np.testing.assert_allclose(q.unrestricted_iv, q.logsv_pde_iv, atol=2e-6)
+    fig, axes = plt.subplots(2, 2, figsize=(9, 6.0), sharex=True, sharey=True, layout='constrained')
+    for ax, (ttm, g) in zip(axes.flat, q.groupby('ttm')):
+        g = g.sort_values('strike')
+        x = 100 * np.log(g.strike / g.forward_price)            # log-moneyness in percent
+        ax.fill_between(x, 100 * g.bid_iv, 100 * g.ask_iv, color='#b9c3cb', alpha=0.55, label='Bid-ask')
+        ax.plot(x, 50 * (g.bid_iv + g.ask_iv), 'o', color='#253340', markersize=2.7, label='Market midpoint')
+        ax.plot(x, 100 * g.heston_iv, color='#7b3fa0', ls='--', lw=1.7, label='Heston')
+        ax.plot(x, 100 * g.logsv_pde_iv, color='#266ba2', lw=1.8, label='LogSV, unrestricted')
+        ax.plot(x, 100 * g.premium_only_iv, color='#ad5924', lw=1.8, label='LogSV, historical loadings, one premium')
+        expiry = pd.to_datetime(g.mat_id.iloc[0], format='%d%b%Y').strftime('%d %b')
+        ax.set_title(f'{expiry} ({365 * ttm:.0f} days)', loc='left', fontsize=10)
+        ax.spines[['top', 'right']].set_visible(False)
+        ax.grid(axis='y', alpha=0.22)
+    axes[0, 1].legend(frameon=False, fontsize=8)
+    fig.supxlabel('Log-moneyness (%)')
+    fig.supylabel('Black implied volatility (%)')
+    fig.savefig(BASE / 'spxw_smiles.png', dpi=180)
+    plt.close(fig)
     return (r'\begin{figure}[tbp]\centering' + '\n'
-            + r'\includegraphics[width=\textwidth]{' + SOURCES[t].name + '/' + FILE_TICKER[t] + r'_fits.png}' + '\n'
-            + r'\caption{' + DISPLAY[t] + (' on 2 August 2024' if t == 'TLTpositive' else ' on 15 July 2026') + ', including the approximately 12-day expiry. '
-            'Points and grey bands show OCA midpoint and bid--ask IVs. The dashed curve is Heston and '
-            'the solid curve the LogSV fit priced on the fine PDE grid. All four maturities share one '
-            'parameter vector per model.' + etf + ' Source: ThetaData via OCA.' + r'}\label{fig:oca-' + t.lower() + r'}\end{figure}')
+            + r'\includegraphics[width=0.92\textwidth]{' + BASE.name + r'/spxw_smiles.png}' + '\n'
+            + r'\caption{SPXW implied volatilities on 15 July 2026 at the four fitted expiries. Points and '
+            r'shading show OCA quote midpoints and bid--ask intervals. The dashed curve is Heston and the '
+            r'blue curve is the LogSV fit priced on the fine PDE grid, each with one parameter vector for '
+            r'all four maturities. The orange curve keeps the historical diffusion loadings and fits one '
+            r'premium with index-implied spot (Section~\ref{sec:asset-physical-premium}). '
+            r'Source: ThetaData via OCA.}\label{fig:oca-spxw}\end{figure}')
 
 
-T.extend(smile_figure(t) for t in FIGURE_TICKERS)
+T.append(spxw_figure())
 
-# BIC-type sentence
-bic_parts = []
-for t in TICKERS:
-    d = derived[t]
-    bic_parts.append(f"{DISPLAY[t]}: {d['delta_bic']:.0f}")
+# Length cut of 27 Nov 2026: the information-criterion sentence is removed. The criterion stays
+# in derived_numbers.json.
 
 
 spx_logsv, spx_heston = slice_rmse('SPXW', 'LogSV (PDE)'), slice_rmse('SPXW', 'Heston')
-T.append(r'''% [AI-DRAFT BEGIN: per-maturity reading, information criterion and half-lives, 30 Oct 2026.]
+max_iv = numerics.max_grid_iv_change_pp.max()
+max_frac = 100 * numerics.max_grid_change_fraction_spread.max()
+max_z = numerics.mc_max_z.max()
+count = int(numerics.mc_outside_2se.sum())
+# Length cut of 27 Nov 2026: the LogSV and Heston parameter tables (tab:oca-logsv-params,
+# tab:oca-heston-params) and the numerical-check table (tab:oca-pde-checks) are removed. The fitted
+# parameters are in the *_pde_fit.json and *_pde_checks.json files and the checks in numerical_checks.csv.
+T.append(r'''% [AI-DRAFT BEGIN: per-maturity reading and half-lives, 30 Oct 2026, cut on 27 Nov 2026.]
 Table~\ref{tab:oca-fits} summarises the four joint fits, and
-Figures~\ref{fig:oca-spxw} and~\ref{fig:oca-tltpositive} show the SPXW and TLT+
-smiles with both fitted curves. The GLD and July TLT smile figures are in the
-replication package. Table~\ref{tab:oca-maturity} locates the improvement. On SPXW the LogSV RMSE at
+Figure~\ref{fig:oca-spxw} shows the SPXW smiles with both fitted curves.
+Table~\ref{tab:oca-maturity} locates the improvement. On SPXW the LogSV RMSE at
 the 12-day and 30-day slices is '''
          + f"{spx_logsv[0]:.2f} and {spx_logsv[1]:.2f}"
          + r''' percentage points against '''
          + f"{spx_heston[0]:.2f} and {spx_heston[1]:.2f}"
          + r''' for Heston, while the two longest slices differ by less. On GLD and TLT
 the improvement is spread across maturities, and LogSV improves '''
-         + f'{improved} of the {total_slices}' + r''' slices in total. A criterion of the Bayesian-information type
-uses the unweighted per-quote sum $\mathrm{RSS}=\sum_{i,j}(100e_{ij})^2$,
-evaluated at each model's fitted parameters, and $n=\sum_i n_i$, rather than the maturity-weighted objective in
-\eqref{eq:oca-calibration-objective}. The statistic $n\ln(\mathrm{RSS}/n)+k\ln n$,
-with $k=5$ for Heston and $k=6$ for LogSV, favours LogSV by '''
-         + ', '.join(bic_parts)
-         + r''' (differences LogSV minus Heston, so negative values favour LogSV). The quotes
-within a slice are not independent and some fitted parameters are at their bounds,
-so the criterion is descriptive and the penalty
-for the sixth parameter, $\ln n\approx4.6$, is small against the residual term.
-The fitted parameters in Tables~\ref{tab:oca-logsv-params}
-and~\ref{tab:oca-heston-params} carry linearised drift half-lives
+         + f'{improved} of the {total_slices}' + r''' slices in total.
+The fitted parameters carry linearised drift half-lives
 $365\ln2/(\kappa_1+\kappa_2\theta)$ of ''' + f'{min(hl_logsv):.1f} to {max(hl_logsv):.1f}' + r''' days for LogSV
 and variance-mean half-lives $365\ln2/\kappa$ of ''' + f'{min(hl_heston):.1f} to {max(hl_heston):.1f}'
          + r''' days for Heston, with active upper bounds on the drift speeds in
 every LogSV fit and in the GLD and TLT+ Heston fits. Both models use their mean reversion to
 shape the 12-day slice. The drift parameters are therefore term-structure parameters
-of one snapshot, not estimates of historical mean reversion. The LogSV half-life
-describes the drift linearised at $\theta$, rather than the exact conditional mean
-or stationary autocorrelation. Heston's expression is exact for its conditional
-variance mean.
+of one snapshot, not estimates of historical mean reversion.
 % [AI-DRAFT END]
-
-\begin{table}[htbp]\centering\small
-\begin{tabular}{@{}l r r r r r r r r@{}}\toprule
-Market & $\sigma_0$ & $\theta$ & $\kappa_1$ & $\kappa_2$ & $\beta$ & $\varepsilon$ & $\kappa_2-\beta$ & Half-life (days)\\\midrule''')
-for t in TICKERS:
-    p = fits[t]['parameters']
-    values = [p[k] for k in ['sigma0', 'theta', 'kappa1', 'kappa2', 'beta', 'volvol']] + [p['kappa2'] - p['beta']]
-    T.append(DISPLAY[t] + ' & ' + ' & '.join(f'{v:.4f}' for v in values) + f" & {derived[t]['halflife_days_logsv']:.1f}" + r' \\')
-active = []
-labels = [r'\sigma_0', r'\theta', r'\kappa_1', 'm', r'\beta', r'\varepsilon']
-for t in TICKERS:
-    fit = fits[t]
-    for i, name in enumerate(fit['parameter_order']):
-        if name in fit['active_bounds']:
-            bound = min([fit['bounds'][0][i], fit['bounds'][1][i]], key=lambda b: abs(b - fit['x'][i]))
-            label = r'\kappa_2' if name == 'margin' and fit['parameters']['beta'] < 0 else labels[i]
-            active.append(DISPLAY[t] + f' ${label}={bound:g}$')
-T.append(r'''\bottomrule\end{tabular}
-\caption{PDE-calibrated LogSV parameters. The three July snapshots have $\beta<0$, and
-TLT+ has $\beta>0$ and satisfies $\kappa_2>\beta$ with a wide margin. The imposed
-lower bound $m=0.05$ is inactive for TLT+. Active bounds: ''' + ', '.join(active) + r'''. The linearised drift half-life is
-$365\ln2/(\kappa_1+\kappa_2\theta)$. Source: ThetaData via OCA, with dates as in Table~\ref{tab:oca-fits}.}
-\label{tab:oca-logsv-params}\end{table}
-
-\begin{table}[htbp]\centering\small
-\begin{tabular}{@{}l r r r r r r@{}}\toprule
-Market & $V_0$ & $\theta_V$ & $\kappa$ & $\rho$ & $\nu$ & Half-life (days)\\\midrule''')
-for t in TICKERS:
-    h = checks[t]['Heston']['parameters']
-    T.append(DISPLAY[t] + ' & ' + ' & '.join(f"{h[k]:.5f}" for k in ['v0', 'theta', 'kappa', 'rho', 'volvol'])
-             + f" & {derived[t]['halflife_days_heston']:.1f}" + r' \\')
-T.append(r'''\bottomrule\end{tabular}
-\caption{Heston variance parameters. GLD and TLT+ reach the $\kappa=30$ upper bound. All
-four solutions have $2\kappa\theta_V<\nu^2$, and the transform pricer accommodates
-the attainable, instantaneously reflecting zero variance boundary of the usual CIR
-solution. The conditional variance-mean half-life is $365\ln2/\kappa$. Source: ThetaData via OCA, with dates as in Table~\ref{tab:oca-fits}.}
-\label{tab:oca-heston-params}\end{table}
 
 \paragraph{Numerical checks.}
 We separately double the spatial and the time resolution, enlarge the state domain
 from six to eight log-volatility units at matched mesh spacing, and refine the
-Fourier integration to 96 points per subinterval and cutoff 2400. Table~\ref{tab:oca-pde-checks}
-reports the largest changes relative to the reported grid, in IV units and relative
-to each quote's premium bid--ask spread, including the worst quote.
-
-\begin{table}[htbp]\centering\small
-\begin{tabular}{@{}l r r r r@{}}\toprule
-Market & Grid IV change & Grid/spread & PDE--MC gap & MC steps\\
- & (pp, max.) & (\%, max.) & (bp of $F$, max.) & \\\midrule''')
-for n in numerics.itertuples():
-    T.append(f"{DISPLAY[n.market]} & {n.max_grid_iv_change_pp:.5f} & {100*n.max_grid_change_fraction_spread:.3f} & "
-             f"{n.mc_max_gap_bpF:.4f} & {n.mc_steps}" + r' \\')
-max_iv = numerics.max_grid_iv_change_pp.max()
-max_frac = 100 * numerics.max_grid_change_fraction_spread.max()
-max_z = numerics.mc_max_z.max()
-count = int(numerics.mc_outside_2se.sum())
-T.append(r'''\bottomrule\end{tabular}
-\caption{All observed deterministic refinement changes are below one percent of a
-premium spread at every retained quote, and independent Monte Carlo (MC) comparisons are
-reported alongside them. Checks use the final PDE-calibrated parameters. Grid
-columns take the maximum over four separate refinements. MC uses four independent
-scrambles of 32768 paths each with paired half-step comparisons. Price differences
-are discounted premiums divided by the forward, times $10^4$.}
-\label{tab:oca-pde-checks}\end{table}
-
+Fourier integration to 96 points per subinterval and cutoff 2400.
 The largest deterministic refinement change is ''' + f'{max_iv:.5f}' + r''' IV percentage
 points and ''' + f'{max_frac:.3f}' + r'''\% of a premium spread. Independent conditional
 split-step Monte Carlo gives a maximum standardised price gap of ''' + f'{max_z:.2f}'
          + f', and {count} of the {sum(len(q) for q in quotes.values())} quotes ' + ('lies' if count == 1 else 'lie') + r''' outside two
 estimated scramble standard errors. Four scrambles give noisy standard-error
-estimates, so these are not simultaneous tests. The simulator reports no volatility
-flooring, and the Heston independent-pricing checks are retained in the replication package.
+estimates, so these are not simultaneous tests.
 
 \paragraph{Cost, accuracy and what the examples support.}
-% [AI-DRAFT BEGIN: speed and expansion status stated directly (E4), 30 Oct 2026.]
+% [AI-DRAFT BEGIN: speed, expansion status and scope (E4), 30 Oct 2026, cut on 27 Nov 2026.]
 The PDE calibration costs ''' + f'{ratio_min:,.0f}' + ' to ' + f'{ratio:,.0f}'
          + r''' times the Heston transform calibration on these surfaces
 (Table~\ref{tab:oca-fits}). These ratios compare the two implementations and their
-starting protocols and do not isolate an intrinsic model cost. PDE fits include
-two coarse starts and refinement, while simulation-based starting fits and validation
-are excluded. A state-dependent PDE is solved at each Fourier frequency.
+starting protocols and do not isolate an intrinsic model cost.
 The second-order affine expansion of \citet{SeppRakhmonovLogSV} closes most of that
 gap when it is accurate, but in the package's pricing diagnostics its truncation error is of
-the same order as the smile residuals, and tighter solver tolerances, subdivision,
-recentring and higher polynomial degree do not provide a general cure. We therefore
-use the PDE for the objective and the displayed prices, reserve the expansion for
-parameter regimes in which it has been validated against the PDE, and record the
-regime boundary as an open implementation item.
-
-The examples support limited conclusions. LogSV lowers the midpoint IV
-RMSE on all four snapshots at one extra parameter, on ''' + f'{improved} of {total_slices}' + r''' maturity
-slices, with the largest gain at the 12-day SPXW slice. A numerically validated pricer does not make the model
-fit each bid--ask interval, and the SPXW smile residuals remain material. The
-implementation sequence that produced these numbers, a deterministic coarse-grid
-fit, finer-grid refinement and independent checks at the final parameters judged
-against market spreads, is the reusable part. The examples do not rank the model
-families across assets and do not estimate historical mean reversion.
-
+the same order as the smile residuals. We therefore
+use the PDE for the objective and the displayed prices.
 The TLT+ fit gives $\beta=\positiveBeta$ and $\kappa_2=\positiveKappaTwo$, hence
 $\kappa_2-\beta=\positiveMargin$, and Heston gives $\rho=\positiveHestonRho$.
-Its IV RMSE falls from \rmseHestonTLTpositive\ to \rmseLogSVTLTpositive\ percentage
-points and its inside-spread share rises from \insideHestonTLTpositive\% to
-\insideLogSVTLTpositive\%. The positive-dependence fit is admissible, with a slack
+The positive-dependence fit is admissible, with a slack
 imposed constraint, and does not exercise $C=\beta$. Neither fitted coefficient is
-the historical index beta of Section~\ref{sec:empirical-beta}. The ETF quotation
-qualification applies.
+the historical index beta of Section~\ref{sec:empirical-beta}.
+A numerically validated pricer does not make the model
+fit each bid--ask interval, and the SPXW smile residuals remain material.
+The examples do not rank the model
+families across assets and do not estimate historical mean reversion.
 % [AI-DRAFT END]
 ''')
 (BASE / 'calibration_section.tex').write_text('\n\n'.join(T) + '\n', encoding='utf-8')

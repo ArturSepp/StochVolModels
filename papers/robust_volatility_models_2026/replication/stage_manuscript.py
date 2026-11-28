@@ -1,19 +1,19 @@
-"""Stage the review's generated TeX and figures, or verify their current copies.
+"""Synchronize or verify the review's embedded LaTeX and figure files.
 
-Run --sync after regenerating an experiment's exhibits. The default --check
-verifies dependencies without changing the manuscript or running experiments.
-Frozen experiment files and their original provenance manifests stay intact.
+Run --sync after regenerating exhibits in replication/. The default --check
+compares the embedded blocks and figures with their replication sources.
 """
-from pathlib import Path
 import argparse
 import hashlib
 import json
+from pathlib import Path
 import re
 
 MODULE = Path(__file__).resolve().parent.parent
 CODE = MODULE / "replication"
 PAPER = MODULE / "paper"
-MAINS = ("robust_volatility_models.tex",)
+MANUSCRIPT = PAPER / "robust_volatility_models.tex"
+
 SECTIONS = {
     name: f"empirical_bloomberg_20261030/{name}"
     for name in ("empirical_macros.tex", "empirical_section.tex", "empirical_supplement.tex")
@@ -21,83 +21,115 @@ SECTIONS = {
 SECTIONS.update({name: f"calibration_section_20261030/{name}"
                  for name in ("calibration_macros.tex", "calibration_section.tex")})
 SECTIONS["spx_physical_pricing.tex"] = "spx_physical_pricing_20261124/spx_physical_pricing.tex"
-REFERENCE = re.compile(r"(\\(?:input|include|includegraphics)(?:\[[^\]]*\])?\s*\{)([^}]+)(\})")
+SECTIONS["cross_asset_physical_pricing.tex"] = (
+    "cross_asset_physical_pricing_20261124/cross_asset_physical_pricing.tex"
+)
+SECTIONS["physical_pricing.tex"] = "physical_pricing_section_20261127/physical_pricing.tex"
+for name in ("quarterly_premia.tex", "quarterly_macros.tex"):
+    SECTIONS[name] = f"cross_asset_physical_pricing_20261124/quarterly_panel/{name}"
+for name in ("martingale_bound.tex", "martingale_macros.tex"):
+    SECTIONS[name] = f"martingale_bound_20261127/{name}"
+
+BLOCK = re.compile(
+    r"^(?P<start>\\ReplicationBlock\{begin\}\{(?P<name>[\w.-]+\.tex)\}\n)"
+    r"(?P<body>.*?)"
+    r"(?P<end>^\\ReplicationBlock\{end\}\{(?P=name)\}$)",
+    re.MULTILINE | re.DOTALL,
+)
+MARKER = re.compile(r"^\\ReplicationBlock\b", re.MULTILINE)
+GRAPHIC = re.compile(r"(\\includegraphics(?:\[[^\]]*\])?\s*\{)([^}]+)(\})")
+FILE_COMMENT = re.compile(r"^[ \t]*%[^\n]*\n?", re.MULTILINE)
+COMMENT = re.compile(r"(?<!\\)((?:\\\\)*)%[^\n]*")
+TEX_INPUT = re.compile(r"\\(?:input|include)\b")
 
 
-def rewrite_dependencies(text):
-    """Change paths only in generated TeX; numerical/prose content stays identical."""
-    def replacement(match):
-        name = match[2]
-        if "includegraphics" in match[1]:
-            name = "figures/" + "/".join(p for p in Path(name).parts if p != "figures")
-        else:
-            name = "sections/" + Path(name).with_suffix(".tex").name
-        return match[1] + name + match[3]
-    return REFERENCE.sub(replacement, text)
+def render_block(source: Path) -> str:
+    """Omit standalone comments and point graphics at their manuscript copies."""
+    text = FILE_COMMENT.sub("", source.read_text(encoding="utf-8-sig"))
+
+    def rewrite_graphic(match):
+        parts = (part for part in Path(match[2]).parts if part != "figures")
+        return match[1] + "figures/" + "/".join(parts) + match[3]
+
+    text = GRAPHIC.sub(rewrite_graphic, text)
+    return text if text.endswith("\n") or not text else text + "\n"
 
 
-def digest(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+def figure_source(relative: str) -> tuple[Path, Path]:
+    path = Path(relative)
+    destination = (PAPER / path).resolve()
+    if not destination.is_relative_to((PAPER / "figures").resolve()) or path.parts[:1] != ("figures",):
+        raise ValueError(f"Graphic must be in paper/figures/: {relative}")
+    original = Path(*path.parts[1:])
+    if not original.parts or ".." in original.parts:
+        raise ValueError(f"Invalid figure path: {relative}")
+    candidates = (CODE / original, CODE / original.parts[0] / "figures" / Path(*original.parts[1:]))
+    sources = [path for path in candidates if path.is_file()]
+    if len(sources) != 1:
+        raise ValueError(f"Expected one source for {relative}; found {sources}")
+    return sources[0], destination
+
+
+def exhibit_record(source: Path, destination: Path, content: bytes) -> dict[str, str]:
+    return {
+        "source": source.relative_to(MODULE).as_posix(),
+        "destination": destination.relative_to(MODULE).as_posix(),
+        "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+        "staged_sha256": hashlib.sha256(content).hexdigest(),
+    }
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
-    mode.add_argument("--sync", action="store_true", help="stage generated dependencies")
+    mode.add_argument("--sync", action="store_true", help="refresh generated TeX blocks and figures")
     mode.add_argument("--check", action="store_true", help="check only (default)")
     args = parser.parse_args()
-    records, visited = {}, set()
+    manuscript = MANUSCRIPT.read_text(encoding="utf-8")
+    if 2 * len(list(BLOCK.finditer(manuscript))) != len(MARKER.findall(manuscript)):
+        raise ValueError("The manuscript contains an unmatched or malformed replication block marker")
+    records = {}
 
-    def stage(relative, is_tex):
-        destination = (PAPER / relative).resolve()
-        if not destination.is_relative_to(PAPER.resolve()):
-            raise ValueError(f"Dependency outside paper folder: {relative}")
-        if is_tex:
-            if Path(relative).parent.as_posix() != "sections":
-                raise ValueError(f"Generated TeX must be in sections/: {relative}")
-            source = CODE / SECTIONS[Path(relative).name]
-            expected = rewrite_dependencies(source.read_text(encoding="utf-8-sig")).encode("utf-8")
-        else:
-            path = Path(relative)
-            if path.parts[0] != "figures":
-                raise ValueError(f"Graphics must be in figures/: {relative}")
-            original = Path(*path.parts[1:])
-            candidates = [CODE / original,
-                          CODE / original.parts[0] / "figures" / Path(*original.parts[1:])]
-            candidates = [p for p in candidates if p.is_file()]
-            if len(candidates) != 1:
-                raise ValueError(f"Expected one source for {relative}; found {candidates}")
-            source = candidates[0]
-            expected = source.read_bytes()
-        if args.sync:
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_bytes(expected)
+    def refresh_block(match):
+        name = match["name"]
+        if name in records or MARKER.search(match["body"]):
+            raise ValueError(f"Duplicate or nested replication block: {name}")
+        if name not in SECTIONS:
+            raise ValueError(f"Unregistered replication block: {name}")
+        source = CODE / SECTIONS[name]
+        expected = render_block(source)
+        if not args.sync and match["body"] != expected:
+            raise RuntimeError(f"Stale manuscript block: {name}; run --sync")
+        record = exhibit_record(source, MANUSCRIPT, expected.encode("utf-8"))
+        record["block"] = name
+        records[name] = record
+        return match["start"] + expected + match["end"]
+
+    updated = BLOCK.sub(refresh_block, manuscript)
+    active = COMMENT.sub(r"\1", updated)
+    if TEX_INPUT.search(active):
+        raise ValueError("Inline external TeX inputs in the manuscript before staging")
+    pending = {}
+    for relative in dict.fromkeys(match[2] for match in GRAPHIC.finditer(active)):
+        source, destination = figure_source(relative)
+        expected = source.read_bytes()
         if not destination.is_file() or destination.read_bytes() != expected:
-            raise RuntimeError(f"Missing or stale exhibit: {relative}; run --sync")
-        records[relative] = {"source": source.relative_to(MODULE).as_posix(),
-                         "destination": destination.relative_to(MODULE).as_posix(),
-                         "source_sha256": digest(source), "staged_sha256": digest(destination)}
-        return destination
-
-    def visit(path):
-        if path in visited:
-            return
-        visited.add(path)
-        text = re.sub(r"(?<!\\)%[^\n]*", "", path.read_text(encoding="utf-8-sig"))
-        for relative in re.findall(r"\\(?:input|include)\s*\{([^}]+)\}", text):
-            visit(stage(relative, True))
-        for relative in re.findall(r"\\includegraphics(?:\[[^\]]*\])?\s*\{([^}]+)\}", text):
-            stage(relative, False)
-
-    for name in MAINS:
-        visit(PAPER / name)
-    record = {"main_files": list(MAINS), "dependency_count": len(records), "files": records}
+            if not args.sync:
+                raise RuntimeError(f"Missing or stale exhibit: {relative}; run --sync")
+            pending[destination] = expected
+        records[relative] = exhibit_record(source, destination, expected)
     if args.sync:
-        audit = MODULE.parents[1] / "agents" / "robust_volatility_review_20261030" / "exhibit_manifest.json"
-        audit.parent.mkdir(parents=True, exist_ok=True)
-        audit.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+        for destination, content in pending.items():
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(content)
+        if updated != manuscript:
+            MANUSCRIPT.write_text(updated, encoding="utf-8", newline="\n")
+        manifest = MODULE.parents[1] / "agents" / "robust_volatility_review_20261030" / "exhibit_manifest.json"
+        manifest.parent.mkdir(parents=True, exist_ok=True)
+        record = {"main_files": [MANUSCRIPT.name], "dependency_count": len(records), "files": records}
+        manifest.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"mode": "sync" if args.sync else "check",
-                      "main_files": len(MAINS), "dependencies_verified": len(records)}))
+                      "main_files": 1, "dependencies_verified": len(records)}))
 
 
 if __name__ == "__main__":

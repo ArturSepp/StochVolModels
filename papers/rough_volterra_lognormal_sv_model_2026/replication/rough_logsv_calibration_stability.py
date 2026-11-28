@@ -1,5 +1,5 @@
 """
-Stability parameter of the linear-drift model at the calibrated coefficients (Table 5, row gamma).
+Stability of the linear-drift model at the fitted coefficients (QF Table 3).
 
 For each of the four fits in results/calibration_robustness_2026-11-18/calibration_summary.json this
 script evaluates the closed form of paper eq:gamma,
@@ -10,8 +10,7 @@ gamma < 1 (Proposition 3.4). The script also reports the coefficient kappa1 - ka
 term of the fitted drift kappa1 theta - (kappa1 - kappa2 theta) sigma - kappa2 sigma^2.
 Units: time in years, kappa1 in year^(-H-1/2), vartheta in year^(-H).
 Entry points: calibrated_stability and the case of run_local_test.
-Not in this module: the closed form itself, which is stability_gamma of rough_logsv_growth_rate.py, and
-the stability parameter of the 97-node kernel of the calibration at H = 0.30.
+The rough fits also report the stability parameter for the 97-node kernel used in pricing.
 """
 # packages
 import hashlib
@@ -23,12 +22,13 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List
 # project
-from rough_logsv_growth_rate import stability_gamma
+from rough_logsv_growth_rate import markov_stability_parameter, stability_gamma
 
 BASE = Path(__file__).resolve().parent
 RESULTS = BASE / 'results'
 SUMMARY = RESULTS / 'calibration_robustness_2026-11-18' / 'calibration_summary.json'
 OUTPUT = RESULTS / 'calibration_stability.json'
+PRICING_KERNEL = BASE / 'inputs' / 'kernels' / 'H0.3_s512_n8.json'
 
 
 def calibrated_stability(fits: List[Dict]) -> List[Dict]:
@@ -52,12 +52,18 @@ def calibrated_stability(fits: List[Dict]) -> List[Dict]:
                         'linear_drift_coefficient': float(params['kappa1'] - params['kappa2'] * params['theta']),
                         'theta': params['theta'],
                         'sigma0': params['sigma0']})
+    rough_records = [r for r in records if r['H'] == 0.30]
+    if rough_records:
+        kernel = json.loads(PRICING_KERNEL.read_text(encoding='utf-8'))
+        for record in rough_records:
+            record['pricing_kernel_gamma_at_kappa2_zero'] = markov_stability_parameter(
+                kernel['nodes'], kernel['weights'], record['kappa1'], record['vartheta'])
     return records
 
 
 def _producer() -> Dict:
     sources = [Path(__file__).resolve(), BASE / 'rough_logsv_growth_rate.py',
-               BASE / 'rough_logsv_stationarity_check.py', SUMMARY]
+               BASE / 'rough_logsv_stationarity_check.py', SUMMARY, PRICING_KERNEL]
     return {'generated_utc': datetime.now(timezone.utc).isoformat(),
             'python_version': platform.python_version(),
             'numpy_version': np.__version__,

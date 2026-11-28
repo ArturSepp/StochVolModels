@@ -141,7 +141,7 @@ def vix_map(p, cq, nodes=301, steps=48, limits=(0.004, 5.0)):
 
 
 @njit
-def filter_path(returns, logrv, logvix, x, ygrid, mapgrid, nodes, weights):
+def filter_path(returns, logrv, logvix, x, ygrid, mapgrid, nodes, weights, dt=DT):
     th, k1, q, v, rho, margin, rv_offset, rv_noise, vix_noise = x
     beta, eps2 = rho * v, v * v * (1 - rho * rho)
     n = len(returns)
@@ -154,18 +154,18 @@ def filter_path(returns, logrv, logvix, x, ygrid, mapgrid, nodes, weights):
         r = returns[t]
         # The signed return identifies the common shock. RV measures the session's
         # integrated variance with the start-of-session Euler approximation.
-        z = r / (s * np.sqrt(DT))
-        lw = logw - 0.5 * (np.log(2 * np.pi * DT) + 2 * state + z * z)
+        z = r / (s * np.sqrt(dt))
+        lw = logw - 0.5 * (np.log(2 * np.pi * dt) + 2 * state + z * z)
         if np.isfinite(logrv[t]):
-            u = (logrv[t] - np.log(DT) - 2 * state - rv_offset) / rv_noise
+            u = (logrv[t] - np.log(dt) - 2 * state - rv_offset) / rv_noise
             lw -= 0.5 * (np.log(2 * np.pi * rv_noise**2) + u * u)
         high = lw.max()
         ww = np.exp(lw - high)
         ll = high + np.log(ww.sum())
         ww /= ww.sum()
-        next_mean = state + (k1 * (th / s - 1) + q * (1 - s / th) - 0.5 * v * v) * DT + beta * r / s
+        next_mean = state + (k1 * (th / s - 1) + q * (1 - s / th) - 0.5 * v * v) * dt + beta * r / s
         m = np.sum(ww * next_mean)
-        var = eps2 * DT + np.sum(ww * (next_mean - m) ** 2)
+        var = eps2 * dt + np.sum(ww * (next_mean - m) ** 2)
         if not np.isfinite(m + var) or var <= 0 or abs(m) > 15:
             return history, False
         if np.isfinite(logvix[t]):

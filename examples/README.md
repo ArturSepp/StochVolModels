@@ -16,7 +16,36 @@ python -m pip install -e .
 
 Add `".[research]"` for the OptionChainAnalytics and provider-cache examples.
 
+## Package comparison examples
+
+The [six-library comparison](../docs/package_comparison.md) describes the models, numerical methods
+and calibration choices in each project. The examples below run SVM's side of the comparison.
+
+| Research task | Related projects | What to run in this checkout |
+|---|---|---|
+| Fit a volatility surface and simulate from the fitted dynamics | PyFENG for model-specific simulation schemes, tf-quant-finance for TensorFlow path sampling | [Calibrate classical LogSV, then simulate joint asset and volatility paths](getting_started/calibrate_and_simulate_logsv.py) on the bundled 49-quote Bitcoin chain. |
+| Check a long-dated Heston wing | QuantLib for Heston engines, fypy and quantflow for Fourier methods | Run the [controlled Heston wing](docs/heston_model.py) with the command below. The independent reference premium is 0.29577444. |
+| Fit an FX smile quoted in delta space | FinancePy for broker risk reversals and market strangles | [Fit controlled Heston and LogSV](fitters/compare_eurusd_fx_grid.py) to the same five-tenor EUR/USD mid-IV grid from OptionChainAnalytics. The [replay instructions](../docs/calibration.md#five-tenor-fx-mid-iv-fit) use a local derived CSV. |
+
+From the checkout root, the Bitcoin and Heston examples run offline with the core installation.
+The Bitcoin calibration can take several minutes.
+
+```console
+python -m examples.getting_started.calibrate_and_simulate_logsv
+python -c "from examples.docs import heston_model as h; h.run_local(h.Locals.CONTROLLED_WING)"
+```
+
 ## Lanes
+
+### OTC pricing and scalability
+
+Both examples use synthetic inputs and the core package. The wheel job runs the
+coupon example. The timing benchmark runs on demand from the checkout root.
+
+| Script | Command | Expected result |
+|---|---|---|
+| `brc_local_vol.py` | `python examples/brc_local_vol.py` | Three barrier tiers under two monitoring conventions, with all six issue marks at par. |
+| `benchmark_brc_book.py` | `python examples/benchmark_brc_book.py 48` | Three marginal fits, one base simulation and elapsed time for a twelve-vintage book. |
 
 ### Offline pricing and estimation
 
@@ -84,6 +113,7 @@ Run component diagnostics from the repository root. For example,
 | `data/run_sample_option_chains.py` | List sample chains | Core, bundled | Offline |
 | `data/run_fetch_option_chain.py` | Reconstruct Tardis chains | Research extra and local archive | Manual, private data |
 | `fitters/run_tdist.py` | Student-t distribution and cumulative moments | Research extra | Manual plots |
+| `fitters/compare_eurusd_fx_grid.py` | [Controlled Heston and LogSV fits to 25 EUR/USD mid IVs](../docs/calibration.md#five-tenor-fx-mid-iv-fit) | Core and a local five-tenor OCA FX grid | Manual, offline replay |
 | `models/run_vol_moments_ode.py` | Volatility moments and backbone diagnostics | Core | Manual |
 | `models/run_rough_kernel_approx.py` | Compare finite kernel approximations | Core | Manual |
 | `models/run_rough_logsv_perf.py` | Rough simulation benchmark | Core | Slow simulation |
@@ -104,7 +134,7 @@ Run component diagnostics from the repository root. For example,
 | `docs/inverse_options.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
 | `docs/logsv_model.py` | LogSV dynamics, pricing and prepared-grid Greeks | core only, synthetic examples and bundled Bitcoin chain | every case run by `test_docs_examples.py`, including the Bitcoin benchmark in the slow lane |
 | `pricers/benchmark_btc_forward_greeks.py` | Forward delta and gamma for 49 Bitcoin quotes, central bumps and separate setup and warm timings | core only, bundled chain and recorded IV fit | offline slow case `logsv_model-BITCOIN_FORWARD_GREEKS` |
-| `pricers/benchmark_prepared_heston.py` | Ten-year Heston premiums for one wing and 1,001 strikes, including setup, refinement and warm timings | core only, synthetic calls | fresh controlled prices and independent wing premium |
+| `pricers/benchmark_prepared_heston.py` | Ten-year Heston prices and forward Greeks for one wing and 1,001 strikes. Pass `--v0` for initial-variance scenarios, sensitivities and separate setup, refinement and warm timings. | core only, synthetic calls | fresh controlled prices, published wing premium and central forward or variance bumps |
 | `docs/logsv_smile_fitter.py` | canonical script of a documentation page | core only, generated chain | every case run by `test_docs_examples.py` |
 | `docs/surface_diagnostics.py` | fit, strike and calendar checks, native tick-scale handoff and portable research audits | core only, synthetic chains/scores and a temporary JSON report | every case run by `test_docs_examples.py`, including `NATIVE_QUOTES` and `RESEARCH_TOOLS` |
 | `fitters/oca_surface_diagnostics.py` | advanced source-to-fit quality, parity and surface reports | research extra, OCA 5.3, synthetic only | optional cross-package integration test |
@@ -128,6 +158,7 @@ Run component diagnostics from the repository root. For example,
 | `docs/terminal_distribution_models.py` | canonical script of a documentation page | core only, bundled S&P 500 ETF chain | every case run by `test_docs_examples.py` |
 | `docs/volatility_distribution_and_moments.py` | canonical script of a documentation page | core only, model-driven | every case run by `test_docs_examples.py` |
 | `getting_started/quickstart.py` | canonical offline reviewer path | core only, generated chain | Linux/Windows/macOS CI |
+| `getting_started/calibrate_and_simulate_logsv.py` | fit four LogSV parameters and simulate the fitted dynamics at each expiry | core only, bundled Bitcoin chain | manual, slow offline calibration |
 | `getting_started/quickstart_colab.ipynb` | hosted offline calculation | network only to install/download matching release | structure/output-free contract in CI |
 | `getting_started/quick_run_lognormal_sv_pricer.py` | legacy plotted LogSV demonstration | core only, bundled chain | manual |
 | `fitters/run_logsv_smile_fitter.py` | reproducible approximate smile fit | core only, bundled generated chain | manual |

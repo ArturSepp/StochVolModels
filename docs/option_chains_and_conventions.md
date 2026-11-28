@@ -78,6 +78,31 @@ price shock is $\rho$. Its fields are `v0`, `theta`, `kappa`, `rho` and `volvol`
   and discount factor of their slice, through
   [vanilla-option-pricers](https://github.com/ArturSepp/VanillaOptionPricers).
 
+### Calibration to explicit mid IVs
+
+From SVM 2.21.0.dev4, `OptionChain(mid_ivs=..., ...)` accepts one vector of
+positive, finite decimal Black IVs per expiry, aligned with its strikes and
+option types. `get_mid_vols()` and the IV calibration objective use these
+values when supplied and otherwise average the two quoted IV sides. The
+explicit mids survive slicing and forward normalization. This supports controlled
+Heston and LogSV calibration with absent bid and ask fields.
+
+For a normalized OCA panel, call `load_option_chain(panel, value_time)` from
+`stochvolmodels.data.fetch_option_chain`. For an existing OCA snapshot, call
+`option_chain_from_oca(snapshot)` from `stochvolmodels.fitters.adapters.oca`.
+Both accept `iv_source="auto"`. If the snapshot has no IV sides, the adapter
+selects the available mark IVs at every expiry, including the 10-delta wings.
+It retains the source forward, strikes and discount factor. Bid and ask IVs
+and prices remain absent. For panels that contain both sides and marks,
+`iv_source="mark"` explicitly selects the marks. `iv_source="bid_ask"` uses
+the two-sided selection and its historical maturity and delta defaults.
+
+For a five-tenor FX panel, the mark route yields 25 IV targets across the
+1M, 2M, 3M, 6M and 1Y slices. Use the OCA panel's expiry, strike and option
+type to match fitted IVs back to the original `fx_tenor` and `fx_pillar`
+labels. A signed error of +1 IV bp means the fitted decimal IV exceeds the
+mark by 0.0001. [Worked EUR/USD comparison](calibration.md#five-tenor-fx-mid-iv-fit)
+
 ## Option types and state variables
 
 | `OptionType` | Code | Payoff at maturity |
@@ -203,8 +228,8 @@ The alignment contract:
 
 - `ttms`, `forwards`, `ids`, the discount arrays and every per-maturity list have one entry per
   maturity; maturities are finite, positive and strictly increasing.
-- Within a slice, strikes, option types, bid and ask volatilities, and bid and ask prices have equal
-  lengths.
+- Within a slice, each supplied IV or price vector, including `mid_ivs`, aligns
+  one-to-one with the strikes and option types.
 - `OptionChain.get_uniform_chain` builds a quote-free chain on one strike grid, with puts below the
   forward and calls at or above it. This out-of-the-money convention is a convenience, not a
   restriction on pricing. Calibration needs a chain with market quotes.

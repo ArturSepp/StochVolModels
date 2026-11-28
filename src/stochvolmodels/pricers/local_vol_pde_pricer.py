@@ -108,7 +108,7 @@ class LocalVolPdePricer(ModelPricer):
 
     def _project_chain(
         self, option_chain, params, *, variable_type=VariableType.LOG_RETURN, is_spot_measure=True,
-        collect_steps=False,
+        collect_steps=False, time_grid=None,
     ):
         """Propagate the unit point mass once through all buckets and project raw payoffs."""
         if not isinstance(option_chain, OptionChain) or not isinstance(params, LocalVolSurface):
@@ -137,6 +137,16 @@ class LocalVolPdePricer(ModelPricer):
             raise ValueError("the initial state must be inside the solver grid")
 
         maturities = option_chain.ttms
+        if time_grid is not None:
+            time_grid = np.asarray(time_grid, dtype=float)
+            if (
+                time_grid.ndim != 1
+                or len(time_grid) < 2
+                or time_grid[0] != 0
+                or time_grid[-1] != maturities[-1]
+                or not np.all(np.diff(time_grid) > 0)
+            ):
+                raise ValueError("time_grid must increase from zero to the last maturity")
         knots = params.times[(params.times > 0) & (params.times < maturities[-1])]
         ends = np.union1d(maturities, knots)
         provider = LocalVolCoefficientProvider1D(params)
@@ -151,7 +161,10 @@ class LocalVolPdePricer(ModelPricer):
         for end in ends:
             # Inclusive right endpoint selects the coefficient valid on (start, end].
             fixed = StaticCoefficientProvider1D(provider.evaluate(end, grid))
-            times = np.unique(np.linspace(start, end, self.steps_per_interval + 1))
+            if time_grid is None:
+                times = np.unique(np.linspace(start, end, self.steps_per_interval + 1))
+            else:
+                times = np.r_[start, time_grid[(time_grid > start) & (time_grid < end)], end]
             segments = []
             if startup is not None:
                 # A volatility or step-size jump can excite oscillations again at a knot.

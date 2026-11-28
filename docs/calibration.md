@@ -26,9 +26,9 @@ from a distant starting point.
 
 ## Overview
 
-A calibration has four ingredients: the market data (an option chain with bid and ask implied
-volatilities), an objective, the free parameters with their bounds and constraints, and the engine
-that computes model implied volatilities inside the objective. The mean-reversion rates $\kappa_1$
+The calibration takes market IVs, a weighting rule, parameter bounds and constraints,
+and a pricing engine. A chain can supply its mid IVs directly or carry bid and ask IVs
+from which SVM computes the mid. The mean-reversion rates $\kappa_1$
 and $\kappa_2$ trade off against the vol-of-vol and the volatility beta: different combinations
 produce similar smiles. The paper therefore estimates $\kappa_1$ and $\kappa_2$ from the
 autocorrelation of volatility and fits the four remaining parameters to options.
@@ -37,7 +37,7 @@ autocorrelation of volatility and fits the four remaining parameters to options.
 
 | Keyword of `calibrate_model_params_to_chain` | Meaning | Default |
 |---|---|---|
-| `option_chain` | Chain with forwards, discount factors, strikes, option codes and bid and ask implied volatilities | |
+| `option_chain` | Chain with forwards, discount factors, strikes, option codes and either explicit `mid_ivs` or both IV sides | |
 | `params0` | Starting point; under `PARAMS4` its `kappa1` and `kappa2` are held fixed | |
 | `params_min`, `params_max` | Box bounds of the free parameters | $\sigma_0, \theta \in [0.1, 1.5]$, $\kappa_1, \kappa_2 \in [0.25, 10]$, $\beta \in [-3, 3]$, $\varepsilon \in [0.2, 3]$ |
 | `is_vega_weighted` | Weight squared errors by Black-Scholes vega | `True` |
@@ -61,8 +61,10 @@ $$
 \mathrm{WMSE} = \sum_n w_n \left( \sigma_n^{model} - \sigma_n^{mid} \right)^2 ,
 $$
 
-over all options $n$ of the chain, with $\sigma^{mid}$ the mid of the bid and ask implied
-volatilities. The paper sets $w_n$ to the Black-Scholes vega of the option. The package normalises
+over all options $n$ of the chain. For $\sigma^{mid}$, `get_mid_vols()` uses the explicit
+`mid_ivs` when supplied and otherwise averages the bid and ask IVs. Set
+`is_vega_weighted=False` for equal weight per quote. The paper uses Black-Scholes vega
+weights. With vega weighting enabled, the package normalises
 the vegas to sum to one within each maturity, so every maturity carries the same total weight and,
 within a maturity, options near the money count most. With `is_unit_ttm_vega=True` the vegas are
 computed as if the maturity were one year, which spreads the weight further into the wings; after
@@ -272,6 +274,70 @@ For the variance-swap backbone, the strikes replicated from the chain, floored a
 volatility, are 88.2%, 90.9%, 94.6% and 96.9% for the four maturities, and the historical fitter returns
 loadings of 0.981, 0.928, 0.938 and 0.869.
 
+### Five-tenor FX mid-IV fit
+
+The Bloomberg snapshot retrieved on 25 November 2026 at 00:08:57 UTC contains five broker
+quotes per expiry. OCA reconstructs a 10-delta put, 25-delta put, ATM, 25-delta call and
+10-delta call from those quotes. Both models fit the same 25 decimal Black IVs with equal
+weight per quote, using the same strikes, forwards and domestic discounts. The reconstruction
+uses spot delta, delta-neutral ATM and a flat SOFR discount proxy through 1Y. Bid and ask
+sides are absent. [OCA quote conventions and snapshot replay](https://optionchainanalytics.readthedocs.io/en/latest/data_sources.html#fx-broker-smiles)
+
+Each cell shows **Heston / LogSV PARAMS4** in IV basis points. A signed error is
+$10^4(\sigma^{model}-\sigma^{mid})$, so a positive value means the model IV is high.
+The right column gives the root-mean-square error (RMSE) over the five pillars. The last
+row gives RMSE over maturities, with the full-chain RMSE at the bottom right.
+
+| Tenor | 10Δ put | 25Δ put | ATM | 25Δ call | 10Δ call | RMSE |
+|---|---:|---:|---:|---:|---:|---:|
+| 1M | −48.0 / −37.1 | −20.0 / −19.5 | −9.6 / −11.9 | −21.4 / −20.2 | −51.6 / −42.3 | 34.38 / 28.60 |
+| 2M | +10.7 / +24.3 | +34.1 / +31.8 | +41.1 / +34.8 | +30.1 / +29.1 | +2.7 / +14.2 | 27.86 / 27.78 |
+| 3M | +1.6 / +15.7 | +25.0 / +18.1 | +31.9 / +19.2 | +19.7 / +14.2 | −6.5 / +5.4 | 20.37 / 15.33 |
+| 6M | −33.5 / −19.7 | +1.2 / −18.6 | +13.6 / −17.0 | +5.8 / −13.2 | −24.6 / −13.7 | 19.74 / 16.63 |
+| 1Y | −44.7 / +4.2 | +9.6 / −7.0 | +33.9 / −3.2 | +21.3 / +2.5 | −29.6 / +10.2 | 30.24 / 6.11 |
+| **RMSE** | 33.28 / 22.87 | 21.34 / 20.55 | 28.76 / 20.10 | 21.17 / 18.08 | 28.96 / 21.49 | **27.12 / 20.68** |
+
+The largest difference in fit on this snapshot occurs at 1Y. Heston's fitted IVs
+are below the mids on both 10-delta wings and above the mid at ATM. At 2M the two models
+have nearly identical RMSE. Both models have their largest absolute error at the 1M
+10-delta call.
+
+**Bounds and numerical settings.** Both fits allow 3–11% initial volatility and
+1.5–12% long-run volatility. For Heston these bounds apply to $\sqrt{v_0}$ and
+$\sqrt{\theta}$ in the benchmark optimiser. Writing the variance diffusion coefficient
+as $f\sqrt{2\kappa\theta}$, with $0.001\le f\le1$, enforces the Feller condition.
+The fitted long-run volatility is 8.18%, and the fit reaches $f=1$. A separate run through the
+public Heston calibrator reaches its built-in 0.01 floor on both variance levels
+and gives 291.74 IV bp RMSE.
+
+For LogSV, `PARAMS4` holds $\kappa_1=2$ and $\kappa_2=8$ fixed. The fitted
+volatility level $\theta$ is **5.895%**, above the 1.50% floor. Two starts give
+the same result to the precision shown. Restricting the *same snapshot* to 1M
+and 2M gives 1.683% and 7.89 IV bp RMSE with the benchmark settings. The
+public LogSV calibrator with the same parameter bounds and its default stopping
+settings gives 1.50% and 17.45 IV bp on that subset, and 5.894% and 20.68 IV bp
+on all five tenors. Both the expiry coverage and the stopping test matter when
+interpreting a short-tenor boundary estimate.
+
+The benchmark rescales parameter bounds to the unit interval and minimises the mean
+squared IV error in volatility percentage points using SLSQP with `ftol=1e-12`.
+It uses the controlled Fourier engine, the analytic LogSV gradient and three-point
+Heston differences. After fitting, tightening the absolute premium tolerance from
+$10^{-8}$ to $10^{-9}$ changes model IVs by less than 0.0001 IV bp at every pillar.
+This checks inversion accuracy at the fitted parameters.
+
+**Replay.** From the SVM source checkout, run the following commands with the path to
+OCA's five-tenor `*_derived.csv` in place of `eurusd_derived.csv`. The example saves
+fit results and the per-pillar comparison beside that local file. Run the
+`logsv_short`, `native_logsv_short`, `native_logsv` and `native_heston` modes for the
+subset and public-calibrator checks. [Benchmark script and starting parameters](../examples/fitters/compare_eurusd_fx_grid.py)
+
+```bash
+python examples/fitters/compare_eurusd_fx_grid.py eurusd_derived.csv heston
+python examples/fitters/compare_eurusd_fx_grid.py eurusd_derived.csv logsv
+python examples/fitters/compare_eurusd_fx_grid.py eurusd_derived.csv report
+```
+
 ## Implementation in stochvolmodels
 
 | Name | Role |
@@ -454,8 +520,8 @@ the gradient case repeats the central bumps at half the step size.
 - **Identification.** The smile parameters are weakly identified relative to the level parameters,
   and the mean-reversion rates are not fitted by `PARAMS4`; fix them from time-series information as
   the paper does.
-- **Bid and ask are not in the objective.** The mid is fitted; compare the residuals with the
-  bid-ask spread afterwards, as the case study does.
+- **Spread diagnostics.** When both sides are available, compare the fitted IV with
+  the quoted interval. For mid-only inputs, report signed IV errors and RMSE.
 - **Short maturities at low volatility.** The transform's accuracy limit for small
   $\sigma_0 \sqrt{\tau}$ (see [Fourier pricing](european_option_pricing.md#interpretation-and-limitations))
   carries into the objective.

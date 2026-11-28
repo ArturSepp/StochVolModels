@@ -29,6 +29,16 @@ def compute_heston_mgf_grid(
     mgf solution for heston model
     formula (14) in Sepp (2007), Variance swaps under no conditions, Risk
     """
+    a_t1, b_t1 = _heston_affine_coefficients(
+        theta, kappa, volvol, rho, ttm, phi_grid, psi_grid, a_t0, b_t0,
+    )
+    return a_t1 + b_t1 * v0, a_t1, b_t1
+
+
+@njit(cache=False, fastmath=True)
+def _heston_affine_coefficients(theta, kappa, volvol, rho, ttm, phi_grid, psi_grid,
+                                a_t0=None, b_t0=None):
+    """Closed-form Riccati intercept and variance loading, independent of initial variance."""
     volvol2 = volvol * volvol
     b1 = kappa + rho * volvol * phi_grid
     b0 = 0.5 * phi_grid * (phi_grid + 1.0) - psi_grid
@@ -43,8 +53,7 @@ def compute_heston_mgf_grid(
     a_t1 = -(theta * kappa / volvol2) * (psi_p * ttm + 2.0 * np.log(c_p * exp_zeta + c_m))
     if a_t0 is not None:
         a_t1 = a_t1 + a_t0
-    log_mgf_grid = a_t1 + b_t1 * v0
-    return log_mgf_grid, a_t1, b_t1
+    return a_t1, b_t1
 
 
 @njit(cache=False, fastmath=True)

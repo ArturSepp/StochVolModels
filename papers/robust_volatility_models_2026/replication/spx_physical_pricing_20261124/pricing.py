@@ -26,6 +26,10 @@ def market():
     path = OUT.parent / "calibration_fits_20261029/spxw_20260715_selected_quotes.csv"
     ref = json.loads((OUT.parent / "calibration_pde_20261029/spxw_pde_fit.json").read_text())
     assert sha(path) == ref["quote_sha256"] and ref["date"] == DATE
+    return chain_from_quotes(path, ref)
+
+
+def chain_from_quotes(path, ref):
     df = pd.read_csv(path).sort_values(["ttm", "strike"]).reset_index(drop=True)
     groups = [g for _, g in df.groupby("ttm", sort=True)]
     chain = OptionChain(
@@ -34,7 +38,7 @@ def market():
         strikes_ttms=[(g.strike / g.forward_price).to_numpy() for g in groups],
         optiontypes_ttms=[g.optiontype.to_numpy(dtype="U1") for g in groups],
         ids=np.array([g.mat_id.iloc[0] for g in groups]),
-        ticker="SPXW",
+        ticker=ref["ticker"],
         discfactors=np.array([g.discount.iloc[0] for g in groups]),
         bid_ivs=[g.bid_iv.to_numpy() for g in groups],
         ask_ivs=[g.ask_iv.to_numpy() for g in groups],

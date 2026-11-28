@@ -43,7 +43,7 @@
     "measured_at_commit": "76e4107e3860a1026352531b75ae09187f58cd39",
     "metrics": {
       "package_version": {
-        "value": "2.21.0.dev1",
+        "value": "2.21.0.dev5",
         "how": "project.version in pyproject.toml",
         "live": true,
         "paper_phrase": null
@@ -61,7 +61,7 @@
         "paper_phrase": null
       },
       "paper_body_words": {
-        "value": 1723,
+        "value": 1739,
         "how": "whitespace-separated paper.md body tokens after YAML front matter",
         "live": true,
         "paper_phrase": null

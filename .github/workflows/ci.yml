@@ -186,7 +186,7 @@ jobs:
   wheel:
     name: built wheel (core install)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install uv and Python 3.12
@@ -213,6 +213,8 @@ jobs:
           "$RUNNER_TEMP/wheelcheck-venv/bin/python" -I -c "from importlib.util import find_spec; assert all(find_spec(name) is None for name in ('qis', 'option_chain_analytics'))"
           "$RUNNER_TEMP/wheelcheck-venv/bin/python" -I -c "import importlib.metadata as m, stochvolmodels as s; assert s.__version__ == m.version('stochvolmodels')"
           "$RUNNER_TEMP/wheelcheck-venv/bin/python" -I "$GITHUB_WORKSPACE/examples/getting_started/quickstart.py"
+          "$RUNNER_TEMP/wheelcheck-venv/bin/python" -I "$GITHUB_WORKSPACE/examples/brc_local_vol.py"
+          "$RUNNER_TEMP/wheelcheck-venv/bin/python" -I "$GITHUB_WORKSPACE/examples/accumulator_local_vol.py"
       - name: Run PDE examples against the installed core wheel
         run: |
           cd "$RUNNER_TEMP/wheelcheck"
@@ -223,6 +225,10 @@ jobs:
           cd "$RUNNER_TEMP/wheelcheck"
           "$RUNNER_TEMP/wheelcheck-venv/bin/python" -m pip install pytest pytest-regressions
           "$RUNNER_TEMP/wheelcheck-venv/bin/python" -I -m pytest --pyargs stochvolmodels -m "not slow" -q
+      - name: Validate installed accumulator PDE and Monte Carlo references
+        run: |
+          cd "$RUNNER_TEMP/wheelcheck"
+          "$RUNNER_TEMP/wheelcheck-venv/bin/python" -I -m pytest -m slow -q --pyargs stochvolmodels.tests.test_accumulator_pde stochvolmodels.tests.test_accumulator_mc
 
   stack-policy:
     name: stack import boundaries

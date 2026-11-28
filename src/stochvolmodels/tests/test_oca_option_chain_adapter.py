@@ -48,6 +48,29 @@ def test_oca_adapter_defaults_legacy_missing_discounts_to_one() -> None:
     np.testing.assert_array_equal(chain.discfactors, np.ones_like(chain.discfactors))
 
 
+def test_mark_only_oca_all_expiries_no_sides_and_subset():
+    data = oca.generate_simulated_options_data()
+    data.chain_ts.loc[:, ['bid_iv', 'ask_iv', 'bid_price', 'ask_price']] = np.nan
+    timestamp = pd.Timestamp('2024-01-05 08:00:00+00:00')
+    snapshot = oca.create_chain_at_time(data, timestamp)
+    chain = oca_adapter.option_chain_from_oca(snapshot)
+    loaded = fetch_option_chain.load_option_chain(data, timestamp)
+    np.testing.assert_array_equal(loaded.ids, chain.ids)
+    for direct, from_panel in zip(chain.get_mid_vols(), loaded.get_mid_vols()):
+        np.testing.assert_array_equal(direct, from_panel)
+    assert len(chain.ttms) == len(snapshot.expiry_slices)
+    assert chain.bid_ivs is chain.ask_ivs is chain.bid_prices is chain.ask_prices is None
+    for name, strikes, types, mids in zip(chain.ids, chain.strikes_ttms, chain.optiontypes_ttms, chain.mid_ivs):
+        source = snapshot.expiry_slices[name].options_df.set_index(['strike', 'optiontype'])
+        expected = [source.at[(k, side), 'mark_iv'] for k, side in zip(strikes, types)]
+        np.testing.assert_array_equal(mids, expected)
+        np.testing.assert_array_equal(chain.get_slice(name).mid_ivs, expected)
+    subset = chain.get_slices_as_chain(chain, [chain.ids[-1]])
+    normalized = chain.to_forward_normalised_strikes(subset)
+    np.testing.assert_array_equal(normalized.get_chain_data_as_xy()[1][0], chain.mid_ivs[-1])
+    assert normalized.bid_ivs is normalized.ask_ivs is None
+
+
 def test_tardis_eod_loader_wraps_provider_payload(monkeypatch, tmp_path) -> None:
     normalized_data = oca.generate_simulated_options_data()
     calls = {}

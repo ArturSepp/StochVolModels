@@ -388,7 +388,11 @@ def test_synthetic_calibration_against_independent_inversion(monkeypatch, model)
                        params_min=replace(truth, sigma0=.3, theta=.25),
                        params_max=replace(truth, sigma0=.45, theta=.4))
     market = chain.compute_model_ivols_from_chain_data(reference(truth))
-    chain.bid_ivs = chain.ask_ivs = market
+    if model == "logsv":
+        chain.bid_ivs = chain.ask_ivs = market
+    else:
+        chain = replace(chain, mid_ivs=market)
+        assert chain.bid_ivs is None and chain.ask_ivs is None
     captured = []
     fixed = FourierCalibration._fixed_prices
     def record(self, vector, plan):

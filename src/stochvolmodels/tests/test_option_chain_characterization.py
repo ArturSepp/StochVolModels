@@ -1,3 +1,4 @@
+from dataclasses import replace
 from itertools import permutations
 
 import numpy as np
@@ -49,6 +50,17 @@ def test_option_slice_and_chain_convert_discount_conventions() -> None:
         rtol=0.0,
         atol=1.0e-14,
     )
+
+
+def test_explicit_mids_take_precedence_and_require_one_valid_vector_per_expiry() -> None:
+    chain = _two_slice_chain()
+    marks = [np.array([0.21, 0.41]), np.array([0.255, 0.355])]
+    explicit = replace(chain, mid_ivs=marks)
+    np.testing.assert_array_equal(explicit.get_chain_data_as_xy()[1], marks)
+    for bad in (marks[:1], [marks[0], np.array([0.3])], [marks[0], np.array([0.3, np.nan])],
+                [marks[0], np.array([0.3, 0.0])]):
+        with pytest.raises(ValueError, match="mid_ivs"):
+            replace(chain, mid_ivs=bad)
 
 
 def test_option_chain_dimensions_mid_vols_and_atm_interpolation() -> None:

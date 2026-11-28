@@ -48,6 +48,7 @@ def test_near_repeated_joint_grid_matches_real_riccati_reference() -> None:
     phi = np.array([1.0, 1.0, -0.5 + 1.0j, 0.0])
     psi = np.array([0.5 + 1.0e-12j, 0.5 - 1.0e-10, 0.2, 0.0])
     expected = []
+    coefficients = []
     for p, q in zip(phi, psi):
 
         def rhs(time: float, state: np.ndarray) -> np.ndarray:
@@ -66,6 +67,10 @@ def test_near_repeated_joint_grid_matches_real_riccati_reference() -> None:
         )
         assert solution.success
         a_real, a_imag, b_real, b_imag = solution.y[:, -1]
+        coefficients.append((a_real + 1j * a_imag, b_real + 1j * b_imag))
         expected.append(a_real + 1.0j * a_imag + params.v0 * (b_real + 1.0j * b_imag))
-    actual = HestonModel(params).log_mgf_grid(ttm=0.4, phi_grid=phi, psi_grid=psi)
+    model = HestonModel(params)
+    actual = model.log_mgf_grid(ttm=0.4, phi_grid=phi, psi_grid=psi)
     np.testing.assert_allclose(actual, expected, rtol=1.0e-9, atol=1.0e-12)
+    a, b = model._affine_coefficients(ttm=0.4, phi_grid=phi, psi_grid=psi)
+    np.testing.assert_allclose(np.column_stack((a, b)), coefficients, rtol=1e-9, atol=1e-12)

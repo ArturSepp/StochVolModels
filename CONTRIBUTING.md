@@ -29,9 +29,10 @@ Please open an issue before implementing any of the following:
 - a feature that belongs in a sibling package such as `vanilla-option-pricers`, `qis`, or
   `optimalportfolios`.
 
-New American or general exotic/path-dependent product families are outside this package's intended
-scope. The narrowly characterized book-analytics layer includes European and integrated-variance
-payoffs. Examples that require a paid data subscription cannot be reviewer or CI gates.
+The book-analytics layer includes European and integrated-variance payoffs. A built-in OTC
+product requires a concrete cash-settled payoff in `products/`, a payment schedule fixed
+at issue, a named model capability and an independent numerical reference. Supply public
+synthetic examples and offline tests for review.
 
 ## Reporting a bug
 

@@ -84,6 +84,7 @@ class OptionSlice:
     ask_ivs: Optional[np.ndarray] = None
     bid_prices: Optional[np.ndarray] = None
     ask_prices: Optional[np.ndarray] = None
+    mid_ivs: Optional[np.ndarray] = None
 
     def __post_init__(self):
         """
@@ -103,6 +104,7 @@ class OptionSlice:
             self.discount_rate = 0.0
 
         arrays = (
+            ("mid_ivs", self.mid_ivs, True, False),
             ("bid_ivs", self.bid_ivs, True, False),
             ("ask_ivs", self.ask_ivs, True, False),
             ("bid_prices", self.bid_prices, False, True),
@@ -142,6 +144,7 @@ class OptionChain:
     bid_prices: Optional[List[np.ndarray]] = None
     ask_prices: Optional[List[np.ndarray]] = None
     forwards0: Optional[np.ndarray] = None  # when we need to normalize options price
+    mid_ivs: Optional[List[np.ndarray]] = None  # explicit market or reconstructed mids
 
     def __post_init__(self):
         """
@@ -183,6 +186,7 @@ class OptionChain:
             _validate_slice_array("forwards0", self.forwards0, ttms.size, positive=True)
 
         quote_lists = (
+            ("mid_ivs", self.mid_ivs, True, False),
             ("bid_ivs", self.bid_ivs, True, False),
             ("ask_ivs", self.ask_ivs, True, False),
             ("bid_prices", self.bid_prices, False, True),
@@ -244,7 +248,9 @@ class OptionChain:
                    ids=np.array([id]) if id is not None else np.array([f"{ttm:0.2f}"]))
 
     def get_mid_vols(self) -> List[np.ndarray]:
-        """mid implied volatilities per slice, the average of bid and ask."""
+        """Explicit mid IVs when supplied, otherwise the midpoint of both IV sides."""
+        if self.mid_ivs is not None:
+            return List(np.ascontiguousarray(row, dtype=np.float64) for row in self.mid_ivs)
         if self.bid_ivs is not None and self.ask_ivs is not None:
             return List(0.5 * (bid_iv + ask_iv) for bid_iv, ask_iv in zip(self.bid_ivs, self.ask_ivs))
         else:
@@ -325,7 +331,9 @@ class OptionChain:
         """
         these data are needed for to pass x and y for model calibrations
         """
-        mid_vols = List(0.5 * (bid_iv + ask_iv) for bid_iv, ask_iv in zip(self.bid_ivs, self.ask_ivs))
+        mid_vols = self.get_mid_vols()
+        if mid_vols is None:
+            raise ValueError("calibration requires mid_ivs or both bid_ivs and ask_ivs")
         x = (self.ttms, self.forwards, self.discfactors, self.strikes_ttms, self.optiontypes_ttms)
         y = mid_vols
         return x, y
@@ -377,6 +385,7 @@ class OptionChain:
                    ticker=obj.ticker,
                    ids=obj.ids,
                    bid_ivs=obj.bid_ivs, ask_ivs=obj.ask_ivs,
+                   mid_ivs=obj.mid_ivs,
                    bid_prices=None if obj.bid_prices is None else List(
                        prices / forward for prices, forward in zip(obj.bid_prices, obj.forwards)
                    ),
@@ -413,6 +422,7 @@ class OptionChain:
                                    strikes=self.strikes_ttms[idx],
                                    optiontypes=self.optiontypes_ttms[idx],
                                    discfactor=self.discfactors[idx],
+                                   mid_ivs=None if self.mid_ivs is None else self.mid_ivs[idx],
                                    bid_ivs=None if self.bid_ivs is None else self.bid_ivs[idx],
                                    ask_ivs=None if self.ask_ivs is None else self.ask_ivs[idx],
                                    bid_prices=None if self.bid_prices is None else self.bid_prices[idx],
@@ -459,6 +469,7 @@ class OptionChain:
                                strikes_ttms=List([option_chain.strikes_ttms[idx]]),
                                optiontypes_ttms=List([option_chain.optiontypes_ttms[idx]]),
                                discfactors=np.array([option_chain.discfactors[idx]]),
+                               mid_ivs=None if option_chain.mid_ivs is None else List([option_chain.mid_ivs[idx]]),
                                bid_ivs=None if option_chain.bid_ivs is None else List([option_chain.bid_ivs[idx]]),
                                ask_ivs=None if option_chain.ask_ivs is None else List([option_chain.ask_ivs[idx]]),
                                bid_prices=None if option_chain.bid_prices is None else List([option_chain.bid_prices[idx]]),
@@ -472,6 +483,7 @@ class OptionChain:
                                strikes_ttms=List(option_chain.strikes_ttms[idx] for idx in indices),
                                optiontypes_ttms=List(option_chain.optiontypes_ttms[idx] for idx in indices),
                                discfactors=option_chain.discfactors[indices],
+                               mid_ivs=None if option_chain.mid_ivs is None else List(option_chain.mid_ivs[idx] for idx in indices),
                                bid_ivs=None if option_chain.bid_ivs is None else List(option_chain.bid_ivs[idx] for idx in indices),
                                ask_ivs=None if option_chain.ask_ivs is None else List(option_chain.ask_ivs[idx] for idx in indices),
                                bid_prices=None if option_chain.bid_prices is None else List(option_chain.bid_prices[idx] for idx in indices),

@@ -35,6 +35,8 @@ __all__ = (
     "RecenterMean",
     "value_paths",
     "value_paths_self_normalized",
+    "reduce_discounted_mc",
+    "DiscountedMcEstimate",
 )
 
 FloatArray = NDArray[np.float64]
@@ -502,6 +504,107 @@ def _mean_and_standard_error(values: FloatArray) -> tuple[float, float]:
     if not np.isfinite(standard_error):
         raise FloatingPointError("estimator standard error is not representable")
     return mean, standard_error
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class DiscountedMcEstimate:
+    """Ordinary-MC estimate in input units with independent-group sampling moments."""
+
+    value: float
+    m2: float
+    group_ids: np.ndarray
+    group_size: int
+    stream_id: str
+    group_values: np.ndarray | None
+
+    @property
+    def n_groups(self) -> int:
+        return len(self.group_ids)
+
+    @property
+    def standard_error(self) -> float:
+        n = self.n_groups
+        return float(np.sqrt(self.m2 / (n * (n - 1)))) if n > 1 else np.nan
+
+    def merge(self, other: DiscountedMcEstimate) -> DiscountedMcEstimate:
+        """Merge disjoint complete equal-size groups from the same logical stream."""
+        if self.stream_id != other.stream_id or self.group_size != other.group_size:
+            raise ValueError("incompatible sampling streams or group sizes")
+        if np.intersect1d(self.group_ids, other.group_ids).size:
+            raise ValueError("overlapping independent groups")
+        ids = np.concatenate((self.group_ids, other.group_ids))
+        ids.setflags(write=False)
+        values = None
+        if self.group_values is not None and other.group_values is not None:
+            values = np.concatenate((self.group_values, other.group_values))
+            values.setflags(write=False)
+        n, k = self.n_groups, other.n_groups
+        delta = other.value - self.value
+        m2 = self.m2 + other.m2 + delta**2 * n * k / (n + k)
+        return DiscountedMcEstimate(
+            self.value + delta * k / (n + k), m2, ids, self.group_size, self.stream_id, values
+        )
+
+    def paired_difference(self, other: DiscountedMcEstimate) -> DiscountedMcEstimate:
+        """Subtract aligned group means before estimating sampling uncertainty."""
+        if (
+            self.stream_id != other.stream_id
+            or self.group_size != other.group_size
+            or self.group_values is None
+            or other.group_values is None
+        ):
+            raise ValueError("paired estimates need contributions from a common stream")
+        a, b = np.argsort(self.group_ids), np.argsort(other.group_ids)
+        if not np.array_equal(self.group_ids[a], other.group_ids[b]):
+            raise ValueError("paired group IDs differ")
+        values = self.group_values[a] - other.group_values[b]
+        return _discounted_summary(values, self.group_ids[a], self.group_size, self.stream_id, True)
+
+
+def _discounted_summary(means, ids, group_size, stream_id, keep_groups):
+    value = _stable_mean(means, "discounted group contributions")
+    m2 = float(np.sum(np.square(means - value)))
+    if not np.isfinite(m2):
+        raise FloatingPointError("group second moment overflows")
+    ids.setflags(write=False)
+    means.setflags(write=False)
+    return DiscountedMcEstimate(
+        value, m2, ids, group_size, stream_id, means if keep_groups else None
+    )
+
+
+def reduce_discounted_mc(
+    amounts, independent_group_ids, *, stream_id: str, group_size: int, keep_groups: bool = False
+) -> DiscountedMcEstimate:
+    """Reduce already-discounted ordinary-MC amounts from complete independent groups.
+
+    A single-group chunk has undefined standalone error and can be merged. Callers
+    must use absolute IDs within each stream when partitioning a simulation.
+    """
+    data = np.asarray(amounts, dtype=float)
+    ids = np.asarray(independent_group_ids)
+    _validate_label(stream_id, "stream_id")
+    if (
+        data.ndim != 1
+        or not len(data)
+        or not np.all(np.isfinite(data))
+        or ids.shape != data.shape
+        or ids.dtype.kind not in "iu"
+    ):
+        raise ValueError("expected finite path amounts and aligned integer group IDs")
+    labels, counts = np.unique(ids, return_counts=True)
+    if (
+        isinstance(group_size, bool)
+        or not isinstance(group_size, (int, np.integer))
+        or group_size < 1
+        or not np.all(counts == group_size)
+    ):
+        raise ValueError("incomplete independent groups")
+    if len(labels) == 1:
+        means = np.array([_stable_mean(data, "discounted group")])
+    else:
+        means = _group_means(data, _resolve_grouping(ids, n_paths=len(data)))
+    return _discounted_summary(means, labels, group_size, stream_id, keep_groups)
 
 
 def _standard_error_basis(grouping: _Grouping, *, legacy: bool) -> str:
