@@ -1,175 +1,9 @@
-%% Revision of 24 November 2026, fixes and recommendations of the pre-submission read. Applied by
-%% ../agents/implementation_2026-11-24/apply_pre_submission_fixes_2026-11-24.py (see PRE_SUBMISSION_FIXES_2026-11-24.md there).
-%%   A  Conjecture 4.4 restricted to the open cases, the converse at H = 1/2 cited (Sepp and Rakhmonov 2023a, Theorem 3.7);
-%%      stability criterion stated for the Markovian kernel (gamma_N defined, Section 3.3); the sampling shortfall of
-%%      Figure 3(b) measured against the exact expectation of the scheme (313 at 720 steps, was 286 against the
-%%      continuous value); row gamma in Table 5 with three sentences in Section 5; pricing paragraph of Section 5
-%%      rewritten in defined terms; Brownian bridge and net sizes in Appendix B.4; positivity stop stated for the
-%%      calibration runs; text on Figure 1 corrected; batch standard errors printed in Table 4;
-%%   N  mean mark bar-zeta_n (was beta_n), rectangle bound bar-p (was R), exponent varsigma of the kernel bound
-%%      (was eta), d for the quadratic coefficient under Q (was q), X_n - X_0 for the log return (was L_n), allowance
-%%      a_c (was a), U_T and clip defined, ln throughout, the block "Economic interpretation" moved behind Appendix C.1;
-%%   W  wording and terms (one term for the spot-volatility correlation in generated text, half-width, inverse gamma,
-%%      contrastive closers reworded, two long paragraphs split); footnote on the kernel fit removed; src/ in the paths;
-%%   R  Abi Jaber et al. (2024) in its journal version, Risk version of Abi Jaber, Illand and Li noted.
-%% Not touched: the authors' paragraph on the mechanism in the introduction, the title block except the date, and the
-%% replication footnote, whose folder is not yet under version control. Markers: % [GENERATED 2026-11-24 ...] and
-%% % [REVISED 2026-11-24 ...]. The state before this pass is kept in ../drafts/r9_pre_submission_fixes_2026-11-24/.
-%% Revision of 23 November 2026, decisions of the authors on the attribution pass. Applied by
-%% ../agents/implementation_2026-11-23/apply_measure_name_2026-11-23.py (see SCHEME_ATTRIBUTION_2026-11-23.md, section 6).
-%%   D1 Appendix B.1: the sentence on the grouping of the drift is confirmed and states the reason;
-%%   D2 the measure Q^{1/2} is named the minimal martingale measure for the log-price, after its continuous-time
-%%      counterpart in Rheinlaender and Schmutz (2013). The name "half-tilted measure" is removed (Sections 1.1 and 1.2,
-%%      Appendix B.3), because Carr and Lee (2009) use "half measure" for a different measure;
-%%   D3 Maurer, Sharp and Tretyakov (2019) is no longer cited (unpublished, and no statement of the paper rests on it).
-%% No equation, number, table or proof is changed. The state before this pass is kept in
-%% ../drafts/r8_pre_measure_name_2026-11-23/.
-%% Revision of 23 November 2026, attribution of the simulation scheme. Applied by
-%% ../agents/implementation_2026-11-23/apply_scheme_attribution_2026-11-23.py (see SCHEME_ATTRIBUTION_2026-11-23.md there).
-%%   A1 Section 1.1: the sentences on Alfonsi (2025) and on Hu, He, Kwok and Zhang (2026) are reworded after the check of
-%%      the full texts, Shinozaki (2026) and Di Nunno and Yurchenko-Tytarenko (2026) are added, and the statement on the
-%%      drifts is restricted to the growth of the volatility drifts;
-%%   A2 Appendix B.1: the drift splitting of Shinozaki (2026) is named, and the differences are stated (grouping of the
-%%      drift, price step, quadratic drift outside his theorem, no non-negativity result);
-%%   A3 Appendix B.3: the continuous-time density is attributed to Rheinlaender and Schmutz (2013) and the square-root
-%%      numeraire to Maurer, Sharp and Tretyakov (2019).
-%% Four references added. Marker: % [REVISED 2026-11-23 attribution ...]. No equation, number, table or proof is
-%% changed. The state before this pass is kept in ../drafts/r7_pre_scheme_attribution_2026-11-23/.
-%% Revision of 23 November 2026, open items after the length cut. Applied by
-%% ../agents/implementation_2026-11-23/apply_open_items_2026-11-23.py (see OPEN_ITEMS_2026-11-23.md there).
-%%   O1 attribution from the prior-art sweep on the simulation scheme: Section 1.1 names Alfonsi (2025), Hu, He, Kwok and
-%%      Zhang (2026) and McCrickerd and Pakkanen (2018), and Appendix B.1 names Ninomiya and Victoir (2008). Four
-%%      references added. Marker: % [REVISED 2026-11-23 sweep ...];
-%%   O2 the four prose semicolons of Appendix C are split into sentences.
-%% No equation, number, table or proof is changed. The state before this pass is kept in
-%% ../drafts/r6_pre_open_items_2026-11-23/.
-%% Revision of 23 November 2026, length cut for the 35-page limit of Quantitative Finance. Applied by
-%% ../agents/implementation_2026-11-23/apply_length_cut_2026-11-23.py (anchored edits, see LENGTH_CUT_2026-11-23.md there).
-%%   L1 numerical detail removed from the prose, claims kept: Section 3 (repeats of Table 2, examples of gamma, the
-%%      cross-check of the growth rate with its footnote, critical values in rough Bergomi units, bound numbers, the VIX
-%%      check, the paragraph on Pages and Gnabeyeu-Pages that repeated Section 1.1), Section 4.2 (three paragraphs on
-%%      Table 4 to one), Section 5 (seven paragraphs on the calibration to one, three paragraphs on panel (b) to one),
-%%      conclusions, Appendix B.4 and B.5;
-%%   L2 captions shortened: Tables 2 and 5, Figures 1, 3 and 4. In the caption of Table 2 "upper panel" and "lower
-%%      panel" now read "left block" and "right block", which is the layout of the table. The caption of Table B1
-%%      now states the seed, which the text of Appendix B.5 no longer does;
-%%   L3 removed: Figure 2 (its values are in Table 3), the remark on the forward variance multiplier, Appendix D
-%%      (its table is in ../replication/README.md), the calibration counts in the contributions paragraph.
-%% No equation, theorem, proof or table cell is changed. The state before this pass is kept in
-%% ../drafts/r5_pre_length_cut_2026-11-23/. Marker: % [REVISED 2026-11-23 length ...].
-%% Revision of 23 November 2026, scheme unification: the paper uses one Monte Carlo scheme, the scheme of the module
-%% stochvolmodels/models/rough_logsv/history.py, which produced the calibration of 18 November 2026.
-%% Applied by ../agents/implementation_2026-11-23/apply_scheme_unification_2026-11-23.py (anchored edits, see
-%% SCHEME_UNIFICATION_2026-11-23.md there). Sources: ../agents/sol_results_rough_logsv_scheme_unification_2026-11-23.md
-%% and ../agents/sol_results_rough_logsv_scheme_unification_R2_2026-11-23.md.
-%%   U1 Appendix B rewritten: the three flows and their symmetric composition, the price step with the exact discrete
-%%      martingale (new lemma), the half-tilted bounded estimator, the kernel and sampling design of the calibration,
-%%      the validation against exact discrete and exact continuous moments (Table B1 on the new grids);
-%%   U2 Table 4 and Figure 4 replaced: 1,440, 2,880 and 5,760 steps per year, panel (b) of the figure at 360 and 720;
-%%   U3 dependent text: abstract (one word), simulation paragraph of the literature review, contributions paragraph,
-%%      Section 2.3, one sentence of Section 3, the text on Table 4, the sentences on the calibration pricer and two
-%%      paragraphs on panel (b) in Section 5, conclusions, Table D1, references (Giles 2008 added, Andersen 2007 removed).
-%% Cut: the variance-ratio experiment of the former Appendix B.3, which was run on the split-step scheme.
-%% Markers: % [GENERATED 2026-11-23 scheme unification ...] and % [REVISED 2026-11-23 scheme unification ...].
-%% The state before this pass is kept in ../drafts/r4_pre_unification_2026-11-23/.
-%% Revision of 23 November 2026: the authors' TODO comments of 23 November 2026 are implemented
-%% (../agents/implementation_2026-11-23/TODOS_2026-11-23.md, applied by apply_todos_2026-11-23.py there).
-%%   T1 abstract and contributions: closure under the measure changes stated as the property of the model,
-%%      Monte Carlo scheme and calibration to Bitcoin and Ether options added to the contributions;
-%%   T2 reference to the working paper on robust stochastic volatility models (SSRN 4647027);
-%%   T3 abstract: "removes the restriction in time average" replaced by the bound itself;
-%%   T4 VIX proposition: the resolvent \widetilde R recalled where it is used;
-%%   T5, T6 caption of the calibration table: the two numerical-error rows and the factor 1/3 explained;
-%%   T7 conclusions: VIX options under quadratic drift named as future research;
-%%   T8 Appendix E (nearest results) moved to the new Section 1.1 (Literature review) and merged with the positioning
-%%      paragraphs of the introduction, contributions stated in the new Section 1.2 (Contributions). A page break before
-%%      Appendix D keeps the notation table in front of the reference list.
-%% No equation, table cell or number is changed. Markers: % [GENERATED 2026-11-23 ...], % [REVISED 2026-11-23 ...],
-%% % [MOVED 2026-11-23 ...]. The state before this pass is kept in ../drafts/r3_pre_todos_2026-11-23/.
-%% Focused BTC and ETH extension, 18 November 2026. H=0.30/0.50 qualified; H=0.20 gated.
-%% Rough Log-normal Volterra Stochastic Volatility Model with Quadratic Drift
-%% 17 November 2026, revision 2. Integrated audited Table B1 and Figure 4 (right) from
-%% ../agents/sol_results_rough_logsv_2026-11-17.md. Original left panel from Table 4.
-%% Amended on 17 November 2026 after the check of r2: the proposition on the time-averaged second moment is
-%% extended to the kernel K^N (statement, proof, numbers), see ../agents/implementation_2026-11-17/KN_BOUND_2026-11-17.md.
-%% The r2 draft as delivered is kept in ../drafts/r2_sol_2026-11-17/.
-%% Revised on 17 November 2026 after the rerun W3 (../agents/sol_results_rough_logsv_W3_2026-11-17.md): Figure 4 shows the
-%% time-averaged second moment with the bounds of the proposition and a Monte Carlo control at kappa2 = 0. Its caption, the
-%% Section 5 text and the conclusions paragraph are rewritten, see ../agents/implementation_2026-11-17/W3_TEXT_2026-11-17.md.
-%% The state before this revision is kept in ../drafts/r2_amended_2026-11-17/.
-%% Final pass of 17 November 2026 before the authors' reading (../agents/implementation_2026-11-17/FINAL_2026-11-17.md):
-%% copyedit, wording of Appendix B.3 and B.4, three pointer sentences, legend of Figure 4. No equation, table cell,
-%% label or citation is changed. The state before this pass is kept in ../drafts/r2_w3_2026-11-17/.
-%% Attribution pass of 17 November 2026 after the prior-art sweep (../agents/implementation_2026-11-17/ATTRIBUTION_2026-11-17.md):
-%% six works cited and positioned, and the open converse of the martingale theorem narrowed to the cases not covered by
-%% Guyon, Jeannin and Jourdain (2026). The state before this pass is kept in ../drafts/r2_final_2026-11-17/.
-%% Prior revision of 17 November 2026 of the 30 October 2026 draft (../drafts/rough_volterra_lognormal_sv_2026-10-30.tex, kept unchanged).
-%% Review that drives this revision: ../agents/rough-lognormal-sv-qf-submission-check-2026-11-16.md.
-%% Applied by ../agents/implementation_2026-11-17/apply_edits_2026-11-17.py (anchored edits; see IMPLEMENTATION_2026-11-17.md there).
-%% Changes in this revision (markers % [GENERATED 2026-11-17 ...] ... % [END GENERATED 2026-11-17] and % [REVISED 2026-11-17 ...]):
-%%   R1 Theorem (global well-posedness, non-negativity and moments for the quadratic drift) replaces the well-posedness
-%%      conjecture; the conjecture is reduced to strict positivity;
-%%   R2 Theorem (martingale property for kappa2 >= beta) replaces the conditional proposition and its assumption;
-%%      corollary on the density of the measure change;
-%%   R3 Proposition (time-averaged second moment under quadratic drift, fractional kernel);
-%%   R4 Proposition (growth rate above the stability threshold); Table 2 last entry filled, caption shortened;
-%%   proofs of R1-R4 added to Appendix A; abstract, contributions, Table 1, Section 5 text and conclusions restated;
-%%   N1 three-factor stability parameter stated in Figure 4 and Section 5; N3 Figure 3 caption numbers;
-%%   E1 description of Hager et al. (2026); E2 punctuation of the integrated-variance equation; E3 uncited references
-%%      removed; E4 mark of Appendix C renamed zeta, VIX coefficients q0, q1, Q2, VIX weight varpi, bounds of the
-%%      stopped domain sigma_-, sigma_+; E5 spelling unified (-ise, non-negative), prose semicolons split;
-%%   script and case names moved from captions to ../replication/README.md.
-%% Deferred in the previous revision: Table B1 Monte Carlo rows, Figure 1, Appendix C scope,
-%%   the two economic-mechanism paragraphs, title-page and back-matter TODO items.
-%% Earlier revision: 30 October 2026, of the 24 October 2026 draft (../drafts/rough_volterra_lognormal_sv_2026-10-24.tex, kept unchanged).
-%% Review that drives this revision: claude/rough-lognormal-sv-qf-readiness-review-2026-10-29.md (project docs).
-%% Analysis requests for Sol: ../../../agents/rough_volterra_review_2026-10-30/prior_work/SOL_WORK_ORDER_rough_logsv_revision_2026-10-30.md.
-%% Changes in this revision (markers % [REVISED 2026-10-30 ...] ... % [END REVISED 2026-10-30]):
-%%   C1 unit-dependent severity claim removed from abstract, introduction, Section 3 and conclusions; threshold
-%%      restated through the one-day innovation volatility-of-volatility (Table 3, new column, [UNTRACED]);
-%%   C2 Table 2 entry H=0.1, vartheta=1.85, kappa1=0 corrected from 10^1424.5 to 10^7753 (series truncation);
-%%   C3 title, abstract and conclusions restated to the proved content; stabilisation at H=1/2 made a proposition
-%%      of Section 3 (stationary density), the rough case left open;
-%%   C4 Guyon, Jeannin and Jourdain (2026, arXiv:2610.32684) cited and positioned (Section 4.2, Appendix E);
-%%   C5 calibration skeleton deleted; Section 5 now specifies four figures (F1-F4) with captions, numbers pending;
-%%   C6 forward-variance multiplier xi_0 removed from the core model and moved to a remark with the
-%%      time-dependent martingale condition;
-%%   C7 microstructure moved to Appendix C and compressed; contrastive reframings removed;
-%%   C8 Table 4 boundary column kept, refinement at fixed paths requested from Sol;
-%%   minor: exponent 1/6 statement, a priori moment bound in the proof of Prop. mean, stability renamed
-%%      "long-horizon second-moment stability", chronology residue removed, Remark one-factor deleted,
-%%      missing space, takeaway captions, crux sentence for the stability proposition.
-%% Earlier provenance (24 October 2026):
-%% Cut material is archived in ../drafts/rough_logsv_supplement_cut_2026-10-24.tex. Consolidates the working notes
-%%   rough_lognormal_sv.tex (2 June 2024), rough_lognormal_sv2.tex (18 August 2024),
-%%   rough_lognormal_simulation.tex (2025) and the StochVolModels implementation
-%%   stochvolmodels/pricers/rough_logsv (release 2.4.2, commit 73c96e5).
-%%   The kernel fit of Section 6.5 is on the local branch rough-logsv-kernel-fit (commit a7764cc),
-%%   module stochvolmodels/pricers/rough_logsv/kernel_fit.py. The scheme and pricing estimator of
-%%   Sections 6.1-6.4 are commit 422c340 on the same branch (simulate_split_step,
-%%   compute_conditional_mc_payoff).
-%%
-%% Provenance markers (seam protocol of the project instructions):
-%%   % [GENERATED 2026-10-08]        new text drafted by Claude for this version
-%%   % [GENERATED 2026-10-09]        kernel fit (Section 6.5), revised scheme and conditional Monte Carlo
-%%                                   (Sections 6.1-6.4), and the sentences that refer to them
-%%   % [GENERATED 2026-10-24]        microstructural foundation (Section 4), second-moment criterion
-%%                                   (Proposition 3.5), quadratic-rough-Heston positioning, two entries of Table 2
-%%   % [CARRIED <file>, corrected]   text and equations carried from an earlier draft and corrected
-%%   \todo{...}                      open items for the authors
-%% The economic-mechanism paragraph of the introduction is left to the authors by project rule.
-%% Numbers in tables trace to ../replication/rough_logsv_exhibits.py (run_local_test cases named in captions),
-%% and those of the second-moment criterion to ../replication/rough_logsv_stationarity_check.py (same idiom).
-%% Numbers added on 17 November 2026 (growth rate, three-factor stability parameter, rough Bergomi units,
-%% time-averaged bound) trace to ../replication/rough_logsv_growth_rate.py and results/growth_rate_checks.json.
-%% The exhibit-to-script map is in ../replication/README.md.
 
-% [CORRECTED 2026-10-30 after equation audit; see repository agents/rough_volterra_corrections_2026-10-30.]
 \documentclass[11pt,a4paper]{article}
 \usepackage{amsmath,amsfonts,amsthm,amssymb}
 \usepackage[pdftex]{graphicx}
 \graphicspath{{figures/}}
-\usepackage{booktabs}
+\usepackage{array,booktabs}
 \usepackage{enumitem}
 \usepackage{xcolor}
 \usepackage[round,authoryear]{natbib}
@@ -191,7 +25,6 @@
 \newtheorem{remark}[theorem]{Remark}
 \newtheorem{approximation}[theorem]{Approximation}
 
-% Match the journal's appendix table numbers (B1, C1, ...) and keep PDF anchors unique.
 \AddToHook{cmd/appendix/after}{\counterwithin*{table}{section}\renewcommand{\thetable}{\thesection\arabic{table}}\renewcommand{\theHtable}{appendix.\thesection.\arabic{table}}}
 \newcommand{\D}{\mathrm{d}}
 \newcommand{\E}{\mathbb{E}}
@@ -204,31 +37,19 @@
 
 \begin{document}
 
-% [REVISED 2026-10-30 title restated to the proved content (C3)]
 \title{Rough Log-normal Stochastic Volatility with Quadratic Drift\\[2pt] {\large Second-moment stability and the martingale property under positive correlation}}
-\author{Artur Sepp \and Parviz Rakhmonov}
-\date{Working draft, 24 November 2026}
+\author{Artur Sepp\thanks{LGT Bank (Schweiz) AG, Z\"urich, Switzerland. Correspondence: \href{mailto:artursepp@gmail.com}{artursepp@gmail.com}.} \and Parviz Rakhmonov\thanks{Marex, London, United Kingdom.}}
+\date{24 November 2026}
 \maketitle
 
-% [REVISED 2026-10-30 abstract: severity numbers removed (C1), proved content only (C3), xi_0 dropped (C6)]
-% [GENERATED 2026-11-17 abstract restated for the results R1-R4]
-% [REVISED 2026-11-23 authors' TODO items T1 and T3: closure under the measure changes stated directly after well-posedness,
-%  the phrase "removes the restriction in time average" replaced by the bound, Monte Carlo scheme and calibration added.
-%  The clause on the stopped diffusion limit is cut to keep the abstract within 200 words.]
-% [REVISED 2026-11-23 scheme unification: the word "split-step" removed from the sentence on the Monte Carlo scheme]
-% [REVISED 2026-11-24 pre-submission read: "Then" replaced by "In this case"]
 \begin{abstract}
-We extend the log-normal stochastic volatility model with quadratic drift of \citet{SeppRakhmonov2023} to a stochastic Volterra equation with fractional kernel, multiplicative volatility noise and drift $(\kappa_1+\kappa_2\sigma)(\theta-\sigma)$. We prove that the equation has a unique global non-negative strong solution with finite moments for every Hurst exponent $H\in(0,1/2]$. The equation is closed under measure changes: market prices of risk proportional to volatility and the share measure shift only its quadratic drift coefficient. The price is therefore a true martingale when $\kappa_2\ge\beta$, which allows positive spot-volatility correlation. The density of the measure change is a true martingale when the shifted coefficient is non-negative. For linear drift we derive exact conditional first and second moments, expected integrated variance and conditional squared VIX. In this case the second moment is uniformly bounded in time if and only if $\gamma=\vartheta^2\|G\|_2^2<1$, with volatility-of-volatility $\vartheta$, mean-reversion resolvent $G$ and $\gamma$ in closed form, and it grows exponentially for $\gamma>1$. With $\kappa_2>0$ the expected integrated variance per unit time is asymptotically at most $\theta\max(\theta,\kappa_1/\kappa_2)$ for every $\vartheta$ and every $H$. We develop a Monte Carlo scheme and calibrate the model to Bitcoin and Ether options. A marked order-flow construction explains the drift and noise coefficients.
+We extend the log-normal stochastic volatility model with quadratic drift to a fractional Volterra equation. The volatility has a unique global non-negative solution with finite moments on every finite horizon. With linear drift we derive the conditional first and second moments, expected integrated variance and conditional squared VIX. We give the exact threshold for a uniformly bounded second moment and the exponential growth rate above it. With positive quadratic damping the second moment is uniformly bounded for every admissible Hurst exponent and volatility of volatility. A separate bound on long-run expected integrated variance per unit time depends only on the drift parameters. Under the share measure the volatility beta offsets the quadratic damping. The price is a true martingale when damping covers beta. For a positive finite exponential mixture this condition is also necessary. The converse for a singular fractional kernel remains open. We illustrate calibration under positive correlation on observed Bitcoin and Ether option smiles and benchmark the simulation against exact moments. A marked order-flow construction relates multiplicative volatility noise to signed trade impacts arriving at a rate proportional to variance. A small state-dependent bias generates the quadratic drift. We establish a stopped diffusion limit for the constant kernel.
 \end{abstract}
-% [END REVISED 2026-10-30]
 
 \section{Introduction}\label{sec:intro}
 
-% [GENERATED 2026-10-08]
 Log-volatility of equity indices behaves like a fractional Brownian motion with Hurst exponent of order $0.1$ \citep{GatheralJaissonRosenbaum2018}. \citet{BayerFrizGatheral2016} use this observation in the rough Bergomi model, in which the instantaneous variance is the exponential of a Gaussian Volterra process. The model generates the power-law decay of the at-the-money skew with few parameters. \citet{ElEuchRosenbaum2019} introduce the rough Heston model and derive its characteristic function from a fractional Riccati equation, and \citet{AbiJaberLarssonPulido2019} place it in the class of affine Volterra processes. The quadratic rough Heston model \citep{GatheralJusselinRosenbaum2020} and the quintic Ornstein--Uhlenbeck model \citep{AbiJaberIllandLi2022} extend the class towards joint calibration to SPX and VIX smiles.
 
-% [GENERATED 2026-10-08]
-% [REVISED 2026-11-24 pre-submission read: sentence five, one term for the correlation and "frequent" for "typical"]
 The log-normal stochastic volatility model with quadratic drift of \citet{SeppRakhmonov2023} addresses a different gap. Its volatility follows a diffusion with linear volatility-of-volatility and with drift $(\kappa_1+\kappa_2\sigma)(\theta-\sigma)$. The quadratic term keeps the price process a true martingale when returns and volatility are positively correlated, provided $\kappa_2\ge\beta$, where $\beta$ is the volatility beta. Positive spot-volatility correlation is frequent in Bitcoin options \citep{SeppRakhmonov2023}. Standard rough Bergomi cannot combine positive spot-volatility correlation with a true-martingale price under the usual pricing measure \citep{Gassiat2019}. In this paper we develop the rough extension of the log-normal model with quadratic drift.
 
 The model admits an interpretation in terms of trading activity and
@@ -254,82 +75,55 @@ their subsequent correction. These assumptions provide an economic
 interpretation of the coefficients.
 
 
-\subsection{Literature review}\label{sec:literature}
+\subsection{Related work}\label{sec:literature}
+Table~\ref{tab:rbergomi} compares the volatility state, drift and correlation of the three models, together with their martingale and second-moment properties.
 
-% [MOVED 2026-11-23 authors' TODO item T8: the nearest results of the former Appendix E are merged here with the two
-%  positioning paragraphs of the introduction. Moved sentences are unchanged unless marked. New sentences are marked GENERATED.
-%  The prior-art sweep for Theorems wellposed and martingale and for Proposition cesaro was run on 17 November 2026
-%  (project note rough-lognormal-sv-prior-art-sweep-2026-11-17.md). No novelty claim is made in this draft.]
-% [GENERATED 2026-11-23] first sentence and last two sentences of the next paragraph
-The nearest models differ in the specification of the volatility state. \citet{BayerFrizGatheral2016} specify a Gaussian Volterra log-variance with deterministic forward-curve and variance-normalisation terms. \citet{ElEuchRosenbaum2019} and \citet{AbiJaberLarssonPulido2019} treat affine Volterra variance and Riccati transforms. \citet{AbiJaberIllandLi2022} use a polynomial of a Gaussian Ornstein--Uhlenbeck process. \citet{GatheralJusselinRosenbaum2020} take the variance $V=a(Z-b)^2+c$ of a Volterra state $Z$ (Section~\ref{sec:relation}). At $c=0$, the signed state satisfies \eqref{eq:qrh_map} with linear drift and negative mean-reversion level, while its volatility is the absolute value of that state. In our model the volatility itself solves the Volterra equation, with noise proportional to its level and a quadratic drift. At $H=1/2$ the model is the diffusion of \citet{SeppRakhmonov2023}, whose steady-state law is of the generalised inverse Gaussian type obtained by \citet{CarrWillems2019}.
+\begin{table}[ht]
+\centering
+\small
+\caption{The log-normal Volterra model \eqref{eq:model}, rough Bergomi and quadratic rough Heston with zero variance floor. In quadratic rough Heston, $V_t=a(Z_t-b)^2$ and $Y_t=\sqrt a\,(Z_t-b)$ is the signed state. Its second-moment threshold uses \eqref{eq:gamma} with $\kappa_1=\lambda$ and $\vartheta=\lambda\eta\sqrt a$.}\label{tab:rbergomi}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.15\linewidth}>{\raggedright\arraybackslash}p{0.21\linewidth}>{\raggedright\arraybackslash}p{0.26\linewidth}>{\raggedright\arraybackslash}p{0.28\linewidth}@{}}
+\toprule
+ & Rough Bergomi & Quadratic rough Heston, $c=0$ & Log-normal Volterra model \\
+\midrule
+Volatility & Gaussian Volterra process for $\ln\sigma_t$ & $|Y_t|$, with noise $\lambda\eta\sqrt{V_s}\,\D W_s$ in the equation for $Z$ & $\sigma_t$ solves a Volterra equation with noise $\vartheta\sigma_s\,\D W^\sigma_s$ \\
+\addlinespace[2pt]
+Positivity & Strictly positive for a positive initial variance curve & Non-negative by construction & Non-negative (Theorem~\ref{thm:wellposed}). Strict positivity is open for singular kernels \\
+\addlinespace[2pt]
+Drift & Deterministic log-variance correction and initial curve & Linear mean reversion of $Y$ to $-\sqrt a\,b$ & Quadratic mean reversion to $\theta>0$ \\
+\addlinespace[2pt]
+Correlation & Constant $\rho$ & The multiplicative-noise driver of $Y$ has correlation $\mathrm{sign}(Z_t-b)$ with the price driver for $Z_t\ne b$ & Constant $\rho$ \\
+\addlinespace[2pt]
+Price for $\rho>0$ & Strict local martingale \citep{Gassiat2019} & The correlation depends on the state & True martingale if $\kappa_2\ge\beta$. This condition is necessary for positive finite mixtures (Theorem~\ref{thm:martingale}, Proposition~\ref{prop:finite_converse}) \\
+\addlinespace[2pt]
+Long-horizon second moment & $\E[\sigma_t^2]$ equals the initial forward variance at $t$ & For $b>0$, $\E[Y_t^2]$ is uniformly bounded if and only if $\gamma<1$ & With linear drift and $\kappa_1>0$, bounded if and only if $\gamma<1$. With $\kappa_2>0$, bounded for every $\vartheta$ and $0<H\le1/2$ (Corollary~\ref{cor:pointwise}). Proposition~\ref{prop:cesaro} also bounds the time average \\
+\addlinespace[2pt]
+Initial state & Initial forward-variance curve & $Z_0$ through the input curve $\theta_0(t)$ & $\sigma_0$ at $t=0$, with constant input $\Theta_s^0=\sigma_0$ \\
+\addlinespace[2pt]
+Microstructure & Poisson orders acting on $\ln\sigma$ \citep{HagerHorstWagenhoferXu2026} & Related signed quadratic-Hawkes state \citep{DandapaniJusselinRosenbaum2021} & Marked order flow. The stopped constant-kernel limit is proved. The global rough limit is open \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-% [GENERATED 2026-11-23] sentences two, five and six of the next paragraph
-For well-posedness, \citet{PannierJacquier2019} treat a locally Lipschitz drift with linear growth. The quadratic drift does not have linear growth, and Theorem~\ref{thm:wellposed} supplies the non-explosion step through a one-sided moment bound for the non-negative state. For the moments under linear drift, \citet{AbiJaberCuchieroPelizzariPulidoSvalutoFerro2024} give the moment equations of polynomial Volterra processes. \citet{Pages2024} and \citet{GnabeyeuPages2025} bound the second moment of an equation stabilised by a deterministic function of time. We treat the equation without the stabilising function. Proposition~\ref{prop:stationarity} gives the stability condition in both directions with the constant in closed form, and Proposition~\ref{prop:growth} gives the growth rate above the threshold.
+Rough Bergomi specifies Gaussian log-variance \citep{BayerFrizGatheral2016}, rough Heston uses affine variance \citep{ElEuchRosenbaum2019}, and quadratic rough Heston takes variance to be a quadratic function of a Volterra state \citep{GatheralJusselinRosenbaum2020}. Here the state is volatility itself. At $H=1/2$ its diffusion is that of \citet{SeppRakhmonov2023}. \citet{SeppRakhmonov2026} use closure under changes of measure and the true-martingale property of the discounted asset as criteria for a robust volatility model. Section~\ref{sec:measure} examines both criteria for the Volterra extension. Under linear drift our moment equation is a special case of polynomial Volterra moment theory \citep{AbiJaberCuchieroPelizzariPulidoSvalutoFerro2024}. We evaluate the stability threshold and the growth rate explicitly. For the price, \citet{Gassiat2019} studies the rough Bergomi martingale problem. \citet{GuyonJeanninJourdain2026} give the stopped share-measure reduction and cover our linear-drift finite-kernel case. Quadratic drift requires control of the tilted equation.
 
-% [GENERATED 2026-11-23 authors' TODO item T2: reference to the working paper on robust stochastic volatility models]
-\citet{SeppRakhmonov2023b} require that the volatility dynamics keep their functional form under the physical measure, the pricing measure and the numeraire of each asset class. These authors also require that the price remains a martingale when returns and volatility are positively correlated. The log-normal diffusion with quadratic drift satisfies both requirements \citep{SeppRakhmonov2023,SeppRakhmonov2023b}. Section~\ref{sec:measure} establishes the two properties for the Volterra equation \eqref{eq:model}. Proposition~\ref{prop:closure} and Corollary~\ref{cor:density} treat the change to the pricing measure, and Theorem~\ref{thm:martingale} treats the share measure and the martingale property.
-% [END GENERATED 2026-11-23]
-
-% [REVISED 2026-10-30 positioning against the general martingale criteria (C4)]
-The martingale property of prices in Volterra volatility models has a general theory. \citet{Gassiat2019} settles rough Bergomi.
-% [GENERATED 2026-11-17 attribution pass] next sentence
-\citet{AbiJaberGassiatSotnikov2025} characterise the martingale property when the volatility is a finite linear combination of signature elements of a Brownian motion.
-\citet{GuyonJeanninJourdain2026} give general criteria and a localisation reduction to non-explosion under the share measure.
-% [GENERATED 2026-11-17 attribution pass] next two sentences
-For $\kappa_2=0$ our model belongs to their class. Their results then give a true martingale for $\beta\le0$, and a strict local martingale for $\beta>0$ when the kernel is finite and smooth at zero (Section~\ref{sec:measure}).
-In the direct representation of our quadratic drift, their absolute growth restriction in Assumption~1.2 is not satisfied when $\kappa_2>0$, so Theorem~1(B) does not apply directly. Their Lemma~3.1 supplies the localisation principle used in Section~\ref{sec:measure}. We supply the non-explosion step with a one-sided argument. The volatility and the kernel are non-negative, so the quadratic term only lowers the drift (Theorem~\ref{thm:wellposed}).
-% [GENERATED 2026-11-17 attribution pass] next sentence
-Theorem~\ref{thm:martingale} therefore adds the case $\kappa_2>0$, in which the price is a true martingale under positive correlation when $\kappa_2\ge\beta$.
-
-% [GENERATED 2026-10-24, revised positioning; REVISED 2026-11-23 merged with the former Appendix E]
 The order-flow interpretation distinguishes the variable moved by a trade from the rate of trading. \citet{HagerHorstWagenhoferXu2026} derive rough Bergomi using i.i.d.\ centred impacts on log-volatility and a constant order rate. \citet{JaissonRosenbaum2016} and \citet{ElEuchFukasawaRosenbaum2018} derive rough Heston from a nearly unstable Hawkes market with one-sided variance impacts. Our proposed construction uses signed volatility impacts and a rate proportional to squared volatility, with a small state-dependent mark bias. The construction is related to the quadratic Hawkes mechanism of \citet{BlancDonierBouchaud2017} and \citet{DandapaniJusselinRosenbaum2021}, but the positive-state and zero-floor identifications require care.
-% [MOVED 2026-11-23 from the former Appendix E] next two sentences
 \citet{DandapaniJusselinRosenbaum2021} derive a quadratic-Hawkes limit with a positive variance floor and a signed trend, and \citet{ChudasamaIyer2025} extend their framework to asymmetric buy and sell impacts. Appendix~\ref{sec:micro_relation} states the exact normalised equation and the limits of the floor-free analogy.
 Appendix~\ref{sec:micro} separates the exact generator calculation from the open global convergence problem.
 
-% [GENERATED 2026-11-23 positioning of the simulation scheme, which is now a stated contribution (T1)]
-% [REVISED 2026-11-23 scheme unification: sentences two to seven describe the unified scheme]
-For simulation, \citet{AbiJaberElEuch2019} approximate the fractional kernel by a sum of exponentials, which gives a Markovian factor model. \citet{AlfonsiKebaier2024} analyse the convergence of such approximations for completely monotone kernels, and \citet{BayerBreneis2023} give quadrature rules for the nodes and weights. \citet{BayerBreneis2024} apply a symmetric drift--diffusion splitting to rough Heston. \citet{Alfonsi2025} splits the kernel convolution from the stochastic differential equation. His second-order weak scheme requires a sum of exponentials with positive weights and smooth coefficients with bounded derivatives. \citet{HuHeKwokZhang2026} apply Strang splitting to Heston-type models, to the multi-factor approximation of rough Heston and to the Hull--White model. Their weak bound of second order assumes two commutator bounds. \citet{Shinozaki2026} splits the drift of the factor system into the decay of the factors and the remaining drift. He composes the two drift flows with the noise flows of \citet{NinomiyaVictoir2008} and proves weak order two for vector fields with bounded derivatives. His application is rough Heston. The volatility drifts in these four schemes have at most linear growth. \citet{DiNunnoYurchenko2026} combine a Markovian approximation with a drift-implicit Euler step for a drift that is singular at two bounds. The kernel in their model acts on the Gaussian noise only.
-
-% [REVISED 2026-11-24 pre-submission read: paragraph split, no word changed]
-Our scheme uses a drift splitting in the sense of \citet{Shinozaki2026} for the Stratonovich form of the factor system \eqref{eq:factors}, whose drift is quadratic. We keep the linear drift with the decay of the factors and split off the quadratic drift and the noise. Each of the three flows has a closed form. The price integrals use the volatility at the beginning of each step, so that the discrete price is an exact martingale on every grid. The conditional Monte Carlo estimator of \citet{Willard1997} and \citet{RomanoTouzi1997} removes the price noise that is orthogonal to the volatility noise. \citet{McCrickerdPakkanen2018} build their variance reduction for rough Bergomi on the same conditioning. We apply this estimator under the minimal martingale measure for the log-price \citep{RheinlaenderSchmutz2013}, which makes the conditional payoff bounded. We combine it with the multilevel method of \citet{Giles2008}.
-% [REVISED 2026-11-23 sweep: sentences on Alfonsi (2025), Hu et al. (2026) and McCrickerd and Pakkanen (2018) added]
-% [REVISED 2026-11-23 attribution: sentences on Alfonsi and on Hu et al. reworded, sentences on Shinozaki (2026) and on
-%  Di Nunno and Yurchenko-Tytarenko (2026) added, the three sentences on the splitting of our scheme rewritten]
-% [REVISED 2026-11-23 measure name: the last sentence names the measure and is split into two sentences]
-% [END GENERATED 2026-11-23]
-
+The numerical method uses a Markovian lift \citep{AbiJaberElEuch2019,AlfonsiKebaier2024} and a drift splitting in the sense of \citet{Shinozaki2026}. We keep linear drift with factor decay and advance the price using beginning-of-step volatility. We combine conditional Monte Carlo \citep{Willard1997,RomanoTouzi1997,McCrickerdPakkanen2018} with multilevel sampling \citep{Giles2008}. Appendix~\ref{app:simulation} gives the three flows and the Gaussian half-tilt used to price options.
 \subsection{Contributions}\label{sec:contributions}
+We establish closure of the quadratic drift under the two changes of measure used in pricing, extending the diffusion analysis of \citet{SeppRakhmonov2023} to Volterra volatility. Both changes preserve the memory kernel, the diffusion coefficients and the constant and linear terms of the volatility drift. A market price of risk $\bar\lambda_j\sigma_t$ for each Brownian driver $j=0,1$ shifts the quadratic damping from $\kappa_2$ under the physical measure to $\kappa_2^{\Q}=\kappa_2+\beta\bar\lambda_0+\varepsilon\bar\lambda_1$ under the pricing measure. Proposition~\ref{prop:closure} gives the conditions under which the shifted polynomial admits the original mean-reverting parametrisation. When $\kappa_2^{\Q}\ge0$, the change-of-measure density is a true martingale on every finite horizon (Corollary~\ref{cor:density}).
 
-% [REVISED 2026-11-23 authors' TODO items T1 and T8: contributions stated in a subsection. Paragraphs one and three
-%  carry the contributions paragraph of 17 November 2026. Sentences two and three of paragraph one are new.]
-We study how quadratic damping interacts with rough memory, multiplicative volatility noise and positive spot-volatility correlation. We prove that the volatility equation with quadratic drift has a unique global non-negative strong solution with finite moments at every $H\in(0,1/2]$ (Theorem~\ref{thm:wellposed}). The theorem covers the fractional kernel, the Markovian kernels used in simulation and the drifts produced by the measure changes.
+Taking the asset as numeraire in the stopped equation adds $\beta\sigma^2$ to the volatility drift. The remaining damping is $\kappa_2^{\Q}-\beta$. When it is non-negative the tilted volatility cannot explode, so the price is a true martingale even with positive spot-volatility correlation (Theorem~\ref{thm:martingale}). This condition is also necessary for positive finite exponential mixtures (Proposition~\ref{prop:finite_converse}). Necessity remains open for a singular fractional kernel. Together these results extend the closure and martingality criteria of \citet{SeppRakhmonov2026} to the rough model.
 
-% [GENERATED 2026-11-23 authors' TODO item T1: closure under the measure changes]
-The model is closed under the two measure changes used in pricing, because each change shifts only the quadratic coefficient of the drift polynomial. With market prices of risk proportional to volatility, the change from the physical to the pricing measure keeps the kernel, the noise, and the intercept and linear coefficient of the drift. The quadratic coefficient moves by a linear combination of the two proportionality constants, and Proposition~\ref{prop:closure} states when the shifted parameters remain admissible. The change to the share measure, which takes the price as numeraire, adds $\beta\sigma^2$ to the drift and moves the same coefficient to $\kappa_2-\beta$. Theorem~\ref{thm:wellposed} applies to each shifted equation when its quadratic coefficient is non-negative. We prove from this property that the price is a true martingale when $\kappa_2\ge\beta$, a condition that admits positive spot-volatility correlation (Theorem~\ref{thm:martingale}). We prove in the same way that the density of the change from the physical measure is a true martingale when the shifted coefficient is non-negative (Corollary~\ref{cor:density}). A linear drift is not closed under these changes. With $\kappa_2=0$ the share measure still adds $\beta\sigma^2$ to the drift, and the pricing measure adds a quadratic term proportional to the risk premia. This closure is the invariance requirement of \citet{SeppRakhmonov2023b}, established for the diffusion at $H=1/2$ by \citet{SeppRakhmonov2023}.
-% [END GENERATED 2026-11-23]
+The volatility equation has a unique global non-negative strong solution for both the fractional kernel and its finite exponential approximations. Under linear drift we obtain exact conditional first and second moments, the threshold for a uniformly bounded second moment and the growth rate above it. With positive quadratic damping the fractional model has a uniformly bounded second moment for every $0<H\le1/2$. Its long-run variance-swap strike has a ceiling that depends only on the drift parameters.
 
-For linear drift, the conditional first and second moments are exact, and Proposition~\ref{prop:stationarity} characterises uniform long-horizon second-moment boundedness by $\gamma<1$. The threshold has the closed form \eqref{eq:gamma}, and Proposition~\ref{prop:growth} gives the exponential growth rate above it. Since $\vartheta$ has units year$^{-H}$, Table~\ref{tab:critical} also expresses the threshold through a leading-order one-day innovation scale. For quadratic drift, Proposition~\ref{prop:cesaro} bounds the long-run expected integrated variance per unit time by $\theta\max(\theta,\kappa_1/\kappa_2)$, for every $\vartheta$ and every $H$.
-% [GENERATED 2026-11-17 final pass] next sentence
-The same argument gives the bound \eqref{eq:cesaro_limit_N} for the Markovian kernels used in simulation.
-A pointwise long-horizon bound holds for the constant kernel (Proposition~\ref{prop:classical_qd}) and remains open for the fractional kernel. The expected integrated variance and conditional squared VIX provide exact checks for variance-swap calculations and the inner conditional expectation in VIX pricing (Proposition~\ref{prop:vix}). VIX futures still require an outer expectation of the square root.
-
-% [GENERATED 2026-11-23 authors' TODO item T1: Monte Carlo scheme and calibration to crypto options. Sentence four and the last
-%  sentence are carried. Numbers: Table tab:calibration, ../replication/results/calibration_robustness_2026-11-18/calibration_summary.json.]
-% [REVISED 2026-11-23 scheme unification: sentences two to five]
-% [REVISED 2026-11-23 measure name: sentence four]
-We develop a Monte Carlo scheme for the Markovian approximation of the model (Appendix~\ref{app:simulation}). The scheme composes three flows of the factor system, each in closed form, and its price step holds the volatility at the beginning of the step.\footnote{Implementation: \url{https://github.com/ArturSepp/StochVolModels}, modules \path{src/stochvolmodels/models/rough_logsv} and \path{src/stochvolmodels/pricers/rough_logsv_pricer.py}. Replication scripts are in the folder \path{papers/rough_volterra_lognormal_sv_model_2026/replication} of the same repository.} The discrete price is therefore an exact martingale on every grid and for every $\kappa_2$ (Lemma~\ref{lem:discrete_martingale}). A conditional estimator under the minimal martingale measure for the log-price prices European options from the volatility paths alone, and its payoff is bounded. We compare the scheme with the exact discrete and the exact continuous moments of its own Markovian kernel, which separates the sampling error from the time-discretisation error. We calibrate the model to Bitcoin and Ether options at fixed $H=0.30$ and $H=1/2$ under the constraint $\kappa_2\ge\beta$ (Section~\ref{sec:illustrations}). The four fitted spot-volatility correlations are positive, between $0.10$ and $0.22$ (Table~\ref{tab:calibration}). The calibration is an in-sample illustration at fixed $H$ and does not estimate $H$. Appendix~\ref{sec:micro} gives a marked order-flow interpretation and a stopped constant-kernel diffusion limit.
-% [END GENERATED 2026-11-23]
-
-% [REVISED 2026-10-30 roadmap for the new structure (C5, C7); REVISED 2026-11-23 Sections 4 and 5 and the appendices]
-Section~\ref{sec:model} specifies the model, its Markovian approximation, its relation to rough Bergomi and quadratic rough Heston, and its well-posedness. Section~\ref{sec:moments} derives the moments, the stability parameter with its growth rate, and the second-moment bounds under quadratic drift. Section~\ref{sec:measure} treats the measure changes and proves the martingale property under positive correlation. Section~\ref{sec:illustrations} presents the calibration to Bitcoin and Ether options and the numerical illustrations. Section~\ref{sec:conclusion} concludes with the open problems. The appendices collect the proofs, the simulation scheme with its validation and the microstructural reading.
-% [END REVISED 2026-10-30]
-
+We impose the martingale condition when fitting the model to Bitcoin and Ether option smiles at fixed roughness. Appendix~\ref{sec:micro} relates the multiplicative volatility noise and quadratic drift to signed trade impacts and proves a stopped diffusion limit for the constant kernel.
 \section{Model}\label{sec:model}
 
 \subsection{Dynamics}
 
-% [CARRIED rough_lognormal_sv2.tex Sec. 1, notation aligned with StochVolModels]
 We work under the pricing measure $\Q$ with zero interest rates, so that $S_t$ denotes the forward price. The log-normal Volterra stochastic volatility model is
 \begin{equation}\label{eq:model}
 \begin{split}
@@ -347,18 +141,14 @@ K(t)=\frac{t^{H-1/2}}{\Gamma(H+1/2)},\qquad H\in(0,1/2],\qquad \alpha:=H+\tfrac1
 \end{equation}
 For $H=1/2$ the kernel is constant, $K\equiv1$, and \eqref{eq:model} is the model of \citet{SeppRakhmonov2023}. The drift has the polynomial form $(\kappa_1+\kappa_2\sigma)(\theta-\sigma)=\kappa_1\theta-(\kappa_1-\kappa_2\theta)\sigma-\kappa_2\sigma^2$, which we use in the measure changes of Section~\ref{sec:measure}.
 
-% [REVISED 2026-10-30 xi_0 removed from the core model (C6); the multiplier survives in Remark below]
 The log-price $X_t=\ln S_t$ and the integrated variance $I_t$ are
 \begin{equation}\label{eq:logprice}
 X_t=X_0-\frac12 I_t+\int_0^t\sigma_s\,\D W^{(0)}_s,\qquad I_t=\int_0^t\sigma_s^2\,\D s .
 \end{equation}
 
-% [REVISED 2026-11-23 length: the remark on the forward variance multiplier is removed]
-% [END REVISED 2026-10-30]
 
 \subsection{Forward volatility curve}
 
-% [CARRIED rough_lognormal_sv2.tex Sec. 3, corrected direction of the kernel]
 The volatility \eqref{eq:model} is neither a Markov process nor a semimartingale when $H<1/2$. Following \citet{ViensZhang2019}, we use as state variable the forward volatility curve
 \begin{equation}\label{eq:theta_curve}
 \Theta^t_s=\sigma_0+\int_0^t K(s-r)\Big[(\kappa_1+\kappa_2\sigma_r)(\theta-\sigma_r)\,\D r+\vartheta\sigma_r\,\D W^\sigma_r\Big],\qquad s\ge t .
@@ -371,16 +161,11 @@ The forward curve is an adapted input to the future Volterra equation and is not
 
 \subsection{Markovian approximation}
 
-% [CARRIED rough_lognormal_simulation.tex Sec. 1, corrected and aligned with the code]
 The implementation replaces $K$ by a sum of exponentials
 \begin{equation}\label{eq:kernel_N}
 K^N(t)=\sum_{i=1}^N w_i\,e^{-x_i t},\qquad w_i>0,\ x_i\ge0,\qquad \bar w:=\sum_{i=1}^N w_i ,
 \end{equation}
-with nodes $x_i$ and weights $w_i$. Markovian approximations of this type go back to \citet{AbiJaberElEuch2019}, and \citet{AlfonsiKebaier2024} analyse their convergence for completely monotone kernels. The calibration at $H=0.30$ uses a kernel with $N=97$ nodes (Appendix~\ref{sec:calibration_design}), and for $H=1/2$ the kernel is $K\equiv1$, with $N=1$, $x_1=0$ and $w_1=1$. Tables~\ref{tab:martingale} and~\ref{tab:validation} and Figure~\ref{fig:martingale} use $N=3$, with nodes and weights from the quadrature rule of \citet{BayerBreneis2023}, optimised for European options with maturity $T$. For $H=0.1$ and $T=1$ the rule gives $x=(0.0333,\,2.242,\,46.83)$ and $w=(0.555,\,1.111,\,6.086)$.
-% [REVISED 2026-11-23 scheme unification: the paragraph above names the kernels used in this paper. The sentence on the default
-%  number of factors of the split-step code is removed, and "The rule" in the next sentence reads "The quadrature rule".]
-% [GENERATED 2026-10-24] next sentence
-% [REVISED 2026-11-24 pre-submission read: the clause and the footnote on the kernel fit removed, no exhibit uses the fit]
+with nodes $x_i$ and weights $w_i$. Markovian approximations of this type go back to \citet{AbiJaberElEuch2019}, and \citet{AlfonsiKebaier2024} analyse their convergence for completely monotone kernels. The calibration at $H=0.30$ uses a kernel with $N=97$ nodes (Appendix~\ref{sec:calibration_design}), and for $H=1/2$ the kernel is $K\equiv1$, with $N=1$, $x_1=0$ and $w_1=1$. Table~\ref{tab:martingale} and Figure~\ref{fig:martingale} use $N=3$, with nodes and weights from the quadrature rule of \citet{BayerBreneis2023}, optimised for European options with maturity $T$. For $H=0.1$ and $T=1$ the rule gives $x=(0.0333,\,2.242,\,46.83)$ and $w=(0.555,\,1.111,\,6.086)$.
 The quadrature rule underestimates the mass of $K^2$, on which the second moment depends (Section~\ref{sec:stability}).
 
 \begin{lemma}[Factor representation]\label{lem:factors}
@@ -394,46 +179,11 @@ with $\sigma^N_t=\sum_{i=1}^N w_i\sigma^{(i)}_t$. Then $\sigma^N$ solves the Vol
 \end{equation}
 \end{lemma}
 
-% [GENERATED 2026-10-08]
 Lemma~\ref{lem:factors} reduces the approximated model to an $N$-dimensional diffusion, and \eqref{eq:theta_N} expresses the forward curve as a linear function of the factor states. The proof is in Appendix~\ref{app:proofs}. Any choice $\sigma_{0,i}$ with $\sum_i w_i\sigma_{0,i}=\sigma_0$ gives the same $\sigma^N$, and the code uses the equal split $\sigma_{0,i}=\sigma_0/\bar w$.
 
-% [REVISED 2026-10-30 Remark on the one-factor kernel deleted (chronology residue, not load-bearing); text in the 24 October file]
-
-\subsection{Relation to rough Bergomi and quadratic rough Heston}\label{sec:relation}
-
-% [GENERATED 2026-10-08; REVISED 2026-11-17 reduced to one sentence on the constant-kernel case]
-Table~\ref{tab:rbergomi} compares the model with rough Bergomi and with quadratic rough Heston. At $H=1/2$ rough Bergomi has Brownian log-volatility, whereas the classical log-normal model with $\kappa_1>0$ and $\kappa_2=0$ has an inverse gamma invariant law.
-
-\begin{table}[ht]
-\centering
-\small
-\caption{Log-normal Volterra model \eqref{eq:model}, rough Bergomi and quadratic rough Heston with zero variance floor.}\label{tab:rbergomi}
-\begin{tabular}{p{2.5cm}p{3.7cm}p{3.7cm}p{3.7cm}}
-\toprule
- & Rough Bergomi & Quadratic rough Heston, $c=0$ & Log-normal Volterra model \\
-\midrule
-Volatility & $\ln\sigma_t$ Gaussian Volterra process & $\sqrt a\,|Z_t-b|$, where $Z$ solves a Volterra equation with noise $\lambda\eta\sqrt{V_s}\,\D W_s$ & $\sigma_t$ solves a Volterra equation with noise $\vartheta\sigma_s\,\D W^\sigma_s$ \\
-Positivity & automatic & non-negative by construction & non-negative (Theorem~\ref{thm:wellposed}); strict positivity open for singular kernels \\
-Drift & deterministic log-variance correction and initial curve & linear, level $-\sqrt a\,b$ for the signed state & quadratic, mean reversion to $\theta>0$ \\
-Correlation & constant $\rho$ & $\pm1$, sign flips at $Z=b$ & constant $\rho$ \\
-Correlation $\rho>0$ & strict local martingale \citep{Gassiat2019} & not studied here & true martingale for $\kappa_2\ge\beta$ (Theorem~\ref{thm:martingale}) \\
-Long-horizon second moment & prescribed by the initial forward-variance curve & bounded iff $\gamma<1$ for $b>0$, with $\vartheta=\lambda\eta\sqrt a$ & linear drift, $\kappa_1>0$: bounded iff $\gamma<1$; quadratic drift: time average bounded for every $\vartheta$ (Proposition~\ref{prop:cesaro}) \\
-Initial state & deterministic initial forward-variance curve & $Z_0$ through $\theta_0(t)$ & $\sigma_0$ at $t=0$, curve $\Theta^0_s=\sigma_0$ \\
-Microstructure & Poisson orders acting on $\ln\sigma$ \citep{HagerHorstWagenhoferXu2026} & related signed quadratic-Hawkes state \citep{DandapaniJusselinRosenbaum2021} & marked order-flow interpretation; global rough limit open \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-% [GENERATED 2026-10-24]
-Quadratic rough Heston is closer to our model than rough Bergomi. That model sets $V_t=a(Z_t-b)^2+c$ with $Z_t=\int_0^tK(t-s)\big[\lambda(\theta_0(s)-Z_s)\,\D s+\lambda\eta\sqrt{V_s}\,\D W_s\big]$, and, for $1/2<\alpha<1$, the choice $\theta_0(t)=Z_0t^{-\alpha}/(\lambda\Gamma(1-\alpha))$ of \citet{GatheralJusselinRosenbaum2020} gives $K*(\lambda\theta_0)\equiv Z_0$ for positive times. At $\alpha=1$ we insert $Z_0$ directly as the initial condition instead of using this singular input formula. With $c=0$ the signed volatility $Y_t=\sqrt a\,(Z_t-b)$ solves
-\begin{equation}\label{eq:qrh_map}
-Y_t=Y_0+\int_0^tK(t-s)\Big[\lambda\big(-\sqrt a\,b-Y_s\big)\,\D s+\lambda\eta\sqrt a\,Y_s\,\D\widetilde W_s\Big],\qquad \D\widetilde W_s=\mathrm{sign}(Y_s)\,\D W_s,
-\end{equation}
-and the volatility is $|Y|$. Define $\mathrm{sign}(0)=1$, so that $\widetilde W$ has quadratic variation $t$ and is Brownian. The coefficient identification is $\kappa_2=0$, $\kappa_1=\lambda$, $\theta=-\sqrt a\,b$ and $\vartheta=\lambda\eta\sqrt a$. The identification describes a signed equation outside our parameter class, which has a positive level and a constant correlation: the transformed Brownian motion has the correlation $\mathrm{sign}(Y)$ with the price driver. Applying absolute value to $Y$ does not commute with the Volterra convolution. Thus this map does not assert that $|Y|$ solves \eqref{eq:model}. Our positive-level specification and the nonlinear drift require their own state-space and well-posedness analysis, which Theorem~\ref{thm:wellposed} provides. For the zero-floor comparison with $b>0$, the signed mean tends to $-\sqrt a\,b\ne0$, which is the condition behind the boundedness entry in Table~\ref{tab:rbergomi}. The proof of Proposition~\ref{prop:stationarity} uses only a non-zero long-run mean, so its criterion applies to the signed state. If $b=0$, that entry need not hold at the critical boundary. For example, at $H=1/2$ the homogeneous equation has a constant second moment when $\vartheta^2=2\lambda$.
 
 \subsection{Well-posedness}
 
-% [GENERATED 2026-11-17 replaces the text of 30 October 2026: global well-posedness for the quadratic drift is proved (R1)]
 For $\kappa_2=0$, the drift and diffusion coefficients of \eqref{eq:model} are globally Lipschitz. Theorem~3.3 and Example~2.3(ii) of \citet{AbiJaberLarssonPulido2019} give a unique continuous strong solution for the fractional kernel, and their Lemma~3.1 gives finite-horizon moments. Their Theorem~3.6 and Example~3.7 give a non-negative solution, because the kernel is completely monotone, the boundary drift is $\kappa_1\theta\ge0$, and the diffusion coefficient vanishes at zero. For $\kappa_2>0$ the drift grows quadratically and is not globally Lipschitz, so these results do not apply directly. The next theorem covers the quadratic drift, the tilted drifts of Section~\ref{sec:measure} and the Markovian kernels \eqref{eq:kernel_N}.
 
 \begin{theorem}[Global well-posedness with quadratic drift]\label{thm:wellposed}
@@ -445,7 +195,6 @@ has a pathwise unique continuous strong solution on $[0,\infty)$. The solution i
 \end{theorem}
 
 The volatility equation in \eqref{eq:model} is \eqref{eq:sve_general} with $c_0=\kappa_1\theta$, $c_1=\kappa_2\theta-\kappa_1$ and $d=\kappa_2$. The proof is in Appendix~\ref{app:proofs}. The difficulty is that a stochastic Volterra equation has no It\^o formula for functions of the state, so the Lyapunov argument that controls a quadratic drift for a diffusion is not available. We replace it by a one-sided bound. A truncated equation has a non-negative solution by the results cited above. On the non-negative half-line the term $-d\sigma^2$ only lowers the drift, and the non-negative kernel carries this sign through the convolution. The moments of the truncated solutions are therefore bounded by those of a linear majorant, uniformly in the truncation level, and we remove the truncation.
-% [GENERATED 2026-11-17 attribution pass] next sentence
 \citet{PannierJacquier2019} remove a truncation in the same way for a locally Lipschitz drift, under a linear growth condition that excludes the quadratic term.
 
 The moment bound of Theorem~\ref{thm:wellposed} holds on finite horizons and inherits the growth of the linear majorant. Section~\ref{sec:moments} quantifies the long-horizon behaviour. At $H=1/2$ the equation is the classical positive, non-explosive diffusion of \citet{SeppRakhmonov2023}. For $H<1/2$ the theorem gives $\sigma_t\ge0$ and leaves strict positivity open.
@@ -455,11 +204,9 @@ For every $H\in(0,1/2)$ and the parameters of \eqref{eq:model}, the volatility i
 \end{conjecture}
 
 No result of this paper uses Conjecture~\ref{conj:wellposed}. Neither zero-hitting paths of a numerical scheme nor the microscopic sign bias of Appendix~\ref{sec:micro_model} resolves it.
-% [END GENERATED 2026-11-17]
 
 \section{Moments and the stability parameter}\label{sec:moments}
 
-% [GENERATED 2026-10-08; REVISED 2026-10-30 section title]
 With $\kappa_2=0$ the drift is linear, and the volatility solves a linear stochastic Volterra equation with multiplicative noise. The first two conditional moments are then available in closed form up to the resolvent of the kernel. The economic content is simple. Mean reversion acts on the volatility through the kernel, and its cumulative effect is the resolvent. The noise acts through the same kernel filtered by the resolvent, and its second moment compounds through the singularity of the kernel at zero.
 
 \subsection{Resolvent}
@@ -492,9 +239,7 @@ v_t(s)=m_t(s)^2+\vartheta^2\int_t^sG(s-r)^2\,v_t(r)\,\D r .
 Equivalently, $v_t=m_t^2+\widetilde R*m_t^2$ on $[t,\infty)$, where $\widetilde R$ is the resolvent of $\vartheta^2G^2$ with positive sign, $\widetilde R=\vartheta^2G^2+\vartheta^2G^2*\widetilde R$.
 \end{proposition}
 
-% [GENERATED 2026-10-08]
 The proofs are in Appendix~\ref{app:proofs}. The key step writes the centred volatility $\sigma_s-m_t(s)$ as the stochastic convolution $\int_t^sG(s-r)\vartheta\sigma_r\,\D W^\sigma_r$. The deterministic mean reversion is absorbed in the resolvent, and It\^o's isometry then closes the second moment. The cross-time covariances of the volatility never enter \eqref{eq:cond_second}, which is why the equation is linear and one-dimensional.
-% [GENERATED 2026-11-17 attribution pass] next three sentences
 With $\kappa_2=0$ the drift is affine and the squared diffusion coefficient is quadratic in the state. The volatility is then a polynomial Volterra process in the sense of \citet{AbiJaberCuchieroPelizzariPulidoSvalutoFerro2024}, whose moments solve deterministic integral equations. Propositions~\ref{prop:mean} and~\ref{prop:second} give the first two of these equations in resolvent form.
 
 \begin{corollary}[Mittag-Leffler growth]\label{cor:ml}
@@ -505,37 +250,10 @@ Let $\kappa_1=\kappa_2=0$ and let $K$ be the fractional kernel \eqref{eq:kernel}
 and $\E[I_T]=\sigma_0^2\,T\,E_{2H,2}\big(a\,T^{2H}\big)$. As $t\to\infty$, $\E[\sigma_t^2]\sim(2H)^{-1}\sigma_0^2\exp\big(a^{1/(2H)}t\big)$.
 \end{corollary}
 
-% [GENERATED 2026-10-08; REVISED 2026-10-30 units caveat added (C1), chronology removed, Table 2 entry corrected (C2)]
-At $H=1/2$ the corollary gives $\E[\sigma_t^2]=\sigma_0^2e^{\vartheta^2t}$, the second moment of a geometric Brownian motion. For $H<1/2$ the rate $a^{1/(2H)}$ can be large, as Table~\ref{tab:growth} illustrates. Across rows, $\vartheta$ is fixed numerically in the different units year$^{-H}$, so the rows do not represent the same market volatility-of-volatility. In rough Bergomi the second moment of volatility is fixed by the forward variance curve, while higher moments include factors of the form $\exp(c\,t^{2H})$.
-
-\begin{table}[ht]
-\centering
-\small
-\caption{One-year ratio $\E[\sigma_1^2]/\sigma_0^2$ with $\sigma_0=\theta$, $\vartheta$ in year$^{-H}$ and $\kappa_1$ in year$^{-(H+1/2)}$. The left block uses Corollary~\ref{cor:ml}. The right block solves \eqref{eq:cond_second} by product integration, and its entry for $H=0.1$ and $\vartheta=1.85$ uses the growth rate of Proposition~\ref{prop:growth}.}\label{tab:growth}
-\begin{tabular}{lrrrrrr}
-\toprule
- & \multicolumn{3}{c}{$\kappa_1=0$} & \multicolumn{3}{c}{$\kappa_1=3$} \\
-\cmidrule(lr){2-4}\cmidrule(lr){5-7}
-$H$ & $\vartheta=0.5$ & $\vartheta=1.0$ & $\vartheta=1.85$ & $\vartheta=0.5$ & $\vartheta=1.0$ & $\vartheta=1.85$ \\
-\midrule
-0.5 & 1.284 & 2.718 & 30.65 & 1.043 & 1.199 & 2.227 \\
-0.3 & 1.390 & 5.102 & $1.48\times10^{4}$ & 1.067 & 1.336 & 6.219 \\
-0.2 & 1.530 & 17.74 & $1.29\times10^{19}$ & 1.110 & 1.661 & $\approx4.8\times10^{7}$ \\
-0.1 & 2.167 & $1.62\times10^{17}$ & $10^{7753}$ & 1.320 & 29.2 & $10^{7486}$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-% [GENERATED 2026-10-08; REVISED 2026-10-30 implications paragraph, xi_0 reference removed (C6)]
-The growth result changes how the model is calibrated. A volatility-of-volatility estimated in the classical model at $H=1/2$ cannot be carried over to $H=0.1$, because the two parameters have different units and the same number produces moments that differ by many orders of magnitude. Monte Carlo estimates of the expected integrated variance become unreliable in the explosive region, since the sample mean of a heavy-tailed variable converges slowly.
-% [GENERATED 2026-11-17 final pass] next sentence. REVISED 2026-11-23 scheme unification. Number: ../replication/results/F4_right_panel_time_averaged_history.json.
-Section~\ref{sec:illustrations} gives an example in which 200{,}000 paths understate the exact five-year expected integrated variance by more than two orders of magnitude.
-Calibration should therefore constrain the triple $(H,\vartheta,\kappa_1)$ jointly, and Proposition~\ref{prop:stationarity} below gives the constraint in closed form. We believe the quadratic drift term is the natural stabiliser. The quadratic drift removes the constraint for the constant kernel (Proposition~\ref{prop:classical_qd}), and for the fractional kernel it bounds the time-averaged second moment for every $\vartheta$ (Proposition~\ref{prop:cesaro}). The moments for $\kappa_2>0$ and $H<1/2$ are finite on finite horizons by Theorem~\ref{thm:wellposed}, although they are not available in closed form.
-
+At $H=1/2$ the second moment is $\sigma_0^2e^{\vartheta^2t}$. For $H<1/2$ its exponential growth rate is $a^{1/(2H)}$. Comparisons across $H$ require a specified horizon because $\vartheta$ has units year$^{-H}$.
 \subsection{Long-horizon second-moment stability}\label{sec:stability}
 
-% [GENERATED 2026-10-24; REVISED 2026-10-30 renamed (stability, not stationarity), crux sentence added, exponent corrected, severity restated through the daily innovation (C1). Numbers: ../replication/rough_logsv_stationarity_check.py.]
-The growth of Table~\ref{tab:growth} has a threshold. Equation \eqref{eq:cond_second} is a linear Volterra equation with the non-negative kernel $h=\vartheta^2G^2$. Its positive resolvent is $\widetilde R=\sum_{j\ge1}h^{*j}$, and Tonelli's theorem gives $\int_0^\infty\widetilde R=\sum_{j\ge1}\gamma^j$, where $\gamma=\int_0^\infty h$. The series is finite exactly when $\gamma<1$. Since the squared mean is bounded above and away from zero under the next proposition's hypotheses, the same threshold characterises uniform second-moment boundedness.
+Equation \eqref{eq:cond_second} is a linear Volterra equation with the non-negative kernel $h=\vartheta^2G^2$. Its positive resolvent is $\widetilde R=\sum_{j\ge1}h^{*j}$, and Tonelli's theorem gives $\int_0^\infty\widetilde R=\sum_{j\ge1}\gamma^j$, where $\gamma=\int_0^\infty h$. The series is finite exactly when $\gamma<1$. Since the squared mean is bounded above and away from zero under the next proposition's hypotheses, the same threshold characterises uniform second-moment boundedness.
 
 \begin{proposition}[Long-horizon second-moment stability]\label{prop:stationarity}
 Let $\kappa_2=0$, $\kappa_1>0$, $\theta>0$ and $\sigma_0>0$, and define
@@ -554,16 +272,9 @@ Then $\sup_{t\ge0}\E[\sigma_t^2]<\infty$ if and only if $\gamma<1$. If $\gamma<1
 
 The proof is in Appendix~\ref{app:proofs}. At $H=1/2$ the condition reads $\vartheta^2<2\kappa_1$, and the limit $2\kappa_1\theta^2/(2\kappa_1-\vartheta^2)$ is the second moment of the inverse gamma stationary law of \citet{SeppRakhmonov2023}. For $\kappa_1=0$ the integral in \eqref{eq:gamma} diverges, which is consistent with Corollary~\ref{cor:ml}. We call $\gamma$ the linear-drift stability parameter. The parameter is also the squared feedback-kernel norm in the signed quadratic-Hawkes comparison in Appendix~\ref{sec:micro}. The criterion concerns the coefficients under the specified measure, and it does not extend unchanged to quadratic drift.
 
-% [GENERATED 2026-11-24 pre-submission read: the criterion for the Markovian kernel. Figure fig:martingale,
-%  Section sec:illustrations and the conclusions use gamma_N, which was defined only in a caption.]
 The criterion carries over to the Markovian kernel \eqref{eq:kernel_N} with positive nodes. The transform $\widehat K^N(z)=\sum_{i=1}^Nw_i/(z+x_i)$ gives the rational function $\widehat G_N=\widehat K^N/(1+\kappa_1\widehat K^N)$, which has simple negative poles and positive residues. The resolvent $G_N$ is therefore a finite sum of decaying exponentials with positive coefficients, and the mean moves monotonically from $\sigma_0$ to $m_\infty=(\sigma_0+\kappa_1k_\infty\theta)/(1+\kappa_1k_\infty)$, where $k_\infty=\sum_{i=1}^Nw_i/x_i$. The proof of Proposition~\ref{prop:stationarity} applies with $\gamma_N:=\vartheta^2\int_0^\infty G_N(u)^2\,\D u$ in place of $\gamma$ and with $m_\infty$ in place of $\theta$. The second moment is uniformly bounded if and only if $\gamma_N<1$, and its limit is then $m_\infty^2/(1-\gamma_N)$. The threshold depends on the kernel, and Section~\ref{sec:illustrations} compares a three-factor kernel with the fractional kernel.
-% [END GENERATED 2026-11-24]
 
-% [GENERATED 2026-11-17 attribution pass] paragraph
-% [REVISED 2026-11-23 length: the paragraph on Pages (2024) and Gnabeyeu and Pages (2025) is removed, its content is in Section 1.1]
-% [END GENERATED 2026-11-17]
 
-% [GENERATED 2026-11-17 growth rate above the threshold (R4). Numbers: ../replication/rough_logsv_growth_rate.py.]
 Above the threshold the second moment grows exponentially, and its rate solves a scalar equation. Define the Laplace transform of the kernel $h=\vartheta^2G^2$,
 \begin{equation}\label{eq:h_hat}
 \widehat h(\lambda)=\vartheta^2\int_0^\infty e^{-\lambda u}G(u)^2\,\D u
@@ -580,7 +291,6 @@ For $\sigma_0=\theta$ the limit equals $\theta^2/(\lambda^*|\widehat h'(\lambda^
 \end{proposition}
 
 The proof in Appendix~\ref{app:proofs} reads \eqref{eq:cond_second} as a renewal equation. For $\kappa_1=0$ the transform is $\widehat h(\lambda)=a\lambda^{-2H}$, so that $\lambda^*=a^{1/(2H)}$ and the limit is $\sigma_0^2/(2H)$, in agreement with Corollary~\ref{cor:ml}. At $H=1/2$ the root is $\lambda^*=\vartheta^2-2\kappa_1$. Mean reversion lowers the rate only moderately when the kernel is rough. At $H=0.1$ and $\vartheta=1.85$ the rate is $17{,}851$ per year for $\kappa_1=0$ and $17{,}235$ per year for $\kappa_1=3$.
-% [END GENERATED 2026-11-17]
 
 Table~\ref{tab:critical} lists the critical volatility-of-volatility $\vartheta_c=(\int_0^\infty G^2)^{-1/2}$. The second moment is unbounded at and above this threshold. Mean reversion raises it as $\vartheta_c\propto\kappa_1^{H/\alpha}$, with exponent $1/6$ at $H=0.1$ and $1/2$ at $H=1/2$. A tenfold increase of $\kappa_1$ therefore raises $\vartheta_c$ by $47\%$ and $216\%$, respectively. Parameters have Hurst-dependent units, so comparisons across rows require a horizon and a quotation convention. Freezing the volatility coefficient over a short horizon $\Delta$ gives the leading-order innovation proxy
 \begin{equation*}
@@ -589,9 +299,7 @@ Table~\ref{tab:critical} lists the critical volatility-of-volatility $\vartheta_
 \end{equation*}
 The proxy reduces to $\vartheta\sqrt\Delta$ at $H=1/2$. The right block of Table~\ref{tab:critical} expresses the boundary using $\nu_{1/252,c}$. The proxy freezes the volatility coefficient over a short horizon and differs from the exact conditional daily standard deviation. The difference matters especially when the value exceeds one. Whether the linear-drift constraint binds in a market depends on the calibrated triple $(H,\kappa_1,\vartheta)$ with its stated units.
 
-% [GENERATED 2026-11-17 terminology bridge to rough Bergomi units. Numbers: ../replication/rough_logsv_growth_rate.py.]
 The proxy also links $\vartheta$ to the volatility-of-volatility $\eta_{\mathrm{B}}$ of rough Bergomi, in which the variance is $\xi_0(t)\,\mathcal{E}\big(\eta_{\mathrm{B}}\sqrt{2H}\int_0^t(t-s)^{H-1/2}\,\D W_s\big)$ \citep{BayerFrizGatheral2016}. Matching the short-time kernels of the log-volatility in the two models gives $\vartheta=\eta_{\mathrm{B}}\sqrt{2H}\,\Gamma(\alpha)/2$ and therefore $\nu_\Delta=(\eta_{\mathrm{B}}/2)\Delta^H$.
-% [END GENERATED 2026-11-17]
 
 \begin{table}[ht]
 \centering
@@ -611,11 +319,9 @@ $H$ & $C(\alpha)$ & $\kappa_1=1$ & $2$ & $3$ & $5$ & $10$ & $\kappa_1=1$ & $2$ &
 \bottomrule
 \end{tabular}
 \end{table}
-% [END GENERATED 2026-10-24 / REVISED 2026-10-30]
 
 \subsection{Second moment under the quadratic drift}\label{sec:classical_qd}
 
-% [REVISED 2026-10-30 new subsection (C3, C7): the stationary density moved here from the microstructure section, where it was part of the scaling-limit proposition]
 The quadratic drift removes the linear-drift second-moment constraint when the kernel is constant. In the generator applied to $\sigma^2$, its contribution is $-2\kappa_2\sigma^3$, which dominates the quadratic diffusion contribution $\vartheta^2\sigma^2$ at large volatility for every $\vartheta$.
 
 \begin{proposition}[Quadratic drift at $H=1/2$]\label{prop:classical_qd}
@@ -627,11 +333,9 @@ and every positive and negative moment under the stationary law is finite for ev
 \end{proposition}
 
 The proof is in Appendix~\ref{app:proofs}.
-% [GENERATED 2026-11-17 attribution pass] next sentence
 The density \eqref{eq:stationary_density} is of generalised inverse Gaussian type, the steady-state law that \citet{CarrWillems2019} obtain for a log-normal volatility with quadratic drift.
 With $\kappa_2=0$, \eqref{eq:stationary_density} reduces to the inverse gamma law of \citet{SeppRakhmonov2023}, whose second moment is finite exactly when $\vartheta^2<2\kappa_1$, or $\gamma<1$ at $H=1/2$. With $\kappa_2>0$, the exponential tail gives all stationary moments, and the Lyapunov estimate in the proof gives a uniform second-moment bound from a deterministic initial state.
 
-% [GENERATED 2026-11-17 time-averaged bound (R3), extended to the kernel K^N in the amendment of r2. Numbers: ../replication/rough_logsv_growth_rate.py.]
 For the fractional kernel the generator argument is not available, but the quadratic drift still bounds the second moment in time average. The volatility is non-negative, which forces a lower bound on the semimartingale that drives the Volterra equation. The expected quadratic damping accumulated along the path cannot exceed that bound. The argument uses only the non-negativity of the volatility and of the resolvent of the first kind of the kernel, and therefore it also covers $K^N$.
 
 \begin{proposition}[Time-averaged second moment under quadratic drift]\label{prop:cesaro}
@@ -651,12 +355,18 @@ For $K^N$ the ratio $L([0,T])/T$ converges to $\ell_N=\big(\int_0^\infty K^N(s)\
 
 The proof is in Appendix~\ref{app:proofs}. The bound \eqref{eq:cesaro_limit} depends neither on $\vartheta$ nor on $H$. The bound \eqref{eq:cesaro_limit_N} does not depend on $\vartheta$ either. Its additional term $\sigma_0\ell_N$ arises because an integrable kernel pulls the volatility back to the initial level $\sigma_0$. With linear drift and $\gamma\ge1$ the same average diverges by Proposition~\ref{prop:stationarity}. At $H=1/2$ the stationary law of Proposition~\ref{prop:classical_qd} satisfies $\E[\sigma^2]=\theta\,\E[\sigma]+(\kappa_1/\kappa_2)(\theta-\E[\sigma])$ with $0\le\E[\sigma]\le\theta$, which is consistent with \eqref{eq:cesaro_limit}.
 
-The result changes the status of the variance swap in the model. The fair strike $T^{-1}\E[I_T]$ of a long-dated variance swap is bounded by a level that involves only the drift parameters, for every volatility-of-volatility. Figure~\ref{fig:martingale} compares the finite-horizon bounds \eqref{eq:cesaro} for a three-factor kernel with the exact linear-drift average at $\vartheta=1.2$. A pointwise bound on $\sup_t\E[\sigma_t^2]$ for the fractional kernel remains open.
-% [END GENERATED 2026-11-17]
+The long-run variance-swap strike is bounded by drift parameters alone. Figure~\ref{fig:martingale} compares the finite-horizon bounds for a three-factor kernel with simulated time averages. For the fractional kernel, comparison with an affine process also bounds the second moment at each time.
+
+\begin{corollary}[Uniform second moment under quadratic drift]\label{cor:pointwise}
+For the fractional kernel \eqref{eq:kernel}, $0<H\le1/2$ and $d=\kappa_2>0$, the volatility in \eqref{eq:model} satisfies $\sup_{t\ge0}\E[\sigma_t^2]<\infty$ for every $\vartheta$. More precisely, write $\alpha=H+1/2$, $C_\lambda=c_0+(c_1+\lambda)^2/(4d)$ and $\gamma_\lambda=\vartheta^2 C(\alpha)\lambda^{-2H/\alpha}$, with $C(\alpha)$ from \eqref{eq:gamma}. For every $\lambda>0$ with $\gamma_\lambda<1$,
+\begin{equation}\label{eq:pointwise_bound}
+\sup_{t\ge0}\E[\sigma_t^2]\le\frac{\max\{\sigma_0,C_\lambda/\lambda\}^2}{1-\gamma_\lambda}.
+\end{equation}
+\end{corollary}
+The bound \eqref{eq:pointwise_bound} depends on volatility of volatility through $\gamma_\lambda$. The time-average bound \eqref{eq:cesaro_limit} is independent of both $\vartheta$ and $H$.
 
 \subsection{Expected integrated variance and VIX}
 
-% [GENERATED 2026-10-08; REVISED 2026-10-30 xi_0 removed (C6), the multiplier is in Remark~\ref{rem:xi}]
 The expected integrated variance follows from Proposition~\ref{prop:second} by integration,
 \begin{equation}\label{eq:EI}
 \E[I_T]=\int_0^T v(t)\,\D t,\qquad v(t)=\E[\sigma_t^2] .
@@ -671,36 +381,19 @@ Let $\kappa_2=0$. Then
 \varpi_T(r)&=1+\int_r^{T+\Delta}\widetilde R(s-r)\,\D s ,
 \end{split}
 \end{equation}
-% [REVISED 2026-11-23 authors' TODO item T4: the resolvent recalled where it is used]
 where $\widetilde R$ is the positive resolvent of $\vartheta^2G^2$ defined in Proposition~\ref{prop:second}, $\widetilde R=\vartheta^2G^2+\vartheta^2G^2*\widetilde R$, and $m_T$ is the conditional mean curve \eqref{eq:cond_mean}. Under the Markovian kernel \eqref{eq:kernel_N}, $m_T$ is affine in the factor states $u_i=\sigma^{(i)}_T-\sigma_{0,i}$, and
 \begin{equation}\label{eq:vix_quadratic}
 \VIX_T^2=q_0+q_1^\top u+u^\top Q_2\,u
 \end{equation}
-with deterministic coefficients as follows. Write $s=r-T$ and use the resolvent $R$ of $\kappa_1K^N$ to define
-\begin{align*}
-a(s)&=\theta+(\sigma_0-\theta)\Big(1-\int_0^sR(v)\,\D v\Big),\\
-b_i(s)&=w_i\Big(e^{-x_i s}-\int_0^sR(s-v)e^{-x_i v}\,\D v\Big).
-\end{align*}
-Then $m_T(T+s)=a(s)+b(s)^\top u$, and
-\begin{align*}
-q_0&=\frac1\Delta\int_0^\Delta\varpi_T(T+s)a(s)^2\,\D s,\\
-q_1&=\frac2\Delta\int_0^\Delta\varpi_T(T+s)a(s)b(s)\,\D s,\\
-Q_2&=\frac1\Delta\int_0^\Delta\varpi_T(T+s)b(s)b(s)^\top\,\D s.
-\end{align*}
-In particular, $Q_2$ is symmetric positive semidefinite.
+with deterministic coefficients obtained by substituting the affine conditional mean in \eqref{eq:vix}. The quadratic coefficient is positive semidefinite since $\varpi_T$ is non-negative.
 \end{proposition}
 
-% [GENERATED 2026-10-08; REVISED 2026-10-30 chronology removed, missing space, calibration pointer removed (C5)]
-Formula \eqref{eq:vix_quadratic} generalises the classical relation, in which $\VIX_T^2$ is a quadratic polynomial of $\sigma_T$. Let $U_T$ denote the vector of the centred factor states $\sigma^{(i)}_T-\sigma_{0,i}$. With $q(u)=q_0+q_1^\top u+u^\top Q_2u$, a zero-rate VIX future is
-\begin{equation*}
-F_t^{\VIX}(T)=\E\big[\sqrt{q(U_T)}\mid\F_t\big]
-\le\sqrt{\E[q(U_T)\mid\F_t]}.
-\end{equation*}
-Thus the conditional squared-VIX computation is exact, while VIX futures and options require an outer expectation over factor states. Monte Carlo evaluates $q$ on those states without nested simulation. Conditional moment approximations for $\kappa_2>0$ remain future work.
-
+VIX futures require a further conditional expectation of the square root. For the finite kernel the quadratic form \eqref{eq:vix_quadratic} permits that expectation to be evaluated without nested simulation.
 \section{Martingale property under positive correlation}\label{sec:measure}
 
 \subsection{Market prices of risk proportional to volatility}
+
+The robustness criterion of \citet{SeppRakhmonov2026} asks whether the volatility dynamics retain their form under a change of measure. For the Volterra model, the changes to the pricing and share measures each shift only the quadratic drift coefficient.
 
 Let the physical dynamics be $\D S_t/S_t=\mu_t\,\D t+\sigma_t\,\D W^{(0)}_t$, with volatility \eqref{eq:model} and physical parameters $(\kappa_1,\kappa_2,\theta,\beta,\varepsilon)$. Following \citet{SeppRakhmonov2023}, take market prices of risk $\lambda^{(j)}_t=\bar\lambda_j\sigma_t$, $j=0,1$, and consider the density
 \begin{equation}\label{eq:density}
@@ -727,21 +420,17 @@ The proof substitutes $\D W^{(j)}=\D W^{\Q,(j)}-\bar\lambda_j\sigma\,\D t$ in th
 These parameters satisfy $(\kappa_1^{\Q}+d\sigma)(\theta^{\Q}-\sigma)=c_0+c_1\sigma-d\sigma^2$.
 For $c_0>0$ and $d=0$, admissibility instead requires $c_1<0$, with $\kappa_1^{\Q}=-c_1$ and $\theta^{\Q}=c_0/(-c_1)$. If $c_0=0$, admissibility with $d>0$ requires $c_1>0$, giving $\kappa_1^{\Q}=0$ and $\theta^{\Q}=c_1/d$. With $d=0$, only $c_1=0$ is admissible and $\theta^{\Q}>0$ can be chosen arbitrarily. Negative $d$ is outside the stated family. These qualifications are independent of the true-martingale requirement on the density.
 
-The risk-premium contribution to the quadratic coefficient is $\beta\bar\lambda_0+\varepsilon\bar\lambda_1$. The microscopic interpretation of Appendix~\ref{sec:micro} concerns a candidate physical drift, and it does not remove the density or admissibility conditions above.
+The order-flow interpretation in Appendix~\ref{sec:micro} concerns the physical drift.
 
-% [GENERATED 2026-11-17 density of the measure change (R2)]
 \begin{corollary}[Density of the measure change]\label{cor:density}
 If $\kappa_2^{\Q}\ge0$, the stochastic exponential \eqref{eq:density} is a true $\P$-martingale on $[0,T]$ for every $T>0$.
 \end{corollary}
 
 The proof in Appendix~\ref{app:proofs} repeats the localisation argument of Theorem~\ref{thm:martingale} with the density in place of the price, and the tilted equation is the volatility equation with drift \eqref{eq:drift_Q}. A negative $\kappa_2^{\Q}$ is not covered.
-% [END GENERATED 2026-11-17]
 
 \subsection{Martingale property of the price}
 
-% [GENERATED 2026-11-17 replaces the conditional criterion of 30 October 2026: the assumption is removed and the theorem proved (R2)]
 The parameters in this subsection are those of \eqref{eq:model} under $\Q$, so that $\kappa_2$ stands for $\kappa_2^{\Q}$ of Proposition~\ref{prop:closure}. The standard localisation argument reduces the martingale property of the price to non-explosion of a tilted volatility equation. \citet[Lemma~3.1]{GuyonJeanninJourdain2026} give this reduction in their Volterra framework. In the direct representation of our model, $X=\sigma$, $F_1=F_2=\mathrm{id}$, $\Gamma_1(x)=\vartheta x$, $\Gamma_2(x)=c_0+c_1x-\kappa_2x^2$ and $K_1=K_2=K$.
-% [GENERATED 2026-11-17 attribution pass] next two sentences
 For $\kappa_2=0$ their growth conditions hold. Their Theorem~1(A) then covers $\beta=0$, and their Corollary~2.6(i) covers $\beta<0$, because the volatility is non-negative.
 For $\kappa_2>0$, their Assumption~1.2 fails: the assumption bounds the product of the growth exponents of $\Gamma_2$ and $F_2$ by one, and the product is two for the quadratic drift. Their Theorem~1(B) therefore does not directly establish our claim under this representation. Theorem~\ref{thm:wellposed} supplies the non-explosion step.
 
@@ -749,21 +438,17 @@ For $\kappa_2>0$, their Assumption~1.2 fails: the assumption bounds the product 
 Let $K$ be the fractional kernel \eqref{eq:kernel} with $H\in(0,1/2]$ or a Markovian kernel \eqref{eq:kernel_N}. If $\kappa_2\ge\beta$, the price $S$ in \eqref{eq:model} is a true $\Q$-martingale on $[0,T]$ for every $T>0$.
 \end{theorem}
 
-Under a stopped share measure, the volatility drift gains $+\beta\sigma^2$, so its quadratic coefficient becomes $d=\kappa_2-\beta$. The condition $\kappa_2\ge\beta$ makes $d$ non-negative, and Theorem~\ref{thm:wellposed} then excludes explosion of the tilted equation. The proof is in Appendix~\ref{app:proofs}. For $\beta\le0$ the condition holds for every $\kappa_2\ge0$. For $\beta>\kappa_2$ the tilted drift has a positive quadratic coefficient.
-% [REVISED 2026-11-24 pre-submission read: next sentence, the converse for the constant kernel]
-For the constant kernel ($H=1/2$), \citet[Theorem~3.7]{SeppRakhmonov2023} prove that the price is a martingale if and only if $\kappa_2\ge\beta$.
-% [GENERATED 2026-11-17 attribution pass] next seven sentences
-When $\kappa_2=0$, Corollary~2.6(ii) of \citet{GuyonJeanninJourdain2026} shows that the price is a strict local martingale if the kernel satisfies their Assumption~4.2. The assumption requires a finite positive value at zero, continuous differentiability and a derivative of locally bounded variation. The Markovian kernels $K^N$ satisfy it. Their well-posedness assumption also holds for $K^N$, because the factor system \eqref{eq:factors} is a stochastic differential equation with locally Lipschitz coefficients. Their growth condition holds with exponent two and threshold zero, because $\rho\,\Gamma_1(x)\,x=\beta x^2$, and their accessibility condition at time zero reduces to $\sigma_0>0$. Thus $\E[S_T]<S_0$ for every $T>0$ when $K=K^N$, $\kappa_2=0$ and $\beta>0$. Their results do not cover the fractional kernel with $H<1/2$, which is singular at zero, or the case $0<\kappa_2<\beta$, in which their growth assumption fails.
-% [END GENERATED 2026-11-17]
+Under a stopped share measure the drift gains $+\beta\sigma^2$. If $\kappa_2\ge\beta$, Theorem~\ref{thm:wellposed} excludes explosion of the tilted equation. The converse is known for the constant kernel \citep[Theorem~3.7]{SeppRakhmonov2023} and, under linear drift, for finite Markovian kernels \citep[Corollary~2.6(ii)]{GuyonJeanninJourdain2026}. The following result covers positive finite mixtures under quadratic drift as well.
 
-% [REVISED 2026-11-24 pre-submission read: conjecture restricted to the cases that are not proved]
+\begin{proposition}[Converse for finite exponential mixtures]\label{prop:finite_converse}
+Let $K=K^N$ in \eqref{eq:kernel_N} with positive weights, non-negative nodes and constant initial input $\sigma_0>0$. If $\beta>\kappa_2$, then $\E_\Q[S_T]<S_0$ for every $T>0$. Thus the price is a true martingale on every finite horizon if and only if $\kappa_2\ge\beta$.
+\end{proposition}
+The proof in Appendix~\ref{app:proofs} uses $K(0)<\infty$. For a singular kernel the converse remains open.
+
 \begin{conjecture}\label{conj:supermartingale}
-Let $K$ be the fractional kernel \eqref{eq:kernel} with $H\in(0,1/2)$, or a non-constant Markovian kernel \eqref{eq:kernel_N} with $\kappa_2>0$. If $\beta>\kappa_2$, then $\E[S_T]<S_0$ for every $T>0$.
+For the fractional kernel \eqref{eq:kernel} with $0<H<1/2$, if $\beta>\kappa_2$, then $\E_\Q[S_T]<S_0$ for every $T>0$.
 \end{conjecture}
-% [END GENERATED 2026-11-17]
 
-% [REVISED 2026-11-23 scheme unification: table on the scheme of Appendix B at 1,440, 2,880 and 5,760 steps per year.
-%  Cells: ../replication/results/F4_quadratic_drift_history_R2.json, case R2 of ../replication/rough_logsv_scheme_unification.py.]
 \begin{table}[ht]
 \centering
 \small
@@ -785,37 +470,21 @@ batch standard error & 0.00068 & 0.00155 & 0.00177 & 0.00137 & 0.00111 \\
 \end{tabular}
 \end{table}
 
-% [GENERATED 2026-11-23 scheme unification: the three paragraphs below replace the text of 17 November 2026 on the split-step
-%  estimates. The first paragraph is crux text for the authors' rewrite. Numbers: the file named above. The batch statistics
-%  are recomputed by ../agents/implementation_2026-11-23/apply_scheme_unification_2026-11-23.py --check.]
-% [REVISED 2026-11-23 length: one paragraph replaces the three paragraphs of the scheme unification. Numbers as before.]
-% [REVISED 2026-11-24 pre-submission read: batch standard errors printed in the table (same result file), sentence on the common increments added,
-%  part (ii) of the corollary named]
-Table~\ref{tab:martingale} reports sample means of the raw conditional forward, without normalisation. The discrete price of the scheme in Appendix~\ref{app:simulation} is a martingale on every grid and for every $\kappa_2$ (Lemma~\ref{lem:discrete_martingale}). A sample mean below one therefore measures the part of the expectation carried by paths that the sample does not contain. A batch standard error is the standard error of the mean of the 40 batch means. For $\kappa_2\ge\beta$ the estimates at 5,760 steps lie less than $1.7$ batch standard errors below one. The three columns share the Brownian increments, so the common sign of their deviations is a single observation. For $\kappa_2=0$ the three-factor price is a strict local martingale by Corollary~2.6(ii) of \citet{GuyonJeanninJourdain2026}. The sample mean is $0.940$ and still decreases at the last refinement, by $0.57\times10^{-3}$ with batch standard error $0.11\times10^{-3}$. The column $\kappa_2=0.3$ lies in the region of Conjecture~\ref{conj:supermartingale}. Its sample mean is $9.8$ batch standard errors below one, and its dependence on the grid is not resolved. One seed and two refinements neither prove the conjecture nor establish convergence of the sample means.
-% [END GENERATED 2026-11-23]
+The raw conditional forward in Table~\ref{tab:martingale} has expectation one on every grid (Lemma~\ref{lem:discrete_martingale}). For $\kappa_2=0$ and $0.3$ the continuous three-factor price is a strict local martingale (Proposition~\ref{prop:finite_converse}). At 5,760 steps the two sample means are $0.93971$ and $0.98473$, with batch standard errors $0.00068$ and $0.00155$. The three means for $\kappa_2\ge\beta$ lie within $1.7$ batch standard errors of one.
 
-% [REVISED 2026-11-17 roles of the quadratic drift restated for R2 and R3]
-For positive spot-volatility correlation, the quadratic drift has two distinct roles. The first role is to stabilise the second moment, pointwise in time for the constant kernel (Proposition~\ref{prop:classical_qd}) and in time average for the fractional kernel (Proposition~\ref{prop:cesaro}). The second role is to make the price a true martingale when $\kappa_2\ge\beta$ (Theorem~\ref{thm:martingale}). The condition $\kappa_2\ge\beta$ is a sufficient calibration constraint. Its necessity is proved for the constant kernel \citep[Theorem~3.7]{SeppRakhmonov2023} and for $\kappa_2=0$ with the Markovian kernels \citep{GuyonJeanninJourdain2026}. The other cases are Conjecture~\ref{conj:supermartingale}. The measure change preserves the polynomial form of the drift, and Proposition~\ref{prop:closure} specifies how its coefficients change and when they remain admissible.
+Quadratic damping therefore serves two purposes. Any $\kappa_2>0$ bounds the fractional second moment, whereas the share-measure argument compares $\kappa_2$ with $\beta$ to determine whether the price is a martingale.
 
 \section{Numerical illustrations}\label{sec:illustrations}
 
-% [REVISED 2026-10-30 new section (C5): replaces the calibration skeleton. Four figures, F1-F4, numbers and files from the work order agents/SOL_WORK_ORDER_rough_logsv_revision_2026-10-30.md.]
-The figures distinguish observed and fitted option smiles, exact linear-drift results and finite-kernel simulations. Figure~\ref{fig:motivation} uses retrospectively selected Bitcoin and Ether quotes and adds calibrations for both assets at fixed $H=0.30$ and $H=1/2$. Figure~\ref{fig:moments} shows the moment behaviour on either side of $\gamma=1$. Figure~\ref{fig:martingale} shows raw conditional price means across the martingale boundary and compares the time-averaged second moment of the three-factor model with the bounds of Proposition~\ref{prop:cesaro}, at a volatility-of-volatility above the linear-drift threshold. Each asset and fixed-$H$ calibration uses one parameter vector across its three maturities, retaining all 45 Bitcoin or 39 Ether quotes.
+Figure~\ref{fig:motivation} shows the Bitcoin and Ether smiles at fixed $H=0.30$ and $H=1/2$. Each fit uses one parameter vector across three maturities and all 45 Bitcoin or 39 Ether quotes in the selected snapshot. Figures~\ref{fig:moments} and~\ref{fig:martingale} illustrate the second-moment threshold and the effect of quadratic damping.
 
-% [BOUNDED CALIBRATION FINALIZATION 2026-11-18]
 The six risk-neutral coefficients are estimated by least squares to premium midpoints, with each error divided by its full bid--ask spread and each maturity given equal weight. We constrain $\kappa_2\ge\beta$ with a positive numerical margin. Table~\ref{tab:calibration} collects the four parameter vectors, fit errors and numerical diagnostics.
 
-% [GENERATED 2026-11-24 pre-submission read: the paragraph on the two pricers in defined terms. Facts checked against
-%  src/stochvolmodels/models/rough_logsv/_classical_pde.py, the fit files of ../replication/results/
-%  calibration_robustness_2026-11-18/ and Table tab:calibration. Sentences five to nine carry the text of 23 November.]
-At $H=1/2$ the volatility is a diffusion, and the moment generating function of the log-price solves a backward partial differential equation in the volatility for each Fourier variable \citep{SeppRakhmonov2023}. We solve this equation numerically with the full quadratic drift, in place of the affine expansion of that paper, and obtain the option prices by Fourier inversion. We accept a price when it is stable under changes of the solver. The changes are a second formulation of the equation, in which an exponential change of the unknown function removes the first-order term due to the correlation, a second truncation of the volatility domain, a second quadrature of the inversion integral, and doubled resolution in space and time. The largest change is $0.0012$ bid--ask spreads (Table~\ref{tab:calibration}). At $H=0.30$, the prices come from the scheme of Appendix~\ref{app:simulation} on a kernel with 97 positive nodes, which approximates a smoothed fractional kernel (Appendix~\ref{sec:calibration_design}). Theorems~\ref{thm:wellposed} and~\ref{thm:martingale} hold for this Markovian kernel itself. The calibrated model is therefore covered without a convergence statement, and we do not prove that its prices converge to those of the fractional kernel under quadratic drift. Tables~\ref{tab:martingale} and~\ref{tab:validation} validate the same scheme on three-factor kernels. The prices are multilevel estimates of the bounded payoff \eqref{eq:half_tilted}, with the model at $H=1/2$ as a control variate (Appendix~\ref{sec:calibration_design}). The optimiser uses price changes on common random numbers around prices that are validated separately. The prices of Table~\ref{tab:calibration} and Figure~\ref{fig:motivation} are recomputed at the fitted parameters with independent random numbers and without a shift.
-% [END GENERATED 2026-11-24]
-% [REVISED 2026-11-23 scheme unification: the last five sentences of the paragraph above refer to the scheme of Appendix B]
+For $H=1/2$ we solve the backward equation in volatility for each Fourier variable and invert the characteristic function \citep{SeppRakhmonov2023}. The largest price change across solver checks is $0.0012$ bid--ask spreads. For $H=0.30$ we apply the bounded estimator \eqref{eq:half_tilted} on the 97-factor kernel using the classical model as a multilevel control (Appendix~\ref{sec:calibration_design}). The martingale criterion applies directly to that kernel.
 
 \begin{table}[!ht]
 \centering\small
-\caption{Fixed-$H$ calibrations to the selected Bitcoin and Ether snapshots, with one six-coefficient vector per column across three maturities. Time is measured in years, and the coefficients use the $H$-dependent units of \eqref{eq:model}. Weighted RMS is the root mean square of the price errors in units of the bid--ask spread, with equal weight for each of the three maturities. The row $\gamma$ gives the stability parameter \eqref{eq:gamma} of the linear-drift model with the fractional kernel at the fitted $H$, $\kappa_1$ and $\vartheta$. Inside-band counts concern premiums. The last two rows give the largest numerical error of a model price in spreads. At $H=0.50$ the error is the largest change of a price across the solver checks. At $H=0.30$ the error is the largest pointwise 95\% half-width of the Monte Carlo estimate (Appendix~\ref{sec:calibration_design}). The two rows measure a discretisation error and a sampling error and are not comparable.}\label{tab:calibration}
-% [REVISED 2026-11-23 authors' TODO items T5 and T6: the two numerical-error rows and the factor 1/3 explained in the caption]
+\caption{Fixed-$H$ calibrations to the selected Bitcoin and Ether snapshots, with one six-coefficient vector per column across three maturities. Time is measured in years, and the coefficients use the $H$-dependent units of \eqref{eq:model}. Weighted RMS is the root mean square of the price errors in units of the bid--ask spread, with equal weight for each of the three maturities. The row $\gamma$ gives the stability parameter \eqref{eq:gamma} of the linear-drift model with the fractional kernel at the fitted $H$, $\kappa_1$ and $\vartheta$. Inside-band counts concern premiums. The last two rows report distinct numerical diagnostics in spreads. At $H=0.50$ the error is the largest change of a price across the solver checks. At $H=0.30$ we report the largest pointwise 95\% half-width of the Monte Carlo estimate (Appendix~\ref{sec:calibration_design}). }\label{tab:calibration}
 \setlength{\tabcolsep}{5pt}
 \begin{tabular}{lrrrr}\toprule
  & \multicolumn{2}{c}{Bitcoin} & \multicolumn{2}{c}{Ether} \\
@@ -839,12 +508,7 @@ Max. price 95\% half-width / spread & 0.04932 & -- & 0.01977 & -- \\
 \end{tabular}
 \end{table}
 
-% [REVISED 2026-11-23 length: one paragraph replaces the seven paragraphs of 18 November 2026 on the calibration.
-%  Numbers: Table tab:calibration, ../replication/results/calibration_robustness_2026-11-18/calibration_summary.json]
-% [REVISED 2026-11-24 pre-submission read: the wings of Figure 1 named, three sentences on gamma and theta added. Numbers:
-%  ../replication/results/calibration_stability.json, case CALIBRATED_STABILITY of
-%  ../replication/rough_logsv_calibration_stability.py, and Table tab:calibration]
-All four fits have positive risk-neutral correlation, between $0.10$ and $0.22$, under the sufficient martingale condition $\kappa_2\ge\beta$ of Theorem~\ref{thm:martingale}. At $H=0.30$ and $H=1/2$ the fits place 27 and 28 of 45 Bitcoin prices and 33 and 33 of 39 Ether prices inside the bid--ask bands. The weighted RMS error of the rough fit is $9.4\%$ lower than that of the classical fit for Bitcoin and $13.3\%$ higher for Ether. Both models leave residuals in both wings of the 7-day Bitcoin smile and in the put wing of the 10-day Ether smile (Figure~\ref{fig:motivation}). The numerical errors of the model prices are below $0.05$ bid--ask spreads (Table~\ref{tab:calibration}). Both Bitcoin fits lie on the imposed margin $\kappa_2-\beta=0.01$, and the Ether fit at $H=0.30$ lies near the lower bound $0.01$ of $\kappa_1$. With $\kappa_2=0$ and the other coefficients unchanged, the Bitcoin fits satisfy the linear-drift condition $\gamma<1$ of Proposition~\ref{prop:stationarity}, and the Ether fits violate it with $\gamma=14.5$ and $\gamma=3.2$ (Table~\ref{tab:calibration}). The second-moment bounds of the Ether fits therefore rest on the quadratic term (Propositions~\ref{prop:classical_qd} and~\ref{prop:cesaro}). The level $\theta$ of the Ether fits ($3.93$ and $2.46$) lies far above $\sigma_0$, and maturities up to 66 days identify it only weakly. A robustness check uses one alternative start and one relaxation of the bounds for each fit. The check improved only the Ether fit at $H=0.30$, and the table reports the improved fit. The comparison is in-sample at fixed $H$ on retrospectively selected snapshots. This comparison does not estimate $H$, and we claim neither a global optimum nor the identification of all six coefficients.
+The four fitted spot--volatility correlations range from $0.096$ to $0.223$. The rough and classical fits place respectively 27 and 28 of 45 Bitcoin prices, and 33 and 33 of 39 Ether prices, inside the bid--ask bands. The rough fit has a $9.4\%$ smaller weighted RMS error for Bitcoin and a $13.3\%$ larger error for Ether. Its largest pointwise 95\% price half-width is $0.04932$ spreads for Bitcoin and $0.01977$ for Ether. Both Bitcoin fits reach the imposed margin $\kappa_2-\beta=0.01$. In the rough Ether fit $\kappa_1$ is close to its lower bound. The alternative start failed the positive-eigenvalue restriction, and the table reports the best relaxed-bounds iterate at the 900-second time limit. The two snapshots illustrate the constraint at fixed $H$ and provide little information about Ether's long-run level. With $\kappa_2$ set to zero, the fractional-kernel values in Table~\ref{tab:calibration} place Bitcoin below the stability threshold and Ether above it. The corresponding 97-factor values at $H=0.30$ are $0.751$ and $8.509$.
 
 \begin{figure}[!ht]
 \centering
@@ -853,7 +517,6 @@ All four fits have positive risk-neutral correlation, between $0.10$ and $0.22$,
 \end{figure}
 \clearpage
 
-% [REVISED 2026-11-23 length: the figure of the stability threshold is removed, its values are in Table tab:critical]
 
 \begin{figure}[!ht]
 \centering
@@ -864,50 +527,37 @@ All four fits have positive risk-neutral correlation, between $0.10$ and $0.22$,
 
 \begin{figure}[!ht]
 \centering
-% [REVISED 2026-11-23 scheme unification] One file for both panels, written by case R2 of ../replication/rough_logsv_scheme_unification.py
-% from F4_quadratic_drift_history_R2.json (panel a) and F4_right_panel_time_averaged_history.json (panel b).
 \includegraphics[width=\textwidth]{F4_time_averaged_history_R2.pdf}
 \caption{Quadratic-drift diagnostics for the three-factor kernel at $H=0.1$, from the scheme of Appendix~\ref{app:simulation}. Panel (a) shows the sample means of the raw conditional forward of Table~\ref{tab:martingale} at 5,760 steps per year with one per-path standard error. The lines mark a unit forward and $\kappa_2=\beta$. Panel (b) shows the time-averaged second moment $\E[I_T]/(T\theta^2)$ at $T=1,2,5$ years on a logarithmic scale, for $\sigma_0=\theta=0.4$, $\kappa_1=2$, $\rho=0$ and $\vartheta=1.2$ ($\gamma_N=1.0433$, Section~\ref{sec:stability}). Diamonds give the exact linear-drift values in continuous time. The black dashed lines give the exact linear-drift expectations of the scheme at 360 and 720 steps per year. The coloured dashed lines give the bounds \eqref{eq:cesaro} of Proposition~\ref{prop:cesaro}, which hold for every $\vartheta$. Solid lines give the Monte Carlo estimates for $\kappa_2>0$, and the dotted line gives the Monte Carlo estimates for $\kappa_2=0$ as a control. Open circles and filled squares denote 360 and 720 steps per year, horizontally offset, with one standard error from 40 batch means. Each simulated cell uses 200{,}000 paths from seed 3.}\label{fig:martingale}
 \end{figure}
 
-% [GENERATED 2026-11-17 rewritten after the rerun W3 (../agents/sol_results_rough_logsv_W3_2026-11-17.md). Numbers: ../replication/results/F4_right_panel_time_averaged.json, bounds from ../replication/rough_logsv_growth_rate.py.]
-% [REVISED 2026-11-23 scheme unification: the Monte Carlo numbers of paragraphs two and three are those of the unified
-%  scheme, ../replication/results/F4_right_panel_time_averaged_history.json]
-% [REVISED 2026-11-23 length: one paragraph replaces the three paragraphs on panel (b). Numbers as before.]
-% [REVISED 2026-11-24 pre-submission read: the shortfall of the control is measured against the exact expectation of the scheme, and the
-%  range of the estimates is stated. Numbers: the same file, fields linear_exact, linear_exact_discrete and results]
-Panel (b) of Figure~\ref{fig:martingale} fixes the three nodes and weights and takes $\vartheta=1.2$, above the critical value $1.17$ of the linear three-factor model. The exact time-averaged second moment of the linear model, $\E[I_T]/(T\theta^2)$, grows from $32$ at one year to $2{,}540$ at five years. With quadratic drift, Proposition~\ref{prop:cesaro} bounds the same average at five years by $19.9$ for $\kappa_2=0.3$ and by $5.0$ for $\kappa_2=1.2$. The Monte Carlo estimates lie below the bounds in all 24 cells, between $1.7$ and $2.8$, so the bounds are not sharp. At 720 steps per year the exact expectation of the scheme for $\kappa_2=0$ is $2{,}774$ at five years, which is $9\%$ above the continuous-time value ($43\%$ at 360 steps). The Monte Carlo control gives $8.9$, a factor of $313$ below this expectation. For $\kappa_2=0$ the largest $0.1\%$ of the paths carry $40\%$ to $62\%$ of the sample averages, which indicates that the exact moment is carried by paths rarer than the sample contains. A simulated moment that stays flat is therefore not evidence of a bounded moment.
-% [END GENERATED 2026-11-17]
+In Figure~\ref{fig:martingale}(b), $\vartheta=1.2$ exceeds the linear three-factor threshold of $1.17$. The exact linear-drift average $\E[I_T]/(T\theta^2)$ rises from $32$ at one year to $2{,}540$ at five years. At five years Proposition~\ref{prop:cesaro} bounds the average by $19.9$ for $\kappa_2=0.3$ and $5.0$ for $\kappa_2=1.2$. The estimates across the 24 quadratic-drift cells range from $1.7$ to $2.8$. For linear drift the exact five-year grid expectation exceeds its continuous-time value by $43\%$ at 360 steps per year and $9\%$ at 720. On the finer grid the sample mean is $8.9$ against an exact $2{,}774$. The largest $0.1\%$ of paths contribute $40\%$ to $62\%$ of the linear-drift sample averages, illustrating the difficulty of estimating these moments by simulation.
 
-% [END REVISED 2026-10-30]
 
 \clearpage
 \section{Conclusions and open problems}\label{sec:conclusion}
 
-% [GENERATED 2026-11-17 conclusions restated for the results R1-R4]
-We extended log-normal stochastic volatility with quadratic drift to a fractional Volterra equation and proved that it has a unique global non-negative solution with finite moments (Theorem~\ref{thm:wellposed}). For linear drift, exact conditional moments give expected integrated variance and conditional squared VIX. Uniform second-moment boundedness is equivalent to $\gamma<1$, with limiting value $\theta^2/(1-\gamma)$, and above the threshold the second moment grows at the rate $\lambda^*$ of Proposition~\ref{prop:growth}. The explicit constant in \eqref{eq:gamma} makes the threshold reproducible. With a positive quadratic coefficient, the long-run expected integrated variance per unit time is at most $\theta\max(\theta,\kappa_1/\kappa_2)$ for every $\vartheta$ and every $H$ (Proposition~\ref{prop:cesaro}). For the constant kernel the second moment is uniformly bounded (Proposition~\ref{prop:classical_qd}). Theorem~\ref{thm:martingale} gives the martingale property of the price for $\kappa_2\ge\beta$. The change of measure preserves the quadratic polynomial drift, and its density is a true martingale when $\kappa_2^{\Q}\ge0$. Admissible mean-reverting parameters require the restrictions in Proposition~\ref{prop:closure}. The selected Bitcoin and Ether calibrations at fixed $H=0.30$ and $H=1/2$ show that positive implied-volatility skew is compatible with positive risk-neutral correlation and the sufficient martingale condition $\kappa_2\ge\beta$.
+Quadratic damping permits positive spot--volatility correlation with a true price martingale. For the finite exponential mixtures used in simulation the boundary is exactly $\kappa_2=\beta$. For the singular fractional kernel we prove sufficiency, and necessity remains open. Positive quadratic damping also bounds the second moment uniformly in time. For expected integrated variance per unit time we obtain the drift-only long-run bound \eqref{eq:cesaro_limit}. The linear model has a different stability threshold, $\gamma=1$, and the simulation must use the value of $\gamma$ for its own kernel.
 
-% [REVISED 2026-11-17 after the rerun W3. Numbers: ../replication/results/F4_right_panel_time_averaged.json and ../replication/rough_logsv_growth_rate.py.]
-% [REVISED 2026-11-23 scheme unification: factor 286 and two sentences on the scheme. Numbers:
-%  ../replication/results/F4_right_panel_time_averaged_history.json and F4_quadratic_drift_history_R2.json]
-% [REVISED 2026-11-24 pre-submission read: factor 313 against the expectation of the scheme (was 286 against the continuous value), the converse
-%  statement with the constant kernel, the calibration sentence moved to the first paragraph]
-The linear threshold must be evaluated for the kernel used in a simulation. At $H=0.1$ and $\kappa_1=2$ the three-factor kernel of Figure~\ref{fig:martingale} has critical volatility-of-volatility $1.17$, against $0.95$ for the fractional kernel. At $\vartheta=1.2$, above this threshold, the average of 200{,}000 paths lies a factor of about $313$ below the exact five-year expectation of the scheme for the time-averaged second moment of the linear-drift model. A flat simulated moment is therefore not evidence of stability. The Monte Carlo scheme of Appendix~\ref{app:simulation} keeps the discrete price an exact martingale on every grid. For $\kappa_2=0$ and $\beta=0.6$ the sample mean of 200{,}000 conditional forwards is $0.940$ against this unit expectation and still decreases at 5,760 steps per year (Table~\ref{tab:martingale}). The marked order-flow construction identifies the candidate drift and covariance, and Proposition~\ref{prop:markov} establishes a stopped constant-kernel limit. The singular-kernel construction is an open problem with additional jump and tightness requirements.
+The trading mechanism gives these coefficients an economic interpretation. Signed volatility impacts at a rate proportional to variance generate multiplicative noise, and a small state-dependent bias generates quadratic damping. Proposition~\ref{prop:markov} proves the stopped diffusion limit for a constant kernel. The singular order-flow limit, strict positivity of the fractional volatility and its stationary law under quadratic drift remain open.
+\section*{Funding}
+The authors received no funding for this work.
 
-Several analytic questions remain. Strict positivity of the volatility is open for singular kernels (Conjecture~\ref{conj:wellposed}). A pointwise long-horizon second-moment bound and a stationary law under quadratic drift are open for $H<1/2$. The converse martingale statement for $\beta>\kappa_2$ holds for the constant kernel \citep{SeppRakhmonov2023} and follows from \citet{GuyonJeanninJourdain2026} when $\kappa_2=0$ and the kernel is $K^N$. For the fractional kernel with $H<1/2$ and for non-constant Markovian kernels with $0<\kappa_2<\beta$ it is Conjecture~\ref{conj:supermartingale}. For the order-flow limit, Remark~\ref{conj:limit} explains why limit well-posedness alone is insufficient: vanishing jumps, uniform kernel regularity, boundary control and compact containment also have to be established.
-% [GENERATED 2026-11-23 authors' TODO item T7: VIX options under quadratic drift] next two sentences
-Proposition~\ref{prop:vix} gives the conditional squared VIX for linear drift only. We leave the valuation of VIX futures and options and the calibration to VIX options in the general case $\kappa_2>0$ for future research.
+\section*{Disclosure statement}
+The authors declare that they have no competing interests.
 
+\section*{Use of generative AI}
+The authors wrote the first drafts and developed the mathematical arguments. They used OpenAI Codex (GPT-6) and Anthropic's Claude Fable 5.2 to edit the text, check the arguments, assist with the replication code and prepare the submission files. The replication scripts produced all three figures. The authors made the methodological decisions and verified the manuscript's originality and accuracy, including the references. They reviewed both tools' terms of use, confirmed their suitability for publication and take responsibility for the entire work.
 
+\section*{Data and code availability}
+The option panels use Deribit quotes for Bitcoin on 30 June 2023 and Ether on 26 October 2021, archived on 25 October 2026. The figure scripts and the simulation code are in the StochVolModels repository (\url{https://github.com/ArturSepp/StochVolModels}). Enquiries about access to the selected quotes may be addressed to the corresponding author.
 
 \appendix
 
 \section{Proofs}\label{app:proofs}
 
-% [GENERATED 2026-10-08]
 \paragraph{Proof of Lemma~\ref{lem:factors}.} Write $\D Z_s=(\kappa_1+\kappa_2\sigma^N_s)(\theta-\sigma^N_s)\,\D s+\vartheta\sigma^N_s\,\D W^\sigma_s$ and $U^{i}_t=\int_0^te^{-x_i(t-s)}\D Z_s$. Then $\sigma^N_t=\sigma_0+\int_0^tK^N(t-s)\,\D Z_s=\sigma_0+\sum_iw_iU^i_t$, and It\^o's formula gives $\D U^i_t=-x_iU^i_t\,\D t+\D Z_t$. The processes $\sigma^{(i)}=\sigma_{0,i}+U^i$ solve \eqref{eq:factors}, and $\sum_iw_i\sigma^{(i)}=\sigma_0+\sum_iw_iU^i=\sigma^N$. For $s\ge t$, $\int_0^te^{-x_i(s-r)}\D Z_r=e^{-x_i(s-t)}U^i_t$, which gives \eqref{eq:theta_N}. \qed
 
-% [GENERATED 2026-11-17 proof of global well-posedness with quadratic drift (R1)]
 \paragraph{Proof of Theorem~\ref{thm:wellposed}.} Write $b(x)=c_0+c_1x-dx^2$, and for $n\ge1$ define the truncated drift
 \begin{equation*}
 b_n(x)=b\big(\min\{\max\{x,-n\},n\}\big).
@@ -934,9 +584,7 @@ Choose $\varrho>0$ with $C\int_0^Te^{-\varrho u}\big(K(u)+K(u)^2\big)\D u\le1/2$
 \end{equation}
 
 \emph{Step 5: local uniqueness and removal of the truncation.} Let $X$ and $Y$ be continuous adapted processes and let $\tau$ be the first time that $|X|$ or $|Y|$ reaches $n$. Assume that, up to $\tau$, both satisfy \eqref{eq:sve_general} with the same Brownian motion and with drifts that coincide with $b$ on $[-n,n]$. On $\{t\le\tau\}$ both drift integrands equal $b$ evaluated in $[-n,n]$, where $b$ is Lipschitz, and the indicator $\one_{\{s\le\tau\}}$ can be inserted in both integrals. The function $\Delta(t)=\E\big[|X_t-Y_t|^2\one_{\{t\le\tau\}}\big]$ therefore satisfies $\Delta(t)\le C_n\int_0^t\big(K(t-s)+K(t-s)^2\big)\Delta(s)\,\D s$, and the argument of Step~3 gives $\Delta\equiv0$, that is, $X=Y$ on $[0,\tau]$. In particular $\sigma^m=\sigma^n$ on $[0,\tau_n]$ for $m\ge n$, the times $\tau_n$ increase, and $\tau_n\to\infty$ almost surely by \eqref{eq:tau_n}. The limit $\sigma=\lim_n\sigma^n$ is continuous and non-negative. The limit solves \eqref{eq:sve_general} on $[0,\infty)$, because $b_n(\sigma^n)=b(\sigma)$ on $[0,\tau_n]$ and stochastic integrals of integrands that agree on an event agree on that event. The same local argument gives pathwise uniqueness among continuous solutions. The moment bound follows from Step~4 and Fatou's lemma, first for large $p$ and then for every $p\ge1$ by Jensen's inequality. \qed
-% [END GENERATED 2026-11-17]
 
-% [REVISED 2026-10-30 a priori moment bound replaces the forward reference to Proposition second]
 \paragraph{Proof of Proposition~\ref{prop:mean}.} For $\kappa_2=0$ the coefficients are globally Lipschitz with linear growth. Lemma~3.1 of \citet{AbiJaberLarssonPulido2019} gives $\sup_{s\le T}\E[\sigma_s^2]<\infty$ on every finite horizon, and their Example~2.3(ii) verifies the kernel regularity. The stochastic integral in \eqref{eq:flow} is square integrable since $K\in L^2_{\rm loc}$, and has zero conditional mean. Therefore $m_t(s)=\Theta^t_s+\kappa_1\int_t^sK(s-r)(\theta-m_t(r))\,\D r$. Writing $\phi=m_t-\theta$ gives $\phi=\psi_t-\kappa_1K*\phi$ on $[t,\infty)$, so \eqref{eq:resolvent} yields $\phi=\psi_t-R*\psi_t$. At $t=0$, $\psi_0\equiv\sigma_0-\theta$, giving the unconditional mean. For the fractional kernel, $\widehat R(z)=\kappa_1/(z^\alpha+\kappa_1)$, which inverts to \eqref{eq:resolvent_frac}. When $\kappa_1=0$, $R=0$. \qed
 
 \paragraph{Proof of Proposition~\ref{prop:second}.} Subtracting the equation for $m_t$ from \eqref{eq:flow}, the centred process $\chi_s=\sigma_s-m_t(s)$ solves $\chi=-\kappa_1K*\chi+K*\D M$ on $[t,\infty)$, with $\D M_r=\vartheta\sigma_r\,\D W^\sigma_r$. The process $G*\D M$ solves the same linear equation, because $G=K-\kappa_1K*G$, by \eqref{eq:resolvent} when $\kappa_1>0$ and directly from $G=K$ when $\kappa_1=0$, together with the stochastic Fubini theorem. Uniqueness for the linear equation gives $\chi_s=\int_t^sG(s-r)\vartheta\sigma_r\,\D W^\sigma_r$. It\^o's isometry yields $\E[\chi_s^2\mid\F_t]=\vartheta^2\int_t^sG(s-r)^2v_t(r)\,\D r$, and $v_t(s)=m_t(s)^2+\E[\chi_s^2\mid\F_t]$ because $\E[\chi_s\mid\F_t]=0$. The a priori bound in the proof of Proposition~\ref{prop:mean} makes every term finite. \qed
@@ -945,7 +593,15 @@ Choose $\varrho>0$ with $C\int_0^Te^{-\varrho u}\big(K(u)+K(u)^2\big)\D u\le1/2$
 
 \paragraph{Proof of Proposition~\ref{prop:vix}.} For continuous paths, $-\tfrac2\Delta\E[\ln(S_{T+\Delta}/S_T)\mid\F_T]=\tfrac1\Delta\E[I_{T+\Delta}-I_T\mid\F_T]=\tfrac1\Delta\int_T^{T+\Delta}v_T(s)\,\D s$. Substituting $v_T=m_T^2+\widetilde R*m_T^2$ from Proposition~\ref{prop:second} and exchanging the order of integration gives \eqref{eq:vix}. Under $K^N$, \eqref{eq:theta_N} makes $\psi_T$ affine in $u$, and \eqref{eq:cond_mean} preserves affinity. The square $m_T^2$ is then a quadratic form in $u$, and so is its integral against $\varpi_T$. \qed
 
-% [REVISED 2026-11-17 localisation proof completed with Theorem wellposed (R2); proof of the density corollary added]
+\paragraph{Proof of Corollary~\ref{cor:pointwise}.} Completing the square gives $b(x)=c_0+c_1x-dx^2\le C_\lambda-\lambda x$. Let $Y$ solve the equation with this affine drift and the same kernel, Brownian motion, multiplicative diffusion and initial value. To apply the scalar comparison theorem of \citet[Theorem~3.3]{Alfonsi2025}, use $b_n(x)=\min\{b((-n)\vee(x\wedge n)),C_\lambda-\lambda x\}$. Both comparison drifts are globally Lipschitz and $b_n=b$ on $[-n,n]$. The fractional kernel is completely monotone and satisfies the integrability and increment condition of that theorem for $H>0$. The constant kernel admits the usual scalar diffusion comparison. Local uniqueness up to the first exit from $[-n,n]$ and non-explosion in Theorem~\ref{thm:wellposed} yield $0\le\sigma_t\le Y_t$ for all $t$. The mean of $Y$ lies between $\sigma_0$ and $C_\lambda/\lambda$. On every finite horizon its second-moment renewal equation \eqref{eq:cond_second} bounds $\sup_{t\le T}\E[Y_t^2]$ by $\max\{\sigma_0,C_\lambda/\lambda\}^2+\gamma_\lambda\sup_{t\le T}\E[Y_t^2]$. Rearrangement gives \eqref{eq:pointwise_bound} uniformly in $T$. Since $2H/\alpha>0$, a sufficiently large $\lambda$ makes $\gamma_\lambda<1$. \qed
+
+\paragraph{Proof of Proposition~\ref{prop:finite_converse}.} Write $\widehat\sigma$ for the auxiliary volatility with share-measure drift $c_0+c_1\widehat\sigma+(\beta-\kappa_2)\widehat\sigma^2$, up to its explosion time $\zeta$. Its finite-factor lift has locally Lipschitz coefficients. Let $k=K(0)>0$, let $L$ be the first-kind resolvent, and put $M=K'*L$. The stopped decomposition of \citet{BondiPulido2026} (Lemma~1 and Remark~2 in the preprint) gives, up to exit from a bounded interval,
+\[
+\D\widehat\sigma_t=(a\widehat\sigma_t+q\widehat\sigma_t^2+A_t)\,\D t+v\widehat\sigma_t\,\D B_t,\qquad
+A_t=kc_0+\int_{(0,t]}\widehat\sigma_{t-s}\,\D M(s)-\sigma_0M(t),
+\]
+where $a=kc_1+K'(0)/k$, $q=k(\beta-\kappa_2)>0$ and $v=k\vartheta>0$. Complete monotonicity gives $M\le0$ and $\D M\ge0$, so $A_t\ge0$ while $\widehat\sigma$ stays positive. With $E_t=\exp((a-v^2/2)t+vB_t)$, the process $Y=\widehat\sigma/E$ starts at $\sigma_0$ and satisfies $Y'\ge qE Y^2$. Hence $\widehat\sigma$ stays positive until explosion and $1/Y_t\le1/\sigma_0-q\int_0^tE_s\,\D s$. Brownian motion has positive probability to stay in a uniform tube about a sufficiently steep line on $[0,T]$. On that event $q\int_0^T E_s\,\D s>1/\sigma_0$, so $\zeta\le T$. A bounded $\widehat\sigma$ gives bounded drift and diffusion integrands in the variation-of-constants formula for every factor on a finite horizon. Thus the lift cannot explode while $\widehat\sigma$ stays bounded. By local uniqueness the law up to the first upper level $n$ agrees with the stopped share-measure law used in the proof of Theorem~\ref{thm:martingale}. Passing to increasing levels in that density identity gives $\E_\Q[S_T]/S_0=\Pr_{\mathrm{aux}}(\zeta>T)<1$, where $\Pr_{\mathrm{aux}}$ is the law of the auxiliary lift. \qed
+
 \paragraph{Proof of Theorem~\ref{thm:martingale}.}
 The stochastic exponential $S/S_0$ is a positive local martingale and therefore a supermartingale. By Theorem~\ref{thm:wellposed} the volatility is non-negative and does not explode. For $n>\sigma_0$, define $\tau_n=\inf\{t\ge0:\sigma_t\ge n\}$, with $\inf\varnothing=\infty$. The stopped price is a martingale by Novikov's criterion, because $\int_0^{T\wedge\tau_n}\sigma_s^2\D s\le n^2T$. Define
 \begin{equation*}
@@ -965,10 +621,8 @@ Let $\widehat\sigma$ be the global solution of \eqref{eq:sve_general} driven by 
 Since $\one_{\{\tau_n>T\}}\uparrow1$ almost surely, monotone convergence yields $\E_{\Q}[S_T]=S_0$. A non-negative supermartingale whose expectation is unchanged over $[0,T]$ is a martingale, proving the claim. \qed
 
 \paragraph{Proof of Corollary~\ref{cor:density}.} Denote the stochastic exponential in \eqref{eq:density} by $D$. The process $D$ is a positive $\P$-local martingale, and with $\tau_n$ as in the previous proof the stopped process $D_{\cdot\wedge\tau_n}$ is a martingale by Novikov's criterion. Under the measure with density $D_{T\wedge\tau_n}$, the substitution that proves Proposition~\ref{prop:closure} shows that, up to $\tau_n$, the volatility satisfies \eqref{eq:sve_general} with $c_0=\kappa_1\theta$, $c_1=\kappa_2\theta-\kappa_1$ and $d=\kappa_2^{\Q}$. For $\kappa_2^{\Q}\ge0$ the argument of the previous proof gives $\E_{\P}[D_T\one_{\{\tau_n>T\}}]\ge1-Cn^{-p}$, and therefore $\E_{\P}[D_T]=1$. \qed
-% [END REVISED 2026-11-17]
 
 
-% [GENERATED 2026-10-24]
 \paragraph{Proof of Proposition~\ref{prop:stationarity}.} The mean $m(t)=\theta+(\sigma_0-\theta)E_\alpha(-\kappa_1t^\alpha)$ lies between $\sigma_0$ and $\theta$, so $m^2$ is bounded above and below by a positive constant, and $m^2\to\theta^2$. The kernel $h=\vartheta^2G^2$ is non-negative and integrable: $G(t)\sim t^{\alpha-1}/\Gamma(\alpha)$ at zero with $\alpha>1/2$, and $G$ decays as $O(t^{-1-\alpha})$ for $\alpha<1$ and exponentially at $\alpha=1$. Its positive resolvent has the locally convergent convolution series $\widetilde R=\sum_{j\ge1}h^{*j}$. Tonelli's theorem gives
 \begin{equation*}
 \int_0^\infty\widetilde R(s)\,\D s
@@ -977,7 +631,6 @@ Since $\one_{\{\tau_n>T\}}\uparrow1$ almost surely, monotone convergence yields 
 \end{equation*}
 If $\gamma<1$, Proposition~\ref{prop:second} gives $\sup v\le\sup m^2/(1-\gamma)$, and dominated convergence in $\widetilde R*m^2$ gives $v(t)\to\theta^2/(1-\gamma)$. If $\gamma\ge1$, then with $\underline m=\min(\sigma_0,\theta)>0$,
 $v(t)\ge\underline m^2(1+\int_0^t\widetilde R(s)\,\D s)\to\infty$.
-% [GENERATED 2026-11-17] next sentence
 This direction needs only $\theta\ne0$. If $m(s)^2\ge\theta^2/4$ for $s\ge s_0$, then $v(t)\ge(\theta^2/4)\int_0^{t-s_0}\widetilde R(s)\,\D s\to\infty$.
 For the norm, $\widehat G(z)=1/(z^\alpha+\kappa_1)$ and Parseval's identity imply
 \begin{equation*}
@@ -990,7 +643,6 @@ C(\alpha)=-\frac{\cot(\pi\alpha/2)}{\alpha\sin(\pi/\alpha)}.
 \end{equation*}
 At $\alpha=1$, direct integration gives $C(1)=1/2$, also the limit of this expression. \qed
 
-% [GENERATED 2026-11-17 proof of the growth rate (R4)]
 \paragraph{Proof of Proposition~\ref{prop:growth}.} Parseval's identity gives the second expression in \eqref{eq:h_hat}. We apply it to $u\mapsto e^{-\lambda u/2}G(u)$, whose Laplace transform on the imaginary axis is
 \begin{equation*}
 \widehat G(\lambda/2+\mathrm{i}\omega)=\big((\lambda/2+\mathrm{i}\omega)^\alpha+\kappa_1\big)^{-1}.
@@ -998,7 +650,6 @@ At $\alpha=1$, direct integration gives $C(1)=1/2$, also the limit of this expre
 The function $\widehat h$ is continuous and strictly decreasing, and $\widehat h(0+)=\gamma$ by monotone convergence. For $\kappa_1>0$, dominated convergence gives $\widehat h(\lambda)\to0$ as $\lambda\to\infty$, and for $\kappa_1=0$ the transform is $a\lambda^{-2H}$ with $a$ from \eqref{eq:ml_second}. For $\gamma>1$ the root $\lambda^*$ therefore exists and is unique. Equation \eqref{eq:cond_second} at $t=0$ reads $v=m^2+h*v$. Multiplying by $e^{-\lambda^*t}$ gives the renewal equation $v_\ast=z+h_\ast*v_\ast$ for $v_\ast(t)=e^{-\lambda^*t}v(t)$, with $z(t)=e^{-\lambda^*t}m(t)^2$ and $h_\ast(t)=e^{-\lambda^*t}h(t)$. The function $h_\ast$ is a probability density with finite mean $\int_0^\infty u\,h_\ast(u)\,\D u=|\widehat h'(\lambda^*)|$. The function $z$ is continuous and bounded by a multiple of $e^{-\lambda^*t}$, and is therefore directly Riemann integrable. The key renewal theorem \citep[Chapter~XI]{Feller1971} gives $v_\ast(t)\to|\widehat h'(\lambda^*)|^{-1}\int_0^\infty z(s)\,\D s$, which is \eqref{eq:growth}. For $\sigma_0=\theta$ we have $m\equiv\theta$ and $\int_0^\infty z(s)\,\D s=\theta^2/\lambda^*$.
 
 For $\gamma=1$ the kernel $h$ itself is a probability density. Its mean $\mu_h$ is finite, because $u\,G(u)^2$ is of order $u^{2\alpha-1}$ at zero and of order $u^{-1-2\alpha}$ at infinity for $\alpha<1$, and decays exponentially at $\alpha=1$. The solution is $v=m^2+\widetilde R*m^2$, where $\widetilde R=\sum_{j\ge1}h^{*j}$ is the renewal density. The renewal theorem gives $t^{-1}\int_0^t\widetilde R(s)\,\D s\to1/\mu_h$. Since $m^2$ is bounded and $m^2\to\theta^2$, splitting the convolution at a fixed distance from $t$ gives $v(t)/t\to\theta^2/\mu_h$. \qed
-% [END GENERATED 2026-11-17]
 
 \paragraph{Proof of Proposition~\ref{prop:markov}.} For $K\equiv1$, set $\delta=\vartheta/\sqrt n$. The Markov chain $(\sigma^n,P^n)$ has jumps $(\delta\zeta,n^{-1/2}\eta)$ at rate $n\sigma^2$, where $\zeta$ and $\eta$ denote the marks of a trade. For $f\in C_c^\infty((0,\infty)\times\mathbb R)$ its generator is $A_nf(\sigma,p)=n\sigma^2\,\E\big[f(\sigma+\delta\zeta,p+n^{-1/2}\eta)-f(\sigma,p)\big]$. Taylor expansion and the mark moments in \eqref{eq:bias} give
 \begin{equation*}
@@ -1006,7 +657,6 @@ A_nf=\sqrt n\,\vartheta\sigma^2\bar\zeta_n\,\partial_\sigma f+\tfrac12\vartheta^
 \end{equation*}
 uniformly on compact subsets of $(0,\infty)\times\mathbb R$. Fix the domain $D$ of the proposition. On a neighbourhood of its closure the clip is inactive for all sufficiently large $n$, so the first coefficient equals $(\kappa_1+\kappa_2\sigma)(\theta-\sigma)$ and $|\bar\zeta_n|\to0$ uniformly. Thus $A_n$ converges there to the generator of \eqref{eq:markov_limit}. The stopped drift and predictable quadratic-variation rates are uniformly bounded, and the jump sizes tend to zero. These bounds give tightness of the stopped martingale problems, and every limit has continuous paths. The limiting coefficients are locally Lipschitz. On $\overline D$ the covariance matrix is uniformly positive definite because $\sigma\ge\sigma_->0$ and $1-\rho^2=\varepsilon^2/\vartheta^2>0$. Therefore the stopped diffusion law is unique, and the boundary of the rectangle is regular for exit. Localisation of the diffusion-approximation argument of \citet{EthierKurtz1986} identifies the limit as the diffusion stopped on leaving $D$, and the chain's exit overshoot tends to zero with its jump size. These steps prove the stated stopped convergence. Removing the stops requires uniform exit estimates for the chains as $\sigma_-\downarrow0$ and $\sigma_+,\bar p\uparrow\infty$, which are not supplied here. \qed
 
-% [REVISED 2026-10-30 proof moved here from the proof of Proposition markov (C7)]
 \paragraph{Proof of Proposition~\ref{prop:classical_qd}.} For $K\equiv1$ the volatility is the diffusion $\D\sigma=b(\sigma)\,\D t+\vartheta\sigma\,\D W^\sigma$ on $(0,\infty)$, where $b(\sigma)=\kappa_1\theta-(\kappa_1-\kappa_2\theta)\sigma-\kappa_2\sigma^2$. Its speed density is proportional to
 \begin{equation*}
 \sigma^{-2}\exp\left(\int \frac{2b(\sigma)}{\vartheta^2\sigma^2}\,\D\sigma\right),
@@ -1021,7 +671,6 @@ For a deterministic initial state, the generator satisfies
 for some $C,c_2>0$. The stopped It\^o estimate and localisation therefore give
 $\E[\sigma_t^2]\le e^{-c_2t}\sigma_0^2+C(1-e^{-c_2t})/c_2$, proving uniform boundedness. \qed
 
-% [GENERATED 2026-11-17 proof of the time-averaged bound (R3), restated for both kernels in the amendment of r2]
 \paragraph{Proof of Proposition~\ref{prop:cesaro}.} Let $b(x)=\kappa_1\theta+c_1x-\kappa_2x^2$ with $c_1=\kappa_2\theta-\kappa_1$, and define the semimartingale $Z_t=\int_0^tb(\sigma_s)\,\D s+\vartheta\int_0^t\sigma_s\,\D W^\sigma_s$, so that $\sigma-\sigma_0=K*\D Z$. Both kernels are completely monotone. By Example~3.7 of \citet{AbiJaberLarssonPulido2019} they satisfy their condition (3.4), which includes a non-negative resolvent of the first kind $L$. For the fractional kernel with $\alpha<1$, $L(\D s)=s^{-\alpha}\,\D s/\Gamma(1-\alpha)$ and $L([0,T])=T^{1-\alpha}/\Gamma(2-\alpha)$. At $\alpha=1$, $L=\delta_0$ and $L([0,T])=1$, which is the same expression. Their Lemma~2.6 gives $Z=L*(\sigma-\sigma_0)$. Since $\sigma\ge0$ by Theorem~\ref{thm:wellposed} and $L\ge0$,
 \begin{equation}\label{eq:Z_lower}
 Z_T=\int_{[0,T]}(\sigma_{T-s}-\sigma_0)\,L(\D s)\ge-\sigma_0\,L([0,T]) .
@@ -1039,15 +688,9 @@ For $K^N$ put $k(t)=\int_0^tK^N(s)\,\D s$. We integrate $K^N*L\equiv1$ over $[0,
 \frac{1}{k(T)}\le\frac{L([0,T])}{T}\le\frac{1+a/T}{k(a)} .
 \end{equation*}
 We let $T\to\infty$ and then $a\to\infty$ and obtain $L([0,T])/T\to1/k(\infty)=\ell_N$. The limit of $y_T^2$ is the right-hand side of \eqref{eq:cesaro_limit_N}. \qed
-% [END GENERATED 2026-11-17]
 
 \section{Simulation scheme and validation}\label{app:simulation}
 
-% [GENERATED 2026-11-23 scheme unification. This appendix replaces the description of the split-step scheme, whose text of
-%  17 November 2026 is kept in ../drafts/r4_pre_unification_2026-11-23/. It describes the scheme of the module
-%  stochvolmodels/models/rough_logsv/history.py, which produced Table 5 and now produces Tables 4 and B1 and Figure 4.
-%  Formula sheet: ../agents/sol_results_rough_logsv_scheme_unification_2026-11-23.md. The step as written here agrees with an
-%  independent replay of the package arithmetic to 2.5e-13 (../agents/implementation_2026-11-23/check_paper_form.py).]
 \subsection{Symmetric splitting of the factor system}\label{sec:splitting}
 
 We approximate the factor system \eqref{eq:factors} on a uniform grid $t_n=nh$. In this appendix $h$ denotes the time step and no longer the kernel of Section~\ref{sec:stability}. In this appendix grid-time state symbols denote the numerical approximation, rather than the exact solution. Every path carries all $N$ factors, so the state at $t_n$ contains the full history of the Markovian model.
@@ -1075,11 +718,8 @@ with one normal variable $Z^\sigma_n$ per step.
 
 The memory map integrates the decay rates exactly, so the largest node does not restrict the time step. For the kernel of the calibration the largest node is $7.4\times10^6$ per year. Conjugation with $\mathrm{diag}(\sqrt{w_i})$ makes $\Lambda$ symmetric, and the implementation diagonalises the symmetric matrix once for each parameter vector and time step.\footnote{Functions \texttt{prepare\_history} and \texttt{simulate\_history} of the module \path{src/stochvolmodels/models/rough_logsv/history.py}.} The implementation requires the smallest eigenvalue of $\Lambda$ to be positive, which holds whenever $\tilde c_1<0$ and all nodes are positive. This requirement belongs to the numerical method, and Theorem~\ref{thm:wellposed} does not need it.
 
-The damping and noise maps keep a positive $\sigma^N$ positive. The memory map is affine and does not guarantee a positive $\sigma^N$ for $N>1$. The implementation stops with an error if a volatility state is non-positive or not finite, and uses no floor, no reset of the state and no deletion of paths. All runs behind Tables~\ref{tab:martingale}, \ref{tab:calibration} and~\ref{tab:validation} and Figures~\ref{fig:motivation} and~\ref{fig:martingale} completed without such an error.
+The damping and noise maps keep a positive $\sigma^N$ positive. The memory map is affine and does not guarantee a positive $\sigma^N$ for $N>1$. The implementation stops with an error if a volatility state is non-positive or not finite, and uses no floor, no reset of the state and no deletion of paths. All runs behind Tables~\ref{tab:martingale} and~\ref{tab:calibration} and Figures~\ref{fig:motivation} and~\ref{fig:martingale} completed without such an error.
 
-% [REVISED 2026-11-23 sweep: attribution of the composition of Stratonovich flows]
-% [REVISED 2026-11-23 attribution: sentences three to nine relate the scheme to Shinozaki (2026). Sentence six states the
-%  reason for our grouping of the drift, confirmed by the authors on 23 November 2026]
 Each of the three flows is exact, and their composition \eqref{eq:scheme} approximates the solution of \eqref{eq:factors}. \citet{NinomiyaVictoir2008} compose the flows of the Stratonovich vector fields in their weak scheme of second order, and \citet{BayerBreneis2024} use splitting schemes of this type for the Markovian approximation of rough Heston. \citet{Shinozaki2026} splits the drift into the decay of the factors and the remaining drift, and proves weak order two for vector fields with bounded derivatives. For rough Heston he also proves that the variance stays non-negative under a parameter condition. For the volatility factors, the composition \eqref{eq:scheme} has the same symmetric form with a different grouping of the drift. We keep the linear drift in the memory map, because the map then integrates the whole drift exactly when $\kappa_2=0$. His composition also contains the price, which we advance by the separate step \eqref{eq:price_step}. The quadratic drift is outside the assumptions of his theorem. We prove neither a convergence order nor non-negativity for \eqref{eq:scheme}. Section~\ref{sec:validation} measures its time-discretisation error against exact moments.
 
 \subsection{Price step and the discrete martingale}\label{sec:price_step}
@@ -1091,7 +731,7 @@ I_{n+1}&=I_n+\big(\sigma^N_n\big)^2h,\qquad J_{n+1}=J_n+\sigma^N_n\sqrt h\,Z^\si
 X_{n+1}&=X_n-\tfrac12\big(\sigma^N_n\big)^2h+\sigma^N_n\sqrt h\,\Big(\rho Z^\sigma_n+\sqrt{1-\rho^2}\,Z^\perp_n\Big),
 \end{split}
 \end{equation}
-with $I_0=J_0=0$. Here $Z^\sigma_n$ is the normal variable of the noise map in step $n$, and $Z^\perp_n$ is a standard normal variable that is independent of all other variables. The sums $I_n$ and $J_n$ are the left-point sums of $\int(\sigma^N_u)^2\,\D u$ and $\int\sigma^N_u\,\D W^\sigma_u$. A left-point sum has a first-order error in $h$, whereas a symmetric rule would have a second-order error. We accept the first-order error, because the left point is known at the beginning of the step and gives the following property.
+with $I_0=J_0=0$. Here $Z^\sigma_n$ is the normal variable of the noise map in step $n$, and $Z^\perp_n$ is a standard normal variable that is independent of all other variables. The sums $I_n$ and $J_n$ are the left-point sums of $\int(\sigma^N_u)^2\,\D u$ and $\int\sigma^N_u\,\D W^\sigma_u$. Beginning-of-step volatility is predictable for the It\^o sum $J_n$ and gives the conditional martingale identity below.
 
 \begin{lemma}[Discrete martingale]\label{lem:discrete_martingale}
 Suppose that the volatility states $\sigma^N_n$ of the scheme \eqref{eq:scheme} are finite almost surely. Then, for every step $h>0$, every $\kappa_2\ge0$ and every $\rho\in[-1,1]$, the discrete price $S_n=S_0e^{X_n-X_0}$ of \eqref{eq:price_step} is a martingale, and $\E[S_n]=S_0$ for every $n$. The same holds for $S_0\exp\big(\rho J_n-\tfrac12\rho^2I_n\big)$.
@@ -1099,24 +739,21 @@ Suppose that the volatility states $\sigma^N_n$ of the scheme \eqref{eq:scheme} 
 
 \paragraph{Proof of Lemma~\ref{lem:discrete_martingale}.} The state $\sigma^N_n$ is a function of $Z^\sigma_0,\dots,Z^\sigma_{n-1}$. Conditional on the normal variables of the first $n$ steps, the ratio $S_{n+1}/S_n$ is therefore log-normal with unit mean, and the conditional expectation of $S_{n+1}$ is $S_n$. The tower property for non-negative variables gives $\E[S_{n+1}]=\E[S_n]=S_0$, so that $S_n$ is integrable. The second statement follows in the same way, with $\rho Z^\sigma_n$ in place of $\rho Z^\sigma_n+\sqrt{1-\rho^2}\,Z^\perp_n$ and $\rho^2(\sigma^N_n)^2h$ in place of $(\sigma^N_n)^2h$. \qed
 
-% [GENERATED 2026-11-23 scheme unification] the next paragraph is crux text for the authors' rewrite
-Lemma~\ref{lem:discrete_martingale} places no restriction on $\kappa_2$ and $\beta$. For $\kappa_2=0$, $\beta>0$ and the kernel $K^N$ the continuous-time price is a strict local martingale (Section~\ref{sec:measure}), so that $\E[S_T]<S_0$, while $\E[S_n]=S_0$ on every grid. The two statements are compatible, because convergence of the discrete price in distribution does not imply convergence of its expectation. On a fine grid the missing expectation is carried by paths of small probability, and a sample mean below $S_0$ measures the part of the expectation that the sample does not contain. Table~\ref{tab:martingale} reports this deficit and its dependence on the grid.
+On every grid with finite adapted volatility the price has expectation $S_0$. For $K^N$ and $\beta>\kappa_2$ its continuous-time counterpart has smaller expectation by Proposition~\ref{prop:finite_converse}. Weak convergence alone would permit this difference because it does not imply uniform integrability.
 
-\subsection{Conditional Monte Carlo and the minimal martingale measure}\label{sec:conditional_mc}
+\subsection{Conditional Monte Carlo under a Gaussian half-tilt}\label{sec:conditional_mc}
 
 Conditional on the volatility normals $Z^\sigma_0,\dots,Z^\sigma_{n-1}$, the log return $X_n-X_0$ of \eqref{eq:price_step} is Gaussian with mean $\rho J_n-\tfrac12I_n$ and variance $(1-\rho^2)I_n$. With $F=S_0$ under our zero-rate convention, a European payoff has the conditional price of Black's formula with forward and total variance
 \begin{equation}\label{eq:conditional_forward}
 F_n=F\exp\big(\rho J_n-\tfrac12\rho^2I_n\big),\qquad v_n=(1-\rho^2)\,I_n,
 \end{equation}
-and no draws of $Z^\perp$ are needed \citep{Willard1997,RomanoTouzi1997}. Tables~\ref{tab:martingale} and~\ref{tab:validation} report the sample mean of the raw conditional forward $F_n/F$. We apply neither a multiplicative normalisation by the sample forward nor an additive shift of the prices, so that a deficit of the sample forward stays visible.\footnote{Function \texttt{raw\_forward}.}
+and no draws of $Z^\perp$ are needed \citep{Willard1997,RomanoTouzi1997}. Table~\ref{tab:martingale} reports the sample mean of the raw conditional forward $F_n/F$. We apply neither a multiplicative normalisation by the sample forward nor an additive shift of the prices, so that a deficit of the sample forward stays visible.\footnote{Function \texttt{raw\_forward}.}
 
 For positive correlation the conditional forward has a heavy right tail. In the 15 cells of Table~\ref{tab:martingale} the largest of the 200{,}000 conditional forwards lies between $31$ and $182$ times the forward, and the conditional call price inherits this tail. We therefore price options under a second measure, which we define on the grid by
 \begin{equation}\label{eq:half_measure}
 \frac{\D\Q^{1/2}}{\D\Q}=\Big(\frac{S_n}{S_0}\Big)^{1/2}e^{I_n/8}=\exp\Big(\tfrac12\sum_{m<n}\sigma^N_m\sqrt h\,\Big(\rho Z^\sigma_m+\sqrt{1-\rho^2}\,Z^\perp_m\Big)-\tfrac18I_n\Big).
 \end{equation}
-% [REVISED 2026-11-23 attribution and measure name: sentence two explains the notation, and sentences three and four name
-%  the measure after its continuous-time counterpart in Rheinlaender and Schmutz (2013)]
-The density has unit expectation by the argument of Lemma~\ref{lem:discrete_martingale}. The superscript $1/2$ is the exponent of $S_n/S_0$ in \eqref{eq:half_measure}, and the share measure of Section~\ref{sec:measure} has the density $S_n/S_0$. \citet{RheinlaenderSchmutz2013} obtain the continuous-time counterpart of the density \eqref{eq:half_measure} as the density of the minimal martingale measure for the log-price. We use this name for $\Q^{1/2}$. Under $\Q^{1/2}$ the variables $\tilde Z^\sigma_m=Z^\sigma_m-\tfrac12\rho\sigma^N_m\sqrt h$ and $\tilde Z^\perp_m=Z^\perp_m-\tfrac12\sqrt{1-\rho^2}\,\sigma^N_m\sqrt h$ are independent standard normal variables. To simulate under $\Q^{1/2}$ we draw $\tilde Z^\sigma_m$, use $Z^\sigma_m=\tilde Z^\sigma_m+\tfrac12\rho\sigma^N_m\sqrt h$ in the noise map and accumulate $\tilde J_n=\sum_{m<n}\sigma^N_m\sqrt h\,\tilde Z^\sigma_m$. The change of measure is exact on the grid, because $\sigma^N_m$ is known at the beginning of step $m$. In the continuous-time limit the shift adds $\tfrac12\beta\sigma^2$ to the drift of the volatility, so that the quadratic coefficient becomes $\kappa_2-\tfrac12\beta$ (compare Proposition~\ref{prop:closure}). Under $\Q^{1/2}$ and conditional on the volatility normals, the log return $X_n-X_0$ is Gaussian with mean $\rho\tilde J_n$ and variance $v_n$.
+The density has unit expectation by the argument of Lemma~\ref{lem:discrete_martingale}. The superscript $1/2$ is the exponent of $S_n/S_0$ in \eqref{eq:half_measure}, and the share measure of Section~\ref{sec:measure} has the density $S_n/S_0$. \citet{RheinlaenderSchmutz2013} obtain the continuous-time counterpart of the density \eqref{eq:half_measure} as the density of the minimal martingale measure for the log-price. On the grid we call $\Q^{1/2}$ the Gaussian half-tilt. Under $\Q^{1/2}$ the variables $\tilde Z^\sigma_m=Z^\sigma_m-\tfrac12\rho\sigma^N_m\sqrt h$ and $\tilde Z^\perp_m=Z^\perp_m-\tfrac12\sqrt{1-\rho^2}\,\sigma^N_m\sqrt h$ are independent standard normal variables. To simulate under $\Q^{1/2}$ we draw $\tilde Z^\sigma_m$, use $Z^\sigma_m=\tilde Z^\sigma_m+\tfrac12\rho\sigma^N_m\sqrt h$ in the noise map and accumulate $\tilde J_n=\sum_{m<n}\sigma^N_m\sqrt h\,\tilde Z^\sigma_m$. The change of measure is exact on the grid, because $\sigma^N_m$ is known at the beginning of step $m$. In the continuous-time limit the shift adds $\tfrac12\beta\sigma^2$ to the drift of the volatility, so that the quadratic coefficient becomes $\kappa_2-\tfrac12\beta$ (compare Proposition~\ref{prop:closure}). Under $\Q^{1/2}$ and conditional on the volatility normals, the log return $X_n-X_0$ is Gaussian with mean $\rho\tilde J_n$ and variance $v_n$.
 
 For a strike $K$, the identities $(S-K)^+=S-\min(S,K)$ and $(K-S)^+=K-\min(S,K)$ and Lemma~\ref{lem:discrete_martingale} give the call price $C=F-\E[\min(S_n,K)]$ and the put price $P=K-\E[\min(S_n,K)]$. We evaluate the common term under $\Q^{1/2}$,
 \begin{equation}\label{eq:half_tilted}
@@ -1138,46 +775,10 @@ with $\alpha=H+\tfrac12$. The shift $t_0$ removes the singularity of the fractio
 
 The prices are multilevel estimates \citep{Giles2008} of \eqref{eq:half_tilted} on six grids from 32 to 1,024 steps per day. The coarsest level uses a control variate, the classical model ($H=1/2$) with quadratic drift, simulated by the same scheme at 16 steps per day on the same Brownian increments. A deterministic backward recursion with Fourier inversion gives the expectation of this discrete control. Each level uses 16 independent scrambled Sobol nets with antithetic pairs. The Sobol points drive a Brownian bridge at 16 steps per day, and pseudo-random normal variables, recentred on the bridge increments, fill the finer grids. A net holds from 16{,}384 pairs on the coarsest level to 256 on the finest. The 95\% half-width of a price is $2.131\,\big(\sum_ls_l^2/16\big)^{1/2}+a_{\mathrm c}$. Here $s_l^2$ is the sample variance of the 16 net means of level $l$, and $2.131$ is the $0.975$ quantile of the Student distribution with 15 degrees of freedom. The term $a_{\mathrm c}$ is an allowance for the numerical error of the control mean.\footnote{Class \texttt{RoughLogSVPricer} and function \texttt{sample\_multilevel}.}
 
-\subsection{Validation against the exact moments}\label{sec:validation}
-
-% [GENERATED 2026-11-23 scheme unification. Table B1: ../replication/results/B1_history_scheme_validation_R2.json, case R2 of
-%  ../replication/rough_logsv_scheme_unification.py. The numbers of the text are recomputed by apply_scheme_unification_2026-11-23.py --check.]
-For linear drift the first and second moments of the scheme satisfy a linear recursion and are available in closed form on every grid.\footnote{Function \texttt{exact\_linear\_discrete\_moments}.} We call these values exact discrete. Their difference from the exact continuous moments of the same kernel is the time-discretisation error of the scheme, free of sampling error. Table~\ref{tab:validation} reports both sets of values for three linear-drift cases with three-factor kernels, with the sample estimates at 5,760 steps per year. The errors of $\E[\sigma_1]$ and $\E[\sigma_1^2]$ decrease by a factor of four when the step is halved. The error of $\E[I_1]$ is of first order in case (a), because of the left-point sum in \eqref{eq:price_step}. In cases (b) and (c) the absolute error of $\E[I_1]$ is not monotone in the step. We do not prove these orders. On the three grids all 27 sample moments lie within $1.85$ batch standard errors of their exact discrete values. Case (c) is a weak test of the second moments, because one path contributes $7.4\%$ of the estimate of $\E[\sigma_1^2]$. In case (c) the continuous-time price is a strict local martingale (Section~\ref{sec:measure}), while the discrete expectation is one by Lemma~\ref{lem:discrete_martingale}.
-% [END GENERATED 2026-11-23]
-
-\begin{table}[ht]
-\centering\small
-\caption{One-year moments for three-factor kernels with $\sigma_0=0.5$, $\theta=0.4$, $\kappa_1=2$ and $\kappa_2=0$. Cases (a) and (b) use $(\beta,\varepsilon)=(-0.4,0.6)$ and case (c) uses $(0.6,0.8)$. The sample rows use 200{,}000 paths from seed 3 at 5,760 steps per year, with the per-path and 40-batch standard errors in parentheses. The exact discrete rows give the expectations of the scheme at 1,440, 2,880 and 5,760 steps per year. The last row of each case gives the exact value in continuous time for the same kernel. The price column uses the raw conditional forward with $S_0=1$. In (c) the continuous-time price is a strict local martingale, and no closed form of $\E[S_1]$ is available.}\label{tab:validation}
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{llrrrr}\toprule
-Case & Row & $\E[\sigma_1]$ & $\E[\sigma_1^2]$ & $\E[I_1]$ & $\E[S_1]$ \\
-\midrule
-(a) $H=0.3$ & Sample, 5760 & 0.41938 & 0.21337 & 0.23024 & 0.99970 \\
- &  & {\scriptsize (0.00043, 0.00043)} & {\scriptsize (0.00060, 0.00070)} & {\scriptsize (0.00032, 0.00028)} & {\scriptsize (0.00054, 0.00049)} \\
- & Exact discrete, 1440 & 0.41906033 & 0.21290598 & 0.23017295 & 1 \\
- & Exact discrete, 2880 & 0.41906043 & 0.21290619 & 0.23016680 & 1 \\
- & Exact discrete, 5760 & 0.41906046 & 0.21290625 & 0.23016365 & 1 \\
- & Exact continuous & 0.41906047 & 0.21290627 & 0.23016046 & 1 \\
-\midrule
-(b) $H=0.1$ & Sample, 5760 & 0.42427 & 0.28911 & 0.30171 & 0.99982 \\
- &  & {\scriptsize (0.00074, 0.00076)} & {\scriptsize (0.00275, 0.00317)} & {\scriptsize (0.00086, 0.00083)} & {\scriptsize (0.00058, 0.00056)} \\
- & Exact discrete, 1440 & 0.42373293 & 0.28785648 & 0.30244669 & 1 \\
- & Exact discrete, 2880 & 0.42373158 & 0.28784621 & 0.30244608 & 1 \\
- & Exact discrete, 5760 & 0.42373124 & 0.28784365 & 0.30244757 & 1 \\
- & Exact continuous & 0.42373113 & 0.28784279 & 0.30245026 & 1 \\
-\midrule
-(c) $H=0.1$ & Sample, 5760 & 0.42490 & 0.59736 & 0.59390 & 0.93971 \\
- &  & {\scriptsize (0.00144, 0.00161)} & {\scriptsize (0.04883, 0.05595)} & {\scriptsize (0.02093, 0.02276)} & {\scriptsize (0.00072, 0.00068)} \\
- & Exact discrete, 1440 & 0.42375021 & 0.64771506 & 0.63479815 & 1 \\
- & Exact discrete, 2880 & 0.42373590 & 0.64745474 & 0.63466413 & 1 \\
- & Exact discrete, 5760 & 0.42373232 & 0.64738969 & 0.63464787 & 1 \\
- & Exact continuous & 0.42373113 & 0.64736801 & 0.63466545 & $<1$ \\
-\bottomrule\end{tabular}
-\end{table}
-
+\subsection{Moment benchmark}\label{sec:validation}
+For linear drift the exact discrete moments obey a linear recursion. The replication code compares these moments with the exact continuous moments for the same kernel and with the sample estimates on each grid.\footnote{The pricing implementation and replication scripts are available in \url{https://github.com/ArturSepp/StochVolModels}.}
 \section{Microstructural reading}\label{sec:micro}
 
-% [GENERATED 2026-10-24 as Section 4; REVISED 2026-10-30 moved to this appendix and compressed (C7). Cut paragraphs (survival of the linear channel, empirical evidence for the kick assumption, per-trade prediction) remain in the 24 October file. Analysis note: rough-lognormal-sv-microstructure-hawkes-foundation-2026-10-24.md (this folder).]
 Rough Heston and rough Bergomi are scaling limits of order-driven markets. In each case the limit is fixed by two choices, the volatility state that an order moves and the rate at which orders arrive. Table~\ref{tab:kicks} lists the choices. \citet{JaissonRosenbaum2016} and \citet{ElEuchFukasawaRosenbaum2018} start from a Hawkes process in which each trade adds a constant to the trade intensity, which is the variance, and they obtain the square-root noise of rough Heston. \citet{HagerHorstWagenhoferXu2026} start from orders at a constant rate, each of which adds an i.i.d.\ centred impact to the log-volatility, and they obtain the Gaussian log-volatility of rough Bergomi. The candidate construction below uses a constant signed input kick at a rate proportional to the square of its state. The construction identifies the local noise and drift coefficients of our model. Positivity and global convergence require additional arguments. The drift enters through the law of the kicks by construction, and we say so where it matters. The compensated counting process has predictable quadratic-variation rate equal to the order rate. Thus a constant input kick at rate $\sigma^2$ has noise magnitude $\vartheta|\sigma|$, which agrees with the multiplicative coefficient $\vartheta\sigma$ on a positive branch. The kernel subsequently propagates each kick through the state.
 
 \suppressfloats[t]
@@ -1221,9 +822,6 @@ For $K\equiv1$ and $n$ large enough that $r_n>\vartheta/\sqrt n$, the jump chain
 
 The intensity has the quadratic-feedback form $n(\sigma_0+Z^n)^2$, where $Z^n$ is the kernel-weighted signed input. The state marks and price signs are correlated through $\rho$, and the offset $\sigma_0$ shifts the vertex of the quadratic intensity. These features relate the construction to quadratic Hawkes models \citep{BlancDonierBouchaud2017}, but a fixed positive branch has not been established for singular kernels. With zero initial state and no baseline intensity the process is inactive. A nontrivial comparison with \citet{DandapaniJusselinRosenbaum2021} therefore requires their positive baseline intensity or a different non-zero initial input, as discussed below.
 
-% [REVISED 2026-11-24 pre-submission read: the block below is moved here from the head of the appendix, behind the definitions of n, K_n and
-%  the mark law that it uses. Three sentences reworded.]
-% [REVISED 2026-11-18: AI-assisted economic interpretation, explicitly requested by the authors.]
 \paragraph{Economic interpretation.}
 The construction separates the size of a volatility innovation from the activity that generates it. A trade can increase uncertainty by revealing an imbalance or reduce it by completing an order and absorbing that imbalance. The signed mark represents these two possible effects. We assume that input kicks have the same magnitude at a given scaling level, while trades arrive at a rate proportional to $\sigma^2$. More volatile states then generate more kicks per unit of calendar time, so their aggregate noise amplitude scales with $\sigma$. A larger volatility shock in an active market need not mean a larger input kick from each individual trade. The equal magnitude and the quadratic activity relation are modelling assumptions: the actual state jump also contains the factor $K_n(0)$, and neither the kick size nor the activity relation is estimated in this paper.
 
@@ -1277,14 +875,10 @@ uniformly in $n$ and $0<h\le1$. This bound is a candidate regularity requirement
 
 The local drift calculation nevertheless gives a parameter interpretation. The volatility-of-volatility $\vartheta$ scales the signed input kick. The coefficient $\kappa_2$ contributes a level-independent calming bias per trade, and the quadratic arrival rate turns it into quadratic damping. The intercept $\kappa_1\theta$ gives an upward bias at low activity. Under a change of measure, Proposition~\ref{prop:closure} shifts the quadratic coefficient by $\beta\bar\lambda_0+\varepsilon\bar\lambda_1$, subject to the admissibility restrictions stated there.
 
-% [REVISED 2026-11-24 pre-submission read: paragraph split, no word changed]
 A bias of order $n^{-1/2}$ does not make the drift unidentifiable from tick data: the relevant limitation is that increasing sampling frequency over a fixed time span does not by itself provide consistent drift estimation, whereas longer observation spans carry drift information. An empirical assessment would require trade-level observations linking arrival rates, signed price moves and volatility innovations, together with an observable proxy for the latent volatility state. The option calibrations in Section~\ref{sec:illustrations} concern risk-neutral coefficients and do not identify this physical order-flow mechanism. We therefore use the construction to interpret the coefficients and establish the localised Markov approximation. A global fractional limit and empirical identification of the trading mechanism remain separate research questions.
 
-% [END GENERATED 2026-10-24 / REVISED 2026-10-30]
 
-% [REVISED 2026-11-23 length: Appendix D (notation and implementation map) is moved to ../replication/README.md]
 
-% [MOVED 2026-11-23 authors' TODO item T8] The appendix "Nearest results" is merged into Section~\ref{sec:literature}.
 
 \begin{thebibliography}{99}
 
@@ -1293,9 +887,6 @@ Abi Jaber, E., Cuchiero, C., Pelizzari, L., Pulido, S. and Svaluto-Ferro, S. (20
 
 \bibitem[Abi Jaber and El Euch(2019)]{AbiJaberElEuch2019}
 Abi Jaber, E. and El Euch, O. (2019). Multifactor approximation of rough volatility models. \emph{SIAM Journal on Financial Mathematics}, 10(2), 309--349.
-
-\bibitem[Abi Jaber et~al.(2025)]{AbiJaberGassiatSotnikov2025}
-Abi Jaber, E., Gassiat, P. and Sotnikov, D. (2025). Martingale property and moment explosions in signature volatility models. arXiv:2503.17103.
 
 \bibitem[Abi Jaber et~al.(2022)]{AbiJaberIllandLi2022}
 Abi Jaber, E., Illand, C. and Li, S. (2022). The quintic Ornstein--Uhlenbeck volatility model that jointly calibrates SPX \& VIX smiles. arXiv:2212.10917. Published in \emph{Risk} (2023) as `The quintic Ornstein--Uhlenbeck model for joint SPX and VIX calibration'.
@@ -1321,6 +912,9 @@ Bayer, C., Friz, P. and Gatheral, J. (2016). Pricing under rough volatility. \em
 \bibitem[Blanc et~al.(2017)]{BlancDonierBouchaud2017}
 Blanc, P., Donier, J. and Bouchaud, J.-P. (2017). Quadratic Hawkes processes for financial prices. \emph{Quantitative Finance}, 17(2), 171--188.
 
+\bibitem[Bondi and Pulido(2026)]{BondiPulido2026}
+Bondi, A. and Pulido, S. (2026). Feller's test for explosions of stochastic Volterra equations. \emph{Electronic Journal of Probability}, 31, 1--41. doi:10.1214/26-EJP1561. Preprint arXiv:2406.13537.
+
 \bibitem[Carr and Willems(2019)]{CarrWillems2019}
 Carr, P. and Willems, S. (2019). A lognormal type stochastic volatility model with quadratic drift. arXiv:1908.07417.
 
@@ -1329,9 +923,6 @@ Chudasama, P. and Iyer, S. K. (2025). Asymmetric super-Heston-rough volatility m
 
 \bibitem[Dandapani et~al.(2021)]{DandapaniJusselinRosenbaum2021}
 Dandapani, A., Jusselin, P. and Rosenbaum, M. (2021). From quadratic Hawkes processes to super-Heston rough volatility models with Zumbach effect. \emph{Quantitative Finance}, 21(8), 1235--1247.
-
-\bibitem[Di Nunno and Yurchenko-Tytarenko(2026)]{DiNunnoYurchenko2026}
-Di Nunno, G. and Yurchenko-Tytarenko, A. (2026). Sandwiched Volterra volatility model: Markovian approximations and hedging. \emph{Finance and Stochastics}, 30(1), 277--325.
 
 \bibitem[El Euch et~al.(2018)]{ElEuchFukasawaRosenbaum2018}
 El Euch, O., Fukasawa, M. and Rosenbaum, M. (2018). The microstructural foundations of leverage effect and rough volatility. \emph{Finance and Stochastics}, 22(2), 241--280.
@@ -1357,9 +948,6 @@ Gatheral, J., Jusselin, P. and Rosenbaum, M. (2020). The quadratic rough Heston 
 \bibitem[Giles(2008)]{Giles2008}
 Giles, M. B. (2008). Multilevel Monte Carlo path simulation. \emph{Operations Research}, 56(3), 607--617.
 
-\bibitem[Gnabeyeu and Pag\`es(2025)]{GnabeyeuPages2025}
-Gnabeyeu, E. and Pag\`es, G. (2025). On a stationarity theory for stochastic Volterra integral equations with affine drift. arXiv:2511.03474.
-
 \bibitem[Gorenflo et~al.(2014)]{GorenfloKilbasMainardiRogosin2014}
 Gorenflo, R., Kilbas, A. A., Mainardi, F. and Rogosin, S. V. (2014). \emph{Mittag-Leffler Functions, Related Topics and Applications}. Springer.
 
@@ -1375,9 +963,6 @@ Hager, P. P., Horst, U., Wagenhofer, T. and Xu, W. (2026). Microstructural found
 \bibitem[Horst et~al.(2024)]{HorstXuZhang2024}
 Horst, U., Xu, W. and Zhang, R. (2024). Path-dependent fractional Volterra equations and the microstructure of rough volatility models driven by Poisson random measures. arXiv:2412.16436.
 
-\bibitem[Hu et~al.(2026)]{HuHeKwokZhang2026}
-Hu, L., He, C., Kwok, Y. K. and Zhang, G. (2026). Simulation of stochastic volatility models via operator splitting schemes. arXiv:2609.21301.
-
 \bibitem[Jaisson and Rosenbaum(2016)]{JaissonRosenbaum2016}
 Jaisson, T. and Rosenbaum, M. (2016). Rough fractional diffusions as scaling limits of nearly unstable heavy tailed Hawkes processes. \emph{Annals of Applied Probability}, 26(5), 2860--2882.
 
@@ -1386,9 +971,6 @@ McCrickerd, R. and Pakkanen, M. S. (2018). Turbocharging Monte Carlo pricing for
 
 \bibitem[Ninomiya and Victoir(2008)]{NinomiyaVictoir2008}
 Ninomiya, S. and Victoir, N. (2008). Weak approximation of stochastic differential equations and application to derivative pricing. \emph{Applied Mathematical Finance}, 15(2), 107--121.
-
-\bibitem[Pag\`es(2024)]{Pages2024}
-Pag\`es, G. (2024). Volterra equations with affine drift: looking for stationarity. arXiv:2401.15021.
 
 \bibitem[Pannier and Jacquier(2019)]{PannierJacquier2019}
 Pannier, A. and Jacquier, A. (2019). On the uniqueness of solutions of stochastic Volterra equations. arXiv:1912.05917.
@@ -1402,11 +984,11 @@ Romano, M. and Touzi, N. (1997). Contingent claims and market completeness in a 
 \bibitem[Sepp(2008)]{Sepp2008}
 Sepp, A. (2008). VIX option pricing in a jump-diffusion model. \emph{Risk}, April, 84--89.
 
-\bibitem[Sepp and Rakhmonov(2023a)]{SeppRakhmonov2023}
-Sepp, A. and Rakhmonov, P. (2023a). Log-normal stochastic volatility model with quadratic drift. \emph{International Journal of Theoretical and Applied Finance}, 26(8), 2450003.
+\bibitem[Sepp and Rakhmonov(2023)]{SeppRakhmonov2023}
+Sepp, A. and Rakhmonov, P. (2023). Log-normal stochastic volatility model with quadratic drift. \emph{International Journal of Theoretical and Applied Finance}, 26(8), 2450003.
 
-\bibitem[Sepp and Rakhmonov(2023b)]{SeppRakhmonov2023b}
-Sepp, A. and Rakhmonov, P. (2023b). What is a robust stochastic volatility model. Working paper, revised 29 February 2024. Available at SSRN: \url{https://ssrn.com/abstract=4647027}.
+\bibitem[Sepp and Rakhmonov(2026)]{SeppRakhmonov2026}
+Sepp, A. and Rakhmonov, P. (2026). What is a robust stochastic volatility model? Measure changes, martingality and cross-asset applications. Working paper. Earlier version at \url{https://ssrn.com/abstract=4647027}.
 
 \bibitem[Shinozaki(2026)]{Shinozaki2026}
 Shinozaki, Y. (2026). Higher-order weak approximation for rough volatility models via Markovian approximation: drift-splitting time discretization and its extrapolation. \emph{Quantitative Finance}, 26(10), 1585--1604.

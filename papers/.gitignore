@@ -12,9 +12,8 @@
 !/rough_volterra_lognormal_sv_model_2026/paper/**/*.pdf
 !/rough_volterra_lognormal_sv_model_2026/paper/figures/**/*.[pP][nN][gG]
 !/rough_volterra_lognormal_sv_model_2026/paper/**/*.bib
-!/rough_volterra_lognormal_sv_model_2026/paper/qf/*.cls
-!/rough_volterra_lognormal_sv_model_2026/paper/qf/*.bst
-!/rough_volterra_lognormal_sv_model_2026/paper/qf/make_qf_version.py
+/rough_volterra_lognormal_sv_model_2026/paper/arxiv/
+/rough_volterra_lognormal_sv_model_2026/paper/qf/
 /rough_volterra_lognormal_sv_model_2026/replication/**
 !/rough_volterra_lognormal_sv_model_2026/replication/**/
 !/rough_volterra_lognormal_sv_model_2026/replication/**/*.py
