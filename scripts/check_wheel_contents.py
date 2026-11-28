@@ -11,6 +11,7 @@ SOURCE_TEST_ROOT = Path(__file__).resolve().parents[1] / "src/stochvolmodels/tes
 
 RETIRED_FORWARDERS = {
     "stochvolmodels/fitters/tdist.py",
+    "stochvolmodels/models/inverse_gamma_normal.py",
     "stochvolmodels/models/logsv_pde.py",
     "stochvolmodels/models/lsv_simulation.py",
     "stochvolmodels/models/regime_logsv_simulation.py",
@@ -158,7 +159,6 @@ REQUIRED_RUNTIME_FILES = PDE_FILES | {
     "stochvolmodels/__init__.py",
     "stochvolmodels/data/model_paths.py",
     "stochvolmodels/models/__init__.py",
-    "stochvolmodels/models/inverse_gamma_normal.py",
     "stochvolmodels/models/inverse_gamma/__init__.py",
     "stochvolmodels/models/inverse_gamma/terminal.py",
     "stochvolmodels/pricers/inverse_gamma_pricer.py",

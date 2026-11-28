@@ -26,4 +26,3 @@ Read each row as importer → imported SVM module. Names are relative to stochvo
 |---|---|---|---|---|
 | [`__init__.py`](__init__.py) | Declare model capabilities and parameter ownership. | [`data.model_paths`](../data/model_paths.py)<br>Typing [`data.option_chain`](../data/option_chain.py) | [heston_model.py](../../../examples/docs/heston_model.py) | — |
 | [`base.py`](base.py) | Common parameter container shared by stochastic-volatility models. | — | [run_add_model.py](../../../examples/pricers/run_add_model.py) | — |
-| [`inverse_gamma_normal.py`](inverse_gamma_normal.py) | Compatibility imports for the inverse-gamma/normal terminal law. | [`models.inverse_gamma`](inverse_gamma/__init__.py) | [test_inverse_gamma_normal_characterization.py](../tests/test_inverse_gamma_normal_characterization.py) | — |

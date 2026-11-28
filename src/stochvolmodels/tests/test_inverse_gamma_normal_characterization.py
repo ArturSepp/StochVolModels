@@ -285,13 +285,9 @@ def test_inverse_gamma_normal_exposes_only_terminal_capabilities() -> None:
     assert not hasattr(model, "log_mgf_grid")
 
 
-def test_old_module_exports_the_same_terminal_model_and_frozen_params() -> None:
+def test_terminal_model_returns_frozen_params() -> None:
     from dataclasses import FrozenInstanceError
 
-    from stochvolmodels.models import inverse_gamma_normal as legacy
-
-    assert legacy.InverseGammaNormalParams is InverseGammaNormalParams
-    assert legacy.InverseGammaNormalTerminalModel is InverseGammaNormalTerminalModel
     params = _model().params
     with pytest.raises(FrozenInstanceError):
         params.q = 1.0

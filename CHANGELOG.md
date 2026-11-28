@@ -152,13 +152,14 @@ See the [worked example](docs/heston_model.md#controlled-fourier-pricing).
 
 ### Removed
 
-- Retired 15 deep import paths. The names below are relative to `stochvolmodels`.
+- Retired 16 deep import paths. The names below are relative to `stochvolmodels`.
   Update imports and any monkeypatch targets using the same function or class name.
 
   | Previous module | Import from |
   |---|---|
   | `fitters.tdist` (density, CDF, partial mean, drift, default probability, forward and `compute_upsilon`) | `models.tdist.distribution` |
   | `fitters.tdist` (`compute_vanilla_price_tdist`, `infer_implied_vol_tdist`, `infer_tdist_implied_vols_from_model_slice_prices`) | `pricers.tdist.analytics` |
+  | `models.inverse_gamma_normal` (`InverseGammaNormalParams`, `InverseGammaNormalTerminalModel`) | `models.inverse_gamma` |
   | `models.logsv_pde` | `models.logsv.coefficients` |
   | `models.lsv_simulation` | `models.lsv.simulation` |
   | `models.regime_logsv_simulation` | `models.regime_logsv.simulation` |
@@ -193,7 +194,6 @@ See the [worked example](docs/heston_model.md#controlled-fourier-pricing).
   calls and puts on a chain with one expiry matching the inverse-gamma/normal law. The
   shared slice and chain methods return the model's prices and Black implied volatilities.
   Import the frozen parameters and terminal model from `stochvolmodels.models.inverse_gamma`.
-  The former `stochvolmodels.models.inverse_gamma_normal` path exports the same classes.
 
 - Experimental repository-only positive full-tensor stencil and frozen-model
   investigation in `validation.pde_monotone` and `validation.pde_positivity`.
