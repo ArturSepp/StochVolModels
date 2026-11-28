@@ -519,10 +519,12 @@ class DiscountedMcEstimate:
 
     @property
     def n_groups(self) -> int:
+        """Return the number of independent sampling groups."""
         return len(self.group_ids)
 
     @property
     def standard_error(self) -> float:
+        """Return the group-based standard error, or NaN for fewer than two groups."""
         n = self.n_groups
         return float(np.sqrt(self.m2 / (n * (n - 1)))) if n > 1 else np.nan
 

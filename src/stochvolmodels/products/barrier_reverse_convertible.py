@@ -98,18 +98,22 @@ class BrcPayoff:
 
     @property
     def required_asset_ids(self):
+        """Return the underlying asset identifiers in contract order."""
         return self.terms.asset_ids
 
     @property
     def expiry(self):
+        """Return the contract's final fixing time."""
         return self.terms.fixing_time
 
     @property
     def payoff_unit(self):
+        """Return the currency of the undiscounted payoff."""
         return self.terms.currency
 
     @property
     def settlement_unit(self):
+        """Return the contract's cash settlement currency."""
         return self.terms.currency
 
     def __call__(self, paths: ModelPaths):

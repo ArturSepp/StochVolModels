@@ -95,9 +95,11 @@ def fit_sparse_local_vol(
     coarse = LocalVolPdePricer(grid=Grid1D.uniform(-log_width, log_width, grid_size))
 
     def surface(nodes: np.ndarray) -> LocalVolSurface:
+        """Build the single-expiry local-volatility surface from trial nodes."""
         return LocalVolSurface(np.array([t]), space, nodes[None, :])
 
     def residual(nodes: np.ndarray) -> np.ndarray:
+        """Return vega-scaled premium errors for the trial surface."""
         return (coarse.price_chain(chain, surface(nodes), time_grid=mesh)[0] - targets) / vegas
 
     fit = least_squares(

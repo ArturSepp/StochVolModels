@@ -55,6 +55,7 @@ class PreparedForwardSteps:
         self.rhs = np.empty(grid.size)
 
     def advance(self, times, theta, density):
+        """Advance density in place and return the largest negative mass seen across the steps."""
         generator = self.operator.forward
         peak_negative = 0.0
         for dt in np.diff(times):

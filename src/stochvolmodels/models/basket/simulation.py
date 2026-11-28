@@ -72,6 +72,7 @@ def simulate_block(
     quanto = model.fx_vols * model.equity_fx_correlations
 
     def draws(rng):
+        """Draw independent normal shocks per asset with the configured antithetic pairing."""
         return np.column_stack([_normals(rng, size, config.antithetic) for _ in range(n)])
 
     k = 0

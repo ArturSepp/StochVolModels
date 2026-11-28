@@ -225,6 +225,7 @@ class HestonPricer(ModelPricer):
         ttms = np.array(option_chain.ttms, dtype=float, copy=True)
 
         def transform(phi):
+            """Yield the two Heston affine coefficient columns for each prepared expiry."""
             return (np.column_stack(model._affine_coefficients(ttm=t, phi_grid=phi)) for t in ttms)
 
         # Match the initial panel used by the fresh controlled Heston slice.

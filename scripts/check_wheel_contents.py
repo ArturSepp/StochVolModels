@@ -68,6 +68,7 @@ def check_retired_forwarders(members) -> None:
 # Exact distribution contract for the reviewed PDE foundation.
 PDE_FILES = {
     "stochvolmodels/pde_solvers/__init__.py",
+    "stochvolmodels/pde_solvers/_prepared_forward.py",
     "stochvolmodels/pde_solvers/adi.py",
     "stochvolmodels/pde_solvers/boundaries.py",
     "stochvolmodels/pde_solvers/coefficients.py",
