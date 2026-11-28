@@ -39,11 +39,12 @@ python -c "from examples.docs import heston_model as h; h.run_local(h.Locals.CON
 
 ### OTC pricing and scalability
 
-Both examples use synthetic inputs and the core package. The wheel job runs the
-coupon example. The timing benchmark runs on demand from the checkout root.
+These examples use synthetic inputs and the core package. The wheel job runs the
+coupon and accumulator examples. The timing benchmark runs on demand from the checkout root.
 
 | Script | Command | Expected result |
 |---|---|---|
+| `accumulator_local_vol.py` | `python examples/accumulator_local_vol.py` | Accumulator and decumulator strikes at par, with earned cash valued after a knock-out. |
 | `brc_local_vol.py` | `python examples/brc_local_vol.py` | Three barrier tiers under two monitoring conventions, with all six issue marks at par. |
 | `benchmark_brc_book.py` | `python examples/benchmark_brc_book.py 48` | Three marginal fits, one base simulation and elapsed time for a twelve-vintage book. |
 

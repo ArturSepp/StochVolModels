@@ -40,10 +40,10 @@
     "moving_metrics_policy": "Regenerate at the submission commit; do not gate ordinary commits on moving GitHub counts."
   },
   "current": {
-    "measured_at_commit": "76e4107e3860a1026352531b75ae09187f58cd39",
+    "measured_at_commit": "9e974b9831bbfb3dd15570926b466dc00d3552f9",
     "metrics": {
       "package_version": {
-        "value": "2.21.0.dev5",
+        "value": "2.21.0.dev6",
         "how": "project.version in pyproject.toml",
         "live": true,
         "paper_phrase": null
@@ -67,13 +67,13 @@
         "paper_phrase": null
       },
       "collected_tests": {
-        "value": 2350,
+        "value": 2416,
         "how": "python -m pytest --collect-only -q",
         "live": false,
         "paper_phrase": null
       },
       "commits": {
-        "value": 335,
+        "value": 356,
         "how": "git rev-list --count HEAD",
         "live": false,
         "paper_phrase": null
