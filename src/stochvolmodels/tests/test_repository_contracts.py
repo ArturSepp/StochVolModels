@@ -33,26 +33,26 @@ REPOSITORY_ROOT = _repository_root()
 
 @pytest.mark.repository_only
 @pytest.mark.skipif(REPOSITORY_ROOT is None, reason="dependency metadata is absent from the wheel")
-def test_research_extra_requires_and_locks_oca_6() -> None:
-    """Research installs select the security-fixed OCA release without changing core."""
+def test_research_extra_requires_and_locks_oca_611() -> None:
+    """Research installs select the FX-compatible OCA release without changing core."""
     assert REPOSITORY_ROOT is not None
     project = tomllib.loads((REPOSITORY_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     lock = tomllib.loads((REPOSITORY_ROOT / "uv.lock").read_text(encoding="utf-8"))
-    assert "option-chain-analytics[cboe]>=6.0.0" in (
+    assert "option-chain-analytics[cboe]>=6.1.1" in (
         project["project"]["optional-dependencies"]["research"]
     )
     assert not any("option-chain-analytics" in item for item in project["project"]["dependencies"])
     readme = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
-    assert "option-chain-analytics[cboe] >= 6.0.0" in readme
+    assert "option-chain-analytics[cboe] >= 6.1.1" in readme
     locked = {package["name"]: package["version"] for package in lock["package"]}
-    assert Version(locked["option-chain-analytics"]) >= Version("6.0.0")
+    assert Version(locked["option-chain-analytics"]) >= Version("6.1.1")
     assert tuple(map(int, locked["pillow"].split("."))) >= (13, 0, 0)
     assert tuple(map(int, locked["certifi"].split("."))) >= (2026, 10, 19)
 
 
 @pytest.mark.parametrize(
     ("version", "accepted"),
-    [("5.99.0", False), ("6.0.0rc1", False), ("6.0.0", True), ("6.0.1", True), ("6.1.0", True)],
+    [("6.0.0", False), ("6.1.0", False), ("6.1.1rc1", False), ("6.1.1", True), ("6.1.2", True)],
 )
 def test_research_oca_lock_contract_checks_floor_not_exact_version(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, version: str, accepted: bool,
@@ -60,11 +60,11 @@ def test_research_oca_lock_contract_checks_floor_not_exact_version(
     """Reject releases below the floor while allowing live dependency upgrades."""
     (tmp_path / "pyproject.toml").write_text(
         '[project]\ndependencies = []\n[project.optional-dependencies]\n'
-        'research = ["option-chain-analytics[cboe]>=6.0.0"]\n',
+        'research = ["option-chain-analytics[cboe]>=6.1.1"]\n',
         encoding="utf-8",
     )
     (tmp_path / "README.md").write_text(
-        "option-chain-analytics[cboe] >= 6.0.0", encoding="utf-8",
+        "option-chain-analytics[cboe] >= 6.1.1", encoding="utf-8",
     )
     (tmp_path / "uv.lock").write_text(
         f'[[package]]\nname = "option-chain-analytics"\nversion = "{version}"\n'
@@ -74,10 +74,10 @@ def test_research_oca_lock_contract_checks_floor_not_exact_version(
     )
     monkeypatch.setitem(globals(), "REPOSITORY_ROOT", tmp_path)
     if accepted:
-        test_research_extra_requires_and_locks_oca_6()
+        test_research_extra_requires_and_locks_oca_611()
     else:
         with pytest.raises(AssertionError):
-            test_research_extra_requires_and_locks_oca_6()
+            test_research_extra_requires_and_locks_oca_611()
 
 
 def _has_collected_test(path: Path) -> bool:
