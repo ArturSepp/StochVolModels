@@ -111,7 +111,7 @@ Run component diagnostics from the repository root. For example,
 |---|---|---|---|
 | `pde_solvers/run_theta_1d.py` | Gaussian forward density, backward Black call and compound-Poisson mixture | Core, synthetic | Offline headless sweep |
 | `pde_solvers/run_adi_2d.py` | Correlated Gaussian moments and short-expiry price refinement | Core, synthetic | Offline headless sweep |
-| [pde_solvers/run_two_name_survival.py](pde_solvers/run_two_name_survival.py) | Joint and marginal survival, first and joint default | Core, frozen public parameters | Offline at three maturities |
+| `pde_solvers/run_two_name_survival.py` | [Joint and marginal survival, first and joint default](pde_solvers/run_two_name_survival.py) | Core, frozen public parameters | Offline at three maturities |
 | `data/run_sample_option_chains.py` | List sample chains | Core, bundled | Offline |
 | `data/run_fetch_option_chain.py` | Reconstruct Tardis chains | Research extra and local archive | Manual, private data |
 | `fitters/run_tdist.py` | Student-t distribution and cumulative moments | Research extra | Manual plots |
