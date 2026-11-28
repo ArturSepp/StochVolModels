@@ -77,6 +77,20 @@ together. `boundary_mass.absolute_total` counts the perimeter once, including co
 The optional density policy can reject a solve, and any renormalization is explicit.
 [Boundary and stepping contracts](software_design.md#generic-finite-difference-solvers)
 
+### Exponential jump marks
+
+`ExponentialJumpKernel(grid, rate, side="down", exterior="zero")` computes the
+expectation for one additive mark with mean magnitude `1 / rate`. Backward application
+integrates the piecewise-linear payoff over each cell. Forward application moves a
+pointwise density using the quadrature-weighted transpose. With a zero exterior,
+`kernel.exterior_mass(density)` measures probability lost in that event. A clamped
+exterior deposits the same probability on the endpoint. Use `side="up"` for positive marks.
+
+For a common arrival with conditionally independent marks, call
+`apply_common_exponential_jump(values, x_kernel, y_kernel, direction)` on an
+`(nx, ny)` array. Arrival intensity and elapsed time enter when composing events.
+[Solver API](api.md#provisional-and-experimental-surfaces)
+
 ### Reference solvers and volatility boundaries
 
 To measure time-stepping error on a fixed spatial grid, the repository's unsplit reference

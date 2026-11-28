@@ -38,6 +38,7 @@ from .coefficients import (
     StaticCoefficientProvider2D,
 )
 from .diagnostics import PDEDiagnostics
+from .exponential_jumps import ExponentialJumpKernel, apply_common_exponential_jump
 from .grids import BoundaryMass1D, BoundaryMass2D, Grid1D, TensorGrid2D
 from .jumps import (
     JumpCoordinate,
@@ -78,6 +79,8 @@ __all__ = (
     "CoefficientProvider2D",
     "DensityPolicy",
     "DriftDiscretization",
+    "ExponentialJumpKernel",
+    "apply_common_exponential_jump",
     "Grid1D",
     "JumpCoordinate",
     "JumpOperator1D",

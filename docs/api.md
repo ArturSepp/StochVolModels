@@ -290,6 +290,11 @@ The provisional types and functions below are explained in [Finite-difference PD
 .. autoclass:: stochvolmodels.pde_solvers.DriftDiscretization
    :members:
 
+.. autoclass:: stochvolmodels.pde_solvers.ExponentialJumpKernel
+   :members:
+
+.. autofunction:: stochvolmodels.pde_solvers.apply_common_exponential_jump
+
 .. autoclass:: stochvolmodels.pde_solvers.Grid1D
    :members:
 

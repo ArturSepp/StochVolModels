@@ -4,6 +4,11 @@ Entries start at 1.2.0. For earlier releases see the git log.
 
 ## [Unreleased]
 
+**2026-11-28, added.** `ExponentialJumpKernel` integrates one upward or downward
+exponential mark on nonuniform grids, with clamped or killed exterior values and
+a quadrature-weighted forward adjoint. `apply_common_exponential_jump` applies
+a shared arrival with independent marks on two coordinates.
+
 **2026-11-28, changed.** The optional `research` extra now requires
 OptionChainAnalytics 6.1.1 or newer for the FX smile dependency fix. Core
 installs do not require OptionChainAnalytics.
